@@ -271,6 +271,13 @@ export default function GrabMapComponent({
         }, 300);
       });
 
+      // 줌 변경 시 마커 다시 그리기 (클러스터 분리/병합)
+      map.current.on('zoomend', () => {
+        if (updateVisiblePropertiesRef.current) {
+          updateVisiblePropertiesRef.current();
+        }
+      });
+
       // 지도 에러 처리
       map.current.on('error', (e) => {
         console.error('Map error:', e);
@@ -510,6 +517,10 @@ export default function GrabMapComponent({
     popupsRef.current.forEach(p => p.remove());
     popupsRef.current = [];
 
+    // 현재 줌 레벨 가져오기 (확대 시 매물 정보 표시용)
+    const currentZoom = map.current.getZoom();
+    const isZoomedIn = currentZoom >= 15; // 줌 15 이상이면 확대된 것으로 간주
+    
     // 클러스터링
     const clusters = clusterProperties(properties);
 
@@ -543,12 +554,14 @@ export default function GrabMapComponent({
           </div>
         `;
       } else {
-        // 단일 매물: 집 아이콘
+        // 단일 매물: 집 아이콘 (확대 시 더 크게 표시)
+        const markerSize = isZoomedIn ? 50 : 40;
+        const iconSize = isZoomedIn ? 22 : 18;
         el.innerHTML = `
           <div style="
             background-color: #FF6B35;
-            width: 40px;
-            height: 40px;
+            width: ${markerSize}px;
+            height: ${markerSize}px;
             border-radius: 50% 50% 50% 0;
             transform: rotate(-45deg);
             border: 3px solid white;
@@ -560,7 +573,7 @@ export default function GrabMapComponent({
             <div style="
               transform: rotate(45deg);
               color: white;
-              font-size: 18px;
+              font-size: ${iconSize}px;
               font-weight: bold;
             ">🏠</div>
           </div>
@@ -573,24 +586,106 @@ export default function GrabMapComponent({
         .setLngLat([cluster.center.lng, cluster.center.lat])
         .addTo(map.current!);
 
+      // 확대 시 클러스터 내 각 매물의 정확한 위치에 작은 마커 표시
+      if (isCluster && isZoomedIn) {
+        clusterProperties.forEach((property) => {
+          // 중심점과 다른 위치에 있는 매물만 표시
+          const distance = calculateDistance(
+            cluster.center.lat,
+            cluster.center.lng,
+            property.lat,
+            property.lng
+          );
+          
+          // 5m 이상 떨어진 매물은 개별 마커로 표시
+          if (distance > 0.005) {
+            const smallMarkerEl = document.createElement('div');
+            smallMarkerEl.className = 'property-marker-small';
+            smallMarkerEl.innerHTML = `
+              <div style="
+                background-color: #FF6B35;
+                width: 24px;
+                height: 24px;
+                border-radius: 50%;
+                border: 2px solid white;
+                box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+              ">
+                <div style="
+                  color: white;
+                  font-size: 12px;
+                  font-weight: bold;
+                ">🏠</div>
+              </div>
+            `;
+            smallMarkerEl.style.cursor = 'pointer';
+            
+            const smallMarker = new maplibregl.Marker({ element: smallMarkerEl })
+              .setLngLat([property.lng, property.lat])
+              .addTo(map.current!);
+            
+            // 작은 마커 클릭 시 해당 매물 정보 표시
+            smallMarkerEl.addEventListener('click', (e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              
+              const propertyPopup = new maplibregl.Popup({ offset: 15, closeOnClick: false })
+                .setHTML(`
+                  <div style="padding: 8px;">
+                    <div style="font-weight: bold; font-size: 14px; margin-bottom: 4px;">${property.name}</div>
+                    <div style="color: #FF6B35; font-size: 16px; font-weight: bold;">
+                      ${(property.price / 1000000).toFixed(1)}M VND
+                    </div>
+                    ${property.address ? `<div style="font-size: 11px; color: #6b7280; margin-top: 4px;">${property.address}</div>` : ''}
+                  </div>
+                `);
+              
+              smallMarker.setPopup(propertyPopup);
+              
+              if (onPropertyPriorityChangeRef.current) {
+                onPropertyPriorityChangeRef.current(property);
+              }
+            });
+            
+            propertyMarkersRef.current.push(smallMarker);
+          }
+        });
+      }
+
       // 팝업 생성
       let popupContent = '';
       if (isCluster) {
-        // 클러스터 팝업: 여러 매물 목록
+        // 클러스터 팝업: 여러 매물 목록 (각 매물의 위치 정보 포함)
         popupContent = `
-          <div style="padding: 8px; max-width: 250px;">
-            <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px;">
+          <div style="padding: 8px; max-width: 280px;">
+            <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #FF6B35;">
               ${clusterProperties.length}개의 매물
             </div>
+            <div style="font-size: 11px; color: #6b7280; margin-bottom: 8px;">
+              확대하면 각 매물의 정확한 위치를 확인할 수 있습니다
+            </div>
             <div style="max-height: 200px; overflow-y: auto;">
-              ${clusterProperties.map((p, idx) => `
+              ${clusterProperties.map((p, idx) => {
+                const distance = calculateDistance(
+                  cluster.center.lat,
+                  cluster.center.lng,
+                  p.lat,
+                  p.lng
+                );
+                return `
                 <div style="padding: 6px 0; border-bottom: ${idx < clusterProperties.length - 1 ? '1px solid #e5e7eb' : 'none'};">
                   <div style="font-weight: 600; font-size: 13px; margin-bottom: 2px;">${p.name}</div>
-                  <div style="color: #FF6B35; font-size: 14px; font-weight: bold;">
+                  <div style="color: #FF6B35; font-size: 14px; font-weight: bold; margin-bottom: 2px;">
                     ${(p.price / 1000000).toFixed(1)}M VND
                   </div>
+                  <div style="font-size: 10px; color: #9ca3af;">
+                    📍 중심에서 ${(distance * 1000).toFixed(0)}m
+                  </div>
                 </div>
-              `).join('')}
+              `;
+              }).join('')}
             </div>
           </div>
         `;
@@ -620,6 +715,19 @@ export default function GrabMapComponent({
         
         // 현재 팝업 표시
         marker.setPopup(popup);
+        
+        // 클러스터인 경우 해당 위치로 확대 (개별 매물 위치 확인 용이)
+        if (isCluster && map.current) {
+          const currentZoom = map.current.getZoom();
+          // 줌 레벨이 낮으면 확대 (최대 16레벨까지)
+          if (currentZoom < 15) {
+            map.current.flyTo({
+              center: [cluster.center.lng, cluster.center.lat],
+              zoom: 15, // 확대 시 개별 위치 확인 가능한 레벨
+              duration: 500,
+            });
+          }
+        }
         
         // 클러스터인 경우 첫 번째 매물을 우선순위로 설정
         const firstProperty = clusterProperties[0];

@@ -6,11 +6,11 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getCurrentUserData } from '@/lib/api/auth';
 import { addProperty, getPropertyCountByOwner } from '@/lib/api/properties';
-import { searchPlaceIndexForSuggestions, searchPlaceIndexForText, getLocationServiceLanguage } from '@/lib/api/aws-location';
-import { Camera, MapPin, Loader2, X, Bed, Bath, Wind, Sofa, UtensilsCrossed, WashingMachine, Refrigerator, Table, Shirt, Wifi, Maximize2, ArrowLeft, Check, Calendar, Users, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
+import { Camera, MapPin, Loader2, X, Bed, Bath, Wind, Sofa, UtensilsCrossed, WashingMachine, Refrigerator, Table, Shirt, Wifi, Maximize2, ArrowLeft, Check, Calendar, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import TopBar from '@/components/TopBar';
 import CalendarComponent from '@/components/CalendarComponent';
+import AddressVerificationModal from '@/components/AddressVerificationModal';
 
 // 편의시설 옵션 정의
 const AMENITY_OPTIONS = [
@@ -66,16 +66,8 @@ export default function AddPropertyPage() {
   const photoLibraryInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  // AWS Location Service 주소 자동완성
-  const addressInputRef = useRef<HTMLInputElement>(null);
-  const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
-  
-  // 주소 검증 상태
-  const [addressValidationStatus, setAddressValidationStatus] = useState<'none' | 'validating' | 'valid' | 'invalid'>('none');
-  const [showMapPreview, setShowMapPreview] = useState(false);
-  const mapPreviewRef = useRef<HTMLDivElement>(null);
+  // 주소 확인 모달
+  const [showAddressModal, setShowAddressModal] = useState(false);
 
   // 접근 권한 확인
   useEffect(() => {
@@ -109,120 +101,11 @@ export default function AddPropertyPage() {
     checkAccess();
   }, [user, authLoading, router]);
 
-  // 주소 입력 시 추천 목록 가져오기 (AWS Location Service)
-  const handleAddressInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setAddress(value);
-    
-    // 주소가 변경되면 좌표 초기화 및 검증 상태 리셋
-    if (value !== address) {
-      setCoordinates(null);
-      setAddressValidationStatus('none');
-      setShowMapPreview(false);
-    }
-
-    // 이전 타이머 취소
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-
-    if (!value.trim()) {
-      setAddressSuggestions([]);
-      setShowSuggestions(false);
-      setAddressValidationStatus('none');
-      return;
-    }
-
-    // 디바운싱: 300ms 후 검색
-    debounceTimerRef.current = setTimeout(async () => {
-      try {
-        const language = getLocationServiceLanguage(currentLanguage);
-        const suggestions = await searchPlaceIndexForSuggestions(value, language);
-        setAddressSuggestions(suggestions);
-        setShowSuggestions(suggestions.length > 0);
-        
-        // 자동완성 목록이 없으면 직접 입력한 주소로 검증 시도
-        if (suggestions.length === 0 && value.trim().length > 5) {
-          setAddressValidationStatus('validating');
-          await validateAddressDirectly(value, language);
-        }
-      } catch (error) {
-        console.error('Error fetching address suggestions:', error);
-        setAddressSuggestions([]);
-        setShowSuggestions(false);
-        setAddressValidationStatus('invalid');
-      }
-    }, 300);
-  };
-
-  // 직접 입력한 주소 검증
-  const validateAddressDirectly = async (addressText: string, language: string) => {
-    try {
-      const results = await searchPlaceIndexForText(addressText, language);
-      
-      if (results.length > 0) {
-        const result = results[0];
-        const position = result.Place?.Geometry?.Point || [];
-        
-        if (position.length >= 2) {
-          setCoordinates({ 
-            lat: position[1],
-            lng: position[0]
-          });
-          setAddressValidationStatus('valid');
-          setShowMapPreview(true);
-          console.log('✅ 주소 검증 성공 및 좌표 설정:', { lat: position[1], lng: position[0] });
-        } else {
-          setAddressValidationStatus('invalid');
-        }
-      } else {
-        setAddressValidationStatus('invalid');
-      }
-    } catch (error) {
-      console.error('Error validating address:', error);
-      setAddressValidationStatus('invalid');
-    }
-  };
-
-  // 추천 주소 선택
-  const handleSelectSuggestion = async (suggestion: any) => {
-    const text = suggestion.Text || '';
-    setAddress(text);
-    setShowSuggestions(false);
-    setAddressSuggestions([]);
-    setAddressValidationStatus('validating');
-
-    try {
-      // 선택한 주소의 상세 정보 가져오기
-      const language = getLocationServiceLanguage(currentLanguage);
-      const results = await searchPlaceIndexForText(text, language);
-      
-      if (results.length > 0) {
-        const result = results[0];
-        const position = result.Place?.Geometry?.Point || [];
-        
-        if (position.length >= 2) {
-          setCoordinates({ 
-            lat: position[1], // 위도
-            lng: position[0]  // 경도
-          });
-          setAddressValidationStatus('valid');
-          setShowMapPreview(true);
-          console.log('✅ Coordinates set:', { lat: position[1], lng: position[0] });
-        } else {
-          setAddressValidationStatus('invalid');
-        }
-        
-        if (result.Place?.Label) {
-          setAddress(result.Place.Label);
-        }
-      } else {
-        setAddressValidationStatus('invalid');
-      }
-    } catch (error) {
-      console.error('Error getting place details:', error);
-      setAddressValidationStatus('invalid');
-    }
+  // 주소 확인 모달에서 주소 확정 시
+  const handleAddressConfirm = (data: { address: string; lat: number; lng: number }) => {
+    setAddress(data.address);
+    setCoordinates({ lat: data.lat, lng: data.lng });
+    console.log('✅ 주소 확정:', data);
   };
 
   // 정리
@@ -415,10 +298,10 @@ export default function AddPropertyPage() {
     // 좌표 검증
     if (!coordinates || !coordinates.lat || !coordinates.lng) {
       alert(currentLanguage === 'ko' 
-        ? '주소를 선택하여 좌표를 설정해주세요. 주소 검색 후 목록에서 주소를 클릭해주세요.'
+        ? '주소를 선택하여 좌표를 설정해주세요. 주소 입력 버튼을 클릭하여 주소를 확인해주세요.'
         : currentLanguage === 'vi'
-        ? 'Vui lòng chọn địa chỉ để thiết lập tọa độ. Vui lòng nhấp vào địa chỉ từ danh sách sau khi tìm kiếm.'
-        : 'Please select an address to set coordinates. Please click on an address from the search results.');
+        ? 'Vui lòng chọn địa chỉ để thiết lập tọa độ. Vui lòng nhấp vào nút nhập địa chỉ để xác nhận địa chỉ.'
+        : 'Please select an address to set coordinates. Please click the address input button to verify the address.');
       return;
     }
 
@@ -808,178 +691,69 @@ export default function AddPropertyPage() {
                 )}
               </div>
 
-              {/* 주소 입력 (자동완성) */}
+              {/* 주소 찾기 버튼 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {currentLanguage === 'ko' ? '주소 입력 (자동완성)' : currentLanguage === 'vi' ? 'Nhập địa chỉ (Tự động hoàn thành)' : 'Enter Address (Autocomplete)'}
+                  {currentLanguage === 'ko' ? '주소' : currentLanguage === 'vi' ? 'Địa chỉ' : 'Address'}
                   <span className="text-red-500 text-xs ml-1">*</span>
                 </label>
-                <div className="relative">
-                  <input
-                    ref={addressInputRef}
-                    type="text"
-                    value={address}
-                    onChange={handleAddressInputChange}
-                    onFocus={() => {
-                      if (addressSuggestions.length > 0) {
-                        setShowSuggestions(true);
-                      }
-                    }}
-                    onBlur={() => {
-                      // 약간의 지연을 두어 클릭 이벤트가 먼저 발생하도록
-                      setTimeout(() => setShowSuggestions(false), 200);
-                    }}
-                    placeholder={currentLanguage === 'ko' ? '주소를 입력하세요 (예: 41 hoang sa)' : currentLanguage === 'vi' ? 'Nhập địa chỉ (VD: 41 hoang sa)' : 'Enter address (e.g., 41 hoang sa)'}
-                    className={`w-full px-4 py-2.5 pr-12 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-                      addressValidationStatus === 'valid' 
-                        ? 'border-green-500 bg-green-50' 
-                        : addressValidationStatus === 'invalid'
-                        ? 'border-red-500 bg-red-50'
-                        : 'border-gray-200'
-                    }`}
-                    required
-                  />
-                  
-                  {/* 좌표 설정 상태 아이콘 */}
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    {addressValidationStatus === 'validating' && (
-                      <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
-                    )}
-                    {addressValidationStatus === 'valid' && coordinates && (
-                      <div className="flex items-center gap-1">
-                        <Check className="w-5 h-5 text-green-600" />
-                        <span className="text-xs text-green-600 font-medium">
-                          {currentLanguage === 'ko' ? '좌표 설정됨' : currentLanguage === 'vi' ? 'Đã thiết lập' : 'Set'}
-                        </span>
-                      </div>
-                    )}
-                    {addressValidationStatus === 'invalid' && (
-                      <div className="flex items-center gap-1">
-                        <AlertCircle className="w-5 h-5 text-red-500" />
-                        <span className="text-xs text-red-500 font-medium">
-                          {currentLanguage === 'ko' ? '주소 확인 필요' : currentLanguage === 'vi' ? 'Cần xác nhận' : 'Verify'}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* 추천 주소 드롭다운 */}
-                  {showSuggestions && addressSuggestions.length > 0 && (
-                    <div className="absolute z-50 w-full mt-1 bg-white border-2 border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
-                      {addressSuggestions.map((suggestion, index) => (
-                        <button
-                          key={suggestion.PlaceId || index}
-                          type="button"
-                          onClick={() => handleSelectSuggestion(suggestion)}
-                          className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0"
-                        >
-                          <div className="flex items-start gap-2">
-                            <MapPin className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-900 truncate">
-                                {suggestion.Text}
-                              </p>
-                            </div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                
-                {/* 주소 검증 상태 메시지 */}
-                {addressValidationStatus === 'invalid' && address.trim().length > 5 && (
-                  <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
-                    <AlertCircle className="w-4 h-4" />
+                <button
+                  type="button"
+                  onClick={() => setShowAddressModal(true)}
+                  className="w-full px-4 py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 font-medium bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700 shadow-md hover:shadow-lg active:scale-[0.98]"
+                >
+                  <MapPin className="w-5 h-5" />
+                  <span>
                     {currentLanguage === 'ko' 
-                      ? '주소를 확인할 수 없습니다. 자동완성 목록에서 주소를 선택해주세요.'
+                      ? '주소 찾기' 
                       : currentLanguage === 'vi'
-                      ? 'Không thể xác nhận địa chỉ. Vui lòng chọn địa chỉ từ danh sách tự động hoàn thành.'
-                      : 'Address could not be verified. Please select an address from the autocomplete list.'}
-                  </p>
-                )}
+                      ? 'Tìm địa chỉ'
+                      : 'Find Address'}
+                  </span>
+                </button>
                 
-                {/* 좌표 정보 및 지도 미리보기 */}
-                {coordinates && addressValidationStatus === 'valid' && (
-                  <div className="mt-3 space-y-2">
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4 text-blue-600" />
-                          <span className="text-sm font-medium text-blue-900">
-                            {currentLanguage === 'ko' ? '위치 확인됨' : currentLanguage === 'vi' ? 'Vị trí đã xác nhận' : 'Location Confirmed'}
+                {/* 확정된 주소 표시 (클릭 시 수정 가능) */}
+                {address && coordinates && (
+                  <div className="mt-3 p-4 bg-green-50 border-2 border-green-200 rounded-xl cursor-pointer hover:bg-green-100 transition-colors"
+                    onClick={() => setShowAddressModal(true)}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 bg-green-100 rounded-lg flex-shrink-0">
+                        <Check className="w-5 h-5 text-green-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-medium text-green-700">
+                            {currentLanguage === 'ko' ? '확정된 주소' : currentLanguage === 'vi' ? 'Địa chỉ đã xác nhận' : 'Confirmed Address'}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            ({currentLanguage === 'ko' ? '클릭하여 수정' : currentLanguage === 'vi' ? 'Nhấn để chỉnh sửa' : 'Click to edit'})
                           </span>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => setShowMapPreview(!showMapPreview)}
-                          className="text-xs text-blue-600 hover:text-blue-800 underline"
-                        >
-                          {showMapPreview 
-                            ? (currentLanguage === 'ko' ? '지도 숨기기' : currentLanguage === 'vi' ? 'Ẩn bản đồ' : 'Hide Map')
-                            : (currentLanguage === 'ko' ? '지도 보기' : currentLanguage === 'vi' ? 'Xem bản đồ' : 'Show Map')
-                          }
-                        </button>
-                      </div>
-                      <div className="text-xs text-gray-600 space-y-1">
-                        <div>
-                          <span className="font-medium">Lat:</span> {coordinates.lat.toFixed(6)}
-                        </div>
-                        <div>
-                          <span className="font-medium">Lng:</span> {coordinates.lng.toFixed(6)}
+                        <p className="text-sm font-semibold text-gray-900 mb-2">{address}</p>
+                        <div className="flex items-center gap-4 text-xs text-gray-600">
+                          <span>
+                            <span className="font-medium">Lat:</span> {coordinates.lat.toFixed(6)}
+                          </span>
+                          <span>
+                            <span className="font-medium">Lng:</span> {coordinates.lng.toFixed(6)}
+                          </span>
                         </div>
                       </div>
-                      
-                      {/* 지도 미리보기 */}
-                      {showMapPreview && (
-                        <div className="mt-3 border border-gray-300 rounded-lg overflow-hidden bg-gray-100">
-                          <a
-                            href={`https://www.google.com/maps?q=${coordinates.lat},${coordinates.lng}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block relative group"
-                          >
-                            <div className="w-full h-48 bg-gradient-to-br from-blue-100 to-green-100 flex items-center justify-center relative overflow-hidden">
-                              {/* 간단한 지도 스타일 배경 */}
-                              <div className="absolute inset-0 opacity-20">
-                                <div className="absolute top-4 left-4 w-16 h-16 border-2 border-gray-400 rounded"></div>
-                                <div className="absolute top-8 left-8 w-12 h-12 border-2 border-gray-400 rounded"></div>
-                                <div className="absolute bottom-4 right-4 w-20 h-20 border-2 border-gray-400 rounded"></div>
-                                <div className="absolute bottom-8 right-8 w-14 h-14 border-2 border-gray-400 rounded"></div>
-                              </div>
-                              
-                              {/* 중앙 마커 */}
-                              <div className="relative z-10 flex flex-col items-center">
-                                <div className="w-8 h-8 bg-red-600 rounded-full border-4 border-white shadow-xl mb-2"></div>
-                                <div className="w-0 h-0 border-l-4 border-r-4 border-t-8 border-transparent border-t-red-600"></div>
-                              </div>
-                              
-                              {/* 호버 오버레이 */}
-                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                                <span className="opacity-0 group-hover:opacity-100 text-white text-sm font-medium bg-black/60 px-4 py-2 rounded-full transition-opacity flex items-center gap-2">
-                                  <MapPin className="w-4 h-4" />
-                                  {currentLanguage === 'ko' ? 'Google 지도에서 보기' : currentLanguage === 'vi' ? 'Xem trên Google Maps' : 'View on Google Maps'}
-                                </span>
-                              </div>
-                            </div>
-                          </a>
-                          <div className="px-3 py-2 bg-white border-t border-gray-200 text-xs text-gray-600 text-center">
-                            {currentLanguage === 'ko' 
-                              ? '클릭하여 Google 지도에서 위치 확인'
-                              : currentLanguage === 'vi'
-                              ? 'Nhấp để xem vị trí trên Google Maps'
-                              : 'Click to view location on Google Maps'}
-                          </div>
-                        </div>
-                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation(); // 클릭 이벤트 전파 방지
+                          setAddress('');
+                          setCoordinates(null);
+                        }}
+                        className="p-1.5 hover:bg-green-200 rounded-full transition-colors flex-shrink-0"
+                        aria-label={currentLanguage === 'ko' ? '주소 삭제' : currentLanguage === 'vi' ? 'Xóa địa chỉ' : 'Remove address'}
+                      >
+                        <X className="w-4 h-4 text-gray-500" />
+                      </button>
                     </div>
                   </div>
-                )}
-                
-                {apartmentName && (
-                  <p className="mt-2 text-sm text-gray-600">
-                    {currentLanguage === 'ko' ? '아파트 이름' : currentLanguage === 'vi' ? 'Tên chung cư' : 'Apartment Name'}: {apartmentName}
-                  </p>
                 )}
               </div>
 
@@ -1414,6 +1188,15 @@ export default function AddPropertyPage() {
             </motion.div>
           </div>
         )}
+
+        {/* 주소 정밀 확인 모달 */}
+        <AddressVerificationModal
+          isOpen={showAddressModal}
+          onClose={() => setShowAddressModal(false)}
+          onConfirm={handleAddressConfirm}
+          currentLanguage={currentLanguage}
+          initialAddress={address}
+        />
     </div>
   );
 }
