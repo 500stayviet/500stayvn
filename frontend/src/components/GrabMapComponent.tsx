@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { Search, MapPin, X, Home, ChevronLeft, ChevronRight } from 'lucide-react';
 import { searchPlaceIndexForSuggestions, searchPlaceIndexForText } from '@/lib/api/aws-location';
+import { getAllProperties, subscribeToProperties, PropertyData } from '@/lib/api/properties';
 
 interface Suggestion {
   PlaceId: string;
@@ -103,15 +104,96 @@ export default function GrabMapComponent({
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [nearbyProperties, setNearbyProperties] = useState<Property[]>([]);
   const [selectedPropertyIndex, setSelectedPropertyIndex] = useState(0);
+  const [allProperties, setAllProperties] = useState<Property[]>([]);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const cardSliderRef = useRef<HTMLDivElement>(null);
   const mapMoveDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const onPropertyPriorityChangeRef = useRef(onPropertyPriorityChange);
+  const updateVisiblePropertiesRef = useRef<() => void>();
   
   // 콜백 ref 업데이트
   useEffect(() => {
     onPropertyPriorityChangeRef.current = onPropertyPriorityChange;
   }, [onPropertyPriorityChange]);
+
+  // PropertyData를 Property로 변환하는 함수
+  const convertPropertyDataToProperty = (propertyData: PropertyData): Property | null => {
+    // 좌표가 유효한 경우만 변환
+    if (!propertyData.coordinates || !propertyData.coordinates.lat || !propertyData.coordinates.lng) {
+      console.warn('Property missing coordinates:', propertyData.id, propertyData.title);
+      return null;
+    }
+    
+    return {
+      id: propertyData.id || '',
+      name: propertyData.title || '',
+      price: propertyData.price || 0,
+      lat: propertyData.coordinates.lat,
+      lng: propertyData.coordinates.lng,
+      image: propertyData.images && propertyData.images.length > 0 ? propertyData.images[0] : undefined,
+      address: propertyData.address || '',
+    };
+  };
+
+  // 실제 등록된 매물 로드
+  useEffect(() => {
+    const loadProperties = async () => {
+      try {
+        const propertiesData = await getAllProperties();
+        const convertedProperties = propertiesData
+          .map(convertPropertyDataToProperty)
+          .filter((p): p is Property => p !== null); // null 제거
+        
+        console.log('Loaded properties:', {
+          total: propertiesData.length,
+          withCoordinates: convertedProperties.length,
+          properties: convertedProperties.map(p => ({
+            id: p.id,
+            name: p.name,
+            lat: p.lat,
+            lng: p.lng
+          }))
+        });
+        
+        // mockProperties와 실제 매물 합치기 (실제 매물이 우선)
+        const combinedProperties = [
+          ...convertedProperties,
+          ...mockProperties.filter(mock => 
+            !convertedProperties.some(real => real.id === mock.id)
+          )
+        ];
+        
+        setAllProperties(combinedProperties);
+      } catch (error) {
+        console.error('Error loading properties:', error);
+        // 에러 발생 시 mockProperties만 사용
+        setAllProperties(mockProperties);
+      }
+    };
+
+    loadProperties();
+
+    // 실시간 업데이트 구독
+    const unsubscribe = subscribeToProperties((propertiesData) => {
+      const convertedProperties = propertiesData
+        .map(convertPropertyDataToProperty)
+        .filter((p): p is Property => p !== null); // null 제거
+      
+      // mockProperties와 실제 매물 합치기
+      const combinedProperties = [
+        ...convertedProperties,
+        ...mockProperties.filter(mock => 
+          !convertedProperties.some(real => real.id === mock.id)
+        )
+      ];
+      
+      setAllProperties(combinedProperties);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   // 지도 초기화
   useEffect(() => {
@@ -169,7 +251,9 @@ export default function GrabMapComponent({
         getCurrentLocation();
         
         // 지도 이동/확대 시 현재 화면 내 매물 필터링
-        updateVisibleProperties();
+        if (updateVisiblePropertiesRef.current) {
+          updateVisiblePropertiesRef.current();
+        }
       });
 
       // 지도 이동/확대/축소 이벤트 (디바운싱 적용)
@@ -181,7 +265,9 @@ export default function GrabMapComponent({
         
         // 300ms 후에 매물 필터링 (지도 이동이 완전히 끝난 후)
         mapMoveDebounceRef.current = setTimeout(() => {
-          updateVisibleProperties();
+          if (updateVisiblePropertiesRef.current) {
+            updateVisiblePropertiesRef.current();
+          }
         }, 300);
       });
 
@@ -294,7 +380,7 @@ export default function GrabMapComponent({
   };
 
   // 현재 지도 화면에 보이는 매물 필터링 및 정렬
-  const updateVisibleProperties = () => {
+  const updateVisibleProperties = useCallback(() => {
     if (!map.current) return;
 
     // 지도의 현재 경계(bounds) 가져오기
@@ -303,8 +389,18 @@ export default function GrabMapComponent({
     const centerLat = center.lat;
     const centerLng = center.lng;
 
-    // bounds 내의 매물 필터링
-    const visibleProperties = mockProperties.filter(property => {
+    // bounds 내의 매물 필터링 (allProperties 사용)
+    const visibleProperties = allProperties.filter(property => {
+      // 좌표가 유효한 경우만 필터링 (0도 유효한 좌표일 수 있으므로 null/undefined만 체크)
+      if (property.lat == null || property.lng == null) {
+        console.warn('Property missing coordinates:', property.id, property.name);
+        return false;
+      }
+      // 좌표가 범위를 벗어난 경우도 체크
+      if (isNaN(property.lat) || isNaN(property.lng)) {
+        console.warn('Property has invalid coordinates:', property.id, property.name);
+        return false;
+      }
       return bounds.contains([property.lng, property.lat]);
     });
 
@@ -324,20 +420,25 @@ export default function GrabMapComponent({
     
     // 지도에 마커 표시 (보이는 매물만)
     displayPropertyMarkers(sortedProperties);
-  };
+  }, [allProperties, onPropertiesChange]);
+
+  // updateVisibleProperties ref 업데이트
+  useEffect(() => {
+    updateVisiblePropertiesRef.current = updateVisibleProperties;
+  }, [updateVisibleProperties]);
 
   // 주변 매물 필터링 및 표시 (초기 로드용)
   const filterAndDisplayProperties = (location: { lat: number; lng: number }) => {
-    // 초기 로드 시 모든 매물 표시
-    setNearbyProperties(mockProperties);
+    // 초기 로드 시 모든 매물 표시 (allProperties 사용)
+    setNearbyProperties(allProperties);
     
     // 상위 컴포넌트에 매물 데이터 전달
     if (onPropertiesChange) {
-      onPropertiesChange(mockProperties);
+      onPropertiesChange(allProperties);
     }
     
     // 지도에 마커 표시
-    displayPropertyMarkers(mockProperties);
+    displayPropertyMarkers(allProperties);
     
     // 현재 화면 내 매물 필터링
     setTimeout(() => {
@@ -345,7 +446,61 @@ export default function GrabMapComponent({
     }, 100);
   };
 
-  // 매물 마커 표시
+  // allProperties가 변경되면 지도 업데이트
+  useEffect(() => {
+    if (map.current && allProperties.length > 0) {
+      // 지도가 로드된 후에만 업데이트
+      if (map.current.loaded()) {
+        if (updateVisiblePropertiesRef.current) {
+          updateVisiblePropertiesRef.current();
+        }
+      }
+    }
+  }, [allProperties]);
+
+  // 근거리 매물 클러스터링 (약 50m 이내)
+  const clusterProperties = (properties: Property[], thresholdMeters: number = 0.05): Array<{ properties: Property[]; center: { lat: number; lng: number } }> => {
+    const clusters: Array<{ properties: Property[]; center: { lat: number; lng: number } }> = [];
+    const processed = new Set<string>();
+
+    properties.forEach((property) => {
+      if (processed.has(property.id)) return;
+
+      const cluster: Property[] = [property];
+      processed.add(property.id);
+
+      // 근거리 매물 찾기
+      properties.forEach((other) => {
+        if (processed.has(other.id)) return;
+        
+        const distance = calculateDistance(
+          property.lat,
+          property.lng,
+          other.lat,
+          other.lng
+        );
+
+        // 50m 이내면 같은 클러스터로
+        if (distance <= thresholdMeters) {
+          cluster.push(other);
+          processed.add(other.id);
+        }
+      });
+
+      // 클러스터 중심점 계산
+      const avgLat = cluster.reduce((sum, p) => sum + p.lat, 0) / cluster.length;
+      const avgLng = cluster.reduce((sum, p) => sum + p.lng, 0) / cluster.length;
+
+      clusters.push({
+        properties: cluster,
+        center: { lat: avgLat, lng: avgLng }
+      });
+    });
+
+    return clusters;
+  };
+
+  // 매물 마커 표시 (클러스터링 지원)
   const displayPropertyMarkers = (properties: Property[]) => {
     if (!map.current) return;
 
@@ -355,55 +510,110 @@ export default function GrabMapComponent({
     popupsRef.current.forEach(p => p.remove());
     popupsRef.current = [];
 
-    properties.forEach((property) => {
-      // 집 모양 아이콘 생성
+    // 클러스터링
+    const clusters = clusterProperties(properties);
+
+    clusters.forEach((cluster) => {
+      const isCluster = cluster.properties.length > 1;
+      const clusterProperties = cluster.properties;
+
+      // 클러스터 마커 생성
       const el = document.createElement('div');
       el.className = 'property-marker';
-      el.innerHTML = `
-        <div style="
-          background-color: #FF6B35;
-          width: 40px;
-          height: 40px;
-          border-radius: 50% 50% 50% 0;
-          transform: rotate(-45deg);
-          border: 3px solid white;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        ">
+      
+      if (isCluster) {
+        // 여러 매물이 있는 경우: 숫자 표시
+        el.innerHTML = `
           <div style="
-            transform: rotate(45deg);
-            color: white;
-            font-size: 18px;
-            font-weight: bold;
-          ">🏠</div>
-        </div>
-      `;
+            background-color: #FF6B35;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          ">
+            <div style="
+              color: white;
+              font-size: 18px;
+              font-weight: bold;
+            ">${clusterProperties.length}</div>
+          </div>
+        `;
+      } else {
+        // 단일 매물: 집 아이콘
+        el.innerHTML = `
+          <div style="
+            background-color: #FF6B35;
+            width: 40px;
+            height: 40px;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            border: 3px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          ">
+            <div style="
+              transform: rotate(45deg);
+              color: white;
+              font-size: 18px;
+              font-weight: bold;
+            ">🏠</div>
+          </div>
+        `;
+      }
       el.style.cursor = 'pointer';
 
       // 마커 생성
       const marker = new maplibregl.Marker({ element: el })
-        .setLngLat([property.lng, property.lat])
+        .setLngLat([cluster.center.lng, cluster.center.lat])
         .addTo(map.current!);
 
       // 팝업 생성
-      const popup = new maplibregl.Popup({ offset: 25, closeOnClick: false })
-        .setHTML(`
+      let popupContent = '';
+      if (isCluster) {
+        // 클러스터 팝업: 여러 매물 목록
+        popupContent = `
+          <div style="padding: 8px; max-width: 250px;">
+            <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px;">
+              ${clusterProperties.length}개의 매물
+            </div>
+            <div style="max-height: 200px; overflow-y: auto;">
+              ${clusterProperties.map((p, idx) => `
+                <div style="padding: 6px 0; border-bottom: ${idx < clusterProperties.length - 1 ? '1px solid #e5e7eb' : 'none'};">
+                  <div style="font-weight: 600; font-size: 13px; margin-bottom: 2px;">${p.name}</div>
+                  <div style="color: #FF6B35; font-size: 14px; font-weight: bold;">
+                    ${(p.price / 1000000).toFixed(1)}M VND
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      } else {
+        // 단일 매물 팝업
+        const property = clusterProperties[0];
+        popupContent = `
           <div style="padding: 8px;">
             <div style="font-weight: bold; font-size: 14px; margin-bottom: 4px;">${property.name}</div>
             <div style="color: #FF6B35; font-size: 16px; font-weight: bold;">
               ${(property.price / 1000000).toFixed(1)}M VND
             </div>
           </div>
-        `);
+        `;
+      }
+
+      const popup = new maplibregl.Popup({ offset: 25, closeOnClick: false })
+        .setHTML(popupContent);
 
       // 마커 클릭 시 팝업 표시 및 매물 우선순위 변경
       el.addEventListener('click', (e) => {
         e.stopPropagation();
         e.preventDefault();
-        
-        console.log('마커 클릭됨:', property);
         
         // 다른 팝업 닫기
         popupsRef.current.forEach(p => p.remove());
@@ -411,12 +621,13 @@ export default function GrabMapComponent({
         // 현재 팝업 표시
         marker.setPopup(popup);
         
-        // 선택된 매물 우선순위 변경 알림 (ref를 통해 최신 콜백 사용)
+        // 클러스터인 경우 첫 번째 매물을 우선순위로 설정
+        const firstProperty = clusterProperties[0];
+        console.log('마커 클릭됨:', isCluster ? `클러스터 (${clusterProperties.length}개)` : '단일 매물', firstProperty);
+        
+        // 선택된 매물 우선순위 변경 알림
         if (onPropertyPriorityChangeRef.current) {
-          console.log('onPropertyPriorityChange 호출:', property);
-          onPropertyPriorityChangeRef.current(property);
-        } else {
-          console.warn('onPropertyPriorityChange가 정의되지 않음');
+          onPropertyPriorityChangeRef.current(firstProperty);
         }
       });
 

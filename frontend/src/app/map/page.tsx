@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { MapPin, ChevronLeft, ChevronRight } from 'lucide-react';
 import TopBar from '@/components/TopBar';
@@ -135,6 +136,7 @@ function MapPropertyCards({
   currentLanguage: string;
   cardSliderRef?: React.RefObject<HTMLDivElement>;
 }) {
+  const router = useRouter();
   const internalScrollContainerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = externalCardSliderRef || internalScrollContainerRef;
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -144,11 +146,32 @@ function MapPropertyCards({
     return `${(price / 1000000).toFixed(1)}M VND`;
   };
 
-  // 주소에서 도시명 추출
+  // 주소에서 도시명 추출 (Thành phố Hồ Chí Minh -> Ho Chi Minh City 변환)
   const getCityName = (address?: string): string => {
     if (!address) return 'Ho Chi Minh City';
     const parts = address.split(',');
-    return parts.length > 1 ? parts[parts.length - 1].trim() : address;
+    if (parts.length > 1) {
+      const cityPart = parts[parts.length - 1].trim();
+      // 베트남어 도시명을 영어로 변환
+      if (cityPart.toLowerCase().includes('thành phố hồ chí minh') || 
+          cityPart.toLowerCase().includes('ho chi minh')) {
+        return 'Ho Chi Minh City';
+      }
+      return cityPart;
+    }
+    return 'Ho Chi Minh City';
+  };
+
+  // 주소에서 상세 주소 추출 (도시명 제외)
+  const getDetailedAddress = (address?: string): string => {
+    if (!address) return '';
+    const parts = address.split(',');
+    if (parts.length > 1) {
+      // 마지막 부분(도시명) 제외하고 나머지 합치기
+      const detailedParts = parts.slice(0, -1);
+      return detailedParts.map(part => part.trim()).join(', ');
+    }
+    return address;
   };
 
   // 카드 너비 계산
@@ -238,10 +261,10 @@ function MapPropertyCards({
           {/* 좌측 화살표 버튼 */}
           <button
             onClick={scrollLeft}
-            className="hidden sm:flex absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-lg hover:bg-white transition-all"
+            className="flex absolute left-4 sm:left-10 top-1/2 -translate-y-1/2 z-20 bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-lg hover:bg-white transition-all"
             aria-label="Previous"
           >
-            <ChevronLeft className="w-6 h-6 text-gray-700" />
+            <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700" />
           </button>
 
           {/* 매물 리스트 */}
@@ -304,17 +327,31 @@ function MapPropertyCards({
                         </div>
                       </div>
 
-                      {/* 하단: 제목과 위치 */}
+                      {/* 하단: 상세 주소와 도시명 */}
                       <div className="space-y-2">
-                        <h3 className="text-white text-lg font-bold drop-shadow-lg line-clamp-2">
-                          {property.name}
-                        </h3>
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4 text-white" />
-                          <span className="text-white text-sm drop-shadow-lg">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/properties/${property.id}`);
+                          }}
+                          className="text-left w-full group"
+                        >
+                          <h3 className="text-white text-lg font-bold drop-shadow-lg line-clamp-2 transition-all duration-200 group-hover:text-blue-200 group-hover:underline">
+                            {getDetailedAddress(property.address) || property.name}
+                          </h3>
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/properties/${property.id}`);
+                          }}
+                          className="flex items-center gap-2 group transition-all duration-200 hover:gap-3"
+                        >
+                          <MapPin className="w-4 h-4 text-white transition-transform duration-200 group-hover:scale-110" />
+                          <span className="text-white text-sm drop-shadow-lg underline-offset-2 transition-all duration-200 group-hover:underline group-hover:text-blue-200">
                             {getCityName(property.address)}
                           </span>
-                        </div>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -326,10 +363,10 @@ function MapPropertyCards({
           {/* 우측 화살표 버튼 */}
           <button
             onClick={scrollRight}
-            className="hidden sm:flex absolute right-0 top-1/2 -translate-y-1/2 z-20 bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-lg hover:bg-white transition-all"
+            className="flex absolute right-4 sm:right-10 top-1/2 -translate-y-1/2 z-20 bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-lg hover:bg-white transition-all"
             aria-label="Next"
           >
-            <ChevronRight className="w-6 h-6 text-gray-700" />
+            <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700" />
           </button>
         </div>
       </div>
