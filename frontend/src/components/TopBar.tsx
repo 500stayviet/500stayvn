@@ -13,17 +13,26 @@ import { Globe, User, LogOut } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
 import { SupportedLanguage } from '@/lib/api/translation';
 import { useAuth } from '@/hooks/useAuth';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface TopBarProps {
-  currentLanguage: SupportedLanguage;
-  onLanguageChange: (lang: SupportedLanguage) => void;
+  currentLanguage?: SupportedLanguage;
+  onLanguageChange?: (lang: SupportedLanguage) => void;
   hideLanguageSelector?: boolean;
 }
 
-export default function TopBar({ currentLanguage, onLanguageChange, hideLanguageSelector = false }: TopBarProps) {
+export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguageChange: propOnLanguageChange, hideLanguageSelector = false }: TopBarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { user, loading, logout } = useAuth();
+  
+  // LanguageContext에서 직접 언어 상태 가져오기
+  // props가 전달되지 않은 경우 Context 사용
+  const languageContext = useLanguage();
+  const currentLanguage = propCurrentLanguage ?? languageContext.currentLanguage;
+  // onLanguageChange가 전달되지 않은 경우 Context의 함수 사용
+  const setCurrentLanguage = propOnLanguageChange ?? languageContext.setCurrentLanguage;
+  
   const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -64,8 +73,8 @@ export default function TopBar({ currentLanguage, onLanguageChange, hideLanguage
   const currentLang = languages.find(lang => lang.code === currentLanguage) || languages[0];
 
   // 언어 변경 핸들러
-  const handleLanguageSelect = (lang: SupportedLanguage) => {
-    onLanguageChange(lang);
+  const handleLanguageSelect = async (lang: SupportedLanguage) => {
+    await setCurrentLanguage(lang);
     setIsLanguageMenuOpen(false);
   };
 

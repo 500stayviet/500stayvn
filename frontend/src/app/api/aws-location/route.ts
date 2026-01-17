@@ -58,11 +58,18 @@ export async function POST(request: NextRequest) {
           Text: text,
           MaxResults: 10,
           Language: language || 'vi',
+          FilterCountries: ['VNM'], // 베트남만 검색
+          // 아파트/건물 검색을 위해 카테고리 필터 추가 (주소, 상업시설, 주거단지)
+          // FilterCategories는 AWS Location Service에서 지원하지 않을 수 있으므로 주석 처리
+          // FilterCategories: ['Address', 'Commercial', 'Residential'],
         };
         
-        // 거리 기반 가중치: BiasPosition 추가
+        // 거리 기반 가중치: BiasPosition 추가 (호치민 좌표 또는 사용자 위치)
         if (latitude && longitude) {
           requestBody.BiasPosition = [longitude, latitude];
+        } else {
+          // 기본값: 호치민 좌표 (10.776, 106.701)
+          requestBody.BiasPosition = [106.701, 10.776];
         }
         break;
 
@@ -76,7 +83,19 @@ export async function POST(request: NextRequest) {
           Text: text, // 대문자 T 주의
           MaxResults: 10,
           Language: language || 'vi',
+          FilterCountries: ['VNM'], // 베트남만 검색
+          // 아파트/건물 검색을 위해 카테고리 필터 추가 (주소, 상업시설, 주거단지)
+          // FilterCategories는 AWS Location Service에서 지원하지 않을 수 있으므로 주석 처리
+          // FilterCategories: ['Address', 'Commercial', 'Residential'],
         };
+        
+        // 거리 기반 가중치: BiasPosition 추가 (호치민 좌표 또는 사용자 위치)
+        if (latitude && longitude) {
+          requestBody.BiasPosition = [longitude, latitude];
+        } else {
+          // 기본값: 호치민 좌표 (10.776, 106.701)
+          requestBody.BiasPosition = [106.701, 10.776];
+        }
         break;
 
       case 'getPlace':

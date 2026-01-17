@@ -108,15 +108,6 @@ export default function AddPropertyPage() {
     console.log('✅ 주소 확정:', data);
   };
 
-  // 정리
-  useEffect(() => {
-    return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-    };
-  }, []);
-
   // 사진첩 열기 핸들러
   const handleOpenPhotoLibrary = () => {
     photoLibraryInputRef.current?.click();
@@ -466,10 +457,7 @@ export default function AddPropertyPage() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
         <div className="w-full max-w-[430px] mx-auto bg-white min-h-screen shadow-lg">
           {/* 상단 바 */}
-          <TopBar 
-            currentLanguage={currentLanguage}
-            onLanguageChange={() => {}}
-          />
+          <TopBar />
 
           {/* 콘텐츠 */}
           <div className="px-6 py-6">
@@ -691,26 +679,29 @@ export default function AddPropertyPage() {
                 )}
               </div>
 
-              {/* 주소 찾기 버튼 */}
+              {/* 주소 찾기 버튼 (위치 확정 전에만 표시) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   {currentLanguage === 'ko' ? '주소' : currentLanguage === 'vi' ? 'Địa chỉ' : 'Address'}
                   <span className="text-red-500 text-xs ml-1">*</span>
                 </label>
-                <button
-                  type="button"
-                  onClick={() => setShowAddressModal(true)}
-                  className="w-full px-4 py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 font-medium bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700 shadow-md hover:shadow-lg active:scale-[0.98]"
-                >
-                  <MapPin className="w-5 h-5" />
-                  <span>
-                    {currentLanguage === 'ko' 
-                      ? '주소 찾기' 
-                      : currentLanguage === 'vi'
-                      ? 'Tìm địa chỉ'
-                      : 'Find Address'}
-                  </span>
-                </button>
+                {/* 위치가 확정되지 않았을 때만 주소 찾기 버튼 표시 */}
+                {(!address || !coordinates) && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAddressModal(true)}
+                    className="w-full px-4 py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 font-medium bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700 shadow-md hover:shadow-lg active:scale-[0.98]"
+                  >
+                    <MapPin className="w-5 h-5" />
+                    <span>
+                      {currentLanguage === 'ko' 
+                        ? '주소 찾기' 
+                        : currentLanguage === 'vi'
+                        ? 'Tìm địa chỉ'
+                        : 'Find Address'}
+                    </span>
+                  </button>
+                )}
                 
                 {/* 확정된 주소 표시 (클릭 시 수정 가능) */}
                 {address && coordinates && (
@@ -730,15 +721,7 @@ export default function AddPropertyPage() {
                             ({currentLanguage === 'ko' ? '클릭하여 수정' : currentLanguage === 'vi' ? 'Nhấn để chỉnh sửa' : 'Click to edit'})
                           </span>
                         </div>
-                        <p className="text-sm font-semibold text-gray-900 mb-2">{address}</p>
-                        <div className="flex items-center gap-4 text-xs text-gray-600">
-                          <span>
-                            <span className="font-medium">Lat:</span> {coordinates.lat.toFixed(6)}
-                          </span>
-                          <span>
-                            <span className="font-medium">Lng:</span> {coordinates.lng.toFixed(6)}
-                          </span>
-                        </div>
+                        <p className="text-sm font-semibold text-gray-900">{address}</p>
                       </div>
                       <button
                         type="button"

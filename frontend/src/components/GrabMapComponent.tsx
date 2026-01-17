@@ -110,6 +110,7 @@ export default function GrabMapComponent({
   const mapMoveDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const onPropertyPriorityChangeRef = useRef(onPropertyPriorityChange);
   const updateVisiblePropertiesRef = useRef<() => void>();
+  const hasRequestedLocationRef = useRef(false); // 위치 요청 여부 추적
   
   // 콜백 ref 업데이트
   useEffect(() => {
@@ -247,13 +248,13 @@ export default function GrabMapComponent({
         setMapLoading(false);
         setMapError(null);
         
-        // 사용자 위치 가져오기
-        getCurrentLocation();
-        
         // 지도 이동/확대 시 현재 화면 내 매물 필터링
         if (updateVisiblePropertiesRef.current) {
           updateVisiblePropertiesRef.current();
         }
+        
+        // 지도 로드 후 위치 가져오기 (권한 사전 확인)
+        getCurrentLocation();
       });
 
       // 지도 이동/확대/축소 이벤트 (디바운싱 적용)
@@ -330,16 +331,54 @@ export default function GrabMapComponent({
     };
   }, []);
 
-  // 현재 위치 가져오기
+  // 현재 위치 가져오기 (최적화: 저장된 위치 우선 사용)
   const getCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      // 위치 서비스 미지원 시 호치민 기준으로 설정
-      const hoChiMinhLocation = { lat: 10.776, lng: 106.701 };
-      setUserLocation(hoChiMinhLocation);
-      filterAndDisplayProperties(hoChiMinhLocation);
+    // 이미 위치가 있으면 다시 요청하지 않음
+    if (userLocation) {
       return;
     }
 
+    // 이미 요청했으면 다시 요청하지 않음
+    if (hasRequestedLocationRef.current) {
+      return;
+    }
+
+    // 위치 서비스 미지원 시 호치민 기준으로 설정
+    if (!navigator.geolocation) {
+      const hoChiMinhLocation = { lat: 10.776, lng: 106.701 };
+      setUserLocation(hoChiMinhLocation);
+      filterAndDisplayProperties(hoChiMinhLocation);
+      hasRequestedLocationRef.current = true;
+      return;
+    }
+
+    // 최적화: 저장된 위치가 있으면 GPS 호출하지 않고 즉시 사용
+    const savedLocationJson = localStorage.getItem('saved_user_location');
+    if (savedLocationJson) {
+      try {
+        const savedLocation = JSON.parse(savedLocationJson);
+        setUserLocation(savedLocation);
+        filterAndDisplayProperties(savedLocation);
+        
+        if (map.current) {
+          map.current.flyTo({
+            center: [savedLocation.lng, savedLocation.lat],
+            zoom: 13,
+            duration: 1000,
+          });
+          updateUserLocationMarker(savedLocation);
+        }
+        hasRequestedLocationRef.current = true;
+        return; // GPS 호출 안 함 - 팝업 방지
+      } catch (e) {
+        // 파싱 실패 시 계속 진행
+      }
+    }
+
+    // 위치 요청 플래그 설정
+    hasRequestedLocationRef.current = true;
+    
+    // 저장된 위치가 없을 때만 GPS 호출 (최초 1회)
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const lat = position.coords.latitude;
@@ -353,13 +392,17 @@ export default function GrabMapComponent({
         setUserLocation(location);
         filterAndDisplayProperties(location);
         
-        // 지도 중심 이동
+        // 성공한 좌표를 localStorage에 저장 (다음번에는 GPS 호출 안 함)
+        localStorage.setItem('saved_user_location', JSON.stringify(location));
+        
+        // 지도 중심 이동 및 사용자 위치 마커 표시
         if (map.current) {
           map.current.flyTo({
             center: [location.lng, location.lat],
             zoom: 13,
             duration: 1000,
           });
+          updateUserLocationMarker(location);
         }
       },
       (error) => {
@@ -367,9 +410,41 @@ export default function GrabMapComponent({
         const hoChiMinhLocation = { lat: 10.776, lng: 106.701 };
         setUserLocation(hoChiMinhLocation);
         filterAndDisplayProperties(hoChiMinhLocation);
+      },
+      {
+        enableHighAccuracy: false, // false로 설정하여 브라우저 캐시 활용
+        timeout: 10000,
+        maximumAge: 86400000 // 24시간 캐시 사용
       }
     );
   };
+
+  // 현재 위치 마커 업데이트 (파란색 점)
+  const updateUserLocationMarker = useCallback((location: { lat: number; lng: number }) => {
+    if (!map.current) return;
+
+    // 기존 마커 제거
+    if (marker.current) {
+      marker.current.remove();
+    }
+
+    // 파란색 원형 마커 생성
+    const el = document.createElement('div');
+    el.className = 'user-location-marker';
+    el.style.width = '20px';
+    el.style.height = '20px';
+    el.style.borderRadius = '50%';
+    el.style.backgroundColor = '#3b82f6'; // 파란색
+    el.style.border = '3px solid white';
+    el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
+    el.style.cursor = 'pointer';
+    el.style.zIndex = '1000';
+
+    // 마커 생성 및 지도에 추가
+    marker.current = new maplibregl.Marker({ element: el })
+      .setLngLat([location.lng, location.lat])
+      .addTo(map.current);
+  }, []);
 
   // 두 좌표 간 거리 계산 (km)
   const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
@@ -744,12 +819,14 @@ export default function GrabMapComponent({
     });
   };
 
-  // 사용자 위치 변경 시 매물 다시 필터링
+  // 사용자 위치 변경 시 매물 다시 필터링 및 마커 업데이트
   useEffect(() => {
     if (userLocation && map.current) {
       filterAndDisplayProperties(userLocation);
+      // 현재 위치 마커 업데이트 (파란색 점)
+      updateUserLocationMarker(userLocation);
     }
-  }, [userLocation]);
+  }, [userLocation, updateUserLocationMarker]);
 
   // 선택된 매물로 지도 중심 이동
   useEffect(() => {
