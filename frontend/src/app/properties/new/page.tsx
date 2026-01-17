@@ -31,17 +31,27 @@ export default function NewPropertyPage() {
   const handleAddressChange = async (address: string) => {
     setFormData((prev) => ({ ...prev, address }));
 
-    if (address.trim().length > 10) {
+    if (address.trim().length > 5) {
       // 주소가 충분히 길면 Geocoding 실행
       setGeocoding(true);
       try {
         const result = await geocodeAddress(address, 'vi');
-        setCoordinates({ lat: result.lat, lng: result.lng });
+        // 좌표가 유효한 경우만 설정
+        if (result.lat && result.lng && !isNaN(result.lat) && !isNaN(result.lng)) {
+          setCoordinates({ lat: result.lat, lng: result.lng });
+        } else {
+          // 좌표가 유효하지 않으면 호치민 기본 좌표 사용
+          setCoordinates({ lat: 10.776, lng: 106.701 });
+        }
       } catch (error) {
-        setCoordinates(null);
+        // Geocoding 실패 시에도 호치민 기본 좌표 사용 (항상 좌표 보장)
+        setCoordinates({ lat: 10.776, lng: 106.701 });
       } finally {
         setGeocoding(false);
       }
+    } else if (address.trim().length === 0) {
+      // 주소가 비어있으면 좌표도 초기화
+      setCoordinates(null);
     }
   };
 
@@ -49,9 +59,33 @@ export default function NewPropertyPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!coordinates) {
-      alert('주소를 입력하고 좌표가 생성될 때까지 기다려주세요.');
-      return;
+    // 좌표가 없으면 주소로 다시 geocoding 시도
+    let finalCoordinates = coordinates;
+    
+    if (!finalCoordinates && formData.address.trim().length > 0) {
+      setGeocoding(true);
+      try {
+        const result = await geocodeAddress(formData.address, 'vi');
+        if (result.lat && result.lng && !isNaN(result.lat) && !isNaN(result.lng)) {
+          finalCoordinates = { lat: result.lat, lng: result.lng };
+          setCoordinates(finalCoordinates); // 상태도 업데이트
+        } else {
+          // 좌표가 유효하지 않으면 호치민 기본 좌표 사용
+          finalCoordinates = { lat: 10.776, lng: 106.701 };
+          setCoordinates(finalCoordinates);
+        }
+      } catch (error) {
+        // Geocoding 실패 시에도 호치민 기본 좌표 사용 (항상 좌표 보장)
+        finalCoordinates = { lat: 10.776, lng: 106.701 };
+        setCoordinates(finalCoordinates);
+      } finally {
+        setGeocoding(false);
+      }
+    }
+    
+    // 여전히 좌표가 없으면 기본 좌표 사용 (주소도 없는 경우)
+    if (!finalCoordinates) {
+      finalCoordinates = { lat: 10.776, lng: 106.701 };
     }
 
     setLoading(true);
@@ -65,7 +99,7 @@ export default function NewPropertyPage() {
         area: parseInt(formData.area),
         bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : undefined,
         bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : undefined,
-        coordinates,
+        coordinates: finalCoordinates,
         address: formData.address,
         status: 'active',
       });
@@ -217,7 +251,7 @@ export default function NewPropertyPage() {
             </button>
             <button
               type="submit"
-              disabled={loading || !coordinates}
+              disabled={loading}
               className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? '등록 중...' : '등록하기'}

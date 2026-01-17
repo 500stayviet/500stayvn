@@ -6,6 +6,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { Search, MapPin, X, Home, ChevronLeft, ChevronRight } from 'lucide-react';
 import { searchPlaceIndexForSuggestions, searchPlaceIndexForText } from '@/lib/api/aws-location';
 import { getAllProperties, subscribeToProperties, PropertyData } from '@/lib/api/properties';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Suggestion {
   PlaceId: string;
@@ -21,6 +22,12 @@ interface Property {
   image?: string;
   address?: string;
 }
+
+// 호치민 초기 좌표 상수 (지도는 항상 이 값으로 시작, 절대 null 전달 금지)
+const HO_CHI_MINH_CENTER = {
+  lat: 10.776,
+  lng: 106.701,
+} as const;
 
 // 베트남 경계 확인 (대략적인 범위)
 const isInVietnam = (lat: number, lng: number): boolean => {
@@ -62,6 +69,9 @@ export default function GrabMapComponent({
   const onPropertyPriorityChangeRef = useRef(onPropertyPriorityChange);
   const updateVisiblePropertiesRef = useRef<(() => void) | undefined>(undefined);
   const hasRequestedLocationRef = useRef(false); // 위치 요청 여부 추적
+  const isInitializingRef = useRef(false); // 지도 초기화 진행 중 여부 추적 (싱글톤 패턴)
+  const [showLocationConsentModal, setShowLocationConsentModal] = useState(false);
+  const { currentLanguage } = useLanguage();
   
   // 콜백 ref 업데이트
   useEffect(() => {
@@ -119,9 +129,194 @@ export default function GrabMapComponent({
     };
   }, []);
 
-  // 지도 초기화
+  // 현재 위치 마커 업데이트 (파란색 점) - 지도 이동 없이 마커만 추가/업데이트
+  const updateUserLocationMarker = useCallback((location: { lat: number; lng: number }) => {
+    if (!map.current) return;
+
+    const safeLat = Number(location.lat);
+    const safeLng = Number(location.lng);
+
+    if (!safeLat || !safeLng || isNaN(safeLat) || isNaN(safeLng)) {
+      console.warn('Invalid location for marker:', location);
+      return;
+    }
+
+    if (marker.current) {
+      marker.current.remove();
+    }
+
+    const el = document.createElement('div');
+    el.className = 'user-location-marker';
+    el.style.width = '20px';
+    el.style.height = '20px';
+    el.style.borderRadius = '50%';
+    el.style.backgroundColor = '#3b82f6';
+    el.style.border = '3px solid white';
+    el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
+    el.style.cursor = 'pointer';
+    el.style.zIndex = '1000';
+
+    marker.current = new maplibregl.Marker({ element: el })
+      .setLngLat([safeLng, safeLat])
+      .addTo(map.current);
+  }, []);
+
+  // 위치 가져오기 함수 (동의 모달에서 호출) - 좌표 범위 체크 강화
+  const requestLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      console.warn('Geolocation is not supported');
+      setShowLocationConsentModal(false);
+      hasRequestedLocationRef.current = true;
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = Number(position.coords.latitude);
+        const lng = Number(position.coords.longitude);
+
+        if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+          console.warn('Invalid coordinates from geolocation');
+          setShowLocationConsentModal(false);
+          hasRequestedLocationRef.current = true;
+          return;
+        }
+
+        // 좌표 범위 체크: 베트남 밖이면 지도를 움직이지 말고 호치민 고정
+        if (!isInVietnam(lat, lng)) {
+          // 호치민 고정 (지도 이동 안 함, 마커도 표시 안 함)
+          setShowLocationConsentModal(false);
+          hasRequestedLocationRef.current = true;
+          return;
+        }
+
+        const location = { lat, lng };
+        setUserLocation(location);
+
+        // 지도 중심 이동 및 마커 표시
+        if (map.current && map.current.loaded()) {
+          const safeLng = Number(location.lng);
+          const safeLat = Number(location.lat);
+          if (!isNaN(safeLng) && !isNaN(safeLat)) {
+            map.current.flyTo({
+              center: [safeLng, safeLat],
+              zoom: 13,
+              duration: 1000,
+            });
+            updateUserLocationMarker(location);
+          }
+        }
+
+        setShowLocationConsentModal(false);
+        hasRequestedLocationRef.current = true;
+      },
+      (error) => {
+        console.warn('Geolocation error:', error);
+        setShowLocationConsentModal(false);
+        hasRequestedLocationRef.current = true;
+      },
+      {
+        enableHighAccuracy: false,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
+  }, [updateUserLocationMarker]);
+
+  // 권한 상태 조용히 확인 함수 (Permissions API) - 무음 권한 확인 우선
+  const checkLocationPermission = useCallback(() => {
+    // 이미 요청했으면 다시 요청하지 않음 (위치 동의 로직 고정)
+    if (hasRequestedLocationRef.current) {
+      return;
+    }
+
+    if (!navigator.geolocation) {
+      hasRequestedLocationRef.current = true;
+      return;
+    }
+
+    // 무음 권한 확인 우선: navigator.permissions.query 먼저 실행
+    if (navigator.permissions) {
+      navigator.permissions.query({ name: 'geolocation' as PermissionName })
+        .then((permissionStatus) => {
+          // 플래그 설정 (한 번만 실행되도록 보장)
+          hasRequestedLocationRef.current = true;
+
+          if (permissionStatus.state === 'granted') {
+            // 이미 동의한 경우: 팝업 없이 조용히 위치 가져와서 지도 이동
+            navigator.geolocation.getCurrentPosition(
+              (position) => {
+                const lat = Number(position.coords.latitude);
+                const lng = Number(position.coords.longitude);
+
+                if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+                  return;
+                }
+
+                // 좌표 범위 체크: 베트남 밖이면 지도를 움직이지 말고 호치민 고정
+                if (!isInVietnam(lat, lng)) {
+                  // 호치민 고정 (지도 이동 안 함, 마커도 표시 안 함)
+                  return;
+                }
+
+                const location = { lat, lng };
+                setUserLocation(location);
+
+                if (map.current && map.current.loaded()) {
+                  const safeLng = Number(location.lng);
+                  const safeLat = Number(location.lat);
+                  if (!isNaN(safeLng) && !isNaN(safeLat)) {
+                    map.current.flyTo({
+                      center: [safeLng, safeLat],
+                      zoom: 13,
+                      duration: 1000,
+                    });
+                    updateUserLocationMarker(location);
+                  }
+                }
+              },
+              (error) => {
+                console.warn('Geolocation error:', error);
+              },
+              {
+                enableHighAccuracy: false,
+                timeout: 10000,
+                maximumAge: 0,
+              }
+            );
+          } else if (permissionStatus.state === 'prompt') {
+            // 아직 동의 안 함: 동의 모달 딱 한 번만 표시
+            setShowLocationConsentModal(true);
+          } else {
+            // denied: 다시 묻지 말고 호치민 유지
+            console.log('Location permission denied - keeping Ho Chi Minh City map');
+          }
+        })
+        .catch(() => {
+          hasRequestedLocationRef.current = true;
+        });
+    } else {
+      // Permissions API 미지원 시 플래그만 설정
+      hasRequestedLocationRef.current = true;
+    }
+  }, [updateUserLocationMarker]);
+
+  // 지도 초기화 (싱글톤 패턴 - 한 번만 생성)
   useEffect(() => {
-    if (!mapContainer.current || map.current) return;
+    if (!mapContainer.current) {
+      console.error('Map container is not available');
+      return;
+    }
+    if (map.current) {
+      console.log('Map instance already exists, skipping initialization.');
+      return;
+    }
+    if (isInitializingRef.current) {
+      console.log('Map initialization already in progress, skipping...');
+      return;
+    }
+
+    isInitializingRef.current = true;
 
     const region = process.env.NEXT_PUBLIC_AWS_REGION || 'ap-southeast-1';
     const mapName = process.env.NEXT_PUBLIC_AWS_MAP_NAME || 'MyGrabMap';
@@ -153,11 +348,11 @@ export default function GrabMapComponent({
     console.log('Initializing map with URL:', styleUrl.replace(apiKey, '***'));
 
     try {
-      // 호치민 초기 중심 좌표 (10.776, 106.701)
+      // 호치민 초기 중심 좌표 (무조건 숫자 리터럴 직접 사용)
       map.current = new maplibregl.Map({
         container: mapContainer.current,
         style: styleUrl,
-        center: [106.701, 10.776], // [경도, 위도] 순서
+        center: [HO_CHI_MINH_CENTER.lng, HO_CHI_MINH_CENTER.lat], // [경도, 위도] 순서
         zoom: 12,
         attributionControl: true as any,
       });
@@ -170,14 +365,15 @@ export default function GrabMapComponent({
         console.log('Map loaded successfully');
         setMapLoading(false);
         setMapError(null);
+        isInitializingRef.current = false; // 초기화 완료 플래그 해제
         
         // 지도 이동/확대 시 현재 화면 내 매물 필터링
         if (updateVisiblePropertiesRef.current) {
           updateVisiblePropertiesRef.current();
         }
         
-        // 지도 로드 후 위치 가져오기 (권한 사전 확인)
-        getCurrentLocation();
+        // 지도 로드 후 권한 상태 조용히 확인 (위치 요청은 하지 않음)
+        checkLocationPermission();
       });
 
       // 지도 이동/확대/축소 이벤트 (디바운싱 적용)
@@ -227,9 +423,12 @@ export default function GrabMapComponent({
       });
     } catch (error) {
       console.error('Failed to initialize map:', error);
+      isInitializingRef.current = false; // 에러 발생 시에도 초기화 플래그 해제
     }
 
     return () => {
+      isInitializingRef.current = false; // 초기화 플래그 해제
+      
       // 타이머 정리
       if (mapMoveDebounceRef.current) {
         clearTimeout(mapMoveDebounceRef.current);
@@ -252,122 +451,8 @@ export default function GrabMapComponent({
         marker.current = null;
       }
     };
-  }, []);
+  }, [checkLocationPermission]);
 
-  // 현재 위치 가져오기 (최적화: 저장된 위치 우선 사용)
-  const getCurrentLocation = () => {
-    // 이미 위치가 있으면 다시 요청하지 않음
-    if (userLocation) {
-      return;
-    }
-
-    // 이미 요청했으면 다시 요청하지 않음
-    if (hasRequestedLocationRef.current) {
-      return;
-    }
-
-    // 위치 서비스 미지원 시 호치민 기준으로 설정
-    if (!navigator.geolocation) {
-      const hoChiMinhLocation = { lat: 10.776, lng: 106.701 };
-      setUserLocation(hoChiMinhLocation);
-      filterAndDisplayProperties(hoChiMinhLocation);
-      hasRequestedLocationRef.current = true;
-      return;
-    }
-
-    // 최적화: 저장된 위치가 있으면 GPS 호출하지 않고 즉시 사용
-    const savedLocationJson = localStorage.getItem('saved_user_location');
-    if (savedLocationJson) {
-      try {
-        const savedLocation = JSON.parse(savedLocationJson);
-        setUserLocation(savedLocation);
-        filterAndDisplayProperties(savedLocation);
-        
-        if (map.current) {
-          map.current.flyTo({
-            center: [savedLocation.lng, savedLocation.lat],
-            zoom: 13,
-            duration: 1000,
-          });
-          updateUserLocationMarker(savedLocation);
-        }
-        hasRequestedLocationRef.current = true;
-        return; // GPS 호출 안 함 - 팝업 방지
-      } catch (e) {
-        // 파싱 실패 시 계속 진행
-      }
-    }
-
-    // 위치 요청 플래그 설정
-    hasRequestedLocationRef.current = true;
-    
-    // 저장된 위치가 없을 때만 GPS 호출 (최초 1회)
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        
-        // 베트남 이외 지역이면 호치민 기준으로 변경
-        const location = isInVietnam(lat, lng) 
-          ? { lat, lng } 
-          : { lat: 10.776, lng: 106.701 };
-        
-        setUserLocation(location);
-        filterAndDisplayProperties(location);
-        
-        // 성공한 좌표를 localStorage에 저장 (다음번에는 GPS 호출 안 함)
-        localStorage.setItem('saved_user_location', JSON.stringify(location));
-        
-        // 지도 중심 이동 및 사용자 위치 마커 표시
-        if (map.current) {
-          map.current.flyTo({
-            center: [location.lng, location.lat],
-            zoom: 13,
-            duration: 1000,
-          });
-          updateUserLocationMarker(location);
-        }
-      },
-      (error) => {
-        // 위치 가져오기 실패 시 호치민 기준으로 설정
-        const hoChiMinhLocation = { lat: 10.776, lng: 106.701 };
-        setUserLocation(hoChiMinhLocation);
-        filterAndDisplayProperties(hoChiMinhLocation);
-      },
-      {
-        enableHighAccuracy: false, // false로 설정하여 브라우저 캐시 활용
-        timeout: 10000,
-        maximumAge: 86400000 // 24시간 캐시 사용
-      }
-    );
-  };
-
-  // 현재 위치 마커 업데이트 (파란색 점)
-  const updateUserLocationMarker = useCallback((location: { lat: number; lng: number }) => {
-    if (!map.current) return;
-
-    // 기존 마커 제거
-    if (marker.current) {
-      marker.current.remove();
-    }
-
-    // 파란색 원형 마커 생성
-    const el = document.createElement('div');
-    el.className = 'user-location-marker';
-    el.style.width = '20px';
-    el.style.height = '20px';
-    el.style.borderRadius = '50%';
-    el.style.backgroundColor = '#3b82f6'; // 파란색
-    el.style.border = '3px solid white';
-    el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
-    el.style.cursor = 'pointer';
-    el.style.zIndex = '1000';
-
-    // 마커 생성 및 지도에 추가
-    marker.current = new maplibregl.Marker({ element: el })
-      .setLngLat([location.lng, location.lat])
-      .addTo(map.current);
-  }, []);
 
   // 두 좌표 간 거리 계산 (km)
   const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
@@ -465,10 +550,21 @@ export default function GrabMapComponent({
 
   // 근거리 매물 클러스터링 (약 50m 이내)
   const clusterProperties = (properties: Property[], thresholdMeters: number = 0.05): Array<{ properties: Property[]; center: { lat: number; lng: number } }> => {
+    // 빈 배열이면 빈 클러스터 반환
+    if (!properties || properties.length === 0) {
+      return [];
+    }
+
     const clusters: Array<{ properties: Property[]; center: { lat: number; lng: number } }> = [];
     const processed = new Set<string>();
 
     properties.forEach((property) => {
+      // 좌표 유효성 검증
+      if (!property || property.lat == null || property.lng == null || isNaN(property.lat) || isNaN(property.lng)) {
+        console.warn('Property with invalid coordinates skipped:', property?.id);
+        return;
+      }
+
       if (processed.has(property.id)) return;
 
       const cluster: Property[] = [property];
@@ -476,6 +572,11 @@ export default function GrabMapComponent({
 
       // 근거리 매물 찾기
       properties.forEach((other) => {
+        // 좌표 유효성 검증
+        if (!other || other.lat == null || other.lng == null || isNaN(other.lat) || isNaN(other.lng)) {
+          return;
+        }
+
         if (processed.has(other.id)) return;
         
         const distance = calculateDistance(
@@ -492,9 +593,20 @@ export default function GrabMapComponent({
         }
       });
 
-      // 클러스터 중심점 계산
-      const avgLat = cluster.reduce((sum, p) => sum + p.lat, 0) / cluster.length;
-      const avgLng = cluster.reduce((sum, p) => sum + p.lng, 0) / cluster.length;
+      // 클러스터 중심점 계산 (유효한 좌표만 사용)
+      const validProperties = cluster.filter(p => p && p.lat != null && p.lng != null && !isNaN(p.lat) && !isNaN(p.lng));
+      if (validProperties.length === 0) {
+        return;
+      }
+
+      const avgLat = validProperties.reduce((sum, p) => sum + Number(p.lat), 0) / validProperties.length;
+      const avgLng = validProperties.reduce((sum, p) => sum + Number(p.lng), 0) / validProperties.length;
+
+      // 계산된 좌표 유효성 검증
+      if (isNaN(avgLat) || isNaN(avgLng)) {
+        console.warn('Invalid cluster center calculated:', { avgLat, avgLng });
+        return;
+      }
 
       clusters.push({
         properties: cluster,
@@ -509,6 +621,15 @@ export default function GrabMapComponent({
   const displayPropertyMarkers = (properties: Property[]) => {
     if (!map.current) return;
 
+    // 빈 배열이면 마커만 제거하고 종료
+    if (!properties || properties.length === 0) {
+      propertyMarkersRef.current.forEach(m => m.remove());
+      propertyMarkersRef.current = [];
+      popupsRef.current.forEach(p => p.remove());
+      popupsRef.current = [];
+      return;
+    }
+
     // 기존 마커 제거
     propertyMarkersRef.current.forEach(m => m.remove());
     propertyMarkersRef.current = [];
@@ -521,6 +642,11 @@ export default function GrabMapComponent({
     
     // 클러스터링
     const clusters = clusterProperties(properties);
+
+    // 클러스터가 없으면 종료
+    if (!clusters || clusters.length === 0) {
+      return;
+    }
 
     clusters.forEach((cluster) => {
       const isCluster = cluster.properties.length > 1;
@@ -579,20 +705,41 @@ export default function GrabMapComponent({
       }
       el.style.cursor = 'pointer';
 
+      // 클러스터 중심 좌표 유효성 검증
+      const centerLat = Number(cluster.center.lat);
+      const centerLng = Number(cluster.center.lng);
+      
+      if (!centerLat || !centerLng || isNaN(centerLat) || isNaN(centerLng)) {
+        console.warn('Invalid cluster center coordinates:', cluster.center);
+        return;
+      }
+
       // 마커 생성
       const marker = new maplibregl.Marker({ element: el })
-        .setLngLat([cluster.center.lng, cluster.center.lat])
+        .setLngLat([centerLng, centerLat])
         .addTo(map.current!);
 
       // 확대 시 클러스터 내 각 매물의 정확한 위치에 작은 마커 표시
       if (isCluster && isZoomedIn) {
         clusterProperties.forEach((property) => {
+          // 좌표 유효성 검증
+          if (!property || property.lat == null || property.lng == null || isNaN(property.lat) || isNaN(property.lng)) {
+            return;
+          }
+
+          const propLat = Number(property.lat);
+          const propLng = Number(property.lng);
+          
+          if (!propLat || !propLng || isNaN(propLat) || isNaN(propLng)) {
+            return;
+          }
+
           // 중심점과 다른 위치에 있는 매물만 표시
           const distance = calculateDistance(
-            cluster.center.lat,
-            cluster.center.lng,
-            property.lat,
-            property.lng
+            centerLat,
+            centerLng,
+            propLat,
+            propLng
           );
           
           // 5m 이상 떨어진 매물은 개별 마커로 표시
@@ -621,7 +768,7 @@ export default function GrabMapComponent({
             smallMarkerEl.style.cursor = 'pointer';
             
             const smallMarker = new maplibregl.Marker({ element: smallMarkerEl })
-              .setLngLat([property.lng, property.lat])
+              .setLngLat([propLng, propLat])
               .addTo(map.current!);
             
             // 작은 마커 클릭 시 해당 매물 정보 표시
@@ -634,7 +781,7 @@ export default function GrabMapComponent({
                   <div style="padding: 8px;">
                     <div style="font-weight: bold; font-size: 14px; margin-bottom: 4px;">${property.name}</div>
                     <div style="color: #FF6B35; font-size: 16px; font-weight: bold;">
-                      ${(property.price / 1000000).toFixed(1)}M VND
+                      ${property.price && !isNaN(Number(property.price)) ? (Number(property.price) / 1000000).toFixed(1) : '0.0'}M VND
                     </div>
                     ${property.address ? `<div style="font-size: 11px; color: #6b7280; margin-top: 4px;">${property.address}</div>` : ''}
                   </div>
@@ -665,18 +812,21 @@ export default function GrabMapComponent({
               확대하면 각 매물의 정확한 위치를 확인할 수 있습니다
             </div>
             <div style="max-height: 200px; overflow-y: auto;">
-              ${clusterProperties.map((p, idx) => {
-                const distance = calculateDistance(
-                  cluster.center.lat,
-                  cluster.center.lng,
-                  p.lat,
-                  p.lng
-                );
-                return `
-                <div style="padding: 6px 0; border-bottom: ${idx < clusterProperties.length - 1 ? '1px solid #e5e7eb' : 'none'};">
-                  <div style="font-weight: 600; font-size: 13px; margin-bottom: 2px;">${p.name}</div>
+              ${clusterProperties
+                .filter(p => p && p.lat != null && p.lng != null && !isNaN(p.lat) && !isNaN(p.lng))
+                .map((p, idx, filtered) => {
+                  const distance = calculateDistance(
+                    centerLat,
+                    centerLng,
+                    Number(p.lat),
+                    Number(p.lng)
+                  );
+                  const price = p.price && !isNaN(Number(p.price)) ? Number(p.price) : 0;
+                  return `
+                <div style="padding: 6px 0; border-bottom: ${idx < filtered.length - 1 ? '1px solid #e5e7eb' : 'none'};">
+                  <div style="font-weight: 600; font-size: 13px; margin-bottom: 2px;">${p.name || ''}</div>
                   <div style="color: #FF6B35; font-size: 14px; font-weight: bold; margin-bottom: 2px;">
-                    ${(p.price / 1000000).toFixed(1)}M VND
+                    ${(price / 1000000).toFixed(1)}M VND
                   </div>
                   <div style="font-size: 10px; color: #9ca3af;">
                     📍 중심에서 ${(distance * 1000).toFixed(0)}m
@@ -690,11 +840,14 @@ export default function GrabMapComponent({
       } else {
         // 단일 매물 팝업
         const property = clusterProperties[0];
+        if (!property) return;
+        
+        const price = property.price && !isNaN(Number(property.price)) ? Number(property.price) : 0;
         popupContent = `
           <div style="padding: 8px;">
-            <div style="font-weight: bold; font-size: 14px; margin-bottom: 4px;">${property.name}</div>
+            <div style="font-weight: bold; font-size: 14px; margin-bottom: 4px;">${property.name || ''}</div>
             <div style="color: #FF6B35; font-size: 16px; font-weight: bold;">
-              ${(property.price / 1000000).toFixed(1)}M VND
+              ${(price / 1000000).toFixed(1)}M VND
             </div>
           </div>
         `;
@@ -719,11 +872,15 @@ export default function GrabMapComponent({
           const currentZoom = map.current.getZoom();
           // 줌 레벨이 낮으면 확대 (최대 16레벨까지)
           if (currentZoom < 15) {
-            map.current.flyTo({
-              center: [cluster.center.lng, cluster.center.lat],
-              zoom: 15, // 확대 시 개별 위치 확인 가능한 레벨
-              duration: 500,
-            });
+            const safeLng = Number(cluster.center.lng);
+            const safeLat = Number(cluster.center.lat);
+            if (!isNaN(safeLng) && !isNaN(safeLat)) {
+              map.current.flyTo({
+                center: [safeLng, safeLat],
+                zoom: 15, // 확대 시 개별 위치 확인 가능한 레벨
+                duration: 500,
+              });
+            }
           }
         }
         
@@ -741,20 +898,20 @@ export default function GrabMapComponent({
     });
   };
 
-  // 사용자 위치 변경 시 매물 다시 필터링 및 마커 업데이트
-  useEffect(() => {
-    if (userLocation && map.current) {
-      filterAndDisplayProperties(userLocation);
-      // 현재 위치 마커 업데이트 (파란색 점)
-      updateUserLocationMarker(userLocation);
-    }
-  }, [userLocation, updateUserLocationMarker]);
 
   // 선택된 매물로 지도 중심 이동
   useEffect(() => {
     if (selectedProperty && map.current) {
+      const safeLat = Number(selectedProperty.lat);
+      const safeLng = Number(selectedProperty.lng);
+      
+      if (!safeLat || !safeLng || isNaN(safeLat) || isNaN(safeLng)) {
+        console.warn('Invalid coordinates for selected property:', selectedProperty);
+        return;
+      }
+
       map.current.flyTo({
-        center: [selectedProperty.lng, selectedProperty.lat],
+        center: [safeLng, safeLat],
         zoom: 15,
         duration: 500,
       });
@@ -826,11 +983,15 @@ export default function GrabMapComponent({
         // 지도 중심 이동
         const property = nearbyProperties[targetIndex];
         if (map.current && property) {
-          map.current.flyTo({
-            center: [property.lng, property.lat],
-            zoom: 15,
-            duration: 500,
-          });
+          const safeLat = Number(property.lat);
+          const safeLng = Number(property.lng);
+          if (!isNaN(safeLat) && !isNaN(safeLng)) {
+            map.current.flyTo({
+              center: [safeLng, safeLat],
+              zoom: 15,
+              duration: 500,
+            });
+          }
         }
       } else {
         const newIndex = selectedPropertyIndex - 1;
@@ -840,11 +1001,15 @@ export default function GrabMapComponent({
         // 지도 중심 이동
         const property = nearbyProperties[newIndex];
         if (map.current && property) {
-          map.current.flyTo({
-            center: [property.lng, property.lat],
-            zoom: 15,
-            duration: 500,
-          });
+          const safeLat = Number(property.lat);
+          const safeLng = Number(property.lng);
+          if (!isNaN(safeLat) && !isNaN(safeLng)) {
+            map.current.flyTo({
+              center: [safeLng, safeLat],
+              zoom: 15,
+              duration: 500,
+            });
+          }
         }
       }
     }
@@ -864,11 +1029,15 @@ export default function GrabMapComponent({
         // 지도 중심 이동
         const property = nearbyProperties[0];
         if (map.current && property) {
-          map.current.flyTo({
-            center: [property.lng, property.lat],
-            zoom: 15,
-            duration: 500,
-          });
+          const safeLat = Number(property.lat);
+          const safeLng = Number(property.lng);
+          if (!isNaN(safeLat) && !isNaN(safeLng)) {
+            map.current.flyTo({
+              center: [safeLng, safeLat],
+              zoom: 15,
+              duration: 500,
+            });
+          }
         }
       } else {
         const newIndex = selectedPropertyIndex + 1;
@@ -878,11 +1047,15 @@ export default function GrabMapComponent({
         // 지도 중심 이동
         const property = nearbyProperties[newIndex];
         if (map.current && property) {
-          map.current.flyTo({
-            center: [property.lng, property.lat],
-            zoom: 15,
-            duration: 500,
-          });
+          const safeLat = Number(property.lat);
+          const safeLng = Number(property.lng);
+          if (!isNaN(safeLat) && !isNaN(safeLng)) {
+            map.current.flyTo({
+              center: [safeLng, safeLat],
+              zoom: 15,
+              duration: 500,
+            });
+          }
         }
       }
     }
@@ -934,26 +1107,31 @@ export default function GrabMapComponent({
 
       if (results.length > 0 && results[0].Place?.Geometry?.Point) {
         const [longitude, latitude] = results[0].Place.Geometry.Point;
-
-        // 지도 중심 이동
-        map.current.flyTo({
-          center: [longitude, latitude],
-          zoom: 15,
-          duration: 1000,
-        });
+        
+        const safeLat = Number(latitude);
+        const safeLng = Number(longitude);
+        
+        if (!isNaN(safeLat) && !isNaN(safeLng)) {
+          // 지도 중심 이동
+          map.current.flyTo({
+            center: [safeLng, safeLat],
+            zoom: 15,
+            duration: 1000,
+          });
 
         // 기존 마커 제거
         if (marker.current) {
           marker.current.remove();
         }
 
-        // 새 마커 추가
-        marker.current = new maplibregl.Marker({
-          color: '#FF6B35', // Grab 스타일 오렌지 색상
-          scale: 1.2,
-        })
-          .setLngLat([longitude, latitude])
-          .addTo(map.current);
+          // 새 마커 추가
+          marker.current = new maplibregl.Marker({
+            color: '#FF6B35', // Grab 스타일 오렌지 색상
+            scale: 1.2,
+          })
+            .setLngLat([safeLng, safeLat])
+            .addTo(map.current);
+        }
       }
     } catch (error) {
       console.error('Error getting place details:', error);
@@ -1064,6 +1242,50 @@ export default function GrabMapComponent({
           <p className="text-red-500 text-xs mt-2">
             환경 변수(NEXT_PUBLIC_AWS_API_KEY, NEXT_PUBLIC_AWS_MAP_NAME)를 확인해주세요.
           </p>
+        </div>
+      )}
+
+      {/* 위치 동의 모달 (상태가 'prompt'일 때만 표시) */}
+      {showLocationConsentModal && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md mx-4 w-full">
+            <div className="flex items-center gap-3 mb-4">
+              <MapPin className="w-6 h-6 text-blue-500" />
+              <h3 className="text-lg font-semibold text-gray-900">
+                {currentLanguage === 'ko' && '위치 권한 요청'}
+                {currentLanguage === 'vi' && 'Yêu cầu quyền truy cập vị trí'}
+                {currentLanguage === 'en' && 'Location Permission Request'}
+              </h3>
+            </div>
+
+            <p className="text-gray-600 mb-6">
+              {currentLanguage === 'ko' && '지도에서 내 위치를 표시하기 위해 위치 권한이 필요합니다. 위치 정보는 지도에 내 위치 마커를 표시하는 데만 사용됩니다.'}
+              {currentLanguage === 'vi' && 'Chúng tôi cần quyền truy cập vị trí để hiển thị vị trí của bạn trên bản đồ. Thông tin vị trí chỉ được sử dụng để hiển thị điểm đánh dấu vị trí của bạn trên bản đồ.'}
+              {currentLanguage === 'en' && 'We need location permission to show your location on the map. Location information is only used to display your location marker on the map.'}
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowLocationConsentModal(false);
+                  hasRequestedLocationRef.current = true;
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                {currentLanguage === 'ko' && '거부'}
+                {currentLanguage === 'vi' && 'Từ chối'}
+                {currentLanguage === 'en' && 'Deny'}
+              </button>
+              <button
+                onClick={requestLocation}
+                className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              >
+                {currentLanguage === 'ko' && '동의'}
+                {currentLanguage === 'vi' && 'Đồng ý'}
+                {currentLanguage === 'en' && 'Allow'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
