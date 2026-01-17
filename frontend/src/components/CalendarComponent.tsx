@@ -55,8 +55,8 @@ export default function CalendarComponent({
     try {
       if (checkInDate instanceof Date) {
         return checkInDate;
-      } else if (checkInDate && typeof checkInDate.toDate === 'function') {
-        return checkInDate.toDate();
+      } else if (checkInDate && typeof (checkInDate as any).toDate === 'function') {
+        return (checkInDate as any).toDate();
       } else if ((checkInDate as any).seconds) {
         return new Date((checkInDate as any).seconds * 1000);
       } else if (typeof checkInDate === 'string') {
@@ -133,8 +133,8 @@ export default function CalendarComponent({
     if (checkInDate) {
       if (checkInDate instanceof Date) {
         checkInDateStr = checkInDate.toDateString();
-      } else if (checkInDate.toDate) {
-        checkInDateStr = checkInDate.toDate().toDateString();
+      } else if (typeof (checkInDate as any).toDate === 'function') {
+        checkInDateStr = (checkInDate as any).toDate().toDateString();
       } else if ((checkInDate as any).seconds) {
         checkInDateStr = new Date((checkInDate as any).seconds * 1000).toDateString();
       } else if (typeof checkInDate === 'string') {
@@ -147,8 +147,8 @@ export default function CalendarComponent({
     if (checkOutDate) {
       if (checkOutDate instanceof Date) {
         checkOutDateStr = checkOutDate.toDateString();
-      } else if (checkOutDate.toDate) {
-        checkOutDateStr = checkOutDate.toDate().toDateString();
+      } else if (typeof (checkOutDate as any).toDate === 'function') {
+        checkOutDateStr = (checkOutDate as any).toDate().toDateString();
       } else if ((checkOutDate as any).seconds) {
         checkOutDateStr = new Date((checkOutDate as any).seconds * 1000).toDateString();
       } else if (typeof checkOutDate === 'string') {

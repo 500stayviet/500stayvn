@@ -22,55 +22,6 @@ interface Property {
   address?: string;
 }
 
-// 가상의 매물 데이터 5개 (호치민 지역)
-const mockProperties: Property[] = [
-  { 
-    id: '1', 
-    name: 'Modern Apartment in District 1', 
-    price: 15000000, 
-    lat: 10.7769, 
-    lng: 106.7009,
-    image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=400&h=300&fit=crop',
-    address: 'District 1, Ho Chi Minh City'
-  },
-  { 
-    id: '2', 
-    name: 'Cozy Studio in District 3', 
-    price: 8000000, 
-    lat: 10.7830, 
-    lng: 106.6900,
-    image: 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=400&h=300&fit=crop',
-    address: 'District 3, Ho Chi Minh City'
-  },
-  { 
-    id: '3', 
-    name: 'Luxury Condo in District 7', 
-    price: 25000000, 
-    lat: 10.7314, 
-    lng: 106.7214,
-    image: 'https://images.unsplash.com/photo-1512918728675-ed5a9ecdebfd?w=400&h=300&fit=crop',
-    address: 'District 7, Ho Chi Minh City'
-  },
-  { 
-    id: '4', 
-    name: 'Budget Room in Binh Thanh', 
-    price: 5000000, 
-    lat: 10.8022, 
-    lng: 106.7147,
-    image: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400&h=300&fit=crop',
-    address: 'Binh Thanh District, Ho Chi Minh City'
-  },
-  { 
-    id: '5', 
-    name: 'Family House in District 2', 
-    price: 20000000, 
-    lat: 10.7872, 
-    lng: 106.7493,
-    image: 'https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=400&h=300&fit=crop',
-    address: 'District 2, Ho Chi Minh City'
-  },
-];
-
 // 베트남 경계 확인 (대략적인 범위)
 const isInVietnam = (lat: number, lng: number): boolean => {
   // 베트남 대략적인 경계: 위도 8.5~23.5, 경도 102~110
@@ -109,7 +60,7 @@ export default function GrabMapComponent({
   const cardSliderRef = useRef<HTMLDivElement>(null);
   const mapMoveDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const onPropertyPriorityChangeRef = useRef(onPropertyPriorityChange);
-  const updateVisiblePropertiesRef = useRef<() => void>();
+  const updateVisiblePropertiesRef = useRef<(() => void) | undefined>(undefined);
   const hasRequestedLocationRef = useRef(false); // 위치 요청 여부 추적
   
   // 콜백 ref 업데이트
@@ -145,30 +96,10 @@ export default function GrabMapComponent({
           .map(convertPropertyDataToProperty)
           .filter((p): p is Property => p !== null); // null 제거
         
-        console.log('Loaded properties:', {
-          total: propertiesData.length,
-          withCoordinates: convertedProperties.length,
-          properties: convertedProperties.map(p => ({
-            id: p.id,
-            name: p.name,
-            lat: p.lat,
-            lng: p.lng
-          }))
-        });
-        
-        // mockProperties와 실제 매물 합치기 (실제 매물이 우선)
-        const combinedProperties = [
-          ...convertedProperties,
-          ...mockProperties.filter(mock => 
-            !convertedProperties.some(real => real.id === mock.id)
-          )
-        ];
-        
-        setAllProperties(combinedProperties);
+        setAllProperties(convertedProperties);
       } catch (error) {
         console.error('Error loading properties:', error);
-        // 에러 발생 시 mockProperties만 사용
-        setAllProperties(mockProperties);
+        setAllProperties([]);
       }
     };
 
@@ -180,15 +111,7 @@ export default function GrabMapComponent({
         .map(convertPropertyDataToProperty)
         .filter((p): p is Property => p !== null); // null 제거
       
-      // mockProperties와 실제 매물 합치기
-      const combinedProperties = [
-        ...convertedProperties,
-        ...mockProperties.filter(mock => 
-          !convertedProperties.some(real => real.id === mock.id)
-        )
-      ];
-      
-      setAllProperties(combinedProperties);
+      setAllProperties(convertedProperties);
     });
 
     return () => {
@@ -236,7 +159,7 @@ export default function GrabMapComponent({
         style: styleUrl,
         center: [106.701, 10.776], // [경도, 위도] 순서
         zoom: 12,
-        attributionControl: true,
+        attributionControl: true as any,
       });
 
       // 네비게이션 컨트롤 추가
@@ -806,7 +729,6 @@ export default function GrabMapComponent({
         
         // 클러스터인 경우 첫 번째 매물을 우선순위로 설정
         const firstProperty = clusterProperties[0];
-        console.log('마커 클릭됨:', isCluster ? `클러스터 (${clusterProperties.length}개)` : '단일 매물', firstProperty);
         
         // 선택된 매물 우선순위 변경 알림
         if (onPropertyPriorityChangeRef.current) {

@@ -35,10 +35,7 @@ export default function NewPropertyPage() {
       // 주소가 충분히 길면 Geocoding 실행
       setGeocoding(true);
       try {
-        const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
-        if (!apiKey) return;
-
-        const result = await geocodeAddress(address, apiKey);
+        const result = await geocodeAddress(address, 'vi');
         setCoordinates({ lat: result.lat, lng: result.lng });
       } catch (error) {
         setCoordinates(null);

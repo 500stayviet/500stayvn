@@ -39,21 +39,14 @@ export default function MapPage() {
 
   // 매물 우선순위 변경 (마커 클릭 시)
   const handlePropertyPriorityChange = (property: Property) => {
-    console.log('=== 마커 클릭 이벤트 ===');
-    console.log('선택된 매물:', property);
-    console.log('현재 nearbyProperties 개수:', nearbyProperties.length);
-    
     // nearbyProperties가 비어있으면 아무것도 하지 않음
     if (nearbyProperties.length === 0) {
-      console.warn('nearbyProperties가 비어있습니다. 지도가 아직 로드되지 않았을 수 있습니다.');
       return;
     }
     
     // 선택된 매물을 첫 번째로 이동
     const currentProperties = [...nearbyProperties];
     const selectedIndex = currentProperties.findIndex(p => p.id === property.id);
-    
-    console.log('선택된 매물 인덱스:', selectedIndex);
     
     if (selectedIndex !== -1) {
       // 선택된 매물을 첫 번째로 이동
@@ -62,11 +55,6 @@ export default function MapPage() {
         ...currentProperties.filter((_, i) => i !== selectedIndex)
       ];
       
-      console.log('매물 순서 변경:', {
-        이전: currentProperties.map(p => p.name),
-        이후: newProperties.map(p => p.name)
-      });
-      
       setNearbyProperties(newProperties);
       setSelectedPropertyIndex(0);
       setSelectedProperty(property);
@@ -74,13 +62,7 @@ export default function MapPage() {
       // 하단 카드를 첫 번째로 스크롤 (렌더링 후)
       setTimeout(() => {
         scrollToFirstCard();
-        console.log('첫 번째 카드로 스크롤 완료');
       }, 300);
-    } else {
-      console.error('선택된 매물을 찾을 수 없습니다!');
-      console.error('매물 ID:', property.id);
-      console.error('매물 이름:', property.name);
-      console.error('현재 매물 목록:', currentProperties.map(p => ({ id: p.id, name: p.name })));
     }
   };
 
