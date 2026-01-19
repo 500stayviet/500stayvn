@@ -5,7 +5,7 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { MapPin } from 'lucide-react';
 import { searchPlaceIndexForText } from '@/lib/api/aws-location';
-import { getAvailableProperties, subscribeToProperties, PropertyData } from '@/lib/api/properties';
+import { getAvailableProperties, subscribeToProperties, PropertyData, getProperty } from '@/lib/api/properties';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { searchRegions, regionToSuggestion } from '@/lib/data/vietnam-regions';
 import { 
@@ -17,6 +17,11 @@ import { useAuth } from '@/hooks/useAuth';
 import PropertyModal from '@/components/map/PropertyModal';
 import SearchBox from '@/components/map/SearchBox';
 import { Suggestion } from '@/types/map';
+import { 
+  parseDate, 
+  formatPrice, 
+  formatDateForBadge 
+} from '@/lib/utils/propertyUtils';
 
 interface Property {
   id: string;
@@ -26,6 +31,8 @@ interface Property {
   lng: number;
   image?: string;
   address?: string;
+  priceUnit?: string;
+  checkInDate?: string | Date;
 }
 
 // 호치민 초기 좌표 상수 (지도는 항상 이 값으로 시작, 절대 null 전달 금지)
@@ -101,11 +108,21 @@ export default function GrabMapComponent({
     onPropertyPriorityChangeRef.current = onPropertyPriorityChange;
   }, [onPropertyPriorityChange]);
 
+  // 언어 변경 시 현재 보이는 매물 마커 다시 그리기 (팝업 번역 업데이트)
+  useEffect(() => {
+    if (updateVisiblePropertiesRef.current) {
+      updateVisiblePropertiesRef.current();
+    }
+    
+    // 검색 중이라면 검색 결과도 다시 번역
+    if (searchValue.trim()) {
+      handleSearchChange(searchValue);
+    }
+  }, [currentLanguage]);
+
   // 매물 클릭 시 모달 열기
   const handlePropertyClick = async (propertyId: string) => {
     try {
-      // allProperties에서 PropertyData 찾기
-      const { getProperty } = await import('@/lib/api/properties');
       const propertyData = await getProperty(propertyId);
       if (propertyData) {
         setSelectedPropertyData(propertyData);
@@ -124,7 +141,6 @@ export default function GrabMapComponent({
     const prevProperty = nearbyProperties[prevIndex];
     if (prevProperty) {
       try {
-        const { getProperty } = await import('@/lib/api/properties');
         const propertyData = await getProperty(prevProperty.id);
         if (propertyData) {
           setSelectedPropertyData(propertyData);
@@ -143,7 +159,6 @@ export default function GrabMapComponent({
     const nextProperty = nearbyProperties[nextIndex];
     if (nextProperty) {
       try {
-        const { getProperty } = await import('@/lib/api/properties');
         const propertyData = await getProperty(nextProperty.id);
         if (propertyData) {
           setSelectedPropertyData(propertyData);
@@ -176,6 +191,8 @@ export default function GrabMapComponent({
       lng: propertyData.coordinates.lng,
       image: propertyData.images && propertyData.images.length > 0 ? propertyData.images[0] : undefined,
       address: propertyData.address || '',
+      priceUnit: propertyData.priceUnit,
+      checkInDate: propertyData.checkInDate,
     };
   };
 
@@ -990,7 +1007,7 @@ export default function GrabMapComponent({
                 <div style="padding: 6px 0; border-bottom: ${idx < filtered.length - 1 ? '1px solid #e5e7eb' : 'none'};">
                   <div style="font-weight: 600; font-size: 13px; margin-bottom: 2px;">${p.name || ''}</div>
                   <div style="color: #FF6B35; font-size: 14px; font-weight: bold; margin-bottom: 2px;">
-                    ${(price / 1000000).toFixed(1)}M VND
+                    ${formatPrice(price, 'vnd')}
                   </div>
                   <div style="font-size: 10px; color: #9ca3af;">
                     📍 중심에서 ${(distance * 1000).toFixed(0)}m
@@ -1011,7 +1028,7 @@ export default function GrabMapComponent({
           <div style="padding: 8px; cursor: pointer;" class="property-popup" data-property-id="${property.id}">
             <div style="font-weight: bold; font-size: 14px; margin-bottom: 4px;">${property.name || ''}</div>
             <div style="color: #FF6B35; font-size: 16px; font-weight: bold;">
-              ${(price / 1000000).toFixed(1)}M VND
+              ${formatPrice(price, 'vnd')}
             </div>
             <div style="font-size: 11px; color: #3b82f6; margin-top: 6px; text-align: center;">
               ${currentLanguage === 'ko' ? '탭하여 상세보기' : currentLanguage === 'vi' ? 'Nhấn để xem chi tiết' : 'Tap to view details'}

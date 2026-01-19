@@ -12,14 +12,17 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { getPropertiesByOwner, deleteProperty, permanentlyDeleteProperty } from '@/lib/api/properties';
+import { getPropertiesByOwner, deleteProperty, permanentlyDeleteProperty, PropertyData } from '@/lib/api/properties';
 import { getCurrentUserData } from '@/lib/api/auth';
 import { getVerificationStatus } from '@/lib/api/kyc';
-import { PropertyData } from '@/lib/api/properties';
 import { ArrowLeft, MapPin, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import TopBar from '@/components/TopBar';
 import Image from 'next/image';
+import { 
+  formatPrice, 
+  getCityName, 
+} from '@/lib/utils/propertyUtils';
 
 export default function MyPropertiesPage() {
   const router = useRouter();
@@ -191,14 +194,6 @@ export default function MyPropertiesPage() {
     }
   };
 
-  // 가격 포맷팅
-  const formatPrice = (price: number, unit: 'vnd' | 'usd') => {
-    if (unit === 'vnd') {
-      return `${price.toLocaleString('vi-VN')} VND`;
-    }
-    return `$${price.toLocaleString()}`;
-  };
-
   // 매물 상태에 따른 테두리 색상
   const getBorderColor = (status?: string) => {
     // 계약 완료 상태 (rented)면 초록색, 그 외는 빨간색
@@ -299,8 +294,8 @@ export default function MyPropertiesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
-      <div className="w-full max-w-[430px] mx-auto bg-white min-h-screen shadow-lg">
+    <div className="min-h-screen bg-gray-100 flex justify-center">
+      <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative">
         {/* 상단 바 */}
         <TopBar 
           currentLanguage={currentLanguage}

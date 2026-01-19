@@ -6,24 +6,13 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getCurrentUserData } from '@/lib/api/auth';
 import { addProperty, getPropertyCountByOwner } from '@/lib/api/properties';
-import { Camera, MapPin, Loader2, X, Bed, Bath, Wind, Sofa, UtensilsCrossed, WashingMachine, Refrigerator, Table, Shirt, Wifi, Maximize2, ArrowLeft, Check, Calendar, Users, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Camera, MapPin, Loader2, X, Maximize2, ArrowLeft, Check, Calendar, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import TopBar from '@/components/TopBar';
 import CalendarComponent from '@/components/CalendarComponent';
 import AddressVerificationModal from '@/components/AddressVerificationModal';
 
-// 편의시설 옵션 정의
-const AMENITY_OPTIONS = [
-  { id: 'bed', label: { ko: '침대', vi: 'Giường', en: 'Bed' }, icon: Bed },
-  { id: 'aircon', label: { ko: '에어컨', vi: 'Điều hòa', en: 'Air Conditioner' }, icon: Wind },
-  { id: 'sofa', label: { ko: '소파', vi: 'Ghế sofa', en: 'Sofa' }, icon: Sofa },
-  { id: 'kitchen', label: { ko: '주방', vi: 'Bếp', en: 'Kitchen' }, icon: UtensilsCrossed },
-  { id: 'washing', label: { ko: '세탁기', vi: 'Máy giặt', en: 'Washing Machine' }, icon: WashingMachine },
-  { id: 'refrigerator', label: { ko: '냉장고', vi: 'Tủ lạnh', en: 'Refrigerator' }, icon: Refrigerator },
-  { id: 'table', label: { ko: '식탁', vi: 'Bàn ăn', en: 'Dining Table' }, icon: Table },
-  { id: 'wardrobe', label: { ko: '옷장', vi: 'Tủ quần áo', en: 'Wardrobe' }, icon: Shirt },
-  { id: 'wifi', label: { ko: '와이파이', vi: 'WiFi', en: 'WiFi' }, icon: Wifi },
-] as const;
+import { AMENITY_OPTIONS } from '@/lib/constants/amenities';
 
 export default function AddPropertyPage() {
   const router = useRouter();
@@ -454,10 +443,10 @@ export default function AddPropertyPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
-        <div className="w-full max-w-[430px] mx-auto bg-white min-h-screen shadow-lg">
-          {/* 상단 바 */}
-          <TopBar />
+    <div className="min-h-screen bg-gray-100 flex justify-center">
+      <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative">
+        {/* 상단 바 */}
+        <TopBar />
 
           {/* 콘텐츠 */}
           <div className="px-6 py-6">

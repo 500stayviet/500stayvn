@@ -270,8 +270,8 @@ export default function KYCPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
-      <div className="w-full max-w-[430px] mx-auto bg-white min-h-screen shadow-lg">
+    <div className="min-h-screen bg-gray-100 flex justify-center">
+      <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative">
         {/* 상단 바 */}
         <TopBar 
           currentLanguage={currentLanguage}

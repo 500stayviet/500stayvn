@@ -44,8 +44,8 @@ export default function HomePage() {
   const shouldShowLanguageSelector = !user || !userPreferredLanguage;
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="w-full max-w-[430px] mx-auto bg-white min-h-screen shadow-lg flex flex-col">
+    <div className="min-h-screen bg-gray-100 flex justify-center">
+      <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative">
         <TopBar 
           currentLanguage={currentLanguage}
           onLanguageChange={setCurrentLanguage}

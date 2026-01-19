@@ -16,22 +16,16 @@ import { getAvailableProperties, PropertyData } from '@/lib/api/properties';
 import { geocodeAddress } from '@/lib/api/geocoding';
 import { getUIText } from '@/utils/i18n';
 import PropertyCard from '@/components/PropertyCard';
-import { Home, User, Calendar, Users, ChevronLeft, ChevronRight, MapPin, Search, X, Bed, Bath, Wind, Sofa, UtensilsCrossed, WashingMachine, Refrigerator, Table, Shirt, Wifi } from 'lucide-react';
+import { Home, User, Calendar, Users, ChevronLeft, ChevronRight, MapPin, Search, X } from 'lucide-react';
 import CalendarComponent from '@/components/CalendarComponent';
 import Image from 'next/image';
-
-// 편의시설 옵션 정의
-const AMENITY_OPTIONS = [
-  { id: 'bed', label: { ko: '침대', vi: 'Giường', en: 'Bed' }, icon: Bed },
-  { id: 'aircon', label: { ko: '에어컨', vi: 'Điều hòa', en: 'Air Conditioner' }, icon: Wind },
-  { id: 'sofa', label: { ko: '소파', vi: 'Ghế sofa', en: 'Sofa' }, icon: Sofa },
-  { id: 'kitchen', label: { ko: '주방', vi: 'Bếp', en: 'Kitchen' }, icon: UtensilsCrossed },
-  { id: 'washing', label: { ko: '세탁기', vi: 'Máy giặt', en: 'Washing Machine' }, icon: WashingMachine },
-  { id: 'refrigerator', label: { ko: '냉장고', vi: 'Tủ lạnh', en: 'Refrigerator' }, icon: Refrigerator },
-  { id: 'table', label: { ko: '식탁', vi: 'Bàn ăn', en: 'Dining Table' }, icon: Table },
-  { id: 'wardrobe', label: { ko: '옷장', vi: 'Tủ quần áo', en: 'Wardrobe' }, icon: Shirt },
-  { id: 'wifi', label: { ko: '와이파이', vi: 'WiFi', en: 'WiFi' }, icon: Wifi },
-] as const;
+import { AMENITY_OPTIONS } from '@/lib/constants/amenities';
+import PropertyModal from '@/components/map/PropertyModal';
+import { 
+  parseDate, 
+  formatPrice, 
+  formatFullPrice, 
+} from '@/lib/utils/propertyUtils';
 
 // 두 좌표 간 거리 계산 (Haversine 공식)
 function calculateDistance(
@@ -104,29 +98,6 @@ export default function SearchPage() {
       return `${price.toLocaleString('vi-VN')} VND`;
     }
     return `$${price.toLocaleString()}`;
-  };
-
-  // 날짜 파싱
-  const parseDateForModal = (dateInput: string | Date | undefined): Date | null => {
-    if (!dateInput) return null;
-    if (dateInput instanceof Date) {
-      return isNaN(dateInput.getTime()) ? null : dateInput;
-    }
-    if (typeof dateInput === 'string') {
-      const date = new Date(dateInput);
-      return isNaN(date.getTime()) ? null : date;
-    }
-    return null;
-  };
-
-  // 즉시 입주 가능 여부
-  const isAvailableNow = (checkInDateInput: string | Date | undefined) => {
-    const checkIn = parseDateForModal(checkInDateInput);
-    if (!checkIn) return false;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    checkIn.setHours(0, 0, 0, 0);
-    return checkIn <= today;
   };
 
   // 매물 클릭 시 모달 열기
@@ -233,35 +204,10 @@ export default function SearchPage() {
       filtered = filtered.filter((property) => {
         if (!property.checkInDate || !property.checkOutDate) return false;
         
-        const propCheckIn = property.checkInDate as any;
-        const propCheckOut = property.checkOutDate as any;
+        const propCheckInDate = parseDate(property.checkInDate);
+        const propCheckOutDate = parseDate(property.checkOutDate);
         
-        // 다양한 날짜 형식 처리
-        let propCheckInDate: Date;
-        if (propCheckIn instanceof Date) {
-          propCheckInDate = propCheckIn;
-        } else if (propCheckIn.toDate) {
-          propCheckInDate = propCheckIn.toDate();
-        } else if (propCheckIn.seconds) {
-          propCheckInDate = new Date(propCheckIn.seconds * 1000);
-        } else if (typeof propCheckIn === 'string') {
-          propCheckInDate = new Date(propCheckIn);
-        } else {
-          return false;
-        }
-        
-        let propCheckOutDate: Date;
-        if (propCheckOut instanceof Date) {
-          propCheckOutDate = propCheckOut;
-        } else if (propCheckOut.toDate) {
-          propCheckOutDate = propCheckOut.toDate();
-        } else if (propCheckOut.seconds) {
-          propCheckOutDate = new Date(propCheckOut.seconds * 1000);
-        } else if (typeof propCheckOut === 'string') {
-          propCheckOutDate = new Date(propCheckOut);
-        } else {
-          return false;
-        }
+        if (!propCheckInDate || !propCheckOutDate) return false;
         
         // 검색 날짜가 매물의 임대 가능 기간과 겹치는지 확인
         return checkInDate <= propCheckOutDate && checkOutDate >= propCheckInDate;
@@ -363,8 +309,8 @@ export default function SearchPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="w-full max-w-[430px] mx-auto bg-white min-h-screen">
+    <div className="min-h-screen bg-gray-100 flex justify-center">
+      <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative">
         {/* 상단 헤더 */}
         <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
           <div className="flex items-center justify-between px-4 py-3">

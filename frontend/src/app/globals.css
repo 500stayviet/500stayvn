@@ -34,3 +34,11 @@ body {
 .scrollbar-hide::-webkit-scrollbar {
   display: none; /* Chrome, Safari and Opera */
 }
+
+@utility mobile-container {
+  @apply w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative mx-auto;
+}
+
+@utility page-background {
+  @apply min-h-screen bg-gray-100 flex justify-center;
+}

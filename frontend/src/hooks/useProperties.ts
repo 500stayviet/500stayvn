@@ -34,29 +34,6 @@ export function useProperties() {
       return;
     }
 
-    // 초기 데이터 로드 (예약 가능한 매물만)
-    const loadInitialData = async () => {
-      try {
-        setLoading(true);
-        console.log('[useProperties] Loading available properties...');
-        const data = await getAvailableProperties();
-        console.log('[useProperties] Loaded', data.length, 'available properties');
-        setProperties(data);
-        setError(null);
-      } catch (err) {
-        console.log('[useProperties] Error loading data:', err);
-        setError(err instanceof Error ? err : new Error('Unknown error'));
-        setProperties([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    // 약간의 지연을 두고 데이터 로드 (모바일에서 localStorage 접근 안정화)
-    const timer = setTimeout(() => {
-      loadInitialData();
-    }, 0);
-
     // 실시간 리스너 등록
     const unsubscribe = subscribeToProperties((data) => {
       console.log('[useProperties] Properties updated:', data.length);
@@ -67,7 +44,6 @@ export function useProperties() {
 
     // 컴포넌트 언마운트 시 리스너 해제
     return () => {
-      clearTimeout(timer);
       unsubscribe();
     };
   }, []);

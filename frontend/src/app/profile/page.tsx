@@ -361,8 +361,8 @@ export default function ProfilePage() {
   const buttonConfig = getButtonConfig();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
-      <div className="w-full max-w-[430px] mx-auto bg-white min-h-screen shadow-lg">
+    <div className="min-h-screen bg-gray-100 flex justify-center">
+      <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative">
         {/* 상단 바 */}
         <TopBar 
           currentLanguage={currentLanguage}
@@ -380,25 +380,28 @@ export default function ProfilePage() {
                currentLanguage === 'vi' ? 'Trang cá nhân' : 
                'My Page'}
             </h1>
-            {/* 임대인 인증 배지 */}
-            {isOwner && allStepsCompleted && (
-              <span className="px-3 py-1 bg-white border-2 border-green-500 text-green-600 text-xs font-semibold rounded-full">
-                {currentLanguage === 'ko' ? '임대인 인증' : 
-                 currentLanguage === 'vi' ? 'Xác thực chủ nhà' : 
-                 'Owner Verified'}
-              </span>
-            )}
           </div>
 
           {/* ========== 임대인 메뉴 섹션 ========== */}
           <div className="mb-6">
-            <div className="flex items-center gap-2 mb-3">
-              <Building2 className="w-5 h-5 text-purple-600" />
-              <h2 className="text-lg font-bold text-gray-900">
-                {currentLanguage === 'ko' ? '임대인 메뉴' : 
-                 currentLanguage === 'vi' ? 'Menu chủ nhà' : 
-                 'Host Menu'}
-              </h2>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-purple-600" />
+                <h2 className="text-lg font-bold text-gray-900">
+                  {currentLanguage === 'ko' ? '임대인 메뉴' : 
+                   currentLanguage === 'vi' ? 'Menu chủ nhà' : 
+                   'Host Menu'}
+                </h2>
+              </div>
+              {/* 임대인 인증 마크 */}
+              {isOwner && allStepsCompleted && (
+                <div className="flex items-center gap-1 px-2 py-1 bg-green-50 border border-green-200 rounded-lg">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
+                  <span className="text-[10px] font-bold text-green-700 uppercase tracking-tight">
+                    {currentLanguage === 'ko' ? '인증됨' : 'Verified'}
+                  </span>
+                </div>
+              )}
             </div>
             
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">

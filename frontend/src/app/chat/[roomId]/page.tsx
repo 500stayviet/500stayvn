@@ -193,8 +193,8 @@ export default function ChatRoomPage() {
   const otherParty = getOtherParty();
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <div className="w-full max-w-[430px] mx-auto bg-white min-h-screen shadow-lg flex flex-col">
+    <div className="min-h-screen bg-gray-100 flex justify-center">
+      <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative">
         {/* 헤더 */}
         <div className="sticky top-0 z-10 bg-white border-b border-gray-200">
           <div className="px-4 py-3 flex items-center gap-3">

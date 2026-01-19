@@ -13,22 +13,15 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getProperty, updateProperty, restoreProperty, permanentlyDeleteProperty, PropertyData } from '@/lib/api/properties';
 import { searchPlaceIndexForSuggestions, searchPlaceIndexForText, getLocationServiceLanguage } from '@/lib/api/aws-location';
-import { Camera, MapPin, Loader2, X, Bed, Bath, Wind, Sofa, UtensilsCrossed, WashingMachine, Refrigerator, Table, Shirt, Wifi, Maximize2, ArrowLeft, Calendar, Users, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Camera, MapPin, Loader2, X, Maximize2, ArrowLeft, Calendar, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import TopBar from '@/components/TopBar';
 import CalendarComponent from '@/components/CalendarComponent';
 
-// 편의시설 옵션 정의
-const AMENITY_OPTIONS = [
-  { id: 'bed', label: { ko: '침대', vi: 'Giường', en: 'Bed' }, icon: Bed },
-  { id: 'aircon', label: { ko: '에어컨', vi: 'Điều hòa', en: 'Air Conditioner' }, icon: Wind },
-  { id: 'sofa', label: { ko: '소파', vi: 'Ghế sofa', en: 'Sofa' }, icon: Sofa },
-  { id: 'kitchen', label: { ko: '주방', vi: 'Bếp', en: 'Kitchen' }, icon: UtensilsCrossed },
-  { id: 'washing', label: { ko: '세탁기', vi: 'Máy giặt', en: 'Washing Machine' }, icon: WashingMachine },
-  { id: 'refrigerator', label: { ko: '냉장고', vi: 'Tủ lạnh', en: 'Refrigerator' }, icon: Refrigerator },
-  { id: 'table', label: { ko: '식탁', vi: 'Bàn ăn', en: 'Dining Table' }, icon: Table },
-  { id: 'wardrobe', label: { ko: '옷장', vi: 'Tủ quần áo', en: 'Wardrobe' }, icon: Shirt },
-  { id: 'wifi', label: { ko: '와이파이', vi: 'WiFi', en: 'WiFi' }, icon: Wifi },
-] as const;
+import { AMENITY_OPTIONS } from '@/lib/constants/amenities';
+import { 
+  formatFullPrice, 
+  parseDate, 
+} from '@/lib/utils/propertyUtils';
 
 export default function EditPropertyPage() {
   const router = useRouter();
@@ -151,27 +144,12 @@ export default function EditPropertyPage() {
           setBathrooms(property.bathrooms || 1);
           
           // 날짜 로드 (ISO 문자열을 Date 객체로 변환)
-          if (property.checkInDate) {
-            const date = typeof property.checkInDate === 'string' 
-              ? new Date(property.checkInDate)
-              : property.checkInDate instanceof Date
-              ? property.checkInDate
-              : null;
-            if (date && !isNaN(date.getTime())) {
-              setCheckInDate(date);
-            }
-          }
+          // 날짜 파싱 (ISO 문자열 또는 Date 객체 대응)
+          const propCheckInDate = parseDate(property.checkInDate);
+          const propCheckOutDate = parseDate(property.checkOutDate);
           
-          if (property.checkOutDate) {
-            const date = typeof property.checkOutDate === 'string'
-              ? new Date(property.checkOutDate)
-              : property.checkOutDate instanceof Date
-              ? property.checkOutDate
-              : null;
-            if (date && !isNaN(date.getTime())) {
-              setCheckOutDate(date);
-            }
-          }
+          if (propCheckInDate) setCheckInDate(propCheckInDate);
+          if (propCheckOutDate) setCheckOutDate(propCheckOutDate);
           
           // 데이터 로드 완료 플래그 설정 (한 번만 로드되도록)
           setPropertyLoaded(true);
@@ -551,8 +529,8 @@ export default function EditPropertyPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
-      <div className="w-full max-w-[430px] mx-auto bg-white min-h-screen shadow-lg">
+    <div className="min-h-screen bg-gray-100 flex justify-center">
+      <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative">
         <TopBar 
           currentLanguage={currentLanguage}
           onLanguageChange={() => {}}

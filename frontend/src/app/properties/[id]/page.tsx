@@ -15,25 +15,22 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import Image from 'next/image';
 import { MapPin, Bed, Bath, Square, ArrowLeft, Wind, Sofa, UtensilsCrossed, WashingMachine, Refrigerator, Table, Shirt, Wifi, Calendar, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import TopBar from '@/components/TopBar';
-
-// 편의시설 옵션 정의
-const AMENITY_OPTIONS = [
-  { id: 'bed', label: { ko: '침대', vi: 'Giường', en: 'Bed' }, icon: Bed },
-  { id: 'aircon', label: { ko: '에어컨', vi: 'Điều hòa', en: 'Air Conditioner' }, icon: Wind },
-  { id: 'sofa', label: { ko: '소파', vi: 'Ghế sofa', en: 'Sofa' }, icon: Sofa },
-  { id: 'kitchen', label: { ko: '주방', vi: 'Bếp', en: 'Kitchen' }, icon: UtensilsCrossed },
-  { id: 'washing', label: { ko: '세탁기', vi: 'Máy giặt', en: 'Washing Machine' }, icon: WashingMachine },
-  { id: 'refrigerator', label: { ko: '냉장고', vi: 'Tủ lạnh', en: 'Refrigerator' }, icon: Refrigerator },
-  { id: 'table', label: { ko: '식탁', vi: 'Bàn ăn', en: 'Dining Table' }, icon: Table },
-  { id: 'wardrobe', label: { ko: '옷장', vi: 'Tủ quần áo', en: 'Wardrobe' }, icon: Shirt },
-  { id: 'wifi', label: { ko: '와이파이', vi: 'WiFi', en: 'WiFi' }, icon: Wifi },
-] as const;
+import { AMENITY_OPTIONS } from '@/lib/constants/amenities';
+import { useAuth } from '@/hooks/useAuth';
+import { 
+  formatFullPrice, 
+  parseDate, 
+  isAvailableNow, 
+  formatDate, 
+  formatDateForBadge 
+} from '@/lib/utils/propertyUtils';
 
 export default function PropertyDetailPage() {
   const router = useRouter();
   const params = useParams();
   const propertyId = params.id as string;
   const { currentLanguage } = useLanguage();
+  const { user } = useAuth();
   const [property, setProperty] = useState<PropertyData | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -54,60 +51,6 @@ export default function PropertyDetailPage() {
       fetchProperty();
     }
   }, [propertyId]);
-
-  // 가격 포맷팅
-  const formatPrice = (price: number, unit: 'vnd' | 'usd') => {
-    if (unit === 'vnd') {
-      return `${price.toLocaleString('vi-VN')} VND`;
-    }
-    return `$${price.toLocaleString()}`;
-  };
-
-  // ISO 문자열 또는 Date 객체를 Date로 변환하는 헬퍼 함수
-  const parseDate = (dateInput: string | Date | undefined): Date | null => {
-    if (!dateInput) return null;
-    if (dateInput instanceof Date) {
-      return isNaN(dateInput.getTime()) ? null : dateInput;
-    }
-    if (typeof dateInput === 'string') {
-      const date = new Date(dateInput);
-      return isNaN(date.getTime()) ? null : date;
-    }
-    return null;
-  };
-
-  // 즉시 입주 가능 여부 확인
-  const isAvailableNow = () => {
-    const checkIn = parseDate(property?.checkInDate);
-    if (!checkIn) return false;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    checkIn.setHours(0, 0, 0, 0);
-    return checkIn <= today;
-  };
-
-  // 날짜 포맷팅 (상세 페이지용)
-  const formatDate = (dateInput: string | Date | undefined) => {
-    const date = parseDate(dateInput);
-    if (!date) return '';
-    return date.toLocaleDateString(
-      currentLanguage === 'ko' ? 'ko-KR' : currentLanguage === 'vi' ? 'vi-VN' : 'en-US',
-      { year: 'numeric', month: 'short', day: 'numeric' }
-    );
-  };
-
-  // 날짜 포맷팅 (사진 위 표시용: "1월 21일부터")
-  const formatDateForBadge = (dateInput: string | Date | undefined) => {
-    const date = parseDate(dateInput);
-    if (!date) return '';
-    if (currentLanguage === 'ko') {
-      return `${date.getMonth() + 1}월 ${date.getDate()}일부터`;
-    } else if (currentLanguage === 'vi') {
-      return `Từ ${date.getDate()}/${date.getMonth() + 1}`;
-    } else {
-      return `From ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
-    }
-  };
 
   const handlePreviousImage = () => {
     if (!property?.images) return;
@@ -160,10 +103,10 @@ export default function PropertyDetailPage() {
   const currentImage = images[currentImageIndex] || images[0];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
-      <div className="w-full max-w-[430px] mx-auto bg-white min-h-screen shadow-lg">
+    <div className="min-h-screen bg-gray-100 flex justify-center">
+      <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative">
         <TopBar 
-          currentLanguage={currentLanguage}
+          currentLanguage={currentLanguage as any}
           onLanguageChange={() => {}}
         />
 
@@ -183,7 +126,7 @@ export default function PropertyDetailPage() {
           </div>
 
           {/* 매물 카드 */}
-          <div className="relative rounded-xl overflow-hidden border-4 border-red-500 mb-6">
+          <div className="relative rounded-xl overflow-hidden mb-6 shadow-md border border-gray-100">
             <div className="relative w-full h-64 overflow-hidden">
               <div className="relative w-full h-full">
                 <Image
@@ -195,7 +138,7 @@ export default function PropertyDetailPage() {
                 />
                 
                 {/* 좌측 상단: 즉시입주가능 또는 임대 시작 날짜 */}
-                {isAvailableNow() ? (
+                {isAvailableNow(property.checkInDate) ? (
                   <div className="absolute top-3 left-3 bg-green-500 text-white px-3 py-1.5 rounded-lg backdrop-blur-sm z-20 flex items-center gap-2">
                     <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
                     <span className="text-xs font-bold">
@@ -209,7 +152,7 @@ export default function PropertyDetailPage() {
                     <div className="absolute top-3 left-3 bg-blue-500 text-white px-3 py-1.5 rounded-lg backdrop-blur-sm z-20 flex items-center gap-2">
                       <Calendar className="w-3.5 h-3.5" />
                       <span className="text-xs font-bold">
-                        {formatDateForBadge(property.checkInDate)}
+                        {formatDateForBadge(property.checkInDate, currentLanguage as any)}
                       </span>
                     </div>
                   ) : (
@@ -243,7 +186,7 @@ export default function PropertyDetailPage() {
                 
                 <div className="absolute top-3 right-3 bg-black/70 text-white px-3 py-1.5 rounded-lg backdrop-blur-sm z-10">
                   <p className="text-sm font-bold">
-                    {formatPrice(property.price, property.priceUnit)}
+                    {formatFullPrice(property.price, property.priceUnit)}
                   </p>
                   <p className="text-xs text-gray-300">
                     {currentLanguage === 'ko' ? '/주' : 
@@ -280,18 +223,7 @@ export default function PropertyDetailPage() {
                  'Address'}
               </p>
               <p className="text-sm font-medium text-gray-900">
-                {property.address 
-                  ? property.address.split(',').filter((part) => {
-                      // 동호수 패턴 제거 (예: "C동 301호", "A동 0001호" 등)
-                      const trimmed = part.trim();
-                      return !trimmed.match(/[가-힣A-Za-z]동\s*\d+호/);
-                    }).filter((part, index, arr) => {
-                      // 중복 제거
-                      const trimmed = part.trim();
-                      if (index === 0) return true;
-                      return trimmed !== arr[index - 1].trim();
-                    }).join(', ').trim()
-                  : property.title}
+                {property.address || property.title}
               </p>
             </div>
 
@@ -303,7 +235,7 @@ export default function PropertyDetailPage() {
                  'Weekly Rent'}
               </p>
               <p className="text-lg font-bold text-gray-900">
-                {formatPrice(property.price, property.priceUnit)}
+                {formatFullPrice(property.price, property.priceUnit)}
               </p>
               <p className="text-xs text-gray-500 mt-1">
                 {currentLanguage === 'ko' ? '공과금/관리비 포함' : 
@@ -323,9 +255,9 @@ export default function PropertyDetailPage() {
                 <div className="flex items-center gap-2 text-sm text-gray-900">
                   <Calendar className="w-4 h-4 text-gray-600" />
                   <span className="font-medium">
-                    {property.checkInDate && formatDate(property.checkInDate)}
+                    {property.checkInDate && formatDate(property.checkInDate, currentLanguage as any)}
                     {property.checkInDate && property.checkOutDate && ' ~ '}
-                    {property.checkOutDate && formatDate(property.checkOutDate)}
+                    {property.checkOutDate && formatDate(property.checkOutDate, currentLanguage as any)}
                   </span>
                 </div>
               </div>
@@ -402,10 +334,21 @@ export default function PropertyDetailPage() {
             <div className="pt-4">
               <button
                 onClick={() => {
-                  // TODO: 예약 페이지로 이동 또는 예약 모달 표시
-                  alert(currentLanguage === 'ko' ? '예약 기능은 준비 중입니다.' : 
-                        currentLanguage === 'vi' ? 'Chức năng đặt phòng đang được chuẩn bị.' : 
-                        'Booking feature is coming soon.');
+                  // 예약 페이지로 이동 (날짜는 기본값으로 설정)
+                  if (!propertyId) return;
+                  
+                  const today = new Date();
+                  const checkIn = parseDate(property.checkInDate) || today;
+                  const checkOut = new Date(checkIn);
+                  checkOut.setDate(checkOut.getDate() + 7);
+
+                  const returnUrl = `/booking?propertyId=${propertyId}&checkIn=${checkIn.toISOString()}&checkOut=${checkOut.toISOString()}`;
+                  
+                  if (!user) {
+                    router.push(`/login?returnUrl=${encodeURIComponent(returnUrl)}`);
+                  } else {
+                    router.push(returnUrl);
+                  }
                 }}
                 className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold text-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all shadow-lg hover:shadow-xl active:scale-[0.98]"
               >

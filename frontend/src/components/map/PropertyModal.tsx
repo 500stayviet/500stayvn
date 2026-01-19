@@ -11,32 +11,17 @@ import {
   Users, 
   Bed, 
   Bath, 
-  Wind, 
-  Sofa, 
-  UtensilsCrossed, 
-  WashingMachine, 
-  Refrigerator, 
-  Table, 
-  Shirt, 
-  Wifi,
-  Clock
 } from 'lucide-react';
 import { PropertyData } from '@/lib/api/properties';
 import CalendarComponent from '@/components/CalendarComponent';
 import { useAuth } from '@/hooks/useAuth';
-
-// 편의시설 옵션 정의
-const AMENITY_OPTIONS = [
-  { id: 'bed', label: { ko: '침대', vi: 'Giường', en: 'Bed' }, icon: Bed },
-  { id: 'aircon', label: { ko: '에어컨', vi: 'Điều hòa', en: 'Air Conditioner' }, icon: Wind },
-  { id: 'sofa', label: { ko: '소파', vi: 'Ghế sofa', en: 'Sofa' }, icon: Sofa },
-  { id: 'kitchen', label: { ko: '주방', vi: 'Bếp', en: 'Kitchen' }, icon: UtensilsCrossed },
-  { id: 'washing', label: { ko: '세탁기', vi: 'Máy giặt', en: 'Washing Machine' }, icon: WashingMachine },
-  { id: 'refrigerator', label: { ko: '냉장고', vi: 'Tủ lạnh', en: 'Refrigerator' }, icon: Refrigerator },
-  { id: 'table', label: { ko: '식탁', vi: 'Bàn ăn', en: 'Dining Table' }, icon: Table },
-  { id: 'wardrobe', label: { ko: '옷장', vi: 'Tủ quần áo', en: 'Wardrobe' }, icon: Shirt },
-  { id: 'wifi', label: { ko: '와이파이', vi: 'WiFi', en: 'WiFi' }, icon: Wifi },
-] as const;
+import { AMENITY_OPTIONS } from '@/lib/constants/amenities';
+import { 
+  formatFullPrice, 
+  parseDate, 
+  isAvailableNow, 
+  formatDateForBadge 
+} from '@/lib/utils/propertyUtils';
 
 interface PropertyModalProps {
   propertyData: PropertyData;
@@ -70,36 +55,9 @@ export default function PropertyModal({
   const [showModalCalendar, setShowModalCalendar] = useState(false);
   const [modalCalendarMode, setModalCalendarMode] = useState<'checkin' | 'checkout'>('checkin');
 
-  // 가격 포맷팅
-  const formatPrice = (price: number, unit: 'vnd' | 'usd' = 'vnd') => {
-    if (unit === 'vnd') {
-      return `${price.toLocaleString('vi-VN')} VND`;
-    }
-    return `$${price.toLocaleString()}`;
-  };
-
-  // 날짜 파싱
-  const parseDate = (dateInput: string | Date | undefined): Date | null => {
-    if (!dateInput) return null;
-    if (dateInput instanceof Date) {
-      return isNaN(dateInput.getTime()) ? null : dateInput;
-    }
-    if (typeof dateInput === 'string') {
-      const date = new Date(dateInput);
-      return isNaN(date.getTime()) ? null : date;
-    }
-    return null;
-  };
-
-  // 즉시 입주 가능 여부
-  const isAvailableNow = (checkInDate: string | Date | undefined) => {
-    const checkIn = parseDate(checkInDate);
-    if (!checkIn) return false;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    checkIn.setHours(0, 0, 0, 0);
-    return checkIn <= today;
-  };
+  const images = propertyData.images && propertyData.images.length > 0 
+    ? propertyData.images 
+    : ['https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800&h=400&fit=crop'];
 
   return (
     <div 
@@ -153,103 +111,85 @@ export default function PropertyModal({
 
         {/* 이미지 */}
         <div className="relative w-full h-56 overflow-hidden rounded-t-2xl">
-          {propertyData.images && propertyData.images.length > 0 ? (
-            <>
-              <Image
-                src={propertyData.images[modalImageIndex] || propertyData.images[0]}
-                alt={propertyData.title || ''}
-                fill
-                className="object-cover"
-                sizes="(max-width: 430px) 100vw, 430px"
-              />
-              
-              {/* 즉시입주가능 뱃지 */}
-              {isAvailableNow(propertyData.checkInDate) ? (
-                <div className="absolute top-3 left-3 bg-green-500 text-white px-3 py-1.5 rounded-lg z-10 flex items-center gap-2">
-                  <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                  <span className="text-xs font-bold">
-                    {currentLanguage === 'ko' ? '즉시입주가능' : 
-                     currentLanguage === 'vi' ? 'Có thể vào ở ngay' : 
-                     'Available Now'}
-                  </span>
-                </div>
-              ) : propertyData.checkInDate && (
-                <div className="absolute top-3 left-3 bg-blue-500 text-white px-3 py-1.5 rounded-lg z-10 flex items-center gap-2">
-                  <Calendar className="w-3.5 h-3.5" />
-                  <span className="text-xs font-bold">
-                    {(() => {
-                      const date = parseDate(propertyData.checkInDate);
-                      if (!date) return '';
-                      if (currentLanguage === 'ko') {
-                        return `${date.getMonth() + 1}월 ${date.getDate()}일부터`;
-                      } else if (currentLanguage === 'vi') {
-                        return `Từ ${date.getDate()}/${date.getMonth() + 1}`;
-                      } else {
-                        return `From ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
-                      }
-                    })()}
-                  </span>
-                </div>
-              )}
-
-              {/* 이미지 네비게이션 */}
-              {propertyData.images.length > 1 && (
-                <>
-                  <button
-                    onClick={() => setModalImageIndex(prev => prev === 0 ? propertyData.images!.length - 1 : prev - 1)}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-all z-10"
-                  >
-                    <ChevronLeft className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={() => setModalImageIndex(prev => prev === propertyData.images!.length - 1 ? 0 : prev + 1)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-all z-10"
-                  >
-                    <ChevronRight className="w-5 h-5" />
-                  </button>
-                  {/* 이미지 인디케이터 */}
-                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
-                    {propertyData.images.map((_, idx) => (
-                      <div 
-                        key={idx}
-                        className={`w-2 h-2 rounded-full transition-colors ${idx === modalImageIndex ? 'bg-white' : 'bg-white/50'}`}
-                      />
-                    ))}
-                  </div>
-                </>
-              )}
-
-              {/* 가격 뱃지 */}
-              <div className="absolute top-3 right-3 bg-black/70 text-white px-3 py-1.5 rounded-lg z-10">
-                <p className="text-sm font-bold">
-                  {formatPrice(propertyData.price, propertyData.priceUnit)}
-                </p>
-                <p className="text-xs text-gray-300">
-                  {currentLanguage === 'ko' ? '/주' : currentLanguage === 'vi' ? '/tuần' : '/week'}
-                </p>
-              </div>
-
-              {/* 침실/욕실 뱃지 */}
-              <div className="absolute bottom-3 right-3 bg-black/70 text-white px-3 py-2 rounded-lg z-10 flex items-center gap-3">
-                {propertyData.bedrooms !== undefined && (
-                  <div className="flex items-center gap-1.5">
-                    <Bed className="w-4 h-4" />
-                    <span className="text-xs font-medium">{propertyData.bedrooms}</span>
-                  </div>
-                )}
-                {propertyData.bathrooms !== undefined && (
-                  <div className="flex items-center gap-1.5">
-                    <Bath className="w-4 h-4" />
-                    <span className="text-xs font-medium">{propertyData.bathrooms}</span>
-                  </div>
-                )}
-              </div>
-            </>
-          ) : (
-            <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-              <span className="text-gray-400">No Image</span>
+          <Image
+            src={images[modalImageIndex] || images[0]}
+            alt={propertyData.title || ''}
+            fill
+            className="object-cover"
+            sizes="(max-width: 430px) 100vw, 430px"
+          />
+          
+          {/* 즉시입주가능 뱃지 */}
+          {isAvailableNow(propertyData.checkInDate) ? (
+            <div className="absolute top-3 left-3 bg-green-500 text-white px-3 py-1.5 rounded-lg z-10 flex items-center gap-2">
+              <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+              <span className="text-xs font-bold">
+                {currentLanguage === 'ko' ? '즉시입주가능' : 
+                 currentLanguage === 'vi' ? 'Có thể vào ở ngay' : 
+                 'Available Now'}
+              </span>
+            </div>
+          ) : propertyData.checkInDate && (
+            <div className="absolute top-3 left-3 bg-blue-500 text-white px-3 py-1.5 rounded-lg z-10 flex items-center gap-2">
+              <Calendar className="w-3.5 h-3.5" />
+              <span className="text-xs font-bold">
+                {formatDateForBadge(propertyData.checkInDate, currentLanguage as any)}
+              </span>
             </div>
           )}
+
+          {/* 이미지 네비게이션 */}
+          {images.length > 1 && (
+            <>
+              <button
+                onClick={() => setModalImageIndex(prev => prev === 0 ? images.length - 1 : prev - 1)}
+                className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-all z-10"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setModalImageIndex(prev => prev === images.length - 1 ? 0 : prev + 1)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-all z-10"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+              {/* 이미지 인디케이터 */}
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+                {images.map((_, idx) => (
+                  <div 
+                    key={idx}
+                    className={`w-2 h-2 rounded-full transition-colors ${idx === modalImageIndex ? 'bg-white' : 'bg-white/50'}`}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* 가격 뱃지 */}
+          <div className="absolute top-3 right-3 bg-black/70 text-white px-3 py-1.5 rounded-lg z-10">
+            <p className="text-sm font-bold">
+              {formatFullPrice(propertyData.price, propertyData.priceUnit)}
+            </p>
+            <p className="text-xs text-gray-300">
+              {currentLanguage === 'ko' ? '/주' : currentLanguage === 'vi' ? '/tuần' : '/week'}
+            </p>
+          </div>
+
+          {/* 침실/욕실 뱃지 */}
+          <div className="absolute bottom-3 right-3 bg-black/70 text-white px-3 py-2 rounded-lg z-10 flex items-center gap-3">
+            {propertyData.bedrooms !== undefined && (
+              <div className="flex items-center gap-1.5">
+                <Bed className="w-4 h-4" />
+                <span className="text-xs font-medium">{propertyData.bedrooms}</span>
+              </div>
+            )}
+            {propertyData.bathrooms !== undefined && (
+              <div className="flex items-center gap-1.5">
+                <Bath className="w-4 h-4" />
+                <span className="text-xs font-medium">{propertyData.bathrooms}</span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* 매물 정보 */}
@@ -272,7 +212,7 @@ export default function PropertyModal({
                'Weekly Rent'}
             </p>
             <p className="text-lg font-bold text-gray-900">
-              {formatPrice(propertyData.price, propertyData.priceUnit)}
+              {formatFullPrice(propertyData.price, propertyData.priceUnit)}
             </p>
             <p className="text-xs text-gray-500 mt-1">
               {currentLanguage === 'ko' ? '공과금/관리비 포함' : 
