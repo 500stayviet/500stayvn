@@ -16,7 +16,7 @@ import Image from 'next/image';
 export default function ChatListPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const { currentLanguage } = useLanguage();
+  const { currentLanguage, setCurrentLanguage } = useLanguage();
 
   const [chatRooms, setChatRooms] = useState<ChatRoom[]>([]);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
@@ -112,7 +112,11 @@ export default function ChatListPage() {
   return (
     <div className="min-h-screen bg-gray-100 flex justify-center">
       <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative">
-        <TopBar currentLanguage={currentLanguage} onLanguageChange={() => {}} />
+        <TopBar 
+          currentLanguage={currentLanguage}
+          onLanguageChange={setCurrentLanguage}
+          hideLanguageSelector={false}
+        />
 
         {/* 헤더 */}
         <div className="px-4 py-4 border-b border-gray-200">

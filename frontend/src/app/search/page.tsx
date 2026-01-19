@@ -25,6 +25,8 @@ import {
   parseDate, 
   formatPrice, 
   formatFullPrice, 
+  isAvailableNow,
+  formatDateForBadge
 } from '@/lib/utils/propertyUtils';
 
 // 두 좌표 간 거리 계산 (Haversine 공식)
@@ -54,7 +56,7 @@ export default function SearchPage() {
   const searchParams = useSearchParams();
   const query = searchParams.get('q') || '';
   const { user } = useAuth();
-  const { currentLanguage } = useLanguage();
+  const { currentLanguage, setCurrentLanguage } = useLanguage();
   
   const [searchQuery, setSearchQuery] = useState(query);
   const [properties, setProperties] = useState<PropertyData[]>([]);
@@ -84,28 +86,10 @@ export default function SearchPage() {
   // 매물 상세 모달
   const [showPropertyModal, setShowPropertyModal] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState<PropertyData | null>(null);
-  const [modalImageIndex, setModalImageIndex] = useState(0);
-  
-  // 모달 내 날짜 선택
-  const [modalCheckInDate, setModalCheckInDate] = useState<Date | null>(null);
-  const [modalCheckOutDate, setModalCheckOutDate] = useState<Date | null>(null);
-  const [showModalCalendar, setShowModalCalendar] = useState(false);
-  const [modalCalendarMode, setModalCalendarMode] = useState<'checkin' | 'checkout'>('checkin');
-
-  // 가격 포맷팅
-  const formatPriceForModal = (price: number, unit: 'vnd' | 'usd') => {
-    if (unit === 'vnd') {
-      return `${price.toLocaleString('vi-VN')} VND`;
-    }
-    return `$${price.toLocaleString()}`;
-  };
 
   // 매물 클릭 시 모달 열기
   const handlePropertyClick = (property: PropertyData) => {
     setSelectedProperty(property);
-    setModalImageIndex(0);
-    setModalCheckInDate(null);
-    setModalCheckOutDate(null);
     setShowPropertyModal(true);
   };
 
@@ -115,9 +99,6 @@ export default function SearchPage() {
     const currentIndex = filteredProperties.findIndex(p => p.id === selectedProperty.id);
     const prevIndex = currentIndex <= 0 ? filteredProperties.length - 1 : currentIndex - 1;
     setSelectedProperty(filteredProperties[prevIndex]);
-    setModalImageIndex(0);
-    setModalCheckInDate(null);
-    setModalCheckOutDate(null);
   };
 
   // 다음 매물로 이동
@@ -126,15 +107,12 @@ export default function SearchPage() {
     const currentIndex = filteredProperties.findIndex(p => p.id === selectedProperty.id);
     const nextIndex = currentIndex >= filteredProperties.length - 1 ? 0 : currentIndex + 1;
     setSelectedProperty(filteredProperties[nextIndex]);
-    setModalImageIndex(0);
-    setModalCheckInDate(null);
-    setModalCheckOutDate(null);
   };
 
   // 현재 매물 인덱스
   const getCurrentPropertyIndex = () => {
     if (!selectedProperty) return 0;
-    return filteredProperties.findIndex(p => p.id === selectedProperty.id) + 1;
+    return filteredProperties.findIndex(p => p.id === selectedProperty.id);
   };
 
   // 매물 데이터 로드
@@ -603,423 +581,17 @@ export default function SearchPage() {
 
       {/* 매물 상세 모달 */}
       {showPropertyModal && selectedProperty && (
-        <div 
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4"
-          onClick={() => setShowPropertyModal(false)}
-        >
-          <div 
-            className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* 이전 매물 버튼 (모달 내부 좌측) */}
-            {filteredProperties.length > 1 && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handlePrevProperty();
-                }}
-                className="absolute left-2 top-1/2 z-30 bg-black/30 hover:bg-black/50 text-white p-2.5 rounded-full transition-all"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-            )}
-
-            {/* 다음 매물 버튼 (모달 내부 우측) */}
-            {filteredProperties.length > 1 && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleNextProperty();
-                }}
-                className="absolute right-2 top-1/2 z-30 bg-black/30 hover:bg-black/50 text-white p-2.5 rounded-full transition-all"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            )}
-
-            {/* 매물 인덱스 표시 */}
-            {filteredProperties.length > 1 && (
-              <div className="absolute top-4 left-4 z-20 bg-black/50 text-white px-3 py-1.5 rounded-full text-sm font-medium">
-                {getCurrentPropertyIndex()} / {filteredProperties.length}
-              </div>
-            )}
-
-            {/* 닫기 버튼 */}
-            <button
-              onClick={() => setShowPropertyModal(false)}
-              className="absolute top-4 right-4 z-20 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            {/* 이미지 */}
-            <div className="relative w-full h-56 overflow-hidden rounded-t-2xl">
-              {selectedProperty.images && selectedProperty.images.length > 0 ? (
-                <>
-                  <Image
-                    src={selectedProperty.images[modalImageIndex] || selectedProperty.images[0]}
-                    alt={selectedProperty.title || ''}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 430px) 100vw, 430px"
-                  />
-                  
-                  {/* 즉시입주가능 뱃지 */}
-                  {isAvailableNow(selectedProperty.checkInDate) ? (
-                    <div className="absolute top-3 left-3 bg-green-500 text-white px-3 py-1.5 rounded-lg z-10 flex items-center gap-2">
-                      <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                      <span className="text-xs font-bold">
-                        {currentLanguage === 'ko' ? '즉시입주가능' : 
-                         currentLanguage === 'vi' ? 'Có thể vào ở ngay' : 
-                         'Available Now'}
-                      </span>
-                    </div>
-                  ) : selectedProperty.checkInDate && (
-                    <div className="absolute top-3 left-3 bg-blue-500 text-white px-3 py-1.5 rounded-lg z-10 flex items-center gap-2">
-                      <Calendar className="w-3.5 h-3.5" />
-                      <span className="text-xs font-bold">
-                        {(() => {
-                          const date = parseDateForModal(selectedProperty.checkInDate);
-                          if (!date) return '';
-                          if (currentLanguage === 'ko') {
-                            return `${date.getMonth() + 1}월 ${date.getDate()}일부터`;
-                          } else if (currentLanguage === 'vi') {
-                            return `Từ ${date.getDate()}/${date.getMonth() + 1}`;
-                          } else {
-                            return `From ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
-                          }
-                        })()}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* 이미지 네비게이션 */}
-                  {selectedProperty.images.length > 1 && (
-                    <>
-                      <button
-                        onClick={() => setModalImageIndex(prev => prev === 0 ? selectedProperty.images!.length - 1 : prev - 1)}
-                        className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-all z-10"
-                      >
-                        <ChevronLeft className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => setModalImageIndex(prev => prev === selectedProperty.images!.length - 1 ? 0 : prev + 1)}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-all z-10"
-                      >
-                        <ChevronRight className="w-5 h-5" />
-                      </button>
-                      {/* 이미지 인디케이터 */}
-                      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
-                        {selectedProperty.images.map((_, idx) => (
-                          <div 
-                            key={idx}
-                            className={`w-2 h-2 rounded-full transition-colors ${idx === modalImageIndex ? 'bg-white' : 'bg-white/50'}`}
-                          />
-                        ))}
-                      </div>
-                    </>
-                  )}
-
-                  {/* 가격 뱃지 */}
-                  <div className="absolute top-3 right-12 bg-black/70 text-white px-3 py-1.5 rounded-lg z-10">
-                    <p className="text-sm font-bold">
-                      {formatPriceForModal(selectedProperty.price, selectedProperty.priceUnit)}
-                    </p>
-                    <p className="text-xs text-gray-300">
-                      {currentLanguage === 'ko' ? '/주' : currentLanguage === 'vi' ? '/tuần' : '/week'}
-                    </p>
-                  </div>
-
-                  {/* 침실/욕실 뱃지 */}
-                  <div className="absolute bottom-3 right-3 bg-black/70 text-white px-3 py-2 rounded-lg z-10 flex items-center gap-3">
-                    {selectedProperty.bedrooms !== undefined && (
-                      <div className="flex items-center gap-1.5">
-                        <Bed className="w-4 h-4" />
-                        <span className="text-xs font-medium">{selectedProperty.bedrooms}</span>
-                      </div>
-                    )}
-                    {selectedProperty.bathrooms !== undefined && (
-                      <div className="flex items-center gap-1.5">
-                        <Bath className="w-4 h-4" />
-                        <span className="text-xs font-medium">{selectedProperty.bathrooms}</span>
-                      </div>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                  <span className="text-gray-400">No Image</span>
-                </div>
-              )}
-            </div>
-
-            {/* 매물 정보 */}
-            <div className="p-5 space-y-4">
-              {/* 주소 (원문 그대로 표시) */}
-              <div>
-                <p className="text-xs text-gray-500 mb-1">
-                  {currentLanguage === 'ko' ? '주소' : currentLanguage === 'vi' ? 'Địa chỉ' : 'Address'}
-                </p>
-                <p className="text-sm font-medium text-gray-900">
-                  {selectedProperty.address || selectedProperty.title}
-                </p>
-              </div>
-
-              {/* 가격 + 체크인/체크아웃 시간 */}
-              <div>
-                <p className="text-xs text-gray-500 mb-1">
-                  {currentLanguage === 'ko' ? '1주일 임대료' : 
-                   currentLanguage === 'vi' ? 'Giá thuê 1 tuần' : 
-                   'Weekly Rent'}
-                </p>
-                <p className="text-lg font-bold text-gray-900">
-                  {formatPriceForModal(selectedProperty.price, selectedProperty.priceUnit)}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {currentLanguage === 'ko' ? '공과금/관리비 포함' : 
-                   currentLanguage === 'vi' ? 'Bao gồm tiện ích/phí quản lý' : 
-                   'Utilities/Management fees included'}
-                </p>
-                {/* 체크인/체크아웃 시간 */}
-                {(selectedProperty.checkInTime || selectedProperty.checkOutTime) && (
-                  <p className="text-xs text-blue-600 mt-2">
-                    {currentLanguage === 'ko' 
-                      ? `체크인 ${selectedProperty.checkInTime || '14:00'} 이후 · 체크아웃 ${selectedProperty.checkOutTime || '12:00'} 이전`
-                      : currentLanguage === 'vi'
-                      ? `Nhận phòng sau ${selectedProperty.checkInTime || '14:00'} · Trả phòng trước ${selectedProperty.checkOutTime || '12:00'}`
-                      : `Check-in after ${selectedProperty.checkInTime || '14:00'} · Check-out before ${selectedProperty.checkOutTime || '12:00'}`
-                    }
-                  </p>
-                )}
-              </div>
-
-              {/* 임대 가능 날짜 */}
-              {(selectedProperty.checkInDate || selectedProperty.checkOutDate) && (
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">
-                    {currentLanguage === 'ko' ? '임대 가능 날짜' : 
-                     currentLanguage === 'vi' ? 'Ngày cho thuê' : 
-                     'Available Dates'}
-                  </p>
-                  <div className="flex items-center gap-2 text-sm text-gray-900">
-                    <Calendar className="w-4 h-4 text-gray-600" />
-                    <span className="font-medium">
-                      {selectedProperty.checkInDate && (() => {
-                        const date = parseDateForModal(selectedProperty.checkInDate);
-                        if (!date) return '';
-                        return date.toLocaleDateString(
-                          currentLanguage === 'ko' ? 'ko-KR' : currentLanguage === 'vi' ? 'vi-VN' : 'en-US',
-                          { year: 'numeric', month: 'short', day: 'numeric' }
-                        );
-                      })()}
-                      {selectedProperty.checkInDate && selectedProperty.checkOutDate && ' ~ '}
-                      {selectedProperty.checkOutDate && (() => {
-                        const date = parseDateForModal(selectedProperty.checkOutDate);
-                        if (!date) return '';
-                        return date.toLocaleDateString(
-                          currentLanguage === 'ko' ? 'ko-KR' : currentLanguage === 'vi' ? 'vi-VN' : 'en-US',
-                          { year: 'numeric', month: 'short', day: 'numeric' }
-                        );
-                      })()}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {/* 최대 인원 수 */}
-              {(selectedProperty.maxAdults || selectedProperty.maxChildren) && (
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">
-                    {currentLanguage === 'ko' ? '최대 인원 수' : 
-                     currentLanguage === 'vi' ? 'Số người tối đa' : 
-                     'Maximum Guests'}
-                  </p>
-                  <div className="flex items-center gap-4 text-sm text-gray-900">
-                    {selectedProperty.maxAdults !== undefined && (
-                      <div className="flex items-center gap-2">
-                        <Users className="w-4 h-4 text-gray-600" />
-                        <span className="font-medium">
-                          {currentLanguage === 'ko' ? `성인 ${selectedProperty.maxAdults}명` : 
-                           currentLanguage === 'vi' ? `${selectedProperty.maxAdults} người lớn` : 
-                           `${selectedProperty.maxAdults} adults`}
-                        </span>
-                      </div>
-                    )}
-                    {selectedProperty.maxChildren !== undefined && selectedProperty.maxChildren > 0 && (
-                      <div className="flex items-center gap-2">
-                        <Users className="w-4 h-4 text-gray-600" />
-                        <span className="font-medium">
-                          {currentLanguage === 'ko' ? `어린이 ${selectedProperty.maxChildren}명` : 
-                           currentLanguage === 'vi' ? `${selectedProperty.maxChildren} trẻ em` : 
-                           `${selectedProperty.maxChildren} children`}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* 편의시설 */}
-              <div>
-                <p className="text-xs text-gray-500 mb-3">
-                  {currentLanguage === 'ko' ? '편의시설' : 
-                   currentLanguage === 'vi' ? 'Tiện ích' : 
-                   'Amenities'}
-                </p>
-                {selectedProperty.amenities && selectedProperty.amenities.length > 0 ? (
-                  <div className="grid grid-cols-3 gap-2">
-                    {AMENITY_OPTIONS.filter(amenity => selectedProperty.amenities?.includes(amenity.id)).map((amenity) => {
-                      const Icon = amenity.icon;
-                      const label = amenity.label[currentLanguage as keyof typeof amenity.label] || amenity.label.en;
-                      
-                      return (
-                        <div
-                          key={amenity.id}
-                          className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border-2 border-blue-500 bg-blue-50"
-                        >
-                          <Icon className="w-5 h-5 text-blue-600" />
-                          <span className="text-[10px] font-medium text-center text-blue-700 leading-tight">{label}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-400 text-center py-3">
-                    {currentLanguage === 'ko' ? '편의시설 정보가 없습니다' : 
-                     currentLanguage === 'vi' ? 'Không có thông tin tiện ích' : 
-                     'No amenities information'}
-                  </p>
-                )}
-              </div>
-
-              {/* 날짜 선택 */}
-              <div className="pt-2 border-t border-gray-100">
-                <p className="text-xs text-gray-500 mb-3">
-                  {currentLanguage === 'ko' ? '예약 날짜 선택' : 
-                   currentLanguage === 'vi' ? 'Chọn ngày đặt phòng' : 
-                   'Select Booking Dates'}
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  {/* 체크인 선택 */}
-                  <button
-                    onClick={() => {
-                      setModalCalendarMode('checkin');
-                      setShowModalCalendar(true);
-                    }}
-                    className={`flex flex-col items-center px-3 py-2.5 rounded-xl border-2 transition-all ${
-                      modalCheckInDate 
-                        ? 'border-blue-500 bg-blue-50' 
-                        : 'border-gray-200 bg-gray-50 hover:border-blue-300'
-                    }`}
-                  >
-                    <span className="text-[10px] text-gray-500 mb-1">
-                      {currentLanguage === 'ko' ? '체크인' : currentLanguage === 'vi' ? 'Nhận phòng' : 'Check-in'}
-                    </span>
-                    <span className={`text-sm font-semibold ${modalCheckInDate ? 'text-blue-600' : 'text-gray-400'}`}>
-                      {modalCheckInDate 
-                        ? modalCheckInDate.toLocaleDateString(
-                            currentLanguage === 'ko' ? 'ko-KR' : currentLanguage === 'vi' ? 'vi-VN' : 'en-US',
-                            { month: 'short', day: 'numeric' }
-                          )
-                        : (currentLanguage === 'ko' ? '날짜 선택' : currentLanguage === 'vi' ? 'Chọn ngày' : 'Select')
-                      }
-                    </span>
-                  </button>
-
-                  {/* 체크아웃 선택 */}
-                  <button
-                    onClick={() => {
-                      setModalCalendarMode('checkout');
-                      setShowModalCalendar(true);
-                    }}
-                    className={`flex flex-col items-center px-3 py-2.5 rounded-xl border-2 transition-all ${
-                      modalCheckOutDate 
-                        ? 'border-blue-500 bg-blue-50' 
-                        : 'border-gray-200 bg-gray-50 hover:border-blue-300'
-                    }`}
-                  >
-                    <span className="text-[10px] text-gray-500 mb-1">
-                      {currentLanguage === 'ko' ? '체크아웃' : currentLanguage === 'vi' ? 'Trả phòng' : 'Check-out'}
-                    </span>
-                    <span className={`text-sm font-semibold ${modalCheckOutDate ? 'text-blue-600' : 'text-gray-400'}`}>
-                      {modalCheckOutDate 
-                        ? modalCheckOutDate.toLocaleDateString(
-                            currentLanguage === 'ko' ? 'ko-KR' : currentLanguage === 'vi' ? 'vi-VN' : 'en-US',
-                            { month: 'short', day: 'numeric' }
-                          )
-                        : (currentLanguage === 'ko' ? '날짜 선택' : currentLanguage === 'vi' ? 'Chọn ngày' : 'Select')
-                      }
-                    </span>
-                  </button>
-                </div>
-              </div>
-
-              {/* 예약하기 버튼 */}
-              <div className="pt-3">
-                <button
-                  onClick={() => {
-                    if (!modalCheckInDate || !modalCheckOutDate || !selectedProperty) return;
-                    
-                    // 비회원이면 로그인 페이지로 이동 (현재 매물 정보를 returnUrl에 포함)
-                    if (!user) {
-                      const returnUrl = `/booking?propertyId=${selectedProperty.id}&checkIn=${modalCheckInDate.toISOString()}&checkOut=${modalCheckOutDate.toISOString()}`;
-                      router.push(`/login?returnUrl=${encodeURIComponent(returnUrl)}`);
-                      return;
-                    }
-                    
-                    // 로그인된 사용자는 예약 페이지로 이동
-                    router.push(`/booking?propertyId=${selectedProperty.id}&checkIn=${modalCheckInDate.toISOString()}&checkOut=${modalCheckOutDate.toISOString()}`);
-                  }}
-                  disabled={!modalCheckInDate || !modalCheckOutDate}
-                  className={`w-full py-3.5 rounded-xl font-bold text-base transition-all shadow-lg ${
-                    modalCheckInDate && modalCheckOutDate
-                      ? 'bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
-                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  }`}
-                >
-                  {modalCheckInDate && modalCheckOutDate
-                    ? (currentLanguage === 'ko' ? '예약하기' : currentLanguage === 'vi' ? 'Đặt phòng' : 'Book Now')
-                    : (currentLanguage === 'ko' ? '날짜를 선택하세요' : currentLanguage === 'vi' ? 'Vui lòng chọn ngày' : 'Select dates')
-                  }
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 모달 내 캘린더 */}
-      {showModalCalendar && selectedProperty && (
-        <div 
-          className="fixed inset-0 z-[70] bg-black/50 flex items-center justify-center p-4"
-          onClick={() => setShowModalCalendar(false)}
-        >
-          <div onClick={(e) => e.stopPropagation()}>
-            <CalendarComponent
-              checkInDate={modalCheckInDate}
-              checkOutDate={modalCheckOutDate}
-              onCheckInSelect={(date) => {
-                setModalCheckInDate(date);
-                setModalCheckOutDate(null);
-                setModalCalendarMode('checkout');
-              }}
-              onCheckOutSelect={(date) => {
-                setModalCheckOutDate(date);
-                setShowModalCalendar(false);
-              }}
-              onCheckInReset={() => {
-                setModalCheckInDate(null);
-                setModalCheckOutDate(null);
-                setModalCalendarMode('checkin');
-              }}
-              currentLanguage={currentLanguage as 'ko' | 'vi' | 'en'}
-              onClose={() => setShowModalCalendar(false)}
-              mode={modalCalendarMode}
-              minDate={parseDateForModal(selectedProperty.checkInDate) || undefined}
-              maxDate={parseDateForModal(selectedProperty.checkOutDate) || undefined}
-            />
-          </div>
-        </div>
+        <PropertyModal
+          propertyData={selectedProperty}
+          currentLanguage={currentLanguage}
+          onClose={() => setShowPropertyModal(false)}
+          onPrev={handlePrevProperty}
+          onNext={handleNextProperty}
+          hasPrev={filteredProperties.length > 1}
+          hasNext={filteredProperties.length > 1}
+          currentIndex={getCurrentPropertyIndex()}
+          totalProperties={filteredProperties.length}
+        />
       )}
     </div>
   );

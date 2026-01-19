@@ -26,7 +26,7 @@ export default function ChatRoomPage() {
   const roomId = params.roomId as string;
   
   const { user, loading: authLoading } = useAuth();
-  const { currentLanguage } = useLanguage();
+  const { currentLanguage, setCurrentLanguage } = useLanguage();
 
   const [chatRoom, setChatRoom] = useState<ChatRoom | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);

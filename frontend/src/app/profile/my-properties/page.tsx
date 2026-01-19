@@ -28,7 +28,7 @@ export default function MyPropertiesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
-  const { currentLanguage } = useLanguage();
+  const { currentLanguage, setCurrentLanguage } = useLanguage();
   const [properties, setProperties] = useState<PropertyData[]>([]);
   const [allProperties, setAllProperties] = useState<PropertyData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -299,8 +299,8 @@ export default function MyPropertiesPage() {
         {/* 상단 바 */}
         <TopBar 
           currentLanguage={currentLanguage}
-          onLanguageChange={() => {}}
-          hideLanguageSelector={true}
+          onLanguageChange={setCurrentLanguage}
+          hideLanguageSelector={false}
         />
 
         {/* 콘텐츠 */}

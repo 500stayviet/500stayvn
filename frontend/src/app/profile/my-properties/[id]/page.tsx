@@ -29,7 +29,7 @@ export default function PropertyDetailPage() {
   const params = useParams();
   const propertyId = params.id as string;
   const { user, loading: authLoading } = useAuth();
-  const { currentLanguage } = useLanguage();
+  const { currentLanguage, setCurrentLanguage } = useLanguage();
   const [property, setProperty] = useState<PropertyData | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -128,8 +128,9 @@ export default function PropertyDetailPage() {
       <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative">
         {/* 상단 바 */}
         <TopBar 
-          currentLanguage={currentLanguage as any}
-          onLanguageChange={() => {}}
+          currentLanguage={currentLanguage}
+          onLanguageChange={setCurrentLanguage}
+          hideLanguageSelector={false}
         />
 
         {/* 콘텐츠 */}

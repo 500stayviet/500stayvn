@@ -49,7 +49,7 @@ export default function BookingPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
-  const { currentLanguage } = useLanguage();
+  const { currentLanguage, setCurrentLanguage } = useLanguage();
 
   // URL 파라미터에서 정보 가져오기
   const propertyId = searchParams.get('propertyId');
@@ -287,7 +287,11 @@ export default function BookingPage() {
   return (
     <div className="min-h-screen bg-gray-100 flex justify-center">
       <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative">
-        <TopBar currentLanguage={currentLanguage} onLanguageChange={() => {}} />
+        <TopBar 
+          currentLanguage={currentLanguage}
+          onLanguageChange={setCurrentLanguage}
+          hideLanguageSelector={false}
+        />
 
         {/* 헤더 */}
         <div className="px-4 py-4 border-b border-gray-200">

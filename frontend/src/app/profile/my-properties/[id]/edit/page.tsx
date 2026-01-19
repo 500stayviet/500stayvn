@@ -29,7 +29,7 @@ export default function EditPropertyPage() {
   const searchParams = useSearchParams();
   const propertyId = params.id as string;
   const { user, loading: authLoading } = useAuth();
-  const { currentLanguage } = useLanguage();
+  const { currentLanguage, setCurrentLanguage } = useLanguage();
   const fromDeletedTab = searchParams.get('tab') === 'deleted';
   const [loading, setLoading] = useState(false);
   const [loadingProperty, setLoadingProperty] = useState(true);
@@ -533,7 +533,8 @@ export default function EditPropertyPage() {
       <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative">
         <TopBar 
           currentLanguage={currentLanguage}
-          onLanguageChange={() => {}}
+          onLanguageChange={setCurrentLanguage}
+          hideLanguageSelector={false}
         />
 
         <div className="px-6 py-6">

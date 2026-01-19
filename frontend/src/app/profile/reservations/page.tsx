@@ -29,7 +29,7 @@ export default function ReservationsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
-  const { currentLanguage } = useLanguage();
+  const { currentLanguage, setCurrentLanguage } = useLanguage();
   const [reservations, setReservations] = useState<ReservationWithProperty[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'active' | 'completed'>(() => {
@@ -249,8 +249,8 @@ export default function ReservationsPage() {
         {/* 상단 바 */}
         <TopBar 
           currentLanguage={currentLanguage}
-          onLanguageChange={() => {}}
-          hideLanguageSelector={true}
+          onLanguageChange={setCurrentLanguage}
+          hideLanguageSelector={false}
         />
 
         {/* 콘텐츠 */}

@@ -15,7 +15,7 @@ import TopBar from '@/components/TopBar';
 
 export default function AdminKYCPage() {
   const { user, loading: authLoading } = useAuth();
-  const { currentLanguage } = useLanguage();
+  const { currentLanguage, setCurrentLanguage } = useLanguage();
   const [kycUsers, setKycUsers] = useState<KYCUserData[]>([]);
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -70,7 +70,8 @@ export default function AdminKYCPage() {
         {/* 상단 바 */}
         <TopBar 
           currentLanguage={currentLanguage}
-          onLanguageChange={() => {}}
+          onLanguageChange={setCurrentLanguage}
+          hideLanguageSelector={false}
         />
 
         {/* 콘텐츠 */}

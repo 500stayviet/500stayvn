@@ -30,7 +30,7 @@ interface Property {
 }
 
 export default function MapPage() {
-  const { currentLanguage } = useLanguage();
+  const { currentLanguage, setCurrentLanguage } = useLanguage();
   const searchParams = useSearchParams();
   const [nearbyProperties, setNearbyProperties] = useState<Property[]>([]);
   const [selectedPropertyIndex, setSelectedPropertyIndex] = useState(0);

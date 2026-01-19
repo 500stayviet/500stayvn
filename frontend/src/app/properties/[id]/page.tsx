@@ -29,7 +29,7 @@ export default function PropertyDetailPage() {
   const router = useRouter();
   const params = useParams();
   const propertyId = params.id as string;
-  const { currentLanguage } = useLanguage();
+  const { currentLanguage, setCurrentLanguage } = useLanguage();
   const { user } = useAuth();
   const [property, setProperty] = useState<PropertyData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -106,8 +106,9 @@ export default function PropertyDetailPage() {
     <div className="min-h-screen bg-gray-100 flex justify-center">
       <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative">
         <TopBar 
-          currentLanguage={currentLanguage as any}
-          onLanguageChange={() => {}}
+          currentLanguage={currentLanguage}
+          onLanguageChange={setCurrentLanguage}
+          hideLanguageSelector={false}
         />
 
         <div className="px-6 py-6">

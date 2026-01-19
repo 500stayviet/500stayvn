@@ -21,7 +21,7 @@ export default function BookingSuccessPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const bookingId = searchParams.get('bookingId');
-  const { currentLanguage } = useLanguage();
+  const { currentLanguage, setCurrentLanguage } = useLanguage();
 
   const [booking, setBooking] = useState<BookingData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -84,7 +84,11 @@ export default function BookingSuccessPage() {
   return (
     <div className="min-h-screen bg-gray-100 flex justify-center">
       <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative">
-        <TopBar currentLanguage={currentLanguage} onLanguageChange={() => {}} />
+        <TopBar 
+          currentLanguage={currentLanguage}
+          onLanguageChange={setCurrentLanguage}
+          hideLanguageSelector={false}
+        />
 
         {/* 성공 모달 */}
         {showSuccessModal && (

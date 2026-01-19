@@ -17,7 +17,7 @@ import { AMENITY_OPTIONS } from '@/lib/constants/amenities';
 export default function AddPropertyPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const { currentLanguage } = useLanguage();
+  const { currentLanguage, setCurrentLanguage } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [checkingAccess, setCheckingAccess] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
