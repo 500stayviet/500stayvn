@@ -3,18 +3,24 @@
  * 
  * Airbnb/직방 스타일의 Hero 섹션
  * - 큰 배경 이미지
- * - 중앙 검색창
+ * - 중앙 검색창 (행정구역 + 대표 명소 검색)
  * - 지도로 매물 찾기 버튼
  */
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Search, MapPin } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { SupportedLanguage } from '@/lib/api/translation';
 import { getUIText } from '@/utils/i18n';
-import { searchPlaceIndexForSuggestions, getLocationServiceLanguage } from '@/lib/api/aws-location';
+import { 
+  useLocationSearch, 
+  getSuggestionBadge, 
+  cleanDisplayName, 
+  cleanSubAddress,
+  LocationSuggestion 
+} from '@/hooks/useLocationSearch';
 
 interface HeroSectionProps {
   currentLanguage: SupportedLanguage;
@@ -23,74 +29,175 @@ interface HeroSectionProps {
 export default function HeroSection({ currentLanguage }: HeroSectionProps) {
   const router = useRouter();
   const [searchValue, setSearchValue] = useState('');
-  const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showLocationPermissionModal, setShowLocationPermissionModal] = useState(false);
   const [requestingLocation, setRequestingLocation] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
 
-  // 주소 입력 시 추천 목록 가져오기 (AWS Location Service)
+  // 공통 검색 훅 사용 (행정구역 + 대표 명소)
+  const { suggestions, isSearching, search, clearSuggestions } = useLocationSearch(currentLanguage);
+
+  // 검색창 외부 클릭 시 드롭다운 닫기
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // 주소 입력 시 추천 목록 가져오기
   const handleInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchValue(value);
 
-    // 이전 타이머 취소
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-
     if (!value.trim()) {
-      setSuggestions([]);
+      clearSuggestions();
       setShowSuggestions(false);
       return;
     }
 
-    // 디바운싱: 300ms 후 검색
-    debounceTimerRef.current = setTimeout(async () => {
-      try {
-        const language = getLocationServiceLanguage(currentLanguage);
-        const results = await searchPlaceIndexForSuggestions(value, language);
-        setSuggestions(results);
-        setShowSuggestions(results.length > 0);
-      } catch (error) {
-        console.error('Error fetching address suggestions:', error);
-        setSuggestions([]);
-        setShowSuggestions(false);
-      }
-    }, 300);
+    // 검색 실행
+    await search(value);
+    setShowSuggestions(true);
   };
 
-  // 추천 주소 선택
-  const handleSelectSuggestion = (suggestion: any) => {
+  // 추천 선택 → 해당 지역으로 매물 검색 페이지 이동
+  const handleSelectSuggestion = (suggestion: LocationSuggestion) => {
     const text = suggestion.Text || '';
     setSearchValue(text);
     setShowSuggestions(false);
+    
+    // 검색 페이지로 이동 (매물 검색)
     router.push(`/search?q=${encodeURIComponent(text)}`);
   };
 
-  // 정리
-  useEffect(() => {
-    return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-    };
-  }, []);
-
+  // 엔터 키로 검색 실행
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setShowSuggestions(false);
+    
     if (searchValue.trim()) {
-      router.push(`/search?q=${encodeURIComponent(searchValue)}`);
+      // 추천 결과가 있으면 첫 번째 결과로 이동
+      if (suggestions.length > 0) {
+        const firstSuggestion = suggestions[0];
+        const text = firstSuggestion.Text || searchValue;
+        router.push(`/search?q=${encodeURIComponent(text)}`);
+      } else {
+        router.push(`/search?q=${encodeURIComponent(searchValue)}`);
+      }
+    }
+  };
+
+  // 위치 동의 토큰 키
+  const LOCATION_PERMISSION_KEY = 'locationPermission';
+  
+  // 토큰 만료 기간 (1달 = 30일)
+  const TOKEN_EXPIRY_DAYS = 30;
+
+  // 위치 동의 토큰 타입
+  interface LocationPermissionToken {
+    status: 'granted' | 'denied';
+    expiresAt: number; // 타임스탬프 (밀리초)
+  }
+
+  // 위치 동의 토큰 가져오기 (만료 확인 포함)
+  const getLocationPermissionToken = (): string | null => {
+    if (typeof window === 'undefined') return null;
+    
+    try {
+      const tokenStr = localStorage.getItem(LOCATION_PERMISSION_KEY);
+      if (!tokenStr) return null;
+
+      const token: LocationPermissionToken = JSON.parse(tokenStr);
+      const now = Date.now();
+
+      // 만료 시간 확인
+      if (now > token.expiresAt) {
+        // 만료되었으면 토큰 삭제
+        localStorage.removeItem(LOCATION_PERMISSION_KEY);
+        return null;
+      }
+
+      return token.status;
+    } catch (error) {
+      // 파싱 오류 시 토큰 삭제
+      localStorage.removeItem(LOCATION_PERMISSION_KEY);
+      return null;
+    }
+  };
+
+  // 위치 동의 토큰 저장 (만료 시간 포함)
+  const saveLocationPermissionToken = (status: 'granted' | 'denied') => {
+    if (typeof window === 'undefined') return;
+    
+    const expiresAt = Date.now() + (TOKEN_EXPIRY_DAYS * 24 * 60 * 60 * 1000); // 30일 후
+    const token: LocationPermissionToken = {
+      status,
+      expiresAt,
+    };
+    
+    localStorage.setItem(LOCATION_PERMISSION_KEY, JSON.stringify(token));
+  };
+
+  // 위치 가져오기 및 지도로 이동 (모달 없이 바로 실행)
+  const requestLocationAndNavigate = async () => {
+    if (!navigator.geolocation) {
+      router.push('/map?denied=true');
+      return;
+    }
+
+    // 지도 페이지로 먼저 이동 (사용자 경험 개선)
+    router.push('/map?loading=true');
+
+    // 백그라운드에서 위치 가져오기
+    setRequestingLocation(true);
+
+    try {
+      // 위치 권한 요청 (최적화: enableHighAccuracy false, timeout 5초)
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: false, // WiFi/셀룰러 사용 (더 빠름)
+          timeout: 5000, // 5초로 단축
+          maximumAge: 60000, // 1분 이내 캐시된 위치 사용 가능
+        });
+      });
+
+      // 위치 좌표를 URL 파라미터로 전달하고 지도 페이지로 이동
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+      router.push(`/map?lat=${lat}&lng=${lng}`);
+    } catch (error: any) {
+      // 사용자가 거부하거나 오류 발생
+      router.push('/map?denied=true');
+    } finally {
+      setRequestingLocation(false);
     }
   };
 
   // 지도로 매물 찾기 버튼 클릭
   const handleMapView = () => {
-    setShowLocationPermissionModal(true);
+    const token = getLocationPermissionToken();
+
+    if (token === 'granted') {
+      // 이미 동의한 경우: 모달 없이 바로 위치 가져오고 지도로 이동
+      requestLocationAndNavigate();
+    } else if (token === 'denied') {
+      // 이미 거부한 경우: 모달 없이 바로 호치민 중심으로 이동
+      router.push('/map?denied=true');
+    } else {
+      // 토큰이 없는 경우: 모달 표시
+      setShowLocationPermissionModal(true);
+    }
   };
 
-  // 위치 권한 요청
+  // 위치 권한 요청 (모달에서 동의 버튼 클릭 시)
   const handleRequestLocationPermission = async () => {
     if (!navigator.geolocation) {
       alert(
@@ -101,56 +208,52 @@ export default function HeroSection({ currentLanguage }: HeroSectionProps) {
           : 'This browser does not support location services.'
       );
       setShowLocationPermissionModal(false);
-      router.push('/map');
+      saveLocationPermissionToken('denied');
+      router.push('/map?denied=true');
       return;
     }
 
     setRequestingLocation(true);
 
+    // 모달 닫고 지도 페이지로 먼저 이동 (사용자 경험 개선)
+    setShowLocationPermissionModal(false);
+    router.push('/map?loading=true');
+
     try {
-      // 위치 권한 요청
+      // 위치 권한 요청 (최적화: enableHighAccuracy false, timeout 5초)
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0,
+          enableHighAccuracy: false, // WiFi/셀룰러 사용 (더 빠름)
+          timeout: 5000, // 5초로 단축
+          maximumAge: 60000, // 1분 이내 캐시된 위치 사용 가능
         });
       });
 
-      // 위치 권한이 허용되면 지도 페이지로 이동
-      setShowLocationPermissionModal(false);
-      router.push('/map');
+      // 위치 좌표를 URL 파라미터로 전달
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+      
+      // 토큰 저장 (동의)
+      saveLocationPermissionToken('granted');
+      
+      // 위치 정보와 함께 지도 페이지로 이동
+      router.push(`/map?lat=${lat}&lng=${lng}`);
     } catch (error: any) {
       // 사용자가 거부하거나 오류 발생
-      if (error.code === 1) {
-        // PERMISSION_DENIED
-        alert(
-          currentLanguage === 'ko'
-            ? '위치 권한이 거부되었습니다. 지도는 표시되지만 현재 위치는 사용할 수 없습니다.'
-            : currentLanguage === 'vi'
-            ? 'Quyền vị trí đã bị từ chối. Bản đồ sẽ hiển thị nhưng không thể sử dụng vị trí hiện tại.'
-            : 'Location permission denied. Map will be shown but current location cannot be used.'
-        );
-      } else {
-        alert(
-          currentLanguage === 'ko'
-            ? '위치를 가져오는 중 오류가 발생했습니다. 지도는 표시되지만 현재 위치는 사용할 수 없습니다.'
-            : currentLanguage === 'vi'
-            ? 'Đã xảy ra lỗi khi lấy vị trí. Bản đồ sẽ hiển thị nhưng không thể sử dụng vị trí hiện tại.'
-            : 'An error occurred while getting location. Map will be shown but current location cannot be used.'
-        );
-      }
-      setShowLocationPermissionModal(false);
-      router.push('/map');
+      // 토큰 저장 (거부)
+      saveLocationPermissionToken('denied');
+      router.push('/map?denied=true');
     } finally {
       setRequestingLocation(false);
     }
   };
 
-  // 위치 권한 거부하고 지도로 이동
+  // 위치 권한 거부하고 지도로 이동 (호치민 중심)
   const handleSkipLocation = () => {
+    // 토큰 저장 (거부)
+    saveLocationPermissionToken('denied');
     setShowLocationPermissionModal(false);
-    router.push('/map');
+    router.push('/map?denied=true');
   };
 
   return (
@@ -179,7 +282,7 @@ export default function HeroSection({ currentLanguage }: HeroSectionProps) {
 
         {/* 검색창 */}
         <form onSubmit={handleSearch} className="w-full max-w-lg mb-4">
-          <div className="relative">
+          <div className="relative" ref={searchContainerRef}>
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
               <Search className="h-5 w-5 text-gray-400" />
             </div>
@@ -194,33 +297,67 @@ export default function HeroSection({ currentLanguage }: HeroSectionProps) {
                   setShowSuggestions(true);
                 }
               }}
-              onBlur={() => {
-                setTimeout(() => setShowSuggestions(false), 200);
-              }}
               placeholder={getUIText('searchPlaceholder', currentLanguage)}
               className="w-full pl-12 pr-4 py-3.5 text-base rounded-full bg-white border-0 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-xl transition-all"
             />
             
-            {/* 추천 주소 드롭다운 */}
+            {/* 추천 결과 드롭다운 (도시/구/명소) */}
             {showSuggestions && suggestions.length > 0 && (
-              <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
-                {suggestions.map((suggestion, index) => (
-                  <button
-                    key={suggestion.PlaceId || index}
-                    type="button"
-                    onClick={() => handleSelectSuggestion(suggestion)}
-                    className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0"
-                  >
-                    <div className="flex items-start gap-2">
-                      <MapPin className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {suggestion.Text}
-                        </p>
+              <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-lg max-h-72 overflow-y-auto">
+                {suggestions.map((suggestion, index) => {
+                  const badge = getSuggestionBadge(suggestion, currentLanguage);
+                  const displayText = suggestion.Text || '';
+                  const parts = displayText.split(',');
+                  const mainName = cleanDisplayName(parts[0]?.trim() || displayText);
+                  const subAddress = cleanSubAddress(parts.slice(1).join(',').trim());
+                  
+                  return (
+                    <button
+                      key={suggestion.PlaceId || index}
+                      type="button"
+                      onClick={() => handleSelectSuggestion(suggestion)}
+                      className={`w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0 ${
+                        suggestion.isRegion ? 'bg-blue-50/30' : ''
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        {/* 아이콘 */}
+                        <span className="text-lg flex-shrink-0 mt-0.5">{badge.icon}</span>
+                        
+                        <div className="flex-1 min-w-0">
+                          {/* 배지 + 메인 이름 */}
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${badge.color} text-white font-medium flex-shrink-0`}>
+                              {badge.text}
+                            </span>
+                            <p className="text-sm font-semibold text-gray-900 truncate">
+                              {mainName}
+                            </p>
+                          </div>
+                          
+                          {/* 보조 주소 */}
+                          {subAddress && (
+                            <p className="text-xs text-gray-400 mt-1 truncate">
+                              {subAddress}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </button>
-                ))}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            
+            {/* 검색 중 표시 */}
+            {isSearching && (
+              <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-lg p-4">
+                <div className="flex items-center justify-center gap-2 text-gray-500">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                  <span className="text-sm">
+                    {currentLanguage === 'ko' ? '검색 중...' : currentLanguage === 'vi' ? 'Đang tìm kiếm...' : 'Searching...'}
+                  </span>
+                </div>
               </div>
             )}
           </div>

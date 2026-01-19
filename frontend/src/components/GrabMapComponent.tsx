@@ -3,15 +3,68 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { Search, MapPin, X, Home, ChevronLeft, ChevronRight } from 'lucide-react';
-import { searchPlaceIndexForSuggestions, searchPlaceIndexForText } from '@/lib/api/aws-location';
+import { Search, MapPin, X } from 'lucide-react';
+import { searchPlaceIndexForText } from '@/lib/api/aws-location';
 import { getAllProperties, subscribeToProperties, PropertyData } from '@/lib/api/properties';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { searchRegions, regionToSuggestion, RegionType } from '@/lib/data/vietnam-regions';
+import { getUIText } from '@/utils/i18n';
+import { 
+  FAMOUS_LANDMARKS, 
+  getLandmarkPriority, 
+  getSearchMatchScore,
+  cleanDisplayName,
+  cleanSubAddress,
+  getSuggestionBadge,
+} from '@/hooks/useLocationSearch';
 
+// ============================================================================
+// 검색 결과 타입 정의 (단순화: 행정구역 + 대표 명소만)
+// 공통 로직은 useLocationSearch 훅에서 가져옴
+// ============================================================================
 interface Suggestion {
   PlaceId: string;
   Text: string;
+  Place?: {
+    Geometry?: { Point?: number[] };
+    Label?: string;
+    Municipality?: string;
+    District?: string;
+    SubRegion?: string;
+    Region?: string;
+    Country?: string;
+  };
+  // 행정 구역 데이터 확장 필드
+  isRegion?: boolean;
+  regionType?: RegionType;
+  zoom?: number;
+  // 명소 태그 (landmark만 허용)
+  isLandmark?: boolean;
 }
+
+// 대표 명소인지 확인 (true/false)
+const isLandmark = (text: string): boolean => {
+  return getLandmarkPriority(text) > 0;
+};
+
+// 결과 타입: region(행정구역), poi(명칭/건물), address(상세주소)
+type ResultType = 'region' | 'poi' | 'address';
+
+// 결과 타입 판단 함수
+const getResultType = (suggestion: Suggestion): ResultType => {
+  // 행정 구역 (1순위: 도시, 2순위: 구)
+  if (suggestion.isRegion || suggestion.PlaceId?.startsWith('region-')) {
+    return 'region';
+  }
+  
+  // 대표 명소 (3순위)
+  if (suggestion.isLandmark) {
+    return 'poi';
+  }
+  
+  // 기타
+  return 'address';
+};
 
 interface Property {
   id: string;
@@ -40,13 +93,19 @@ interface GrabMapComponentProps {
   onPropertySelect?: (index: number) => void;
   selectedProperty?: Property | null;
   onPropertyPriorityChange?: (property: Property) => void;
+  initialLocation?: { lat: number; lng: number } | null; // 초기 위치 (URL 파라미터에서 전달)
+  locationDenied?: boolean; // 위치 권한 거부 여부
+  locationLoading?: boolean; // 위치 로딩 중 여부
 }
 
 export default function GrabMapComponent({ 
   onPropertiesChange,
   onPropertySelect,
   selectedProperty,
-  onPropertyPriorityChange
+  onPropertyPriorityChange,
+  initialLocation,
+  locationDenied = false,
+  locationLoading = false,
 }: GrabMapComponentProps = {}) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -63,6 +122,7 @@ export default function GrabMapComponent({
   const [nearbyProperties, setNearbyProperties] = useState<Property[]>([]);
   const [selectedPropertyIndex, setSelectedPropertyIndex] = useState(0);
   const [allProperties, setAllProperties] = useState<Property[]>([]);
+  const allPropertiesRef = useRef<Property[]>([]); // ref로 최신 값 유지 (무한 루프 방지)
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const cardSliderRef = useRef<HTMLDivElement>(null);
   const mapMoveDebounceRef = useRef<NodeJS.Timeout | null>(null);
@@ -72,6 +132,11 @@ export default function GrabMapComponent({
   const isInitializingRef = useRef(false); // 지도 초기화 진행 중 여부 추적 (싱글톤 패턴)
   const [showLocationConsentModal, setShowLocationConsentModal] = useState(false);
   const { currentLanguage } = useLanguage();
+  
+  // allProperties 변경 시 ref도 업데이트
+  useEffect(() => {
+    allPropertiesRef.current = allProperties;
+  }, [allProperties]);
   
   // 콜백 ref 업데이트
   useEffect(() => {
@@ -97,31 +162,42 @@ export default function GrabMapComponent({
     };
   };
 
-  // 실제 등록된 매물 로드
+  // 실제 등록된 매물 로드 (지도와 병렬 처리)
   useEffect(() => {
+    let isInitialLoad = true;
+    
+    // 지도 로드와 병렬로 매물 데이터 로드 (지도가 먼저 표시되도록)
     const loadProperties = async () => {
       try {
+        // 약간의 지연을 두어 지도가 먼저 렌더링되도록
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         const propertiesData = await getAllProperties();
         const convertedProperties = propertiesData
           .map(convertPropertyDataToProperty)
           .filter((p): p is Property => p !== null); // null 제거
         
         setAllProperties(convertedProperties);
+        isInitialLoad = false; // 초기 로드 완료
       } catch (error) {
-        console.error('Error loading properties:', error);
+        console.log('Error loading properties:', error);
         setAllProperties([]);
+        isInitialLoad = false;
       }
     };
 
     loadProperties();
 
-    // 실시간 업데이트 구독
+    // 실시간 업데이트 구독 (초기 로드 후에만 실행)
     const unsubscribe = subscribeToProperties((propertiesData) => {
-      const convertedProperties = propertiesData
-        .map(convertPropertyDataToProperty)
-        .filter((p): p is Property => p !== null); // null 제거
-      
-      setAllProperties(convertedProperties);
+      // 초기 로드가 완료된 후에만 업데이트 (중복 방지)
+      if (!isInitialLoad) {
+        const convertedProperties = propertiesData
+          .map(convertPropertyDataToProperty)
+          .filter((p): p is Property => p !== null); // null 제거
+        
+        setAllProperties(convertedProperties);
+      }
     });
 
     return () => {
@@ -216,9 +292,9 @@ export default function GrabMapComponent({
         hasRequestedLocationRef.current = true;
       },
       {
-        enableHighAccuracy: false,
-        timeout: 10000,
-        maximumAge: 0,
+        enableHighAccuracy: false, // WiFi/셀룰러 사용 (더 빠름)
+        timeout: 5000, // 5초로 단축
+        maximumAge: 60000, // 1분 이내 캐시된 위치 사용 가능
       }
     );
   }, [updateUserLocationMarker]);
@@ -279,9 +355,9 @@ export default function GrabMapComponent({
                 console.warn('Geolocation error:', error);
               },
               {
-                enableHighAccuracy: false,
-                timeout: 10000,
-                maximumAge: 0,
+                enableHighAccuracy: false, // WiFi/셀룰러 사용 (더 빠름)
+                timeout: 5000, // 5초로 단축
+                maximumAge: 60000, // 1분 이내 캐시된 위치 사용 가능
               }
             );
           } else if (permissionStatus.state === 'prompt') {
@@ -300,6 +376,18 @@ export default function GrabMapComponent({
       hasRequestedLocationRef.current = true;
     }
   }, [updateUserLocationMarker]);
+
+  // initialLocation과 locationDenied를 ref로 저장 (초기화 시에만 사용)
+  const initialLocationRef = useRef(initialLocation);
+  const locationDeniedRef = useRef(locationDenied);
+  const locationLoadingRef = useRef(locationLoading || false);
+  
+  // props가 변경되면 ref 업데이트 (하지만 지도는 재초기화하지 않음)
+  useEffect(() => {
+    initialLocationRef.current = initialLocation;
+    locationDeniedRef.current = locationDenied;
+    locationLoadingRef.current = locationLoading || false;
+  }, [initialLocation, locationDenied, locationLoading]);
 
   // 지도 초기화 (싱글톤 패턴 - 한 번만 생성)
   useEffect(() => {
@@ -326,6 +414,7 @@ export default function GrabMapComponent({
       console.error('NEXT_PUBLIC_AWS_API_KEY is not set');
       setMapLoading(false);
       setMapError('AWS API Key가 설정되지 않았습니다. .env.local 파일을 확인해주세요.');
+      isInitializingRef.current = false;
       return;
     }
 
@@ -333,11 +422,13 @@ export default function GrabMapComponent({
       console.error('NEXT_PUBLIC_AWS_MAP_NAME is not set');
       setMapLoading(false);
       setMapError('AWS Map Name이 설정되지 않았습니다. .env.local 파일을 확인해주세요.');
+      isInitializingRef.current = false;
       return;
     }
 
     if (!mapContainer.current) {
       console.error('Map container is not available');
+      isInitializingRef.current = false;
       return;
     }
 
@@ -348,12 +439,20 @@ export default function GrabMapComponent({
     console.log('Initializing map with URL:', styleUrl.replace(apiKey, '***'));
 
     try {
+      // 초기 위치 결정: ref에서 가져온 initialLocation이 있으면 사용, 없으면 호치민 중심
+      const initLocation = initialLocationRef.current;
+      const initDenied = locationDeniedRef.current;
+      const initialCenter = initLocation 
+        ? [initLocation.lng, initLocation.lat] 
+        : [HO_CHI_MINH_CENTER.lng, HO_CHI_MINH_CENTER.lat];
+      const initialZoom = initLocation ? 15 : 14; // 위치가 있으면 더 확대, 없으면 호치민 중심도 확대
+      
       // 호치민 초기 중심 좌표 (무조건 숫자 리터럴 직접 사용)
       map.current = new maplibregl.Map({
         container: mapContainer.current,
         style: styleUrl,
-        center: [HO_CHI_MINH_CENTER.lng, HO_CHI_MINH_CENTER.lat], // [경도, 위도] 순서
-        zoom: 12,
+        center: initialCenter as [number, number], // [경도, 위도] 순서
+        zoom: initialZoom,
         attributionControl: true as any,
       });
 
@@ -367,13 +466,61 @@ export default function GrabMapComponent({
         setMapError(null);
         isInitializingRef.current = false; // 초기화 완료 플래그 해제
         
+        // ref에서 최신 값 가져오기
+        const initLocation = initialLocationRef.current;
+        const initDenied = locationDeniedRef.current;
+        const initLoading = locationLoadingRef.current;
+        
+        // 검색 기록 복원 (초기 위치보다 우선)
+        const searchHistory = loadSearchHistory();
+        if (searchHistory && !initLocation && !initDenied && !initLoading) {
+          // 검색 기록이 있으면 해당 위치로 복원
+          map.current!.flyTo({
+            center: [searchHistory.lng, searchHistory.lat],
+            zoom: searchHistory.zoom,
+            duration: 1000,
+          });
+          
+          // 검색어 복원
+          setSearchValue(searchHistory.keyword);
+          
+          // 지도 이동 완료 후 매물 필터링
+          map.current!.once('moveend', () => {
+            if (updateVisiblePropertiesRef.current) {
+              updateVisiblePropertiesRef.current();
+            }
+          });
+        } else if (initLocation) {
+          // initialLocation이 있으면 해당 위치로 이동하고 마커 표시
+          const safeLat = Number(initLocation.lat);
+          const safeLng = Number(initLocation.lng);
+          
+          if (!isNaN(safeLat) && !isNaN(safeLng) && isInVietnam(safeLat, safeLng)) {
+            setUserLocation(initLocation);
+            map.current!.flyTo({
+              center: [safeLng, safeLat],
+              zoom: 15,
+              duration: 1000,
+            });
+            updateUserLocationMarker(initLocation);
+            hasRequestedLocationRef.current = true; // 위치 요청 완료로 표시
+          }
+        } else if (initDenied) {
+          // 위치 권한 거부 시 호치민 중심으로 확대
+          hasRequestedLocationRef.current = true; // 위치 요청 완료로 표시
+        } else if (initLoading) {
+          // If loading, don't check permission immediately, wait for URL update
+          console.log('Location is loading, map initialized to default. Waiting for location update...');
+        } else {
+          // initialLocation이 없고 locationDenied도 false면 기존 로직 (자동 위치 확인)
+          // 지도 로드 후 권한 상태 조용히 확인 (위치 요청은 하지 않음)
+          checkLocationPermission();
+        }
+        
         // 지도 이동/확대 시 현재 화면 내 매물 필터링
         if (updateVisiblePropertiesRef.current) {
           updateVisiblePropertiesRef.current();
         }
-        
-        // 지도 로드 후 권한 상태 조용히 확인 (위치 요청은 하지 않음)
-        checkLocationPermission();
       });
 
       // 지도 이동/확대/축소 이벤트 (디바운싱 적용)
@@ -398,8 +545,19 @@ export default function GrabMapComponent({
         }
       });
 
-      // 지도 에러 처리
+      // 지도 에러 처리 (AWS 타일 데이터 null 에러 필터링)
       map.current.on('error', (e) => {
+        // AWS 타일 데이터의 null 관련 에러는 무시 (지도는 정상 작동)
+        if (e.error && e.error.message) {
+          const errorMessage = e.error.message;
+          // "Expected value to be of type number, but found null" 에러는 무시
+          if (errorMessage.includes('Expected value to be of type number, but found null')) {
+            // Silent: 에러를 콘솔에 출력하지 않고 무시
+            return;
+          }
+        }
+
+        // 다른 에러는 정상적으로 처리
         console.error('Map error:', e);
         setMapLoading(false);
         if (e.error) {
@@ -451,71 +609,37 @@ export default function GrabMapComponent({
         marker.current = null;
       }
     };
-  }, [checkLocationPermission]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // 의존성 배열 비움 - 지도는 한 번만 초기화
 
 
-  // 두 좌표 간 거리 계산 (km)
-  const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
-    const R = 6371; // 지구 반지름 (km)
-    const dLat = ((lat2 - lat1) * Math.PI) / 180;
-    const dLng = ((lng2 - lng1) * Math.PI) / 180;
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos((lat1 * Math.PI) / 180) *
-        Math.cos((lat2 * Math.PI) / 180) *
-        Math.sin(dLng / 2) *
-        Math.sin(dLng / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  };
-
-  // 현재 지도 화면에 보이는 매물 필터링 및 정렬
-  const updateVisibleProperties = useCallback(() => {
-    if (!map.current) return;
-
-    // 지도의 현재 경계(bounds) 가져오기
-    const bounds = map.current.getBounds();
-    const center = map.current.getCenter();
-    const centerLat = center.lat;
-    const centerLng = center.lng;
-
-    // bounds 내의 매물 필터링 (allProperties 사용)
-    const visibleProperties = allProperties.filter(property => {
-      // 좌표가 유효한 경우만 필터링 (0도 유효한 좌표일 수 있으므로 null/undefined만 체크)
-      if (property.lat == null || property.lng == null) {
-        console.warn('Property missing coordinates:', property.id, property.name);
-        return false;
-      }
-      // 좌표가 범위를 벗어난 경우도 체크
-      if (isNaN(property.lat) || isNaN(property.lng)) {
-        console.warn('Property has invalid coordinates:', property.id, property.name);
-        return false;
-      }
-      return bounds.contains([property.lng, property.lat]);
-    });
-
-    // 지도 중심점에서 가까운 순으로 정렬
-    const sortedProperties = visibleProperties.sort((a, b) => {
-      const distanceA = calculateDistance(centerLat, centerLng, a.lat, a.lng);
-      const distanceB = calculateDistance(centerLat, centerLng, b.lat, b.lng);
-      return distanceA - distanceB;
-    });
-
-    setNearbyProperties(sortedProperties);
+  // 두 좌표 간 거리 계산 (km) - 최적화된 버전 (50m 이내 클러스터링용)
+  // 근거리에서는 간단한 유클리드 거리 사용 (더 빠름)
+  const calculateDistance = useCallback((lat1: number, lng1: number, lat2: number, lng2: number): number => {
+    // 매우 근거리(50m 이내)에서는 간단한 유클리드 거리 사용
+    const dLat = lat2 - lat1;
+    const dLng = lng2 - lng1;
+    const distanceKm = Math.sqrt(dLat * dLat + dLng * dLng) * 111; // 대략적인 km 변환 (1도 ≈ 111km)
     
-    // 상위 컴포넌트에 필터링된 매물 데이터 전달
-    if (onPropertiesChange) {
-      onPropertiesChange(sortedProperties);
+    // 50m 이내면 간단한 계산으로 충분
+    if (distanceKm < 0.1) {
+      return distanceKm;
     }
     
-    // 지도에 마커 표시 (보이는 매물만)
-    displayPropertyMarkers(sortedProperties);
-  }, [allProperties, onPropertiesChange]);
+    // 더 먼 거리는 정확한 Haversine 공식 사용
+    const R = 6371; // 지구 반지름 (km)
+    const dLatRad = (dLat * Math.PI) / 180;
+    const dLngRad = (dLng * Math.PI) / 180;
+    const a =
+      Math.sin(dLatRad / 2) * Math.sin(dLatRad / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLngRad / 2) *
+        Math.sin(dLngRad / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }, []);
 
-  // updateVisibleProperties ref 업데이트
-  useEffect(() => {
-    updateVisiblePropertiesRef.current = updateVisibleProperties;
-  }, [updateVisibleProperties]);
 
   // 주변 매물 필터링 및 표시 (초기 로드용)
   const filterAndDisplayProperties = (location: { lat: number; lng: number }) => {
@@ -536,90 +660,141 @@ export default function GrabMapComponent({
     }, 100);
   };
 
-  // allProperties가 변경되면 지도 업데이트
+  // allProperties가 변경되면 지도 업데이트 (디바운싱 적용)
   useEffect(() => {
     if (map.current && allProperties.length > 0) {
       // 지도가 로드된 후에만 업데이트
       if (map.current.loaded()) {
-        if (updateVisiblePropertiesRef.current) {
-          updateVisiblePropertiesRef.current();
-        }
+        // 디바운싱: 빠른 연속 업데이트 방지 (무한 루프 방지)
+        const timer = setTimeout(() => {
+          if (updateVisiblePropertiesRef.current) {
+            updateVisiblePropertiesRef.current();
+          }
+        }, 100);
+        
+        return () => clearTimeout(timer);
       }
     }
   }, [allProperties]);
 
-  // 근거리 매물 클러스터링 (약 50m 이내)
-  const clusterProperties = (properties: Property[], thresholdMeters: number = 0.05): Array<{ properties: Property[]; center: { lat: number; lng: number } }> => {
+  // 근거리 매물 클러스터링 (약 50m 이내) - 그리드 기반 최적화
+  const clusterProperties = useCallback((properties: Property[], thresholdMeters: number = 0.05): Array<{ properties: Property[]; center: { lat: number; lng: number } }> => {
     // 빈 배열이면 빈 클러스터 반환
     if (!properties || properties.length === 0) {
       return [];
     }
 
-    const clusters: Array<{ properties: Property[]; center: { lat: number; lng: number } }> = [];
-    const processed = new Set<string>();
+    // 매물이 적으면(10개 이하) 기존 방식 사용 (오버헤드가 더 클 수 있음)
+    if (properties.length <= 10) {
+      const clusters: Array<{ properties: Property[]; center: { lat: number; lng: number } }> = [];
+      const processed = new Set<string>();
 
-    properties.forEach((property) => {
-      // 좌표 유효성 검증
-      if (!property || property.lat == null || property.lng == null || isNaN(property.lat) || isNaN(property.lng)) {
-        console.warn('Property with invalid coordinates skipped:', property?.id);
-        return;
-      }
-
-      if (processed.has(property.id)) return;
-
-      const cluster: Property[] = [property];
-      processed.add(property.id);
-
-      // 근거리 매물 찾기
-      properties.forEach((other) => {
-        // 좌표 유효성 검증
-        if (!other || other.lat == null || other.lng == null || isNaN(other.lat) || isNaN(other.lng)) {
+      properties.forEach((property) => {
+        if (!property || property.lat == null || property.lng == null || isNaN(property.lat) || isNaN(property.lng)) {
           return;
         }
+        if (processed.has(property.id)) return;
 
-        if (processed.has(other.id)) return;
-        
-        const distance = calculateDistance(
-          property.lat,
-          property.lng,
-          other.lat,
-          other.lng
-        );
+        const cluster: Property[] = [property];
+        processed.add(property.id);
 
-        // 50m 이내면 같은 클러스터로
-        if (distance <= thresholdMeters) {
-          cluster.push(other);
-          processed.add(other.id);
+        properties.forEach((other) => {
+          if (!other || other.lat == null || other.lng == null || isNaN(other.lat) || isNaN(other.lng)) {
+            return;
+          }
+          if (processed.has(other.id)) return;
+          
+          const distance = calculateDistance(property.lat, property.lng, other.lat, other.lng);
+          if (distance <= thresholdMeters) {
+            cluster.push(other);
+            processed.add(other.id);
+          }
+        });
+
+        if (cluster.length > 0) {
+          const avgLat = cluster.reduce((sum, p) => sum + Number(p.lat), 0) / cluster.length;
+          const avgLng = cluster.reduce((sum, p) => sum + Number(p.lng), 0) / cluster.length;
+          if (!isNaN(avgLat) && !isNaN(avgLng)) {
+            clusters.push({ properties: cluster, center: { lat: avgLat, lng: avgLng } });
+          }
         }
       });
 
-      // 클러스터 중심점 계산 (유효한 좌표만 사용)
-      const validProperties = cluster.filter(p => p && p.lat != null && p.lng != null && !isNaN(p.lat) && !isNaN(p.lng));
-      if (validProperties.length === 0) {
+      return clusters;
+    }
+
+    // 그리드 기반 클러스터링 (매물이 많을 때 효율적)
+    // 그리드 크기: 약 100m (thresholdMeters * 2)
+    const gridSize = thresholdMeters * 2;
+    const gridMap = new Map<string, Property[]>();
+
+    // 1단계: 그리드에 매물 배치
+    properties.forEach((property) => {
+      if (!property || property.lat == null || property.lng == null || isNaN(property.lat) || isNaN(property.lng)) {
         return;
       }
 
-      const avgLat = validProperties.reduce((sum, p) => sum + Number(p.lat), 0) / validProperties.length;
-      const avgLng = validProperties.reduce((sum, p) => sum + Number(p.lng), 0) / validProperties.length;
+      // 그리드 좌표 계산
+      const gridLat = Math.floor(property.lat / gridSize);
+      const gridLng = Math.floor(property.lng / gridSize);
+      const gridKey = `${gridLat},${gridLng}`;
 
-      // 계산된 좌표 유효성 검증
-      if (isNaN(avgLat) || isNaN(avgLng)) {
-        console.warn('Invalid cluster center calculated:', { avgLat, avgLng });
-        return;
+      if (!gridMap.has(gridKey)) {
+        gridMap.set(gridKey, []);
       }
+      gridMap.get(gridKey)!.push(property);
+    });
 
-      clusters.push({
-        properties: cluster,
-        center: { lat: avgLat, lng: avgLng }
+    // 2단계: 인접 그리드만 확인하여 클러스터링 (O(n)에 가까움)
+    const clusters: Array<{ properties: Property[]; center: { lat: number; lng: number } }> = [];
+    const processed = new Set<string>();
+
+    gridMap.forEach((gridProperties, gridKey) => {
+      const [gridLat, gridLng] = gridKey.split(',').map(Number);
+
+      gridProperties.forEach((property) => {
+        if (processed.has(property.id)) return;
+
+        const cluster: Property[] = [property];
+        processed.add(property.id);
+
+        // 인접 그리드만 확인 (9개 그리드: 자신 + 8방향)
+        for (let dLat = -1; dLat <= 1; dLat++) {
+          for (let dLng = -1; dLng <= 1; dLng++) {
+            const neighborKey = `${gridLat + dLat},${gridLng + dLng}`;
+            const neighborProperties = gridMap.get(neighborKey) || [];
+
+            neighborProperties.forEach((other) => {
+              if (processed.has(other.id)) return;
+              if (!other || other.lat == null || other.lng == null || isNaN(other.lat) || isNaN(other.lng)) {
+                return;
+              }
+
+              const distance = calculateDistance(property.lat, property.lng, other.lat, other.lng);
+              if (distance <= thresholdMeters) {
+                cluster.push(other);
+                processed.add(other.id);
+              }
+            });
+          }
+        }
+
+        if (cluster.length > 0) {
+          const avgLat = cluster.reduce((sum, p) => sum + Number(p.lat), 0) / cluster.length;
+          const avgLng = cluster.reduce((sum, p) => sum + Number(p.lng), 0) / cluster.length;
+          if (!isNaN(avgLat) && !isNaN(avgLng)) {
+            clusters.push({ properties: cluster, center: { lat: avgLat, lng: avgLng } });
+          }
+        }
       });
     });
 
     return clusters;
-  };
+  }, [calculateDistance]);
 
-  // 매물 마커 표시 (클러스터링 지원)
-  const displayPropertyMarkers = (properties: Property[]) => {
-    if (!map.current) return;
+  // 매물 마커 표시 (클러스터링 지원) - 최적화
+  const displayPropertyMarkers = useCallback((properties: Property[]) => {
+    if (!map.current || !map.current.loaded()) return; // 지도가 완전히 로드된 후에만 마커 표시
 
     // 빈 배열이면 마커만 제거하고 종료
     if (!properties || properties.length === 0) {
@@ -630,7 +805,7 @@ export default function GrabMapComponent({
       return;
     }
 
-    // 기존 마커 제거
+    // 기존 마커 제거 (배치 처리)
     propertyMarkersRef.current.forEach(m => m.remove());
     propertyMarkersRef.current = [];
     popupsRef.current.forEach(p => p.remove());
@@ -896,8 +1071,71 @@ export default function GrabMapComponent({
       propertyMarkersRef.current.push(marker);
       popupsRef.current.push(popup);
     });
-  };
+  }, [calculateDistance, clusterProperties]);
 
+  // 현재 지도 화면에 보이는 매물 필터링 및 정렬 (최적화)
+  const updateVisibleProperties = useCallback(() => {
+    if (!map.current || !map.current.loaded()) return;
+
+    // ref에서 최신 allProperties 가져오기 (무한 루프 방지)
+    const currentProperties = allPropertiesRef.current;
+
+    // 지도의 현재 경계(bounds) 가져오기
+    const bounds = map.current.getBounds();
+    const center = map.current.getCenter();
+    const centerLat = center.lat;
+    const centerLng = center.lng;
+
+    // bounds의 경계값 미리 계산 (contains 호출 최적화)
+    const sw = bounds.getSouthWest();
+    const ne = bounds.getNorthEast();
+    const minLat = sw.lat;
+    const maxLat = ne.lat;
+    const minLng = sw.lng;
+    const maxLng = ne.lng;
+
+    // bounds 내의 매물 필터링 (최적화: bounds.contains 대신 직접 비교)
+    const visibleProperties: Property[] = [];
+    for (let i = 0; i < currentProperties.length; i++) {
+      const property = currentProperties[i];
+      
+      // 좌표 유효성 검증
+      if (property.lat == null || property.lng == null || isNaN(property.lat) || isNaN(property.lng)) {
+        continue;
+      }
+
+      // 빠른 경계 체크 (contains보다 빠름)
+      if (property.lat >= minLat && property.lat <= maxLat && 
+          property.lng >= minLng && property.lng <= maxLng) {
+        visibleProperties.push(property);
+      }
+    }
+
+    // 지도 중심점에서 가까운 순으로 정렬 (최대 100개만 정렬)
+    const sortedProperties = visibleProperties
+      .map(property => ({
+        property,
+        distance: calculateDistance(centerLat, centerLng, property.lat, property.lng)
+      }))
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, 100) // 최대 100개만 표시 (성능 최적화)
+      .map(item => item.property);
+
+    setNearbyProperties(sortedProperties);
+    
+    // 상위 컴포넌트에 필터링된 매물 데이터 전달
+    if (onPropertiesChange) {
+      onPropertiesChange(sortedProperties);
+    }
+    
+    // 지도에 마커 표시 (보이는 매물만)
+    displayPropertyMarkers(sortedProperties);
+  }, [onPropertiesChange, calculateDistance, displayPropertyMarkers]); // allProperties 의존성 제거
+
+  // updateVisibleProperties ref 업데이트
+  useEffect(() => {
+    updateVisiblePropertiesRef.current = updateVisibleProperties;
+  }, [updateVisibleProperties]);
 
   // 선택된 매물로 지도 중심 이동
   useEffect(() => {
@@ -1061,7 +1299,13 @@ export default function GrabMapComponent({
     }
   };
 
-  // 주소 자동완성 검색
+
+  // ============================================================================
+  // 단순화된 검색 로직: 행정 구역 + 대표 명소만
+  // 목적: 사용자가 보고 싶은 지역으로 지도를 빠르게 이동
+  // 3단계 우선순위: 1순위(City) > 2순위(District) > 3순위(대표 명소)
+  // 아파트, 호텔, 상점, 은행 등 모든 POI 제외
+  // ============================================================================
   const handleSearchChange = async (value: string) => {
     setSearchValue(value);
 
@@ -1076,62 +1320,296 @@ export default function GrabMapComponent({
       return;
     }
 
-    // 디바운싱: 300ms 후 검색
+    // 디바운싱: 250ms 후 검색
     debounceTimerRef.current = setTimeout(async () => {
       try {
         setIsSearching(true);
-        const suggestionsList = await searchPlaceIndexForSuggestions(value, 'vi');
-        setSuggestions(suggestionsList);
-        setShowSuggestions(suggestionsList.length > 0);
+        
+        // ============================================================
+        // 1순위: 도시명 (City) - Ho Chi Minh, Hanoi, Da Nang 등
+        // 2순위: 구/군 (District) - District 1, Binh Thanh 등
+        // → 행정구역 데이터를 API보다 무조건 상단 배치
+        // ============================================================
+        const regionResults = searchRegions(value);
+        const regionSuggestions: Suggestion[] = regionResults.map(region => 
+          regionToSuggestion(region, currentLanguage) as Suggestion
+        );
+        
+        // 도시와 구/군 분리 (1순위: 도시 > 2순위: 구/군)
+        const cityResults = regionSuggestions.filter(r => r.regionType === 'city');
+        const districtResults = regionSuggestions.filter(r => r.regionType === 'district');
+        
+        // ============================================================
+        // 3순위: 대표 관광지/랜드마크만 (화이트리스트 기반)
+        // Ben Thanh Market, Landmark 81, Hoan Kiem Lake 등
+        // 아파트, 호텔, 상점 등 모든 POI 제외
+        // ============================================================
+        let landmarkResults: Suggestion[] = [];
+        
+        try {
+          // 언어 코드 매핑: ko -> en (GrabMaps는 한국어 미지원)
+          const apiLanguage = currentLanguage === 'vi' ? 'vi' : 'en';
+          const textResults = await searchPlaceIndexForText(value, apiLanguage);
+          
+          const apiSuggestions = textResults.map((result: any) => ({
+            PlaceId: result.Place?.PlaceId || result.PlaceId || '',
+            Text: result.Place?.Label || result.Text || value,
+            Place: result.Place,
+          }));
+          
+          // 행정구역 이름 Set (중복 제거용)
+          const regionNames = new Set(
+            regionResults.flatMap(r => [
+              r.name.toLowerCase(),
+              r.nameVi.toLowerCase(),
+              r.nameKo.toLowerCase(),
+              ...r.keywords.map(k => k.toLowerCase()),
+            ])
+          );
+          
+          // ============================================================
+          // 대표 명소만 필터링 (화이트리스트 체크)
+          // ============================================================
+          landmarkResults = apiSuggestions
+            .map(suggestion => {
+              const text = suggestion.Text || '';
+              const textLower = text.toLowerCase();
+              
+              // 1. 화이트리스트에 있는 대표 명소만 허용
+              const landmarkPriority = getLandmarkPriority(text);
+              if (landmarkPriority === 0) {
+                return null; // 대표 명소가 아니면 제외
+              }
+              
+              // 2. 행정구역 중복 제거
+              for (const name of regionNames) {
+                if (textLower === name || textLower.startsWith(name + ',')) {
+                  return null;
+                }
+              }
+              
+              // 3. 검색어 일치도 점수
+              const searchMatchScore = getSearchMatchScore(text, value);
+              const finalScore = searchMatchScore + landmarkPriority;
+              
+              return {
+                suggestion: {
+                  ...suggestion,
+                  isLandmark: true,
+                } as Suggestion,
+                score: finalScore,
+              };
+            })
+            .filter((item): item is NonNullable<typeof item> => item !== null && item.score > 0)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 5) // 대표 명소는 최대 5개
+            .map(item => item.suggestion);
+          
+        } catch (apiError) {
+          console.warn('AWS API 검색 실패:', apiError);
+        }
+        
+        // ============================================================
+        // 최종 결과 병합 (3단계 우선순위)
+        // 1순위: 도시 (무조건 최상단)
+        // 2순위: 구/군 (도시 다음)
+        // 3순위: 대표 관광지/랜드마크
+        // ============================================================
+        const combinedResults = [
+          ...cityResults,          // 1순위: 도시
+          ...districtResults,      // 2순위: 구/군
+          ...landmarkResults,      // 3순위: 대표 명소
+        ].slice(0, 10); // 최대 10개 표시
+        
+        setSuggestions(combinedResults);
+        setShowSuggestions(combinedResults.length > 0);
       } catch (error) {
-        console.error('Error fetching suggestions:', error);
+        console.error('❌ 검색 오류:', error);
         setSuggestions([]);
         setShowSuggestions(false);
       } finally {
         setIsSearching(false);
       }
-    }, 300);
+    }, 250);
   };
 
-  // 주소 선택 및 지도 이동
+  // 검색 기록 저장 (localStorage)
+  const saveSearchHistory = (keyword: string, lat: number, lng: number, zoom: number) => {
+    if (typeof window === 'undefined') return;
+    
+    const searchHistory = {
+      keyword,
+      lat,
+      lng,
+      zoom,
+      timestamp: Date.now(),
+    };
+    
+    localStorage.setItem('mapSearchHistory', JSON.stringify(searchHistory));
+  };
+
+  // 검색 기록 불러오기
+  const loadSearchHistory = (): { keyword: string; lat: number; lng: number; zoom: number } | null => {
+    if (typeof window === 'undefined') return null;
+    
+    try {
+      const historyStr = localStorage.getItem('mapSearchHistory');
+      if (!historyStr) return null;
+      
+      const history = JSON.parse(historyStr);
+      // 24시간 이내 기록만 유효
+      const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
+      if (history.timestamp && history.timestamp > oneDayAgo) {
+        return history;
+      }
+      
+      // 만료된 기록 삭제
+      localStorage.removeItem('mapSearchHistory');
+      return null;
+    } catch (error) {
+      localStorage.removeItem('mapSearchHistory');
+      return null;
+    }
+  };
+
+  // ============================================================================
+  // 검색 결과 선택 및 지도 이동
+  // 줌 레벨: 도시/구는 z=13 (넓게), 명소/아파트는 z=16 (건물 단위)
+  // ============================================================================
   const handleSelectSuggestion = async (suggestion: Suggestion) => {
     if (!map.current) return;
 
-    setSearchValue(suggestion.Text);
+    console.log('📍 선택된 제안:', suggestion);
+    
+    const displayText = suggestion.Text || '';
+    setSearchValue(displayText);
     setShowSuggestions(false);
     setIsSearching(true);
 
     try {
-      // PlaceId를 사용하여 정확한 위치 정보 가져오기
-      const results = await searchPlaceIndexForText(suggestion.Text, 'vi');
-
-      if (results.length > 0 && results[0].Place?.Geometry?.Point) {
-        const [longitude, latitude] = results[0].Place.Geometry.Point;
-        
+      // ============================================================
+      // 1순위/2순위: 도시/구 선택 → 넓은 줌 (z=13)
+      // ============================================================
+      if (suggestion.isRegion && suggestion.Place?.Geometry?.Point) {
+        const [longitude, latitude] = suggestion.Place.Geometry.Point;
         const safeLat = Number(latitude);
         const safeLng = Number(longitude);
         
         if (!isNaN(safeLat) && !isNaN(safeLng)) {
-          // 지도 중심 이동
+          // 도시/구는 z=13으로 넓게 (건물이 아닌 지역 전체 조망)
+          const zoomLevel = 13;
+          
           map.current.flyTo({
             center: [safeLng, safeLat],
-            zoom: 15,
-            duration: 1000,
+            zoom: zoomLevel,
+            duration: 1200,
+            essential: true,
           });
 
-        // 기존 마커 제거
-        if (marker.current) {
-          marker.current.remove();
-        }
+          saveSearchHistory(displayText, safeLat, safeLng, zoomLevel);
 
-          // 새 마커 추가
+          // 행정 구역 선택 시 마커는 표시하지 않음 (지역 전체 조망)
+          if (marker.current) {
+            marker.current.remove();
+            marker.current = null;
+          }
+
+          map.current.once('moveend', () => {
+            if (updateVisiblePropertiesRef.current) {
+              updateVisiblePropertiesRef.current();
+            }
+          });
+          
+          setIsSearching(false);
+          return;
+        }
+      }
+      
+      // ============================================================
+      // 3순위: 명소/아파트/호텔 선택 → 건물 단위 줌 (z=16)
+      // ============================================================
+      if (suggestion.Place?.Geometry?.Point) {
+        const [longitude, latitude] = suggestion.Place.Geometry.Point;
+        const safeLat = Number(latitude);
+        const safeLng = Number(longitude);
+        
+        if (!isNaN(safeLat) && !isNaN(safeLng)) {
+          // 명소/아파트는 z=16으로 건물 단위 확대
+          const zoomLevel = 16;
+          
+          map.current.flyTo({
+            center: [safeLng, safeLat],
+            zoom: zoomLevel,
+            duration: 1200,
+            essential: true,
+          });
+
+          saveSearchHistory(displayText, safeLat, safeLng, zoomLevel);
+
+          // 마커 표시 (건물 위치 표시)
+          if (marker.current) {
+            marker.current.remove();
+          }
           marker.current = new maplibregl.Marker({
-            color: '#FF6B35', // Grab 스타일 오렌지 색상
+            color: '#FF6B35',
             scale: 1.2,
           })
             .setLngLat([safeLng, safeLat])
             .addTo(map.current);
+
+          map.current.once('moveend', () => {
+            if (updateVisiblePropertiesRef.current) {
+              updateVisiblePropertiesRef.current();
+            }
+          });
+          
+          setIsSearching(false);
+          return;
         }
+      }
+      
+      // ============================================================
+      // 좌표가 없는 경우: API로 재검색
+      // ============================================================
+      try {
+        const results = await searchPlaceIndexForText(displayText, 'vi');
+        
+        if (results.length > 0 && results[0].Place?.Geometry?.Point) {
+          const [longitude, latitude] = results[0].Place.Geometry.Point;
+          const safeLat = Number(latitude);
+          const safeLng = Number(longitude);
+          
+          if (!isNaN(safeLat) && !isNaN(safeLng)) {
+            const zoomLevel = 16; // 기본값: 건물 단위
+            
+            map.current.flyTo({
+              center: [safeLng, safeLat],
+              zoom: zoomLevel,
+              duration: 1200,
+              essential: true,
+            });
+
+            saveSearchHistory(displayText, safeLat, safeLng, zoomLevel);
+
+            if (marker.current) {
+              marker.current.remove();
+            }
+            marker.current = new maplibregl.Marker({
+              color: '#FF6B35',
+              scale: 1.2,
+            })
+              .setLngLat([safeLng, safeLat])
+              .addTo(map.current);
+
+            map.current.once('moveend', () => {
+              if (updateVisiblePropertiesRef.current) {
+                updateVisiblePropertiesRef.current();
+              }
+            });
+          }
+        }
+      } catch (apiError) {
+        console.warn('API 재검색 실패:', apiError);
       }
     } catch (error) {
       console.error('Error getting place details:', error);
@@ -1147,11 +1625,39 @@ export default function GrabMapComponent({
     setShowSuggestions(false);
   };
 
+  // 검색창 컨테이너 ref (외부 클릭 감지용)
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  // 검색창 외부 클릭 시 드롭다운 닫기
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // 엔터 키로 검색 (첫 번째 결과로 이동)
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setShowSuggestions(false);
+    
+    if (searchValue.trim() && suggestions.length > 0) {
+      // 첫 번째 추천 결과로 지도 이동
+      handleSelectSuggestion(suggestions[0]);
+    }
+  };
+
   return (
     <div className="relative w-full h-full" style={{ minHeight: '100%' }}>
       {/* 검색창 */}
-      <div className="absolute top-4 left-4 right-4 z-10 max-w-md">
-        <div className="relative">
+      <form onSubmit={handleSearchSubmit} className="absolute top-4 left-4 right-4 z-10 max-w-md">
+        <div className="relative" ref={searchContainerRef}>
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
             <Search className="h-5 w-5 text-gray-400" />
           </div>
@@ -1160,18 +1666,17 @@ export default function GrabMapComponent({
             value={searchValue}
             onChange={(e) => handleSearchChange(e.target.value)}
             onFocus={() => {
-              if (suggestions.length > 0) {
+              // 검색어가 있고 결과가 있으면 표시
+              if (searchValue && suggestions.length > 0) {
                 setShowSuggestions(true);
               }
             }}
-            onBlur={() => {
-              setTimeout(() => setShowSuggestions(false), 200);
-            }}
-            placeholder="주소를 검색하세요..."
+            placeholder={getUIText('searchPlaceholder', currentLanguage)}
             className="w-full pl-12 pr-10 py-3 text-base rounded-lg bg-white border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-lg"
           />
           {searchValue && (
             <button
+              type="button"
               onClick={handleClearSearch}
               className="absolute inset-y-0 right-0 pr-4 flex items-center"
             >
@@ -1184,30 +1689,96 @@ export default function GrabMapComponent({
             </div>
           )}
 
-          {/* 자동완성 제안 목록 */}
-          {showSuggestions && suggestions.length > 0 && (
-            <div className="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto">
-              {suggestions.map((suggestion, index) => (
-                <button
-                  key={suggestion.PlaceId || index}
-                  type="button"
-                  onClick={() => handleSelectSuggestion(suggestion)}
-                  className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0"
-                >
-                  <div className="flex items-start gap-2">
-                    <MapPin className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900">
-                        {suggestion.Text}
-                      </p>
-                    </div>
-                  </div>
-                </button>
-              ))}
+          {/* ============================================================ */}
+          {/* 검색 결과 목록 (임차인 최적화 UI) */}
+          {/* 이름/명칭을 크게, 주소는 보조 정보로 표시 */}
+          {/* ============================================================ */}
+          {searchValue && (showSuggestions || suggestions.length > 0) && (
+            <div 
+              className="suggestions-list absolute w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-xl max-h-80 overflow-y-auto"
+              style={{ zIndex: 9999 }}
+            >
+              {suggestions.length === 0 ? (
+                <div className="px-4 py-4 text-sm text-gray-500 text-center">
+                  {currentLanguage === 'ko' ? '검색 결과가 없습니다' : currentLanguage === 'vi' ? 'Không tìm thấy kết quả' : 'No results found'}
+                </div>
+              ) : (
+                suggestions.map((suggestion, index) => {
+                  const resultType = getResultType(suggestion);
+                  const displayText = suggestion.Text || '';
+                  
+                  // 이름과 주소 분리 (쉼표 기준)
+                  const parts = displayText.split(',');
+                  const rawMainName = parts[0]?.trim() || displayText;
+                  const rawSubAddress = parts.slice(1).join(',').trim();
+                  
+                  // 텍스트 정리 (공통 훅에서 가져온 함수 사용)
+                  const mainName = cleanDisplayName(rawMainName);
+                  const subAddress = cleanSubAddress(rawSubAddress);
+                  
+                  // 배지 설정 (단순화: 도시/구/명소만)
+                  let badgeText = '';
+                  let badgeColor = '';
+                  let badgeIcon = '';
+                  
+                  if (suggestion.isRegion) {
+                    // 1순위: 도시 / 2순위: 구
+                    if (suggestion.regionType === 'city') {
+                      badgeText = currentLanguage === 'ko' ? '도시' : currentLanguage === 'vi' ? 'Thành phố' : 'City';
+                      badgeColor = 'bg-blue-600';
+                      badgeIcon = '🏙️';
+                    } else {
+                      badgeText = currentLanguage === 'ko' ? '구/군' : currentLanguage === 'vi' ? 'Quận' : 'District';
+                      badgeColor = 'bg-blue-500';
+                      badgeIcon = '📍';
+                    }
+                  } else {
+                    // 3순위: 대표 명소
+                    badgeText = currentLanguage === 'ko' ? '명소' : currentLanguage === 'vi' ? 'Địa danh' : 'Landmark';
+                    badgeColor = 'bg-amber-500';
+                    badgeIcon = '⭐';
+                  }
+                  
+                  return (
+                    <button
+                      key={suggestion.PlaceId || index}
+                      type="button"
+                      onClick={() => handleSelectSuggestion(suggestion)}
+                      className={`w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0 ${
+                        suggestion.isRegion ? 'bg-blue-50/30' : ''
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        {/* 아이콘 (이모지) */}
+                        <span className="text-lg flex-shrink-0 mt-0.5">{badgeIcon}</span>
+                        
+                        <div className="flex-1 min-w-0">
+                          {/* 배지 + 메인 이름 */}
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${badgeColor} text-white font-medium flex-shrink-0`}>
+                              {badgeText}
+                            </span>
+                            <p className="text-sm font-semibold text-gray-900 truncate">
+                              {mainName}
+                            </p>
+                          </div>
+                          
+                          {/* 보조 주소 (흐릿하게 표시) */}
+                          {subAddress && (
+                            <p className="text-xs text-gray-400 mt-1 truncate">
+                              {subAddress}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })
+              )}
             </div>
           )}
         </div>
-      </div>
+      </form>
 
       {/* 지도 컨테이너 */}
       <div 
@@ -1229,7 +1800,13 @@ export default function GrabMapComponent({
         <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-75 z-20">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-            <p className="text-gray-600">지도를 불러오는 중...</p>
+            <p className="text-gray-600">
+              {currentLanguage === 'ko' 
+                ? '지도를 불러오는 중...' 
+                : currentLanguage === 'vi' 
+                ? 'Đang tải bản đồ...' 
+                : 'Loading map...'}
+            </p>
           </div>
         </div>
       )}
