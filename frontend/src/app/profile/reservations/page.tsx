@@ -69,13 +69,13 @@ export default function ReservationsPage() {
           );
           
           // 각 예약에 매물 정보 추가
-          const reservationsWithProperties = await Promise.all(
+          const reservationsWithProperties: ReservationWithProperty[] = await Promise.all(
             reservationData.map(async (reservation) => {
               try {
                 const property = await getProperty(reservation.propertyId);
-                return { ...reservation, property };
+                return { ...reservation, property: property || undefined };
               } catch (error) {
-                return reservation;
+                return { ...reservation, property: undefined };
               }
             })
           );
@@ -112,13 +112,13 @@ export default function ReservationsPage() {
             activeTab === 'completed'
           );
           
-          const reservationsWithProperties = await Promise.all(
+          const reservationsWithProperties: ReservationWithProperty[] = await Promise.all(
             reservationData.map(async (reservation) => {
               try {
                 const property = await getProperty(reservation.propertyId);
-                return { ...reservation, property };
+                return { ...reservation, property: property || undefined };
               } catch (error) {
-                return reservation;
+                return { ...reservation, property: undefined };
               }
             })
           );
@@ -152,13 +152,13 @@ export default function ReservationsPage() {
         activeTab === 'completed'
       );
       
-      const reservationsWithProperties = await Promise.all(
+      const reservationsWithProperties: ReservationWithProperty[] = await Promise.all(
         reservationData.map(async (reservation) => {
           try {
             const property = await getProperty(reservation.propertyId);
-            return { ...reservation, property };
+            return { ...reservation, property: property || undefined };
           } catch (error) {
-            return reservation;
+            return { ...reservation, property: undefined };
           }
         })
       );

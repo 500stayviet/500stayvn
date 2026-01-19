@@ -3,68 +3,20 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { Search, MapPin, X } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 import { searchPlaceIndexForText } from '@/lib/api/aws-location';
-import { getAllProperties, subscribeToProperties, PropertyData } from '@/lib/api/properties';
+import { getAvailableProperties, subscribeToProperties, PropertyData } from '@/lib/api/properties';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { searchRegions, regionToSuggestion, RegionType } from '@/lib/data/vietnam-regions';
-import { getUIText } from '@/utils/i18n';
+import { searchRegions, regionToSuggestion } from '@/lib/data/vietnam-regions';
 import { 
-  FAMOUS_LANDMARKS, 
   getLandmarkPriority, 
   getSearchMatchScore,
-  cleanDisplayName,
-  cleanSubAddress,
-  getSuggestionBadge,
 } from '@/hooks/useLocationSearch';
-
-// ============================================================================
-// 검색 결과 타입 정의 (단순화: 행정구역 + 대표 명소만)
-// 공통 로직은 useLocationSearch 훅에서 가져옴
-// ============================================================================
-interface Suggestion {
-  PlaceId: string;
-  Text: string;
-  Place?: {
-    Geometry?: { Point?: number[] };
-    Label?: string;
-    Municipality?: string;
-    District?: string;
-    SubRegion?: string;
-    Region?: string;
-    Country?: string;
-  };
-  // 행정 구역 데이터 확장 필드
-  isRegion?: boolean;
-  regionType?: RegionType;
-  zoom?: number;
-  // 명소 태그 (landmark만 허용)
-  isLandmark?: boolean;
-}
-
-// 대표 명소인지 확인 (true/false)
-const isLandmark = (text: string): boolean => {
-  return getLandmarkPriority(text) > 0;
-};
-
-// 결과 타입: region(행정구역), poi(명칭/건물), address(상세주소)
-type ResultType = 'region' | 'poi' | 'address';
-
-// 결과 타입 판단 함수
-const getResultType = (suggestion: Suggestion): ResultType => {
-  // 행정 구역 (1순위: 도시, 2순위: 구)
-  if (suggestion.isRegion || suggestion.PlaceId?.startsWith('region-')) {
-    return 'region';
-  }
-  
-  // 대표 명소 (3순위)
-  if (suggestion.isLandmark) {
-    return 'poi';
-  }
-  
-  // 기타
-  return 'address';
-};
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
+import PropertyModal from '@/components/map/PropertyModal';
+import SearchBox from '@/components/map/SearchBox';
+import { Suggestion } from '@/types/map';
 
 interface Property {
   id: string;
@@ -126,12 +78,18 @@ export default function GrabMapComponent({
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const cardSliderRef = useRef<HTMLDivElement>(null);
   const mapMoveDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSearchValueRef = useRef<string>(''); // 마지막 검색어 저장 (언어 변경 시 재검색용)
   const onPropertyPriorityChangeRef = useRef(onPropertyPriorityChange);
   const updateVisiblePropertiesRef = useRef<(() => void) | undefined>(undefined);
   const hasRequestedLocationRef = useRef(false); // 위치 요청 여부 추적
   const isInitializingRef = useRef(false); // 지도 초기화 진행 중 여부 추적 (싱글톤 패턴)
   const [showLocationConsentModal, setShowLocationConsentModal] = useState(false);
+  const [showPropertyModal, setShowPropertyModal] = useState(false);
+  const [selectedPropertyData, setSelectedPropertyData] = useState<PropertyData | null>(null);
+  
   const { currentLanguage } = useLanguage();
+  const router = useRouter();
+  const { user } = useAuth();
   
   // allProperties 변경 시 ref도 업데이트
   useEffect(() => {
@@ -142,6 +100,65 @@ export default function GrabMapComponent({
   useEffect(() => {
     onPropertyPriorityChangeRef.current = onPropertyPriorityChange;
   }, [onPropertyPriorityChange]);
+
+  // 매물 클릭 시 모달 열기
+  const handlePropertyClick = async (propertyId: string) => {
+    try {
+      // allProperties에서 PropertyData 찾기
+      const { getProperty } = await import('@/lib/api/properties');
+      const propertyData = await getProperty(propertyId);
+      if (propertyData) {
+        setSelectedPropertyData(propertyData);
+        setShowPropertyModal(true);
+      }
+    } catch (error) {
+      console.error('매물 데이터 로드 실패:', error);
+    }
+  };
+
+  // 이전 매물로 이동 (지도 내 표시된 매물 기준)
+  const handlePrevPropertyInModal = async () => {
+    if (!selectedPropertyData || nearbyProperties.length <= 1) return;
+    const currentIndex = nearbyProperties.findIndex(p => p.id === selectedPropertyData.id);
+    const prevIndex = currentIndex <= 0 ? nearbyProperties.length - 1 : currentIndex - 1;
+    const prevProperty = nearbyProperties[prevIndex];
+    if (prevProperty) {
+      try {
+        const { getProperty } = await import('@/lib/api/properties');
+        const propertyData = await getProperty(prevProperty.id);
+        if (propertyData) {
+          setSelectedPropertyData(propertyData);
+        }
+      } catch (error) {
+        console.error('매물 데이터 로드 실패:', error);
+      }
+    }
+  };
+
+  // 다음 매물로 이동 (지도 내 표시된 매물 기준)
+  const handleNextPropertyInModal = async () => {
+    if (!selectedPropertyData || nearbyProperties.length <= 1) return;
+    const currentIndex = nearbyProperties.findIndex(p => p.id === selectedPropertyData.id);
+    const nextIndex = currentIndex >= nearbyProperties.length - 1 ? 0 : currentIndex + 1;
+    const nextProperty = nearbyProperties[nextIndex];
+    if (nextProperty) {
+      try {
+        const { getProperty } = await import('@/lib/api/properties');
+        const propertyData = await getProperty(nextProperty.id);
+        if (propertyData) {
+          setSelectedPropertyData(propertyData);
+        }
+      } catch (error) {
+        console.error('매물 데이터 로드 실패:', error);
+      }
+    }
+  };
+
+  // 현재 매물 인덱스 (모달용)
+  const getCurrentPropertyIndexInModal = () => {
+    if (!selectedPropertyData) return 0;
+    return nearbyProperties.findIndex(p => p.id === selectedPropertyData.id);
+  };
 
   // PropertyData를 Property로 변환하는 함수
   const convertPropertyDataToProperty = (propertyData: PropertyData): Property | null => {
@@ -172,7 +189,7 @@ export default function GrabMapComponent({
         // 약간의 지연을 두어 지도가 먼저 렌더링되도록
         await new Promise(resolve => setTimeout(resolve, 100));
         
-        const propertiesData = await getAllProperties();
+        const propertiesData = await getAvailableProperties();
         const convertedProperties = propertiesData
           .map(convertPropertyDataToProperty)
           .filter((p): p is Property => p !== null); // null 제거
@@ -471,26 +488,8 @@ export default function GrabMapComponent({
         const initDenied = locationDeniedRef.current;
         const initLoading = locationLoadingRef.current;
         
-        // 검색 기록 복원 (초기 위치보다 우선)
-        const searchHistory = loadSearchHistory();
-        if (searchHistory && !initLocation && !initDenied && !initLoading) {
-          // 검색 기록이 있으면 해당 위치로 복원
-          map.current!.flyTo({
-            center: [searchHistory.lng, searchHistory.lat],
-            zoom: searchHistory.zoom,
-            duration: 1000,
-          });
-          
-          // 검색어 복원
-          setSearchValue(searchHistory.keyword);
-          
-          // 지도 이동 완료 후 매물 필터링
-          map.current!.once('moveend', () => {
-            if (updateVisiblePropertiesRef.current) {
-              updateVisiblePropertiesRef.current();
-            }
-          });
-        } else if (initLocation) {
+        // 초기 위치 설정 (검색 기록 복원 없이 항상 초기화)
+        if (initLocation) {
           // initialLocation이 있으면 해당 위치로 이동하고 마커 표시
           const safeLat = Number(initLocation.lat);
           const safeLng = Number(initLocation.lng);
@@ -946,23 +945,13 @@ export default function GrabMapComponent({
               .setLngLat([propLng, propLat])
               .addTo(map.current!);
             
-            // 작은 마커 클릭 시 해당 매물 정보 표시
+            // 작은 마커 클릭 시 모달로 매물 상세 표시
             smallMarkerEl.addEventListener('click', (e) => {
               e.stopPropagation();
               e.preventDefault();
               
-              const propertyPopup = new maplibregl.Popup({ offset: 15, closeOnClick: false })
-                .setHTML(`
-                  <div style="padding: 8px;">
-                    <div style="font-weight: bold; font-size: 14px; margin-bottom: 4px;">${property.name}</div>
-                    <div style="color: #FF6B35; font-size: 16px; font-weight: bold;">
-                      ${property.price && !isNaN(Number(property.price)) ? (Number(property.price) / 1000000).toFixed(1) : '0.0'}M VND
-                    </div>
-                    ${property.address ? `<div style="font-size: 11px; color: #6b7280; margin-top: 4px;">${property.address}</div>` : ''}
-                  </div>
-                `);
-              
-              smallMarker.setPopup(propertyPopup);
+              // 매물 모달 열기
+              handlePropertyClick(property.id);
               
               if (onPropertyPriorityChangeRef.current) {
                 onPropertyPriorityChangeRef.current(property);
@@ -1013,16 +1002,19 @@ export default function GrabMapComponent({
           </div>
         `;
       } else {
-        // 단일 매물 팝업
+        // 단일 매물 팝업 - 클릭하면 바로 모달 열기
         const property = clusterProperties[0];
         if (!property) return;
         
         const price = property.price && !isNaN(Number(property.price)) ? Number(property.price) : 0;
         popupContent = `
-          <div style="padding: 8px;">
+          <div style="padding: 8px; cursor: pointer;" class="property-popup" data-property-id="${property.id}">
             <div style="font-weight: bold; font-size: 14px; margin-bottom: 4px;">${property.name || ''}</div>
             <div style="color: #FF6B35; font-size: 16px; font-weight: bold;">
               ${(price / 1000000).toFixed(1)}M VND
+            </div>
+            <div style="font-size: 11px; color: #3b82f6; margin-top: 6px; text-align: center;">
+              ${currentLanguage === 'ko' ? '탭하여 상세보기' : currentLanguage === 'vi' ? 'Nhấn để xem chi tiết' : 'Tap to view details'}
             </div>
           </div>
         `;
@@ -1030,6 +1022,22 @@ export default function GrabMapComponent({
 
       const popup = new maplibregl.Popup({ offset: 25, closeOnClick: false })
         .setHTML(popupContent);
+      
+      // 팝업 내 매물 클릭 이벤트 (단일 매물인 경우)
+      popup.on('open', () => {
+        if (!isCluster) {
+          const popupElement = popup.getElement();
+          const propertyPopup = popupElement?.querySelector('.property-popup');
+          if (propertyPopup) {
+            propertyPopup.addEventListener('click', () => {
+              const propertyId = propertyPopup.getAttribute('data-property-id');
+              if (propertyId) {
+                handlePropertyClick(propertyId);
+              }
+            });
+          }
+        }
+      });
 
       // 마커 클릭 시 팝업 표시 및 매물 우선순위 변경
       el.addEventListener('click', (e) => {
@@ -1039,7 +1047,13 @@ export default function GrabMapComponent({
         // 다른 팝업 닫기
         popupsRef.current.forEach(p => p.remove());
         
-        // 현재 팝업 표시
+        // 단일 매물인 경우 바로 모달 열기
+        if (!isCluster && clusterProperties.length === 1) {
+          handlePropertyClick(clusterProperties[0].id);
+          return;
+        }
+        
+        // 현재 팝업 표시 (클러스터인 경우)
         marker.setPopup(popup);
         
         // 클러스터인 경우 해당 위치로 확대 (개별 매물 위치 확인 용이)
@@ -1308,6 +1322,7 @@ export default function GrabMapComponent({
   // ============================================================================
   const handleSearchChange = async (value: string) => {
     setSearchValue(value);
+    lastSearchValueRef.current = value; // 마지막 검색어 저장
 
     // 이전 타이머 취소
     if (debounceTimerRef.current) {
@@ -1317,6 +1332,7 @@ export default function GrabMapComponent({
     if (!value.trim()) {
       setSuggestions([]);
       setShowSuggestions(false);
+      lastSearchValueRef.current = '';
       return;
     }
 
@@ -1433,45 +1449,6 @@ export default function GrabMapComponent({
     }, 250);
   };
 
-  // 검색 기록 저장 (localStorage)
-  const saveSearchHistory = (keyword: string, lat: number, lng: number, zoom: number) => {
-    if (typeof window === 'undefined') return;
-    
-    const searchHistory = {
-      keyword,
-      lat,
-      lng,
-      zoom,
-      timestamp: Date.now(),
-    };
-    
-    localStorage.setItem('mapSearchHistory', JSON.stringify(searchHistory));
-  };
-
-  // 검색 기록 불러오기
-  const loadSearchHistory = (): { keyword: string; lat: number; lng: number; zoom: number } | null => {
-    if (typeof window === 'undefined') return null;
-    
-    try {
-      const historyStr = localStorage.getItem('mapSearchHistory');
-      if (!historyStr) return null;
-      
-      const history = JSON.parse(historyStr);
-      // 24시간 이내 기록만 유효
-      const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
-      if (history.timestamp && history.timestamp > oneDayAgo) {
-        return history;
-      }
-      
-      // 만료된 기록 삭제
-      localStorage.removeItem('mapSearchHistory');
-      return null;
-    } catch (error) {
-      localStorage.removeItem('mapSearchHistory');
-      return null;
-    }
-  };
-
   // ============================================================================
   // 검색 결과 선택 및 지도 이동
   // 줌 레벨: 도시/구는 z=13 (넓게), 명소/아파트는 z=16 (건물 단위)
@@ -1505,8 +1482,6 @@ export default function GrabMapComponent({
             duration: 1200,
             essential: true,
           });
-
-          saveSearchHistory(displayText, safeLat, safeLng, zoomLevel);
 
           // 행정 구역 선택 시 마커는 표시하지 않음 (지역 전체 조망)
           if (marker.current) {
@@ -1543,8 +1518,6 @@ export default function GrabMapComponent({
             duration: 1200,
             essential: true,
           });
-
-          saveSearchHistory(displayText, safeLat, safeLng, zoomLevel);
 
           // 마커 표시 (건물 위치 표시)
           if (marker.current) {
@@ -1589,8 +1562,6 @@ export default function GrabMapComponent({
               essential: true,
             });
 
-            saveSearchHistory(displayText, safeLat, safeLng, zoomLevel);
-
             if (marker.current) {
               marker.current.remove();
             }
@@ -1625,23 +1596,6 @@ export default function GrabMapComponent({
     setShowSuggestions(false);
   };
 
-  // 검색창 컨테이너 ref (외부 클릭 감지용)
-  const searchContainerRef = useRef<HTMLDivElement>(null);
-
-  // 검색창 외부 클릭 시 드롭다운 닫기
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
-        setShowSuggestions(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
-
   // 엔터 키로 검색 (첫 번째 결과로 이동)
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1656,129 +1610,18 @@ export default function GrabMapComponent({
   return (
     <div className="relative w-full h-full" style={{ minHeight: '100%' }}>
       {/* 검색창 */}
-      <form onSubmit={handleSearchSubmit} className="absolute top-4 left-4 right-4 z-10 max-w-md">
-        <div className="relative" ref={searchContainerRef}>
-          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <Search className="h-5 w-5 text-gray-400" />
-          </div>
-          <input
-            type="text"
-            value={searchValue}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            onFocus={() => {
-              // 검색어가 있고 결과가 있으면 표시
-              if (searchValue && suggestions.length > 0) {
-                setShowSuggestions(true);
-              }
-            }}
-            placeholder={getUIText('searchPlaceholder', currentLanguage)}
-            className="w-full pl-12 pr-10 py-3 text-base rounded-lg bg-white border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-lg"
-          />
-          {searchValue && (
-            <button
-              type="button"
-              onClick={handleClearSearch}
-              className="absolute inset-y-0 right-0 pr-4 flex items-center"
-            >
-              <X className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-            </button>
-          )}
-          {isSearching && (
-            <div className="absolute inset-y-0 right-0 pr-4 flex items-center">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-            </div>
-          )}
-
-          {/* ============================================================ */}
-          {/* 검색 결과 목록 (임차인 최적화 UI) */}
-          {/* 이름/명칭을 크게, 주소는 보조 정보로 표시 */}
-          {/* ============================================================ */}
-          {searchValue && (showSuggestions || suggestions.length > 0) && (
-            <div 
-              className="suggestions-list absolute w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-xl max-h-80 overflow-y-auto"
-              style={{ zIndex: 9999 }}
-            >
-              {suggestions.length === 0 ? (
-                <div className="px-4 py-4 text-sm text-gray-500 text-center">
-                  {currentLanguage === 'ko' ? '검색 결과가 없습니다' : currentLanguage === 'vi' ? 'Không tìm thấy kết quả' : 'No results found'}
-                </div>
-              ) : (
-                suggestions.map((suggestion, index) => {
-                  const resultType = getResultType(suggestion);
-                  const displayText = suggestion.Text || '';
-                  
-                  // 이름과 주소 분리 (쉼표 기준)
-                  const parts = displayText.split(',');
-                  const rawMainName = parts[0]?.trim() || displayText;
-                  const rawSubAddress = parts.slice(1).join(',').trim();
-                  
-                  // 텍스트 정리 (공통 훅에서 가져온 함수 사용)
-                  const mainName = cleanDisplayName(rawMainName);
-                  const subAddress = cleanSubAddress(rawSubAddress);
-                  
-                  // 배지 설정 (단순화: 도시/구/명소만)
-                  let badgeText = '';
-                  let badgeColor = '';
-                  let badgeIcon = '';
-                  
-                  if (suggestion.isRegion) {
-                    // 1순위: 도시 / 2순위: 구
-                    if (suggestion.regionType === 'city') {
-                      badgeText = currentLanguage === 'ko' ? '도시' : currentLanguage === 'vi' ? 'Thành phố' : 'City';
-                      badgeColor = 'bg-blue-600';
-                      badgeIcon = '🏙️';
-                    } else {
-                      badgeText = currentLanguage === 'ko' ? '구/군' : currentLanguage === 'vi' ? 'Quận' : 'District';
-                      badgeColor = 'bg-blue-500';
-                      badgeIcon = '📍';
-                    }
-                  } else {
-                    // 3순위: 대표 명소
-                    badgeText = currentLanguage === 'ko' ? '명소' : currentLanguage === 'vi' ? 'Địa danh' : 'Landmark';
-                    badgeColor = 'bg-amber-500';
-                    badgeIcon = '⭐';
-                  }
-                  
-                  return (
-                    <button
-                      key={suggestion.PlaceId || index}
-                      type="button"
-                      onClick={() => handleSelectSuggestion(suggestion)}
-                      className={`w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0 ${
-                        suggestion.isRegion ? 'bg-blue-50/30' : ''
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        {/* 아이콘 (이모지) */}
-                        <span className="text-lg flex-shrink-0 mt-0.5">{badgeIcon}</span>
-                        
-                        <div className="flex-1 min-w-0">
-                          {/* 배지 + 메인 이름 */}
-                          <div className="flex items-center gap-2">
-                            <span className={`text-xs px-2 py-0.5 rounded-full ${badgeColor} text-white font-medium flex-shrink-0`}>
-                              {badgeText}
-                            </span>
-                            <p className="text-sm font-semibold text-gray-900 truncate">
-                              {mainName}
-                            </p>
-                          </div>
-                          
-                          {/* 보조 주소 (흐릿하게 표시) */}
-                          {subAddress && (
-                            <p className="text-xs text-gray-400 mt-1 truncate">
-                              {subAddress}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })
-              )}
-            </div>
-          )}
-        </div>
-      </form>
+      <SearchBox 
+        searchValue={searchValue}
+        onSearchChange={handleSearchChange}
+        onSearchSubmit={handleSearchSubmit}
+        onClearSearch={handleClearSearch}
+        suggestions={suggestions}
+        showSuggestions={showSuggestions}
+        setShowSuggestions={setShowSuggestions}
+        onSelectSuggestion={handleSelectSuggestion}
+        isSearching={isSearching}
+        currentLanguage={currentLanguage}
+      />
 
       {/* 지도 컨테이너 */}
       <div 
@@ -1795,21 +1638,6 @@ export default function GrabMapComponent({
         }} 
       />
 
-      {/* 로딩 오버레이 */}
-      {mapLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-75 z-20">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-            <p className="text-gray-600">
-              {currentLanguage === 'ko' 
-                ? '지도를 불러오는 중...' 
-                : currentLanguage === 'vi' 
-                ? 'Đang tải bản đồ...' 
-                : 'Loading map...'}
-            </p>
-          </div>
-        </div>
-      )}
 
       {/* 에러 메시지 */}
       {mapError && (
@@ -1864,6 +1692,21 @@ export default function GrabMapComponent({
             </div>
           </div>
         </div>
+      )}
+
+      {/* 매물 상세 모달 */}
+      {showPropertyModal && selectedPropertyData && (
+        <PropertyModal
+          propertyData={selectedPropertyData}
+          currentLanguage={currentLanguage}
+          onClose={() => setShowPropertyModal(false)}
+          onPrev={handlePrevPropertyInModal}
+          onNext={handleNextPropertyInModal}
+          hasPrev={nearbyProperties.length > 1}
+          hasNext={nearbyProperties.length > 1}
+          currentIndex={getCurrentPropertyIndexInModal()}
+          totalProperties={nearbyProperties.length}
+        />
       )}
 
     </div>

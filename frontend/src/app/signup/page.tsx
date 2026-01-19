@@ -9,7 +9,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { 
   Mail, 
@@ -31,6 +31,8 @@ import { signUpWithEmail, SignUpData } from '@/lib/api/auth';
 
 export default function SignUpPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnUrl = searchParams.get('returnUrl') || '/';
   const { currentLanguage, setCurrentLanguage } = useLanguage();
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -44,7 +46,7 @@ export default function SignUpPage() {
     fullName: '',
     phoneNumber: '',
     gender: 'male',
-    preferredLanguage: currentLanguage, // Context의 현재 언어로 초기화
+    preferredLanguage: (currentLanguage === 'ja' ? 'en' : currentLanguage) as 'ko' | 'vi' | 'en', // Context의 현재 언어로 초기화
   });
   const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
   const languageMenuRef = useRef<HTMLDivElement>(null);
@@ -57,7 +59,9 @@ export default function SignUpPage() {
   
   // currentLanguage가 변경되면 formData도 업데이트
   useEffect(() => {
-    setFormData(prev => ({ ...prev, preferredLanguage: currentLanguage }));
+    // 지원하지 않는 언어는 영어로 설정
+    const lang = (currentLanguage === 'ko' || currentLanguage === 'vi') ? currentLanguage : 'en';
+    setFormData(prev => ({ ...prev, preferredLanguage: lang }));
   }, [currentLanguage]);
 
   // 외부 클릭 시 언어 메뉴 닫기
@@ -147,7 +151,8 @@ export default function SignUpPage() {
         ...(formData.fullName && { fullName: formData.fullName }),
         ...(formData.phoneNumber && { phoneNumber: formData.phoneNumber }),
         ...(formData.gender && { gender: formData.gender }),
-        preferredLanguage: currentLanguage, // 현재 선택된 언어로 저장
+        // 지원하지 않는 언어는 영어로 설정
+        preferredLanguage: (currentLanguage === 'ko' || currentLanguage === 'vi') ? currentLanguage : 'en',
       };
 
       await signUpWithEmail(signUpData);
@@ -478,7 +483,8 @@ export default function SignUpPage() {
               <button
                 onClick={() => {
                   setShowSuccessModal(false);
-                  router.push('/');
+                  // returnUrl이 있으면 해당 페이지로, 없으면 홈으로 이동
+                  router.push(returnUrl);
                 }}
                 className="w-full py-3 px-6 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-all"
               >

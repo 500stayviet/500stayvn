@@ -9,16 +9,18 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import TopBar from '@/components/TopBar';
 import { getUIText } from '@/utils/i18n';
-import { signInWithEmail, signInWithGoogle, signInWithFacebook, signInWithZalo } from '@/lib/api/auth';
+import { signInWithEmail, signInWithGoogle, signInWithFacebook } from '@/lib/api/auth';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnUrl = searchParams.get('returnUrl') || '/';
   const { currentLanguage, setCurrentLanguage } = useLanguage();
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -48,7 +50,8 @@ export default function LoginPage() {
 
     try {
       await signInWithEmail(formData.email, formData.password);
-      router.push('/');
+      // returnUrl이 있으면 해당 페이지로, 없으면 홈으로 이동
+      router.push(returnUrl);
     } catch (error: any) {
       console.error('Login error:', error);
       const errorMessage = error.message || error.code || '';
@@ -67,9 +70,12 @@ export default function LoginPage() {
     }
   };
 
-  // 회원가입 페이지로 이동
+  // 회원가입 페이지로 이동 (returnUrl 전달)
   const handleSignUp = () => {
-    router.push('/signup');
+    const signupUrl = returnUrl !== '/' 
+      ? `/signup?returnUrl=${encodeURIComponent(returnUrl)}`
+      : '/signup';
+    router.push(signupUrl);
   };
 
   // 비밀번호 찾기
@@ -102,7 +108,8 @@ export default function LoginPage() {
           throw new Error('Unknown provider');
       }
 
-      router.push('/');
+      // returnUrl이 있으면 해당 페이지로, 없으면 홈으로 이동
+      router.push(returnUrl);
     } catch (error: any) {
       console.error(`${provider} login error:`, error);
       setError(

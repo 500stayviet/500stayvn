@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { MapPin, ChevronLeft, ChevronRight, X, Bed, Bath, Calendar, Users, Wind, Sofa, UtensilsCrossed, WashingMachine, Refrigerator, Table, Shirt, Wifi, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from 'lucide-react';
 import TopBar from '@/components/TopBar';
 import GrabMapComponent from '@/components/GrabMapComponent';
+import CalendarComponent from '@/components/CalendarComponent';
 import { getProperty, PropertyData } from '@/lib/api/properties';
+import { useAuth } from '@/hooks/useAuth';
 
 interface Property {
   id: string;
@@ -20,6 +22,7 @@ interface Property {
 
 export default function MapPage() {
   const { currentLanguage } = useLanguage();
+  const searchParams = useSearchParams();
   const [nearbyProperties, setNearbyProperties] = useState<Property[]>([]);
   const [selectedPropertyIndex, setSelectedPropertyIndex] = useState(0);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
@@ -30,6 +33,18 @@ export default function MapPage() {
   const [detailProperty, setDetailProperty] = useState<PropertyData | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  // URL 파라미터에서 위치 정보 읽기
+  const latParam = searchParams.get('lat');
+  const lngParam = searchParams.get('lng');
+  const deniedParam = searchParams.get('denied');
+  const loadingParam = searchParams.get('loading');
+  
+  const initialLocation = latParam && lngParam 
+    ? { lat: parseFloat(latParam), lng: parseFloat(lngParam) }
+    : null;
+  const locationDenied = deniedParam === 'true';
+  const locationLoading = loadingParam === 'true'; // 위치 로딩 중 상태
 
   // 매물 선택 시 지도 중심 이동
   const handlePropertySelect = (index: number, property: Property) => {
@@ -105,7 +120,7 @@ export default function MapPage() {
       <div className="w-full max-w-[430px] mx-auto bg-white min-h-screen shadow-lg flex flex-col">
         <TopBar 
           currentLanguage={currentLanguage}
-          showLanguageSelector={true}
+          hideLanguageSelector={false}
         />
         
         {/* 지도 영역 */}
@@ -115,6 +130,8 @@ export default function MapPage() {
             onPropertySelect={setSelectedPropertyIndex}
             selectedProperty={selectedProperty}
             onPropertyPriorityChange={handlePropertyPriorityChange}
+            initialLocation={initialLocation}
+            locationDenied={locationDenied}
           />
         </div>
 
@@ -165,6 +182,13 @@ function PropertyDetailModal({
   onClose: () => void;
 }) {
   const router = useRouter();
+  const { user } = useAuth();
+  
+  // 날짜 선택 상태
+  const [modalCheckInDate, setModalCheckInDate] = useState<Date | null>(null);
+  const [modalCheckOutDate, setModalCheckOutDate] = useState<Date | null>(null);
+  const [showModalCalendar, setShowModalCalendar] = useState(false);
+  const [modalCalendarMode, setModalCalendarMode] = useState<'checkin' | 'checkout'>('checkin');
   
   // 편의시설 옵션 정의
   const AMENITY_OPTIONS = [
@@ -448,7 +472,8 @@ function PropertyDetailModal({
                     <div className="grid grid-cols-3 gap-3">
                       {AMENITY_OPTIONS.filter(amenity => property.amenities?.includes(amenity.id)).map((amenity) => {
                         const Icon = amenity.icon;
-                        const label = amenity.label[currentLanguage] || amenity.label.en;
+                        const langKey = currentLanguage as 'ko' | 'vi' | 'en';
+                        const label = amenity.label[langKey] || amenity.label.en;
                         
                         return (
                           <div
@@ -471,23 +496,135 @@ function PropertyDetailModal({
                 </div>
               </div>
 
+              {/* 날짜 선택 */}
+              <div className="pt-4 border-t border-gray-100">
+                <p className="text-xs text-gray-500 mb-3">
+                  {currentLanguage === 'ko' ? '예약 날짜 선택' : 
+                   currentLanguage === 'vi' ? 'Chọn ngày đặt phòng' : 
+                   'Select Booking Dates'}
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {/* 체크인 선택 */}
+                  <button
+                    onClick={() => {
+                      setModalCalendarMode('checkin');
+                      setShowModalCalendar(true);
+                    }}
+                    className={`flex flex-col items-center px-3 py-2.5 rounded-xl border-2 transition-all ${
+                      modalCheckInDate 
+                        ? 'border-blue-500 bg-blue-50' 
+                        : 'border-gray-200 bg-gray-50 hover:border-blue-300'
+                    }`}
+                  >
+                    <span className="text-[10px] text-gray-500 mb-1">
+                      {currentLanguage === 'ko' ? '체크인' : currentLanguage === 'vi' ? 'Nhận phòng' : 'Check-in'}
+                    </span>
+                    <span className={`text-sm font-semibold ${modalCheckInDate ? 'text-blue-600' : 'text-gray-400'}`}>
+                      {modalCheckInDate 
+                        ? modalCheckInDate.toLocaleDateString(
+                            currentLanguage === 'ko' ? 'ko-KR' : currentLanguage === 'vi' ? 'vi-VN' : 'en-US',
+                            { month: 'short', day: 'numeric' }
+                          )
+                        : (currentLanguage === 'ko' ? '날짜 선택' : currentLanguage === 'vi' ? 'Chọn ngày' : 'Select')
+                      }
+                    </span>
+                  </button>
+
+                  {/* 체크아웃 선택 */}
+                  <button
+                    onClick={() => {
+                      setModalCalendarMode('checkout');
+                      setShowModalCalendar(true);
+                    }}
+                    className={`flex flex-col items-center px-3 py-2.5 rounded-xl border-2 transition-all ${
+                      modalCheckOutDate 
+                        ? 'border-blue-500 bg-blue-50' 
+                        : 'border-gray-200 bg-gray-50 hover:border-blue-300'
+                    }`}
+                  >
+                    <span className="text-[10px] text-gray-500 mb-1">
+                      {currentLanguage === 'ko' ? '체크아웃' : currentLanguage === 'vi' ? 'Trả phòng' : 'Check-out'}
+                    </span>
+                    <span className={`text-sm font-semibold ${modalCheckOutDate ? 'text-blue-600' : 'text-gray-400'}`}>
+                      {modalCheckOutDate 
+                        ? modalCheckOutDate.toLocaleDateString(
+                            currentLanguage === 'ko' ? 'ko-KR' : currentLanguage === 'vi' ? 'vi-VN' : 'en-US',
+                            { month: 'short', day: 'numeric' }
+                          )
+                        : (currentLanguage === 'ko' ? '날짜 선택' : currentLanguage === 'vi' ? 'Chọn ngày' : 'Select')
+                      }
+                    </span>
+                  </button>
+                </div>
+              </div>
+
               {/* 예약하기 버튼 */}
-              <div className="mt-6">
+              <div className="pt-3">
                 <button
                   onClick={() => {
-                    onClose();
-                    router.push(`/properties/${property.id}`);
+                    if (!modalCheckInDate || !modalCheckOutDate || !property) return;
+                    
+                    // 비회원이면 로그인 페이지로 이동 (현재 매물 정보를 returnUrl에 포함)
+                    if (!user) {
+                      const returnUrl = `/booking?propertyId=${property.id}&checkIn=${modalCheckInDate.toISOString()}&checkOut=${modalCheckOutDate.toISOString()}`;
+                      router.push(`/login?returnUrl=${encodeURIComponent(returnUrl)}`);
+                      return;
+                    }
+                    
+                    // 로그인된 사용자는 예약 페이지로 이동
+                    router.push(`/booking?propertyId=${property.id}&checkIn=${modalCheckInDate.toISOString()}&checkOut=${modalCheckOutDate.toISOString()}`);
                   }}
-                  className="w-full px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2"
+                  disabled={!modalCheckInDate || !modalCheckOutDate}
+                  className={`w-full py-3.5 rounded-xl font-bold text-base transition-all shadow-lg ${
+                    modalCheckInDate && modalCheckOutDate
+                      ? 'bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
                 >
-                  <Calendar className="w-5 h-5" />
-                  {currentLanguage === 'ko' ? '예약하기' : currentLanguage === 'vi' ? 'Đặt phòng' : 'Book Now'}
+                  {modalCheckInDate && modalCheckOutDate
+                    ? (currentLanguage === 'ko' ? '예약하기' : currentLanguage === 'vi' ? 'Đặt phòng' : 'Book Now')
+                    : (currentLanguage === 'ko' ? '날짜를 선택하세요' : currentLanguage === 'vi' ? 'Vui lòng chọn ngày' : 'Select dates')
+                  }
                 </button>
               </div>
             </>
           )}
         </div>
       </div>
+      
+      {/* 모달 내 캘린더 */}
+      {showModalCalendar && property && (
+        <div 
+          className="fixed inset-0 z-[110] bg-black/50 flex items-center justify-center p-4"
+          onClick={() => setShowModalCalendar(false)}
+        >
+          <div onClick={(e) => e.stopPropagation()}>
+            <CalendarComponent
+              checkInDate={modalCheckInDate}
+              checkOutDate={modalCheckOutDate}
+              onCheckInSelect={(date) => {
+                setModalCheckInDate(date);
+                setModalCheckOutDate(null);
+                setModalCalendarMode('checkout');
+              }}
+              onCheckOutSelect={(date) => {
+                setModalCheckOutDate(date);
+                setShowModalCalendar(false);
+              }}
+              onCheckInReset={() => {
+                setModalCheckInDate(null);
+                setModalCheckOutDate(null);
+                setModalCalendarMode('checkin');
+              }}
+              currentLanguage={currentLanguage as 'ko' | 'vi' | 'en'}
+              onClose={() => setShowModalCalendar(false)}
+              mode={modalCalendarMode}
+              minDate={parseDate(property.checkInDate) || undefined}
+              maxDate={parseDate(property.checkOutDate) || undefined}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -506,7 +643,7 @@ function MapPropertyCards({
   onSelect: (index: number, property: Property) => void;
   onImageClick?: (propertyId: string) => void;
   currentLanguage: string;
-  cardSliderRef?: React.RefObject<HTMLDivElement>;
+  cardSliderRef?: React.RefObject<HTMLDivElement | null>;
 }) {
   const router = useRouter();
   const internalScrollContainerRef = useRef<HTMLDivElement>(null);

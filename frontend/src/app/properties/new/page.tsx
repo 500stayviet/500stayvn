@@ -4,7 +4,14 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { geocodeAddress } from '@/lib/api/geocoding';
 import { addProperty } from '@/lib/api/properties';
-import { MapPin, Loader2 } from 'lucide-react';
+import { MapPin, Loader2, Clock } from 'lucide-react';
+
+// 시간 옵션 생성 (00:00 ~ 23:30, 30분 단위)
+const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
+  const hour = Math.floor(i / 2);
+  const minute = i % 2 === 0 ? '00' : '30';
+  return `${hour.toString().padStart(2, '0')}:${minute}`;
+});
 
 export default function NewPropertyPage() {
   const router = useRouter();
@@ -22,6 +29,8 @@ export default function NewPropertyPage() {
     bedrooms: '',
     bathrooms: '',
     address: '',
+    checkInTime: '14:00',  // 기본 체크인 시간
+    checkOutTime: '12:00', // 기본 체크아웃 시간
   });
 
   // 좌표 상태
@@ -102,6 +111,8 @@ export default function NewPropertyPage() {
         coordinates: finalCoordinates,
         address: formData.address,
         status: 'active',
+        checkInTime: formData.checkInTime,
+        checkOutTime: formData.checkOutTime,
       });
 
       alert('매물이 성공적으로 등록되었습니다!');
@@ -237,6 +248,46 @@ export default function NewPropertyPage() {
                 onChange={(e) => setFormData((prev) => ({ ...prev, bathrooms: e.target.value }))}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
+            </div>
+          </div>
+
+          {/* 체크인/체크아웃 시간 */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <Clock className="w-4 h-4 inline mr-1" />
+                체크인 시간
+              </label>
+              <select
+                value={formData.checkInTime}
+                onChange={(e) => setFormData((prev) => ({ ...prev, checkInTime: e.target.value }))}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                {TIME_OPTIONS.map((time) => (
+                  <option key={`checkin-${time}`} value={time}>
+                    {time} 이후
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-gray-500">입주자가 체크인할 수 있는 시간</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <Clock className="w-4 h-4 inline mr-1" />
+                체크아웃 시간
+              </label>
+              <select
+                value={formData.checkOutTime}
+                onChange={(e) => setFormData((prev) => ({ ...prev, checkOutTime: e.target.value }))}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                {TIME_OPTIONS.map((time) => (
+                  <option key={`checkout-${time}`} value={time}>
+                    {time} 이전
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-gray-500">입주자가 체크아웃해야 하는 시간</p>
             </div>
           </div>
 

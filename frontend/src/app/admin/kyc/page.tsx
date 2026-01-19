@@ -70,7 +70,7 @@ export default function AdminKYCPage() {
         {/* 상단 바 */}
         <TopBar 
           currentLanguage={currentLanguage}
-          onLanguageChange={setCurrentLanguage}
+          onLanguageChange={() => {}}
         />
 
         {/* 콘텐츠 */}

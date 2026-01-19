@@ -11,7 +11,7 @@
  * 아파트, 호텔, 상점, 은행 등 모든 POI 제외
  */
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { searchRegions, regionToSuggestion, RegionType, VietnamRegion } from '@/lib/data/vietnam-regions';
 import { searchPlaceIndexForText } from '@/lib/api/aws-location';
 
@@ -150,12 +150,13 @@ export const cleanDisplayName = (text: string): string => {
   return result.replace(/\s+/g, ' ').trim().replace(/^[-–,\s]+/, '').replace(/[-–,\s]+$/, '');
 };
 
-export const cleanSubAddress = (text: string): string => {
+export const cleanSubAddress = (text: string, language?: string): string => {
   let result = text;
   result = result.replace(/^TP\.\s*/gi, '');
   result = result.replace(/^Tp\s+/gi, '');
   result = result.replace(/^Thành\s+phố\s+/gi, '');
-  result = result.replace(/,?\s*(Vietnam|Việt Nam|Viet Nam)\s*$/i, '');
+  // "베트남"은 유지 (언어별 국가명 제거)
+  result = result.replace(/,?\s*(Vietnam|Việt Nam|Viet Nam|베트남)\s*$/i, '');
   return result.replace(/\s+/g, ' ').trim().replace(/^,\s*/, '').replace(/,\s*$/, '').replace(/,\s*,/g, ',');
 };
 
@@ -166,6 +167,110 @@ export function useLocationSearch(currentLanguage: string) {
   const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSearchRef = useRef<string>('');
+
+  // 언어가 변경되면 기존 검색 결과 초기화 및 재검색
+  useEffect(() => {
+    // 이전 검색어가 있으면 재검색
+    if (lastSearchRef.current) {
+      const searchValue = lastSearchRef.current;
+      // 약간의 지연 후 재검색 (상태 업데이트 완료 후)
+      setTimeout(() => {
+        performSearch(searchValue, currentLanguage);
+      }, 100);
+    }
+  }, [currentLanguage]);
+
+  const performSearch = async (value: string, language: string) => {
+    try {
+      setIsSearching(true);
+      
+      // 1순위/2순위: 행정구역 검색 (도시/구)
+      const regionResults = searchRegions(value);
+      const regionSuggestions: LocationSuggestion[] = regionResults.map(region => 
+        regionToSuggestion(region, language) as LocationSuggestion
+      );
+      
+      const cityResults = regionSuggestions.filter(r => r.regionType === 'city');
+      const districtResults = regionSuggestions.filter(r => r.regionType === 'district');
+      
+      // 3순위: 대표 명소 검색 (화이트리스트 기반)
+      let landmarkResults: LocationSuggestion[] = [];
+      
+      try {
+        const apiLanguage = language === 'vi' ? 'vi' : 'en';
+        const textResults = await searchPlaceIndexForText(value, apiLanguage);
+        
+        const apiSuggestions = textResults.map((result: any) => ({
+          PlaceId: result.Place?.PlaceId || result.PlaceId || '',
+          Text: result.Place?.Label || result.Text || value,
+          Place: result.Place,
+        }));
+        
+        // 행정구역 이름 Set (중복 제거용)
+        const regionNames = new Set(
+          regionResults.flatMap(r => [
+            r.name.toLowerCase(),
+            r.nameVi.toLowerCase(),
+            r.nameKo.toLowerCase(),
+            ...r.keywords.map(k => k.toLowerCase()),
+          ])
+        );
+        
+        // 대표 명소만 필터링
+        landmarkResults = apiSuggestions
+          .map(suggestion => {
+            const text = suggestion.Text || '';
+            const textLower = text.toLowerCase();
+            
+            // 화이트리스트에 있는 대표 명소만 허용
+            const landmarkPriority = getLandmarkPriority(text);
+            if (landmarkPriority === 0) {
+              return null;
+            }
+            
+            // 행정구역 중복 제거
+            for (const name of regionNames) {
+              if (textLower === name || textLower.startsWith(name + ',')) {
+                return null;
+              }
+            }
+            
+            const searchMatchScore = getSearchMatchScore(text, value);
+            const finalScore = searchMatchScore + landmarkPriority;
+            
+            return {
+              suggestion: {
+                ...suggestion,
+                isLandmark: true,
+              } as LocationSuggestion,
+              score: finalScore,
+            };
+          })
+          .filter((item): item is NonNullable<typeof item> => item !== null && item.score > 0)
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 5)
+          .map(item => item.suggestion);
+        
+      } catch (apiError) {
+        console.warn('AWS API 검색 실패:', apiError);
+      }
+      
+      // 최종 결과 병합
+      const combinedResults = [
+        ...cityResults,
+        ...districtResults,
+        ...landmarkResults,
+      ].slice(0, 10);
+      
+      setSuggestions(combinedResults);
+    } catch (error) {
+      console.error('검색 오류:', error);
+      setSuggestions([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   const search = useCallback(async (value: string) => {
     // 이전 타이머 취소
@@ -175,104 +280,22 @@ export function useLocationSearch(currentLanguage: string) {
 
     if (!value.trim()) {
       setSuggestions([]);
+      lastSearchRef.current = '';
       return;
     }
 
+    // 검색어 저장 (언어 변경 시 재검색용)
+    lastSearchRef.current = value;
+
     // 디바운싱: 250ms 후 검색
     debounceTimerRef.current = setTimeout(async () => {
-      try {
-        setIsSearching(true);
-        
-        // 1순위/2순위: 행정구역 검색 (도시/구)
-        const regionResults = searchRegions(value);
-        const regionSuggestions: LocationSuggestion[] = regionResults.map(region => 
-          regionToSuggestion(region, currentLanguage) as LocationSuggestion
-        );
-        
-        const cityResults = regionSuggestions.filter(r => r.regionType === 'city');
-        const districtResults = regionSuggestions.filter(r => r.regionType === 'district');
-        
-        // 3순위: 대표 명소 검색 (화이트리스트 기반)
-        let landmarkResults: LocationSuggestion[] = [];
-        
-        try {
-          const apiLanguage = currentLanguage === 'vi' ? 'vi' : 'en';
-          const textResults = await searchPlaceIndexForText(value, apiLanguage);
-          
-          const apiSuggestions = textResults.map((result: any) => ({
-            PlaceId: result.Place?.PlaceId || result.PlaceId || '',
-            Text: result.Place?.Label || result.Text || value,
-            Place: result.Place,
-          }));
-          
-          // 행정구역 이름 Set (중복 제거용)
-          const regionNames = new Set(
-            regionResults.flatMap(r => [
-              r.name.toLowerCase(),
-              r.nameVi.toLowerCase(),
-              r.nameKo.toLowerCase(),
-              ...r.keywords.map(k => k.toLowerCase()),
-            ])
-          );
-          
-          // 대표 명소만 필터링
-          landmarkResults = apiSuggestions
-            .map(suggestion => {
-              const text = suggestion.Text || '';
-              const textLower = text.toLowerCase();
-              
-              // 화이트리스트에 있는 대표 명소만 허용
-              const landmarkPriority = getLandmarkPriority(text);
-              if (landmarkPriority === 0) {
-                return null;
-              }
-              
-              // 행정구역 중복 제거
-              for (const name of regionNames) {
-                if (textLower === name || textLower.startsWith(name + ',')) {
-                  return null;
-                }
-              }
-              
-              const searchMatchScore = getSearchMatchScore(text, value);
-              const finalScore = searchMatchScore + landmarkPriority;
-              
-              return {
-                suggestion: {
-                  ...suggestion,
-                  isLandmark: true,
-                } as LocationSuggestion,
-                score: finalScore,
-              };
-            })
-            .filter((item): item is NonNullable<typeof item> => item !== null && item.score > 0)
-            .sort((a, b) => b.score - a.score)
-            .slice(0, 5)
-            .map(item => item.suggestion);
-          
-        } catch (apiError) {
-          console.warn('AWS API 검색 실패:', apiError);
-        }
-        
-        // 최종 결과 병합
-        const combinedResults = [
-          ...cityResults,
-          ...districtResults,
-          ...landmarkResults,
-        ].slice(0, 10);
-        
-        setSuggestions(combinedResults);
-      } catch (error) {
-        console.error('검색 오류:', error);
-        setSuggestions([]);
-      } finally {
-        setIsSearching(false);
-      }
+      await performSearch(value, currentLanguage);
     }, 250);
   }, [currentLanguage]);
 
   const clearSuggestions = useCallback(() => {
     setSuggestions([]);
+    lastSearchRef.current = '';
   }, []);
 
   return {

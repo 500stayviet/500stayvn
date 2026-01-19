@@ -354,9 +354,9 @@ export default function MyPropertiesPage() {
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                {currentLanguage === 'ko' ? '삭제된 매물' : 
-                 currentLanguage === 'vi' ? 'Bất động sản đã xóa' : 
-                 'Deleted Properties'}
+                {currentLanguage === 'ko' ? '광고종료된 매물' : 
+                 currentLanguage === 'vi' ? 'Quảng cáo đã kết thúc' : 
+                 'Expired Listings'}
                 <span className="ml-2 text-xs">
                   ({allProperties.filter(p => p.deleted).length})
                 </span>

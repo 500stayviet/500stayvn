@@ -52,6 +52,13 @@ export default function HeroSection({ currentLanguage }: HeroSectionProps) {
     };
   }, []);
 
+  // suggestions가 변경되면 (언어 변경으로 인한 재검색 등) 드롭다운 표시
+  useEffect(() => {
+    if (suggestions.length > 0 && searchValue.trim()) {
+      setShowSuggestions(true);
+    }
+  }, [suggestions, searchValue]);
+
   // 주소 입력 시 추천 목록 가져오기
   const handleInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;

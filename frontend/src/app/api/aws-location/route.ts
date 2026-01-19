@@ -79,23 +79,13 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ Results: [] }, { headers: corsHeaders });
         }
         url = `${BASE_URL}/places/v0/indexes/${AWS_PLACE_INDEX_NAME}/search/text?key=${encodeURIComponent(AWS_API_KEY)}`;
+        // 400 에러 방지: FilterCategories 제거, 기본 파라미터만 사용
         requestBody = {
-          Text: text, // 대문자 T 주의
-          MaxResults: 10,
+          Text: text,
+          MaxResults: 15,
           Language: language || 'vi',
-          FilterCountries: ['VNM'], // 베트남만 검색
-          // 아파트/건물 검색을 위해 카테고리 필터 추가 (주소, 상업시설, 주거단지)
-          // FilterCategories는 AWS Location Service에서 지원하지 않을 수 있으므로 주석 처리
-          // FilterCategories: ['Address', 'Commercial', 'Residential'],
+          FilterCountries: ['VNM'],
         };
-        
-        // 거리 기반 가중치: BiasPosition 추가 (호치민 좌표 또는 사용자 위치)
-        if (latitude && longitude) {
-          requestBody.BiasPosition = [longitude, latitude];
-        } else {
-          // 기본값: 호치민 좌표 (10.776, 106.701)
-          requestBody.BiasPosition = [106.701, 10.776];
-        }
         break;
 
       case 'getPlace':

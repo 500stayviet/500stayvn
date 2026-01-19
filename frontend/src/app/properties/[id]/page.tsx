@@ -375,7 +375,8 @@ export default function PropertyDetailPage() {
                 <div className="grid grid-cols-3 gap-3">
                   {AMENITY_OPTIONS.filter(amenity => property.amenities?.includes(amenity.id)).map((amenity) => {
                     const Icon = amenity.icon;
-                    const label = amenity.label[currentLanguage] || amenity.label.en;
+                    const langKey = currentLanguage as 'ko' | 'vi' | 'en';
+                    const label = amenity.label[langKey] || amenity.label.en;
                     
                     return (
                       <div
@@ -395,6 +396,23 @@ export default function PropertyDetailPage() {
                    'No amenities information'}
                 </p>
               )}
+            </div>
+
+            {/* 예약하기 버튼 */}
+            <div className="pt-4">
+              <button
+                onClick={() => {
+                  // TODO: 예약 페이지로 이동 또는 예약 모달 표시
+                  alert(currentLanguage === 'ko' ? '예약 기능은 준비 중입니다.' : 
+                        currentLanguage === 'vi' ? 'Chức năng đặt phòng đang được chuẩn bị.' : 
+                        'Booking feature is coming soon.');
+                }}
+                className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold text-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all shadow-lg hover:shadow-xl active:scale-[0.98]"
+              >
+                {currentLanguage === 'ko' ? '예약하기' : 
+                 currentLanguage === 'vi' ? 'Đặt phòng' : 
+                 'Book Now'}
+              </button>
             </div>
           </div>
         </div>

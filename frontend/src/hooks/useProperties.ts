@@ -10,7 +10,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { PropertyData, subscribeToProperties, getAllProperties } from '@/lib/api/properties';
+import { PropertyData, subscribeToProperties, getAvailableProperties } from '@/lib/api/properties';
 
 /**
  * 매물 데이터와 로딩 상태를 관리하는 Hook
@@ -34,17 +34,17 @@ export function useProperties() {
       return;
     }
 
-    // 초기 데이터 로드
+    // 초기 데이터 로드 (예약 가능한 매물만)
     const loadInitialData = async () => {
       try {
         setLoading(true);
-        console.log('[useProperties] Loading initial data...');
-        const data = await getAllProperties();
-        console.log('[useProperties] Loaded', data.length, 'properties');
+        console.log('[useProperties] Loading available properties...');
+        const data = await getAvailableProperties();
+        console.log('[useProperties] Loaded', data.length, 'available properties');
         setProperties(data);
         setError(null);
       } catch (err) {
-        console.error('[useProperties] Error loading data:', err);
+        console.log('[useProperties] Error loading data:', err);
         setError(err instanceof Error ? err : new Error('Unknown error'));
         setProperties([]);
       } finally {
