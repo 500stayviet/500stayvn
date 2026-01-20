@@ -46,7 +46,7 @@ export default function SignUpPage() {
     fullName: '',
     phoneNumber: '',
     gender: 'male',
-    preferredLanguage: (currentLanguage === 'ja' ? 'en' : currentLanguage) as 'ko' | 'vi' | 'en', // Context의 현재 언어로 초기화
+    preferredLanguage: currentLanguage, // Context의 현재 언어로 초기화
   });
   const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
   const languageMenuRef = useRef<HTMLDivElement>(null);
