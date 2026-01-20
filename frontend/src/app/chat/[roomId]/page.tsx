@@ -62,14 +62,14 @@ export default function ChatRoomPage() {
         
         // 참여자 확인
         if (room.ownerId !== user.uid && room.guestId !== user.uid) {
-          router.push('/chat');
+          router.push('/my-bookings');
           return;
         }
         
         setChatRoom(room);
       } catch (error) {
         console.error('채팅방 로드 실패:', error);
-        router.push('/chat');
+        router.push('/my-bookings');
       } finally {
         setLoading(false);
       }
@@ -199,7 +199,7 @@ export default function ChatRoomPage() {
         <div className="sticky top-0 z-10 bg-white border-b border-gray-200">
           <div className="px-4 py-3 flex items-center gap-3">
             <button
-              onClick={() => router.push('/chat')}
+              onClick={() => router.back()}
               className="p-1 text-gray-600 hover:text-gray-900"
             >
               <ArrowLeft className="w-5 h-5" />

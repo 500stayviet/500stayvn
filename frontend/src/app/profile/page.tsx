@@ -528,7 +528,7 @@ export default function ProfilePage() {
               {/* 예약한 매물 */}
               <button
                 onClick={() => router.push('/my-bookings')}
-                className="w-full py-4 px-5 flex items-center justify-between hover:bg-gray-50 border-b border-gray-100"
+                className="w-full py-4 px-5 flex items-center justify-between hover:bg-gray-50"
               >
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-teal-100 rounded-lg">
@@ -542,31 +542,6 @@ export default function ProfilePage() {
                     </p>
                     <p className="text-xs text-gray-500">
                       {currentLanguage === 'ko' ? '내가 예약한 숙소를 확인합니다' : 'Xem phòng đã đặt'}
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-gray-400" />
-              </button>
-
-              {/* 채팅 */}
-              <button
-                onClick={() => router.push('/chat')}
-                className="w-full py-4 px-5 flex items-center justify-between hover:bg-gray-50"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <MessageCircle className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <div className="text-left">
-                    <p className="text-sm font-semibold text-gray-900">
-                      {currentLanguage === 'ko' ? '채팅' : 
-                       currentLanguage === 'vi' ? 'Tin nhắn' : 
-                       'Messages'}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {currentLanguage === 'ko' ? '임대인과 대화를 나눕니다' : 
-                       currentLanguage === 'vi' ? 'Trò chuyện với chủ nhà' : 
-                       'Chat with property owners'}
                     </p>
                   </div>
                 </div>

@@ -13,7 +13,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getProperty, updateProperty, restoreProperty, permanentlyDeleteProperty, PropertyData } from '@/lib/api/properties';
 import { searchPlaceIndexForSuggestions, searchPlaceIndexForText, getLocationServiceLanguage } from '@/lib/api/aws-location';
-import { Camera, MapPin, Loader2, X, Maximize2, ArrowLeft, Calendar, Users, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Camera, MapPin, Loader2, X, Maximize2, ArrowLeft, Calendar, Users, ChevronLeft, ChevronRight, Bed, Bath } from 'lucide-react';
 import TopBar from '@/components/TopBar';
 import CalendarComponent from '@/components/CalendarComponent';
 

@@ -15,7 +15,7 @@ import { SupportedLanguage } from '@/lib/api/translation';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getGuestBookings, getOwnerBookings, BookingData } from '@/lib/api/bookings';
-import { getUnreadMessageCount } from '@/lib/api/chat';
+import { getUnreadCountsByRole } from '@/lib/api/chat';
 
 interface TopBarProps {
   currentLanguage?: SupportedLanguage;
@@ -43,7 +43,7 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
     asOwner: BookingData[];
   }>({ asGuest: [], asOwner: [] });
   const [unreadCount, setUnreadCount] = useState(0);
-  const [unreadChatCount, setUnreadChatCount] = useState(0);
+  const [unreadChatCounts, setUnreadChatCounts] = useState({ asGuest: 0, asOwner: 0 });
   const [readNotificationIds, setReadNotificationIds] = useState<Set<string>>(new Set());
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -93,11 +93,11 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
       if (!user) return;
       
       try {
-        // 임차인 예약과 임대인 예약 모두 가져오기
-        const [guestBookings, ownerBookings, chatUnread] = await Promise.all([
+        // 임차인 예약과 임대인 예약, 읽지 않은 채팅 모두 가져오기
+        const [guestBookings, ownerBookings, chatUnreads] = await Promise.all([
           getGuestBookings(user.uid),
           getOwnerBookings(user.uid),
-          getUnreadMessageCount(user.uid)
+          getUnreadCountsByRole(user.uid)
         ]);
         
         // 최근 예약만 표시 (최근 10개씩)
@@ -120,10 +120,10 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
         
         const unreadGuestCount = recentGuestBookings.filter(b => b.id && !readIds.has(b.id)).length;
         const unreadOwnerCount = recentOwnerBookings.filter(b => b.id && !readIds.has(b.id)).length;
-        setUnreadCount(unreadGuestCount + unreadOwnerCount);
         
-        // 읽지 않은 채팅 메시지 수
-        setUnreadChatCount(chatUnread);
+        // 채팅 알림도 포함
+        setUnreadChatCounts(chatUnreads);
+        setUnreadCount(unreadGuestCount + unreadOwnerCount + chatUnreads.asGuest + chatUnreads.asOwner);
       } catch (error) {
         console.error('Failed to load notifications:', error);
       }
@@ -270,20 +270,6 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
               <>
                 {user ? (
                   <>
-                    {/* 채팅 버튼 */}
-                    <button
-                      onClick={() => router.push('/chat')}
-                      className="p-2 hover:bg-gray-50 rounded-full transition-all duration-200 relative text-gray-700 hover:text-blue-600"
-                      aria-label="Messages"
-                    >
-                      <MessageCircle className="w-5 h-5" />
-                      {unreadChatCount > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full font-bold">
-                          {unreadChatCount > 9 ? '9+' : unreadChatCount}
-                        </span>
-                      )}
-                    </button>
-
                     {/* 알림 버튼 */}
                     <div className="relative" ref={notificationRef}>
                       <button
@@ -311,6 +297,64 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
                                'Notifications'}
                             </h3>
                           </div>
+
+                          {/* 채팅 알림 (임차인용 - 가장 상단) */}
+                          {unreadChatCounts.asGuest > 0 && (
+                            <div className="border-b border-gray-100 bg-blue-50/30">
+                              <button
+                                onClick={() => {
+                                  setIsNotificationOpen(false);
+                                  router.push('/my-bookings?tab=confirmed');
+                                }}
+                                className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors flex items-center gap-3"
+                              >
+                                <div className="p-2 bg-blue-100 rounded-full">
+                                  <MessageCircle className="w-4 h-4 text-blue-600" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-bold text-gray-900">
+                                    {currentLanguage === 'ko' ? '새로운 메시지 (임차인)' : 
+                                     currentLanguage === 'vi' ? 'Tin nhắn mới (Khách)' : 
+                                     'New Message (Guest)'}
+                                  </p>
+                                  <p className="text-xs text-blue-600 mt-0.5">
+                                    {currentLanguage === 'ko' ? `${unreadChatCounts.asGuest}개의 읽지 않은 메시지가 있습니다` : 
+                                     currentLanguage === 'vi' ? `Có ${unreadChatCounts.asGuest} tin nhắn chưa đọc` : 
+                                     `You have ${unreadChatCounts.asGuest} unread message(s)`}
+                                  </p>
+                                </div>
+                              </button>
+                            </div>
+                          )}
+
+                          {/* 채팅 알림 (임대인용 - 상단) */}
+                          {unreadChatCounts.asOwner > 0 && (
+                            <div className="border-b border-gray-100 bg-green-50/30">
+                              <button
+                                onClick={() => {
+                                  setIsNotificationOpen(false);
+                                  router.push('/host/bookings?tab=confirmed');
+                                }}
+                                className="w-full text-left px-4 py-3 hover:bg-green-50 transition-colors flex items-center gap-3"
+                              >
+                                <div className="p-2 bg-green-100 rounded-full">
+                                  <MessageCircle className="w-4 h-4 text-green-600" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-bold text-gray-900">
+                                    {currentLanguage === 'ko' ? '새로운 메시지 (임대인)' : 
+                                     currentLanguage === 'vi' ? 'Tin nhắn mới (Chủ nhà)' : 
+                                     'New Message (Host)'}
+                                  </p>
+                                  <p className="text-xs text-green-600 mt-0.5">
+                                    {currentLanguage === 'ko' ? `${unreadChatCounts.asOwner}개의 읽지 않은 메시지가 있습니다` : 
+                                     currentLanguage === 'vi' ? `Có ${unreadChatCounts.asOwner} tin nhắn chưa đọc` : 
+                                     `You have ${unreadChatCounts.asOwner} unread message(s)`}
+                                  </p>
+                                </div>
+                              </button>
+                            </div>
+                          )}
 
                           {/* 임차인 알림 (파란색 섹션) */}
                           {notifications.asGuest.length > 0 && (

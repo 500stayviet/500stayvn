@@ -243,7 +243,7 @@ export default function BookingPage() {
       
       setPaymentCompleted(true);
       // 바로 예약 완료 페이지로 이동 (pending 상태로 - 임대인 승인 대기)
-      router.push(`/booking-success?bookingId=${bookingId}`);
+      router.push(`/booking-success?bookingId=${bookingId}&new=true`);
     } catch (error) {
       console.error('결제 처리 실패:', error);
       alert(currentLanguage === 'ko' ? '결제 처리에 실패했습니다.' : 'Thanh toán thất bại.');

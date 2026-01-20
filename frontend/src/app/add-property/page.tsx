@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getCurrentUserData } from '@/lib/api/auth';
 import { addProperty, getPropertyCountByOwner } from '@/lib/api/properties';
-import { Camera, MapPin, Loader2, X, Maximize2, ArrowLeft, Check, Calendar, Users, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Camera, MapPin, Loader2, X, Maximize2, ArrowLeft, Check, Calendar, Users, ChevronLeft, ChevronRight, Bed, Bath } from 'lucide-react';
 import { motion } from 'framer-motion';
 import TopBar from '@/components/TopBar';
 import CalendarComponent from '@/components/CalendarComponent';
@@ -319,6 +319,26 @@ export default function AddPropertyPage() {
         : currentLanguage === 'vi'
         ? 'Cần đăng nhập.'
         : 'Please login.');
+      return;
+    }
+
+    if (!checkInDate || !checkOutDate) {
+      alert(currentLanguage === 'ko' 
+        ? '임대 시작일과 종료일을 선택해주세요.'
+        : currentLanguage === 'vi'
+        ? 'Vui lòng chọn ngày bắt đầu và kết thúc thuê.'
+        : 'Please select rental start and end dates.');
+      return;
+    }
+
+    const diffTime = checkOutDate.getTime() - checkInDate.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+    if (![7, 14, 21, 28].includes(diffDays)) {
+      alert(currentLanguage === 'ko' 
+        ? '임대 기간은 7, 14, 21, 28일 단위여야 합니다.'
+        : currentLanguage === 'vi'
+        ? 'Thời hạn thuê phải theo đơn vị 7, 14, 21, 28 ngày.'
+        : 'Rental period must be in units of 7, 14, 21, 28 days.');
       return;
     }
 
