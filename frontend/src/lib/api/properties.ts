@@ -6,6 +6,9 @@
  */
 
 import { PropertyData } from '@/types/property';
+import { getReservationsByOwner, ReservationData } from './reservations';
+import { parseDate, toISODateString } from '@/lib/utils/dateUtils';
+import { isDateRangeBooked, getAllBookings } from './bookings';
 
 /**
  * 사용자의 동적 광고 한도 조회 (유료화 대비)
@@ -53,10 +56,6 @@ export type PropertiesByOwnerResult = {
   properties: PropertyData[];
   bookedDateRanges: Map<string, PropertyDateRange[]>;
 };
-
-import { getReservationsByOwner, ReservationData } from './reservations';
-import { parseDate, toISODateString } from '@/lib/utils/dateUtils';
-import { isDateRangeBooked, getAllBookings } from './bookings';
 
 /**
  * LocalStorage 키
@@ -256,10 +255,31 @@ export async function handleCancellationRelist(propertyId: string, ownerId: stri
 /**
  * 예약 확정/결제 시 가용 기간을 재계산하고 세그먼트를 분리 (Gaps Logic)
  */
-export async function recalculateAndSplitProperty(propertyId: string): Promise<void> {
+export async function recalculateAndSplitProperty(propertyId: string, bookingId?: string): Promise<void> {
   const property = await getProperty(propertyId);
   if (!property || property.deleted) return;
   if (propertyId.includes('_child_')) return;
+
+  // 예약 정보 가져오기
+  let booking;
+  if (bookingId) {
+    const { getBooking } = await import('./bookings');
+    booking = await getBooking(bookingId);
+  }
+  
+  if (!booking) {
+    // 만약 bookingId가 없거나 못 찾으면, 가장 최근의 해당 매물 예약을 찾음
+    const { getAllBookings } = await import('./bookings');
+    const allBookings = await getAllBookings();
+    booking = allBookings
+      .filter(b => b.propertyId === propertyId && (b.paymentStatus === 'paid' || b.status === 'confirmed'))
+      .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())[0];
+  }
+
+  if (!booking) {
+    console.error('[recalculateAndSplitProperty] No valid booking found for property:', propertyId);
+    return;
+  }
 
   const bookedStart = toISODateString(booking.checkInDate);
   const bookedEnd = toISODateString(booking.checkOutDate);
@@ -391,12 +411,12 @@ export async function getAllProperties(): Promise<PropertyData[]> {
   try {
     // 브라우저 환경 확인
     if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
-      return { properties: [], bookedDateRanges: new Map() };
+      return [];
     }
     
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) {
-      return { properties: [], bookedDateRanges: new Map() };
+      return [];
     }
     
     const properties = JSON.parse(stored) as PropertyData[];
@@ -632,7 +652,7 @@ export async function getPropertiesByOwner(ownerId: string, includeDeleted: bool
       }
     } catch (parseError) {
       console.error('Error parsing properties from localStorage:', parseError);
-      return [];
+      return { properties: [], bookedDateRanges: new Map() };
     }
     
     // 필터링: ownerId 일치 + deleted 상태에 따라

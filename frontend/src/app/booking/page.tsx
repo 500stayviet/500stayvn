@@ -248,7 +248,7 @@ export default function BookingPage() {
       // 가용 기간 즉시 차감 및 세그먼트 분리 (Rule 1, 3)
       console.log('[Booking] Recalculating and splitting property availability:', property.id);
       const { recalculateAndSplitProperty } = await import('@/lib/api/properties');
-      await recalculateAndSplitProperty(property.id);
+      await recalculateAndSplitProperty(property.id, bookingId);
       
       setPaymentCompleted(true);
       // 바로 예약 완료 페이지로 이동 (pending 상태로 - 임대인 승인 대기)

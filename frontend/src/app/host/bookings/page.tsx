@@ -175,7 +175,7 @@ export default function HostBookingsPage() {
       const booking = bookings.find(b => b.id === bookingId);
       if (booking) {
         const { recalculateAndSplitProperty } = await import('@/lib/api/properties');
-        await recalculateAndSplitProperty(booking.propertyId);
+        await recalculateAndSplitProperty(booking.propertyId, bookingId);
       }
       
       // 예약 확정 시 채팅방이 없으면 생성
