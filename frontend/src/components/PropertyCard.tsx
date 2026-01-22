@@ -14,11 +14,13 @@ import { SupportedLanguage } from '@/lib/api/translation';
 import { getUIText } from '@/utils/i18n';
 import { 
   formatPrice, 
+} from '@/lib/utils/propertyUtils';
+import { 
   parseDate, 
   isAvailableNow, 
   formatDate, 
   formatDateForBadge 
-} from '@/lib/utils/propertyUtils';
+} from '@/lib/utils/dateUtils';
 
 interface PropertyCardProps {
   property: PropertyData;

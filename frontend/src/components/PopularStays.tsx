@@ -22,9 +22,11 @@ import PropertyModal from '@/components/map/PropertyModal';
 import { 
   formatPrice, 
   getCityName, 
+} from '@/lib/utils/propertyUtils';
+import { 
   isAvailableNow, 
   formatDateForBadge 
-} from '@/lib/utils/propertyUtils';
+} from '@/lib/utils/dateUtils';
 
 interface PopularStaysProps {
   currentLanguage: SupportedLanguage;

@@ -19,10 +19,12 @@ import { useAuth } from '@/hooks/useAuth';
 import { AMENITY_OPTIONS } from '@/lib/constants/amenities';
 import { 
   formatFullPrice, 
+} from '@/lib/utils/propertyUtils';
+import { 
   parseDate, 
   isAvailableNow, 
   formatDateForBadge 
-} from '@/lib/utils/propertyUtils';
+} from '@/lib/utils/dateUtils';
 
 interface PropertyModalProps {
   propertyData: PropertyData;
