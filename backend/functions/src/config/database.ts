@@ -3,23 +3,9 @@
  * Placeholder for database setup
  */
 
-export interface DatabaseConfig {
-  host: string;
-  port: number;
-  database: string;
-  username?: string;
-  password?: string;
-}
+import { PrismaClient } from '@prisma/client';
 
-export const getDatabaseConfig = (): DatabaseConfig => {
-  return {
-    host: process.env.DB_HOST || 'localhost',
-    port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 5432,
-    database: process.env.DB_NAME || 'translation_db',
-    username: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-  };
-};
+export const prisma = new PrismaClient();
 
 export class DatabaseConnection {
   private static instance: DatabaseConnection;
@@ -35,12 +21,18 @@ export class DatabaseConnection {
   }
 
   async connect(): Promise<void> {
-    // TODO: Implement actual database connection
-    this.connected = true;
+    try {
+      await prisma.$connect();
+      this.connected = true;
+      console.log('Successfully connected to RDS via Prisma');
+    } catch (error) {
+      console.error('Failed to connect to database:', error);
+      throw error;
+    }
   }
 
   async disconnect(): Promise<void> {
-    // TODO: Implement actual database disconnection
+    await prisma.$disconnect();
     this.connected = false;
   }
 

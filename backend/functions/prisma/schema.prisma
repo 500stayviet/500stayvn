@@ -1,0 +1,84 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String    @id
+  email         String    @unique
+  displayName   String?
+  role          String    @default("guest") // guest, owner, admin
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  properties    Property[]
+  bookings      Booking[]
+}
+
+model Property {
+  id                    String    @id @default(uuid())
+  title                 String
+  original_description  String?
+  translated_description String?
+  price                 Float
+  priceUnit             String    @default("vnd")
+  area                  Float
+  bedrooms              Int?      @default(0)
+  bathrooms             Int?      @default(0)
+  lat                   Float?
+  lng                   Float?
+  address               String
+  unitNumber            String?
+  images                String[]
+  amenities             String[]
+  maxAdults             Int?      @default(2)
+  maxChildren           Int?      @default(0)
+  status                String    @default("active") // active, inactive, pending
+  
+  ownerId               String
+  owner                 User      @relation(fields: [ownerId], references: [id])
+  
+  checkInDate           DateTime?
+  checkOutDate          DateTime?
+  
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  
+  bookings              Booking[]
+}
+
+model Booking {
+  id            String    @id @default(uuid())
+  propertyId    String
+  property      Property  @relation(fields: [propertyId], references: [id])
+  guestId       String
+  guest         User      @relation(fields: [guestId], references: [id])
+  
+  checkInDate   DateTime
+  checkOutDate  DateTime
+  totalPrice    Float
+  status        String    @default("pending") // pending, confirmed, cancelled, completed
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model ChatRoom {
+  id          String    @id @default(uuid())
+  bookingId   String?   @unique
+  createdAt   DateTime  @default(now())
+  messages    Message[]
+}
+
+model Message {
+  id          String    @id @default(uuid())
+  roomId      String
+  room        ChatRoom  @relation(fields: [roomId], references: [id])
+  senderId    String
+  content     String
+  isRead      Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+}
