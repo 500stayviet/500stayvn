@@ -14,7 +14,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getProperty, updateProperty } from '@/lib/api/properties';
 import { PropertyData } from '@/types/property';
-import { createBooking, completePayment, confirmBooking, toISODateString } from '@/lib/api/bookings';
+import { createBooking, completePayment, confirmBooking, toISODateString, BookingData } from '@/lib/api/bookings';
 import { ArrowLeft, Calendar, Users, MapPin, Clock, CreditCard, CheckCircle, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import TopBar from '@/components/TopBar';
