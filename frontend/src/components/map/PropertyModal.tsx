@@ -13,7 +13,7 @@ import {
   Bath, 
 } from 'lucide-react';
 import { PropertyData } from '@/lib/api/properties';
-import { getPropertyBookings } from '@/lib/api/bookings';
+import { getPropertyBookings, toISODateString } from '@/lib/api/bookings';
 import CalendarComponent from '@/components/CalendarComponent';
 import { useAuth } from '@/hooks/useAuth';
 import { AMENITY_OPTIONS } from '@/lib/constants/amenities';
@@ -421,13 +421,13 @@ export default function PropertyModal({
                 
                 // 비회원이면 로그인 페이지로 이동 (현재 매물 정보를 returnUrl에 포함)
                 if (!user) {
-                  const returnUrl = `/booking?propertyId=${propertyData.id}&checkIn=${modalCheckInDate.toISOString()}&checkOut=${modalCheckOutDate.toISOString()}`;
+                  const returnUrl = `/booking?propertyId=${propertyData.id}&checkIn=${toISODateString(modalCheckInDate)}&checkOut=${toISODateString(modalCheckOutDate)}`;
                   router.push(`/login?returnUrl=${encodeURIComponent(returnUrl)}`);
                   return;
                 }
                 
                 // 로그인된 사용자는 예약 페이지로 이동
-                router.push(`/booking?propertyId=${propertyData.id}&checkIn=${modalCheckInDate.toISOString()}&checkOut=${modalCheckOutDate.toISOString()}`);
+                router.push(`/booking?propertyId=${propertyData.id}&checkIn=${toISODateString(modalCheckInDate)}&checkOut=${toISODateString(modalCheckOutDate)}`);
               }}
               disabled={!modalCheckInDate || !modalCheckOutDate}
               className={`w-full py-3.5 rounded-xl font-bold text-base transition-all shadow-lg ${

@@ -127,8 +127,19 @@ export default function CalendarComponent({
       const start = new Date(range.checkIn.getFullYear(), range.checkIn.getMonth(), range.checkIn.getDate()).getTime();
       const end = new Date(range.checkOut.getFullYear(), range.checkOut.getMonth(), range.checkOut.getDate()).getTime();
       
-      // 체크인은 포함, 체크아웃은 제외 (숙박 기준)
+      // Stay-over Logic: 체크인 당일은 예약됨(포함), 체크아웃 당일은 비어있음(제외)
       return dateOnly >= start && dateOnly < end;
+    });
+  };
+
+  // 날짜가 기존 예약의 체크아웃 날짜인지 확인
+  const isCheckoutDayOfExisting = (date: Date): boolean => {
+    if (!bookedRanges || bookedRanges.length === 0) return false;
+    const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+    
+    return bookedRanges.some(range => {
+      const end = new Date(range.checkOut.getFullYear(), range.checkOut.getMonth(), range.checkOut.getDate()).getTime();
+      return dateOnly === end;
     });
   };
 
@@ -138,7 +149,7 @@ export default function CalendarComponent({
   const isDatePartOfValid7DayBlock = (date: Date): boolean => {
     const time = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
     
-    // 이미 예약된 날짜면 당연히 불가능
+    // 이미 예약된 날짜면 불가능 (Stay-over Logic에 의해 체크아웃 날짜는 isDateBooked가 false임)
     if (isDateBooked(date)) return false;
 
     // 1. 해당 날짜가 속한 가용 구간의 경계 찾기
@@ -149,7 +160,9 @@ export default function CalendarComponent({
       const bStart = new Date(range.checkIn.getFullYear(), range.checkIn.getMonth(), range.checkIn.getDate()).getTime();
       const bEnd = new Date(range.checkOut.getFullYear(), range.checkOut.getMonth(), range.checkOut.getDate()).getTime();
 
+      // Stay-over Logic: bEnd(체크아웃 날짜)는 새로운 예약의 시작점이 될 수 있음
       if (bEnd <= time) startLimit = Math.max(startLimit, bEnd);
+      // bStart(체크인 날짜)는 새로운 예약의 끝점이 되어야 함
       if (bStart > time) endLimit = Math.min(endLimit, bStart);
     });
 
@@ -318,10 +331,23 @@ export default function CalendarComponent({
     }
 
     // 이미 예약된 날짜 또는 7일 미만의 불가능한 기간 (임차인 모드)
-    if (!isOwnerMode && !isDatePartOfValid7DayBlock(date)) {
+    const isBooked = !isOwnerMode && isDateBooked(date);
+    const isInvalidBlock = !isOwnerMode && !isDatePartOfValid7DayBlock(date);
+    const isCheckoutDay = !isOwnerMode && isCheckoutDayOfExisting(date);
+
+    if (isBooked) {
+      return 'text-gray-300 bg-gray-50 cursor-not-allowed line-through';
+    }
+
+    if (isInvalidBlock && !isCheckoutDay) {
       return 'text-gray-300 bg-gray-50 cursor-not-allowed line-through';
     }
     
+    // Stay-over Logic: 체크아웃 날짜는 다음 사람의 체크인 날짜가 될 수 있음
+    if (isCheckoutDay && selectingCheckIn) {
+      return 'text-blue-600 bg-blue-50/30 cursor-pointer font-bold ring-1 ring-blue-200';
+    }
+
     // 임차인 모드에서 체크인 시 7일 미만인 날짜는 연한 빨간색으로 표시
     if (!isOwnerMode && selectingCheckIn && !hasAtLeast7DaysAvailable(date)) {
       return 'text-red-300 cursor-pointer';
@@ -553,10 +579,30 @@ export default function CalendarComponent({
           const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
           const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
           const isPast = dateOnly < todayOnly;
-          const isBookedOrInvalid = !isOwnerMode && !isDatePartOfValid7DayBlock(date);
-          const checkIn = getCheckInDateAsDate();
-          // 과거 날짜, 예약된 날짜, 또는 7일 미만의 불가능한 날짜 비활성화
-          const isDisabled = isPast || isBookedOrInvalid;
+          const isBooked = !isOwnerMode && isDateBooked(date);
+          const isCheckoutDay = !isOwnerMode && isCheckoutDayOfExisting(date);
+          const isInvalidBlock = !isOwnerMode && !isDatePartOfValid7DayBlock(date);
+          
+          // 과거 날짜는 무조건 비활성화
+          if (isPast) return (
+            <button
+              key={date.toISOString()}
+              disabled
+              className="aspect-square flex items-center justify-center text-base font-medium text-gray-300 cursor-not-allowed"
+            >
+              {date.getDate()}
+            </button>
+          );
+
+          // 비활성화 조건: 
+          // 1. 이미 예약된 날짜 (체크아웃 당일 제외)
+          // 2. 가용 블록이 아닌 날짜 (단, 체크아웃 당일은 체크인 모드일 때 허용)
+          let isDisabled = isBooked || (isInvalidBlock && !isCheckoutDay);
+          
+          // 체크아웃 당일 특수 처리: 체크인 선택 중일 때는 활성화
+          if (isCheckoutDay && selectingCheckIn && !isInvalidBlock) {
+            isDisabled = false;
+          }
 
           return (
             <button
@@ -630,6 +676,26 @@ export default function CalendarComponent({
                   <div className="w-full h-px bg-gray-300 rotate-45"></div>
                 </div>
                 <span>{currentLanguage === 'ko' ? '이미 예약됨 / 예약 불가' : currentLanguage === 'vi' ? 'Đã được đặt / Không thể đặt' : 'Booked / Unavailable'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded-full flex-shrink-0 bg-blue-50/30 ring-1 ring-blue-200">
+                  <span className="text-[8px] text-blue-600 flex items-center justify-center h-full font-bold">OUT</span>
+                </div>
+                <span>
+                  {currentLanguage === 'ko' ? '기존 예약 체크아웃 (체크인 가능)' : 
+                   currentLanguage === 'vi' ? 'Ngày trả phòng (Có thể nhận phòng)' : 
+                   'Existing Checkout (Check-in available)'}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded-full flex-shrink-0 bg-white border border-red-300">
+                  <span className="text-[10px] text-red-300 flex items-center justify-center h-full">31</span>
+                </div>
+                <span>
+                  {currentLanguage === 'ko' ? '가용 기간 7일 미만 (체크인 불가)' : 
+                   currentLanguage === 'vi' ? 'Thời gian còn lại dưới 7 ngày (Không thể nhận phòng)' : 
+                   'Less than 7 days available (Cannot check-in)'}
+                </span>
               </div>
             </div>
           ) : checkInDate ? (

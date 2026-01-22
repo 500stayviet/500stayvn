@@ -13,7 +13,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getProperty, PropertyData, updateProperty } from '@/lib/api/properties';
-import { createBooking, completePayment, confirmBooking } from '@/lib/api/bookings';
+import { createBooking, completePayment, confirmBooking, toISODateString } from '@/lib/api/bookings';
 import { ArrowLeft, Calendar, Users, MapPin, Clock, CreditCard, CheckCircle, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import TopBar from '@/components/TopBar';
@@ -193,8 +193,8 @@ export default function BookingPage() {
           guestEmail: guestInfo.email,
           guestPhone: fullPhoneNumber,
           guestMessage: guestInfo.message,
-          checkInDate: checkInDate.toISOString(),
-          checkOutDate: checkOutDate.toISOString(),
+          checkInDate: toISODateString(checkInDate),
+          checkOutDate: toISODateString(checkOutDate),
           adults: guestInfo.adults,
           children: guestInfo.children,
         },

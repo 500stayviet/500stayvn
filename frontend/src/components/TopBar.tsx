@@ -15,7 +15,7 @@ import { SupportedLanguage } from '@/lib/api/translation';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getGuestBookings, getOwnerBookings, BookingData } from '@/lib/api/bookings';
-import { getUnreadCountsByRole } from '@/lib/api/chat';
+import { getUnreadCountsByRole, markAllChatAsReadByRole, markAllMessagesInRoomAsRead } from '@/lib/api/chat';
 
 interface TopBarProps {
   currentLanguage?: SupportedLanguage;
@@ -302,7 +302,8 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
                           {unreadChatCounts.asGuest > 0 && (
                             <div className="border-b border-gray-100 bg-blue-50/30">
                               <button
-                                onClick={() => {
+                                onClick={async () => {
+                                  if (user) await markAllChatAsReadByRole(user.uid, 'guest');
                                   setIsNotificationOpen(false);
                                   router.push('/my-bookings?tab=confirmed');
                                 }}
@@ -331,7 +332,8 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
                           {unreadChatCounts.asOwner > 0 && (
                             <div className="border-b border-gray-100 bg-green-50/30">
                               <button
-                                onClick={() => {
+                                onClick={async () => {
+                                  if (user) await markAllChatAsReadByRole(user.uid, 'owner');
                                   setIsNotificationOpen(false);
                                   router.push('/host/bookings?tab=confirmed');
                                 }}
@@ -388,8 +390,9 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
                                 return (
                                   <button
                                     key={booking.id}
-                                    onClick={() => {
+                                    onClick={async () => {
                                       if (booking.id) markAsRead(booking.id);
+                                      if (booking.chatRoomId) await markAllMessagesInRoomAsRead(booking.chatRoomId);
                                       setIsNotificationOpen(false);
                                       router.push(`/my-bookings${statusTab ? `?tab=${statusTab}` : ''}`);
                                     }}
@@ -461,8 +464,9 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
                                 return (
                                   <button
                                     key={booking.id}
-                                    onClick={() => {
+                                    onClick={async () => {
                                       if (booking.id) markAsRead(booking.id);
+                                      if (booking.chatRoomId) await markAllMessagesInRoomAsRead(booking.chatRoomId);
                                       setIsNotificationOpen(false);
                                       router.push(`/host/bookings${statusTab ? `?tab=${statusTab}` : ''}`);
                                     }}
