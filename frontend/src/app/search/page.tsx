@@ -22,12 +22,14 @@ import Image from 'next/image';
 import { AMENITY_OPTIONS } from '@/lib/constants/amenities';
 import PropertyModal from '@/components/map/PropertyModal';
 import { 
-  parseDate, 
   formatPrice, 
   formatFullPrice, 
+} from '@/lib/utils/propertyUtils';
+import { 
+  parseDate, 
   isAvailableNow,
   formatDateForBadge
-} from '@/lib/utils/propertyUtils';
+} from '@/lib/utils/dateUtils';
 
 // 두 좌표 간 거리 계산 (Haversine 공식)
 function calculateDistance(

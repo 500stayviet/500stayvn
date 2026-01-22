@@ -18,10 +18,12 @@ import PropertyModal from '@/components/map/PropertyModal';
 import SearchBox from '@/components/map/SearchBox';
 import { Suggestion } from '@/types/map';
 import { 
-  parseDate, 
   formatPrice, 
-  formatDateForBadge 
 } from '@/lib/utils/propertyUtils';
+import { 
+  parseDate, 
+  formatDateForBadge 
+} from '@/lib/utils/dateUtils';
 
 interface Property {
   id: string;

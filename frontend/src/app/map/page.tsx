@@ -11,9 +11,11 @@ import PropertyModal from '@/components/map/PropertyModal';
 import { 
   formatPrice, 
   getCityName, 
+} from '@/lib/utils/propertyUtils';
+import { 
   isAvailableNow,
   formatDateForBadge
-} from '@/lib/utils/propertyUtils';
+} from '@/lib/utils/dateUtils';
 import Image from 'next/image';
 import { MapPin, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 
