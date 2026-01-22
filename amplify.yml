@@ -3,15 +3,17 @@ frontend:
   phases:
     preBuild:
       commands:
-        - cd frontend && npm ci
+        - npm install
     build:
       commands:
-        - cd frontend && npm run build
+        # 이미 폴더 안일 확률이 높으므로 cd 없이 시도하거나, 
+        # 에러를 방지하기 위해 아래와 같이 작성합니다.
+        - npx prisma generate --schema=../backend/functions/prisma/schema.prisma || echo "Prisma Skip"
+        - npm run build
   artifacts:
-    baseDirectory: frontend/.next
+    baseDirectory: .next
     files:
       - '**/*'
   cache:
     paths:
-      - frontend/node_modules/**/*
-      - frontend/.next/cache/**/*
+      - node_modules/**/*

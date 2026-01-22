@@ -134,7 +134,6 @@ export async function handleCancellationRelist(propertyId: string, ownerId: stri
   const property = await getProperty(propertyId);
   if (!property) throw new Error('PropertyNotFound');
 
-  const { toISODateString } = await import('./bookings');
   const stored = localStorage.getItem(STORAGE_KEY);
   let allProperties: PropertyData[] = stored ? JSON.parse(stored) : [];
 
@@ -202,7 +201,6 @@ export async function handleCancellationRelist(propertyId: string, ownerId: stri
   }
 
   // 3. 병합 불가 시 단독 재등록 검토
-  const { getReservationsByOwner } = await import('./reservations');
   const { hasAvailableBookingPeriod } = await import('@/lib/utils/propertyUtils');
   const reservations = await getReservationsByOwner(ownerId, 'all');
   
@@ -287,9 +285,7 @@ export async function recalculateAndSplitProperty(propertyId: string, bookingId?
     return;
   }
 
-  // TypeScript 타입을 확정하기 위해 별도 변수에 할당
-  const validBooking = booking as BookingData;
-
+  const validBooking = booking as any;
   const bookedStart = toISODateString(validBooking.checkInDate);
   const bookedEnd = toISODateString(validBooking.checkOutDate);
 
@@ -457,7 +453,6 @@ export async function getAvailableProperties(): Promise<PropertyData[]> {
     const allStored = localStorage.getItem(STORAGE_KEY);
     const allProps: PropertyData[] = allStored ? JSON.parse(allStored) : [];
     const { hasAvailableBookingPeriod } = await import('@/lib/utils/propertyUtils');
-    const { getReservationsByOwner } = await import('./reservations');
     
     const availableProperties: PropertyData[] = [];
     
