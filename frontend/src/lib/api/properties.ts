@@ -287,8 +287,11 @@ export async function recalculateAndSplitProperty(propertyId: string, bookingId?
     return;
   }
 
-  const bookedStart = toISODateString(booking.checkInDate);
-  const bookedEnd = toISODateString(booking.checkOutDate);
+  // TypeScript 타입을 확정하기 위해 별도 변수에 할당
+  const validBooking = booking as BookingData;
+
+  const bookedStart = toISODateString(validBooking.checkInDate);
+  const bookedEnd = toISODateString(validBooking.checkOutDate);
 
   // 자식 매물(rented) 생성
   const childId = `prop_child_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
