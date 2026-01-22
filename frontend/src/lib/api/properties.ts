@@ -24,6 +24,7 @@ export async function getUserAdLimit(userId: string): Promise<number> {
  * 현재 광고 중인 매물 개수 실시간 조회 (status: 'active'만 카운트)
  */
 export async function getActiveAdCount(userId: string): Promise<number> {
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return 0;
   const stored = localStorage.getItem(STORAGE_KEY);
   if (!stored) return 0;
   const properties = JSON.parse(stored) as PropertyData[];
@@ -77,6 +78,7 @@ export interface CancelledPropertyLog {
  */
 export async function logCancelledProperty(log: Omit<CancelledPropertyLog, 'id' | 'cancelledAt'>): Promise<void> {
   try {
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
     const stored = localStorage.getItem(CANCELLED_PROPERTIES_LOG_KEY);
     const logs = stored ? JSON.parse(stored) : [];
     const newLog: CancelledPropertyLog = {
@@ -96,6 +98,7 @@ export async function logCancelledProperty(log: Omit<CancelledPropertyLog, 'id' 
  */
 export async function reRegisterProperty(id: string): Promise<void> {
   try {
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
     const property = await getProperty(id);
     if (!property) throw new Error('Property not found');
 
@@ -125,6 +128,9 @@ export async function handleCancellationRelist(propertyId: string, ownerId: stri
   type: 'merged' | 'relisted' | 'limit_exceeded' | 'short_term';
   targetId?: string;
 }> {
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+    return { type: 'relisted' };
+  }
   const property = await getProperty(propertyId);
   if (!property) throw new Error('PropertyNotFound');
 
@@ -256,6 +262,7 @@ export async function handleCancellationRelist(propertyId: string, ownerId: stri
  * 예약 확정/결제 시 가용 기간을 재계산하고 세그먼트를 분리 (Gaps Logic)
  */
 export async function recalculateAndSplitProperty(propertyId: string, bookingId?: string): Promise<void> {
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
   const property = await getProperty(propertyId);
   if (!property || property.deleted) return;
   if (propertyId.includes('_child_')) return;
@@ -444,6 +451,7 @@ export async function getAllProperties(): Promise<PropertyData[]> {
  */
 export async function getAvailableProperties(): Promise<PropertyData[]> {
   try {
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') return [];
     const allStored = localStorage.getItem(STORAGE_KEY);
     const allProps: PropertyData[] = allStored ? JSON.parse(allStored) : [];
     const { hasAvailableBookingPeriod } = await import('@/lib/utils/propertyUtils');
@@ -568,6 +576,7 @@ export function subscribeToProperties(
  */
 export async function getProperty(id: string): Promise<PropertyData | null> {
   try {
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') return null;
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) return null;
     
@@ -740,7 +749,7 @@ export async function addProperty(
   try {
     // 브라우저 환경 확인
     if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
-      throw new Error('localStorage is not available');
+      return '';
     }
     
     // 필수 필드 검증
@@ -882,6 +891,7 @@ export async function updateProperty(
   updates: Partial<PropertyData>
 ): Promise<void> {
   try {
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
     // LocalStorage에서 직접 조회 (삭제된 매물 포함)
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) {
@@ -948,6 +958,7 @@ export async function updateProperty(
  */
 async function autoExpireProperty(id: string): Promise<void> {
   try {
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) return;
     
@@ -984,6 +995,7 @@ async function autoExpireProperty(id: string): Promise<void> {
  */
 export async function deleteProperty(id: string): Promise<void> {
   try {
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
     // LocalStorage에서 직접 조회 (삭제된 매물 포함)
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) {
@@ -1019,6 +1031,7 @@ export async function deleteProperty(id: string): Promise<void> {
  */
 export async function restoreProperty(id: string): Promise<void> {
   try {
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
     // LocalStorage에서 직접 조회 (삭제된 매물 포함)
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) {
@@ -1064,6 +1077,7 @@ export interface DeletedPropertyLog {
  */
 export async function permanentlyDeleteProperty(id: string, deletedBy?: string): Promise<void> {
   try {
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
     // LocalStorage에서 직접 조회 (삭제된 매물 포함)
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) {
@@ -1110,6 +1124,7 @@ export async function permanentlyDeleteProperty(id: string, deletedBy?: string):
  */
 export async function getDeletedPropertyLogs(): Promise<DeletedPropertyLog[]> {
   try {
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') return [];
     const logStored = localStorage.getItem(DELETED_PROPERTIES_LOG_KEY);
     if (!logStored) return [];
     
