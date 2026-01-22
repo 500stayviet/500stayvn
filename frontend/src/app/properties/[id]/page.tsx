@@ -19,11 +19,13 @@ import { AMENITY_OPTIONS } from '@/lib/constants/amenities';
 import { useAuth } from '@/hooks/useAuth';
 import { 
   formatFullPrice, 
+} from '@/lib/utils/propertyUtils';
+import { 
   parseDate, 
   isAvailableNow, 
   formatDate, 
   formatDateForBadge 
-} from '@/lib/utils/propertyUtils';
+} from '@/lib/utils/dateUtils';
 
 export default function PropertyDetailPage() {
   const router = useRouter();

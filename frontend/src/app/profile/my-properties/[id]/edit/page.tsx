@@ -21,8 +21,10 @@ import CalendarComponent from '@/components/CalendarComponent';
 import { AMENITY_OPTIONS } from '@/lib/constants/amenities';
 import { 
   formatFullPrice, 
-  parseDate, 
 } from '@/lib/utils/propertyUtils';
+import { 
+  parseDate, 
+} from '@/lib/utils/dateUtils';
 
 export default function EditPropertyPage() {
   const router = useRouter();

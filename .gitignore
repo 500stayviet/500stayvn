@@ -12,9 +12,11 @@ node_modules/
 # Build outputs
 .next/
 out/
-build/
 dist/
-**/lib/
+build/
+# **/lib/
+**/lib/*.js
+**/lib/*.d.ts
 **/*.js.map
 
 # IDE

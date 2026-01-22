@@ -22,9 +22,15 @@ import Image from 'next/image';
 import { 
   formatPrice, 
   getCityName, 
-  parseDate, hasAvailableBookingPeriod, isAdvertisingProperty, PropertyDateRange,
-  isAvailableNow, formatDateForBadge
+  hasAvailableBookingPeriod, 
+  isAdvertisingProperty, 
+  PropertyDateRange,
 } from '@/lib/utils/propertyUtils';
+import { 
+  parseDate, 
+  isAvailableNow, 
+  formatDateForBadge 
+} from '@/lib/utils/dateUtils';
 
 type PropertyFetchResult = {
   activeData: PropertyData[];
