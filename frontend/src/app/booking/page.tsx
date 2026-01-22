@@ -214,9 +214,17 @@ export default function BookingPage() {
 
       setBookingId(booking.id!);
       setStep('payment');
-    } catch (error) {
-      console.error('예약 생성 실패:', error);
-      alert(currentLanguage === 'ko' ? '예약 생성에 실패했습니다.' : 'Đặt phòng thất bại.');
+    } catch (error: any) {
+      // 이미 예약됨 등 예상된 비즈니스 로직 에러는 콘솔 에러를 남기지 않음 (개발 오버레이 방지)
+      if (error.message !== 'AlreadyBooked') {
+        console.error('예약 생성 중 예기치 못한 실패:', error);
+      }
+      
+      if (error.message === 'AlreadyBooked') {
+        alert(currentLanguage === 'ko' ? '이미 예약된 날짜입니다. 다른 날짜를 선택해주세요.' : 'Ngày này đã được đặt. Vui lòng chọn ngày khác.');
+      } else {
+        alert(currentLanguage === 'ko' ? '예약 생성에 실패했습니다.' : 'Đặt phòng thất bại.');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -236,10 +244,10 @@ export default function BookingPage() {
       // 결제 완료 처리 (pending 상태 유지, 결제 정보만 저장)
       await completePayment(bookingId, selectedPaymentMethod as BookingData['paymentMethod']);
       
-      // 매물 상태를 'rented'로 변경하여 조회되지 않도록 함
-      console.log('[Booking] Updating property status to rented:', property.id);
-      await updateProperty(property.id, { status: 'rented' });
-      console.log('[Booking] Property status updated successfully');
+      // 가용 기간 즉시 차감 및 세그먼트 분리 (Rule 1, 3)
+      console.log('[Booking] Recalculating and splitting property availability:', property.id);
+      const { recalculateAndSplitProperty } = await import('@/lib/api/properties');
+      await recalculateAndSplitProperty(property.id);
       
       setPaymentCompleted(true);
       // 바로 예약 완료 페이지로 이동 (pending 상태로 - 임대인 승인 대기)

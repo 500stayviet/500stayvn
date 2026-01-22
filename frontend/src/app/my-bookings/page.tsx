@@ -8,9 +8,9 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { getGuestBookings, BookingData, cancelBooking } from '@/lib/api/bookings';
+import { getGuestBookings, BookingData, cancelBooking, deleteBooking } from '@/lib/api/bookings';
 import { getUnreadCountByRoom, getUnreadCountsByRole } from '@/lib/api/chat';
-import { Calendar, Clock, MapPin, MessageCircle, Check, CheckCircle, X, Loader2, ChevronRight, ArrowLeft, AlertCircle } from 'lucide-react';
+import { Calendar, Clock, MapPin, MessageCircle, Check, CheckCircle, X, Loader2, ChevronRight, ArrowLeft, AlertCircle, Trash2 } from 'lucide-react';
 import TopBar from '@/components/TopBar';
 import ChatModal from '@/components/ChatModal';
 import BookingDetailsModal from '@/components/BookingDetailsModal';
@@ -164,22 +164,73 @@ export default function MyBookingsPage() {
 
   const handleCancel = async (bookingId: string) => {
     if (!cancelAgreed) {
-      alert(currentLanguage === 'ko' ? '취소 정책에 동의해주세요.' : 'Vui lòng đồng ý với chính sách hủy.');
+      alert(currentLanguage === 'ko' ? '취소 정책에 동의해주세요.' : 'Vui lòng đồng ý with chính sách hủy.');
       return;
     }
 
     setCancellingId(bookingId);
     try {
-      await cancelBooking(bookingId, '사용자 요청으로 취소');
+      const { booking, relistResult } = await cancelBooking(bookingId, '사용자 요청으로 취소');
+      
       setBookings(prev => prev.map(b => 
         b.id === bookingId ? { ...b, status: 'cancelled' as const } : b
       ));
+
+      // 결과에 따른 알림 및 이동 처리 (Rule 5)
+      if (relistResult) {
+        let message = '';
+        let targetTab = 'active';
+
+        switch (relistResult.type) {
+          case 'merged':
+            message = currentLanguage === 'ko' 
+              ? '취소된 기간이 기존 광고 중인 매물과 병합되었습니다.' 
+              : 'Cancelled period merged with existing ad.';
+            break;
+          case 'relisted':
+            message = currentLanguage === 'ko' 
+              ? '예약이 취소되어 매물이 다시 광고 중입니다.' 
+              : 'Property is back in advertising.';
+            break;
+          case 'limit_exceeded':
+            message = currentLanguage === 'ko' 
+              ? '광고 한도(5개) 초과로 인해 해당 매물은 광고종료 탭으로 이동되었습니다.' 
+              : 'Moved to Expired Listings due to ad limit.';
+            targetTab = 'deleted';
+            break;
+          case 'short_term':
+            message = currentLanguage === 'ko' 
+              ? '남은 가용 기간이 7일 미만이라 광고종료 탭으로 이동되었습니다.' 
+              : 'Moved to Expired Listings (period < 7 days).';
+            targetTab = 'deleted';
+            break;
+        }
+
+        alert(message);
+        router.push(`/profile/my-properties?tab=${targetTab}`);
+      }
+
       setShowCancelModal(false);
       setSelectedBookingForCancel(null);
       setCancelCancelAgreed(false);
     } catch (error) {
       console.error('예약 취소 실패:', error);
       alert(currentLanguage === 'ko' ? '예약 취소에 실패했습니다.' : 'Hủy đặt phòng thất bại.');
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
+  const handleDelete = async (bookingId: string) => {
+    if (!bookingId || !confirm(currentLanguage === 'ko' ? '예약 기록을 영구적으로 삭제하시겠습니까?' : 'Do you want to permanently delete the booking record?')) return;
+    
+    setCancellingId(bookingId);
+    try {
+      await deleteBooking(bookingId);
+      setBookings(prev => prev.filter(b => b.id !== bookingId));
+    } catch (error) {
+      console.error('예약 삭제 실패:', error);
+      alert(currentLanguage === 'ko' ? '예약 기록 삭제에 실패했습니다.' : 'Failed to delete record.');
     } finally {
       setCancellingId(null);
     }
@@ -463,6 +514,21 @@ export default function MyBookingsPage() {
                         {currentLanguage === 'ko' ? '예약 취소 및 환불' : 
                          currentLanguage === 'vi' ? 'Hủy & hoàn tiền' : 
                          'Cancel & Refund'}
+                      </button>
+                    )}
+
+                    {/* 취소된 예약에 삭제 버튼 추가 */}
+                    {booking.status === 'cancelled' && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(booking.id!);
+                        }}
+                        disabled={cancellingId === booking.id}
+                        className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                        title={currentLanguage === 'ko' ? '기록 삭제' : 'Delete record'}
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     )}
                   </div>

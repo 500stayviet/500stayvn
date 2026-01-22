@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { 
@@ -13,6 +13,7 @@ import {
   Bath, 
 } from 'lucide-react';
 import { PropertyData } from '@/lib/api/properties';
+import { getPropertyBookings } from '@/lib/api/bookings';
 import CalendarComponent from '@/components/CalendarComponent';
 import { useAuth } from '@/hooks/useAuth';
 import { AMENITY_OPTIONS } from '@/lib/constants/amenities';
@@ -54,6 +55,25 @@ export default function PropertyModal({
   const [modalCheckOutDate, setModalCheckOutDate] = useState<Date | null>(null);
   const [showModalCalendar, setShowModalCalendar] = useState(false);
   const [modalCalendarMode, setModalCalendarMode] = useState<'checkin' | 'checkout'>('checkin');
+  const [bookedRanges, setBookedRanges] = useState<{ checkIn: Date; checkOut: Date }[]>([]);
+
+  useEffect(() => {
+    const fetchBookings = async () => {
+      if (propertyData?.id) {
+        const bookings = await getPropertyBookings(propertyData.id);
+        const ranges = bookings.map(b => ({
+          checkIn: new Date(b.checkInDate),
+          checkOut: new Date(b.checkOutDate)
+        }));
+        setBookedRanges(ranges);
+      }
+    };
+    fetchBookings();
+  }, [propertyData?.id]);
+
+  if (!propertyData) {
+    return null;
+  }
 
   const images = propertyData.images && propertyData.images.length > 0 
     ? propertyData.images 
@@ -454,6 +474,7 @@ export default function PropertyModal({
               mode={modalCalendarMode}
               minDate={parseDate(propertyData.checkInDate) || undefined}
               maxDate={parseDate(propertyData.checkOutDate) || undefined}
+              bookedRanges={bookedRanges}
             />
           </div>
         </div>

@@ -279,7 +279,7 @@ export default function PopularStays({ currentLanguage }: PopularStaysProps) {
       {/* 상세 모달 */}
       {selectedProperty && (
         <PropertyModal
-          property={selectedProperty}
+          propertyData={selectedProperty}
           onClose={closePropertyModal}
           currentLanguage={currentLanguage}
         />

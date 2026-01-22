@@ -22,6 +22,7 @@ interface CalendarComponentProps {
   mode: 'checkin' | 'checkout';
   minDate?: Date; // 선택 가능한 최소 날짜 (매물의 임대 시작일)
   maxDate?: Date; // 선택 가능한 최대 날짜 (매물의 임대 종료일)
+  bookedRanges?: { checkIn: Date; checkOut: Date }[]; // 이미 예약된 날짜 범위들
   isOwnerMode?: boolean; // 임대인 모드 (매물 등록/수정 시 사용)
 }
 
@@ -36,6 +37,7 @@ export default function CalendarComponent({
   mode,
   minDate,
   maxDate,
+  bookedRanges = [],
   isOwnerMode = false,
 }: CalendarComponentProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -115,6 +117,49 @@ export default function CalendarComponent({
     return true;
   };
 
+  // 날짜가 이미 예약된 상태인지 확인 (엄격한 겹침 체크)
+  const isDateBooked = (date: Date): boolean => {
+    if (!bookedRanges || bookedRanges.length === 0) return false;
+    
+    const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+    
+    return bookedRanges.some(range => {
+      const start = new Date(range.checkIn.getFullYear(), range.checkIn.getMonth(), range.checkIn.getDate()).getTime();
+      const end = new Date(range.checkOut.getFullYear(), range.checkOut.getMonth(), range.checkOut.getDate()).getTime();
+      
+      // 체크인은 포함, 체크아웃은 제외 (숙박 기준)
+      return dateOnly >= start && dateOnly < end;
+    });
+  };
+
+  /**
+   * 해당 날짜가 7일 이상의 연속된 가용 블록에 포함되는지 확인하는 함수
+   */
+  const isDatePartOfValid7DayBlock = (date: Date): boolean => {
+    const time = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+    
+    // 이미 예약된 날짜면 당연히 불가능
+    if (isDateBooked(date)) return false;
+
+    // 1. 해당 날짜가 속한 가용 구간의 경계 찾기
+    let startLimit = minDate ? new Date(minDate.getFullYear(), minDate.getMonth(), minDate.getDate()).getTime() : today.getTime();
+    let endLimit = maxDate ? new Date(maxDate.getFullYear(), maxDate.getMonth(), maxDate.getDate()).getTime() : Infinity;
+
+    bookedRanges.forEach(range => {
+      const bStart = new Date(range.checkIn.getFullYear(), range.checkIn.getMonth(), range.checkIn.getDate()).getTime();
+      const bEnd = new Date(range.checkOut.getFullYear(), range.checkOut.getMonth(), range.checkOut.getDate()).getTime();
+
+      if (bEnd <= time) startLimit = Math.max(startLimit, bEnd);
+      if (bStart > time) endLimit = Math.min(endLimit, bStart);
+    });
+
+    // 2. 해당 구간의 총 길이가 7일 이상인지 확인
+    if (endLimit === Infinity) return true; // 무한 구간이면 가능
+    const totalDays = Math.round((endLimit - startLimit) / (1000 * 60 * 60 * 24));
+    
+    return totalDays >= 7;
+  };
+
   // 날짜가 허용 범위 내인지 확인
   const isWithinAllowedRange = (date: Date): boolean => {
     const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -132,19 +177,46 @@ export default function CalendarComponent({
     return true;
   };
 
-  // 선택한 체크인 날짜에서 7일 후 체크아웃이 가능한지 확인 (maxDate 이내)
+  /**
+   * 해당 날짜가 속한 '가용 가능한 구간'의 시작과 끝을 찾는 함수
+   */
+  const getAvailableGapBounds = (date: Date) => {
+    const time = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+    
+    // 1. 기본 경계 설정
+    let startLimit = minDate ? new Date(minDate.getFullYear(), minDate.getMonth(), minDate.getDate()).getTime() : today.getTime();
+    let endLimit = maxDate ? new Date(maxDate.getFullYear(), maxDate.getMonth(), maxDate.getDate()).getTime() : Infinity;
+
+    // 2. 예약된 날짜들로 경계 좁히기
+    bookedRanges.forEach(range => {
+      const bStart = new Date(range.checkIn.getFullYear(), range.checkIn.getMonth(), range.checkIn.getDate()).getTime();
+      const bEnd = new Date(range.checkOut.getFullYear(), range.checkOut.getMonth(), range.checkOut.getDate()).getTime();
+
+      if (bEnd <= time) {
+        // 예약이 현재 날짜보다 이전이면 시작 경계 업데이트
+        startLimit = Math.max(startLimit, bEnd);
+      }
+      if (bStart > time) {
+        // 예약이 현재 날짜보다 이후면 종료 경계 업데이트
+        endLimit = Math.min(endLimit, bStart);
+      }
+    });
+
+    return { start: startLimit, end: endLimit };
+  };
+
+  // 선택한 체크인 날짜에서 7일 후 체크아웃이 가능한지 확인 (다음 예약 또는 maxDate 이내)
   const hasAtLeast7DaysAvailable = (checkInDateToCheck: Date): boolean => {
-    if (!maxDate) return true; // maxDate가 없으면 제한 없음
+    const { end } = getAvailableGapBounds(checkInDateToCheck);
+    if (end === Infinity) return true;
     
-    const checkInOnly = new Date(checkInDateToCheck.getFullYear(), checkInDateToCheck.getMonth(), checkInDateToCheck.getDate());
-    const maxDateOnly = new Date(maxDate.getFullYear(), maxDate.getMonth(), maxDate.getDate());
+    const checkInOnly = new Date(checkInDateToCheck.getFullYear(), checkInDateToCheck.getMonth(), checkInDateToCheck.getDate()).getTime();
     
-    // 체크인 + 7일 날짜
-    const minCheckoutDate = new Date(checkInOnly);
-    minCheckoutDate.setDate(minCheckoutDate.getDate() + 7);
+    // 체크인 + 7일 시간
+    const minCheckoutTime = checkInOnly + (7 * 86400000);
     
-    // 체크인 + 7일이 maxDate를 넘으면 예약 불가
-    return minCheckoutDate <= maxDateOnly;
+    // 체크인 + 7일이 다음 경계(예약 시작일 또는 maxDate)를 넘으면 예약 불가
+    return minCheckoutTime <= end;
   };
 
   // 경고 팝업 닫기 및 체크인 초기화
@@ -166,6 +238,12 @@ export default function CalendarComponent({
     
     // 허용 범위 밖 날짜는 선택 불가
     if (!isWithinAllowedRange(date)) return;
+
+    // 이미 예약된 날짜는 선택 불가 (임차인 모드일 때만)
+    if (!isOwnerMode && isDateBooked(date)) return;
+
+    // 7일 미만의 조각난 기간은 선택 불가 (임차인 모드)
+    if (!isOwnerMode && !isDatePartOfValid7DayBlock(date)) return;
 
     // 임대인 모드
     if (isOwnerMode) {
@@ -237,6 +315,11 @@ export default function CalendarComponent({
     // 허용 범위 밖 날짜
     if (!isWithinAllowedRange(date)) {
       return 'text-gray-300 cursor-not-allowed';
+    }
+
+    // 이미 예약된 날짜 또는 7일 미만의 불가능한 기간 (임차인 모드)
+    if (!isOwnerMode && !isDatePartOfValid7DayBlock(date)) {
+      return 'text-gray-300 bg-gray-50 cursor-not-allowed line-through';
     }
     
     // 임차인 모드에서 체크인 시 7일 미만인 날짜는 연한 빨간색으로 표시
@@ -470,10 +553,10 @@ export default function CalendarComponent({
           const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
           const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
           const isPast = dateOnly < todayOnly;
+          const isBookedOrInvalid = !isOwnerMode && !isDatePartOfValid7DayBlock(date);
           const checkIn = getCheckInDateAsDate();
-          // 체크아웃 모드에서: 과거 날짜만 비활성화 (7일 단위가 아닌 날짜도 클릭 가능하여 새로운 체크인으로 설정 가능)
-          // 체크인 모드에서: 과거 날짜만 비활성화
-          const isDisabled = isPast;
+          // 과거 날짜, 예약된 날짜, 또는 7일 미만의 불가능한 날짜 비활성화
+          const isDisabled = isPast || isBookedOrInvalid;
 
           return (
             <button
@@ -539,12 +622,14 @@ export default function CalendarComponent({
                 <span>{currentLanguage === 'ko' ? '선택 가능한 날짜' : currentLanguage === 'vi' ? 'Ngày có thể chọn' : 'Available dates'}</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-red-100 rounded-full flex-shrink-0"></div>
-                <span>{currentLanguage === 'ko' ? '7일 미만 (예약 불가)' : currentLanguage === 'vi' ? 'Dưới 7 ngày (không thể đặt)' : 'Less than 7 days (cannot book)'}</span>
-              </div>
-              <div className="flex items-center gap-2">
                 <div className="w-4 h-4 bg-green-600 rounded-full flex-shrink-0"></div>
                 <span>{currentLanguage === 'ko' ? '7일, 14일, 21일, 28일 단위로 예약 가능' : currentLanguage === 'vi' ? 'Có thể đặt theo đơn vị 7, 14, 21, 28 ngày' : 'Book in 7, 14, 21, 28 day units'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-gray-50 border border-gray-200 rounded-full flex items-center justify-center">
+                  <div className="w-full h-px bg-gray-300 rotate-45"></div>
+                </div>
+                <span>{currentLanguage === 'ko' ? '이미 예약됨 / 예약 불가' : currentLanguage === 'vi' ? 'Đã được đặt / Không thể đặt' : 'Booked / Unavailable'}</span>
               </div>
             </div>
           ) : checkInDate ? (

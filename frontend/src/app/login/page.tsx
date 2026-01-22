@@ -49,23 +49,30 @@ export default function LoginPage() {
     setError('');
 
     try {
-      await signInWithEmail(formData.email, formData.password);
+      const result = await signInWithEmail(formData.email, formData.password);
+      
+      if (result.error) {
+        const errorCode = result.error.code;
+        setError(
+          errorCode === 'auth/account-deleted'
+            ? (currentLanguage === 'ko' ? '탈퇴한 계정입니다. 재가입이 필요합니다.' : 'Tài khoản đã bị xóa. Vui lòng đăng ký lại.')
+            : errorCode === 'auth/user-not-found'
+            ? (currentLanguage === 'ko' ? '등록되지 않은 이메일입니다' : 'Email chưa được đăng ký')
+            : errorCode === 'auth/wrong-password'
+            ? (currentLanguage === 'ko' ? '비밀번호가 잘못되었습니다' : 'Mật khẩu không đúng')
+            : errorCode === 'auth/invalid-email'
+            ? (currentLanguage === 'ko' ? '올바른 이메일 형식이 아닙니다' : 'Email không hợp lệ')
+            : (currentLanguage === 'ko' ? '로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.' : 'Đăng nhập thất bại. Vui lòng kiểm tra email và mật khẩu.')
+        );
+        setLoading(false);
+        return;
+      }
+
       // returnUrl이 있으면 해당 페이지로, 없으면 홈으로 이동
       router.push(returnUrl);
     } catch (error: any) {
-      console.error('Login error:', error);
-      const errorMessage = error.message || error.code || '';
-      setError(
-        errorMessage.includes('auth/account-deleted') || errorMessage === 'auth/account-deleted'
-          ? (currentLanguage === 'ko' ? '탈퇴한 계정입니다. 재가입이 필요합니다.' : 'Tài khoản đã bị xóa. Vui lòng đăng ký lại.')
-          : errorMessage.includes('auth/user-not-found') || errorMessage === 'auth/user-not-found'
-          ? (currentLanguage === 'ko' ? '등록되지 않은 이메일입니다' : 'Email chưa được đăng ký')
-          : errorMessage.includes('auth/wrong-password') || errorMessage === 'auth/wrong-password'
-          ? (currentLanguage === 'ko' ? '비밀번호가 잘못되었습니다' : 'Mật khẩu không đúng')
-          : errorMessage.includes('auth/invalid-email') || errorMessage === 'auth/invalid-email'
-          ? (currentLanguage === 'ko' ? '올바른 이메일 형식이 아닙니다' : 'Email không hợp lệ')
-          : (currentLanguage === 'ko' ? '로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.' : 'Đăng nhập thất bại. Vui lòng kiểm tra email và mật khẩu.')
-      );
+      console.error('Unexpected Login error:', error);
+      setError(currentLanguage === 'ko' ? '로그인 중 오류가 발생했습니다.' : 'Lỗi khi đăng nhập.');
       setLoading(false);
     }
   };

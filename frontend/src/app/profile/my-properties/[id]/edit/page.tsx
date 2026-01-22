@@ -12,6 +12,7 @@ import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getProperty, updateProperty, restoreProperty, permanentlyDeleteProperty, PropertyData } from '@/lib/api/properties';
+import { getPropertyBookings } from '@/lib/api/bookings';
 import { searchPlaceIndexForSuggestions, searchPlaceIndexForText, getLocationServiceLanguage } from '@/lib/api/aws-location';
 import { Camera, MapPin, Loader2, X, Maximize2, ArrowLeft, Calendar, Users, ChevronLeft, ChevronRight, Bed, Bath } from 'lucide-react';
 import TopBar from '@/components/TopBar';
@@ -57,6 +58,7 @@ export default function EditPropertyPage() {
   const [calendarMode, setCalendarMode] = useState<'checkin' | 'checkout'>('checkin');
   const [checkInDate, setCheckInDate] = useState<Date | null>(null);
   const [checkOutDate, setCheckOutDate] = useState<Date | null>(null);
+  const [bookedRanges, setBookedRanges] = useState<{ checkIn: Date; checkOut: Date }[]>([]);
 
   // 사진첩 모달 상태
   const [showPhotoLibrary, setShowPhotoLibrary] = useState(false);
@@ -96,8 +98,9 @@ export default function EditPropertyPage() {
             return;
           }
 
-          // 삭제된 매물인지 확인
-          setIsDeleted(property.deleted || false);
+          // 삭제되었거나 광고 종료된 매물인지 확인
+          const isExpOrDel = property.deleted || property.status !== 'active';
+          setIsDeleted(isExpOrDel);
           
           // 본인의 매물인지 확인
           if (property.ownerId !== user.uid) {
@@ -151,6 +154,14 @@ export default function EditPropertyPage() {
           if (propCheckInDate) setCheckInDate(propCheckInDate);
           if (propCheckOutDate) setCheckOutDate(propCheckOutDate);
           
+          // 예약 정보 로드
+          const bookings = await getPropertyBookings(propertyId);
+          const ranges = bookings.map(b => ({
+            checkIn: new Date(b.checkInDate),
+            checkOut: new Date(b.checkOutDate)
+          }));
+          setBookedRanges(ranges);
+
           // 데이터 로드 완료 플래그 설정 (한 번만 로드되도록)
           setPropertyLoaded(true);
         } catch (error) {
@@ -482,16 +493,16 @@ export default function EditPropertyPage() {
 
       console.log('Updating property with dates:', { checkInDate: updates.checkInDate, checkOutDate: updates.checkOutDate });
       
-      // 삭제된 매물인 경우 복구
+      // 삭제된 매물인 경우 복구(재등록)
       if (isDeleted) {
         await restoreProperty(propertyId);
         await updateProperty(propertyId, updates);
         alert(currentLanguage === 'ko' 
-          ? '매물이 성공적으로 복구되었습니다!'
+          ? '매물이 성공적으로 재등록되었습니다!'
           : currentLanguage === 'vi'
-          ? 'Bất động sản đã được khôi phục thành công!'
-          : 'Property restored successfully!');
-        // 복구 후 매물 관리창으로 이동
+          ? 'Bất động sản đã được đăng lại thành công!'
+          : 'Property re-registered successfully!');
+        // 재등록 후 매물 관리창으로 이동
         router.replace('/profile/my-properties');
       } else {
         await updateProperty(propertyId, updates);
@@ -1141,7 +1152,7 @@ export default function EditPropertyPage() {
               </div>
             </div>
 
-            {/* 수정완료/복구 버튼 */}
+            {/* 수정완료/재등록 버튼 */}
             <button
               type="submit"
               disabled={loading || !coordinates || imagePreviews.length === 0 || !weeklyRent}
@@ -1152,7 +1163,7 @@ export default function EditPropertyPage() {
                     <Loader2 className="w-5 h-5 animate-spin" />
                     <span>
                       {isDeleted 
-                        ? (currentLanguage === 'ko' ? '복구 중...' : currentLanguage === 'vi' ? 'Đang khôi phục...' : 'Restoring...')
+                        ? (currentLanguage === 'ko' ? '재등록 중...' : currentLanguage === 'vi' ? 'Đang đăng lại...' : 'Re-registering...')
                         : (currentLanguage === 'ko' ? '수정 중...' : currentLanguage === 'vi' ? 'Đang cập nhật...' : 'Updating...')
                       }
                     </span>
@@ -1160,7 +1171,7 @@ export default function EditPropertyPage() {
                 ) : (
                   <span>
                     {isDeleted 
-                      ? (currentLanguage === 'ko' ? '복구' : currentLanguage === 'vi' ? 'Khôi phục' : 'Restore')
+                      ? (currentLanguage === 'ko' ? '재등록' : currentLanguage === 'vi' ? 'Đăng lại' : 'Re-register')
                       : (currentLanguage === 'ko' ? '수정완료' : currentLanguage === 'vi' ? 'Hoàn thành' : 'Update Complete')
                     }
                   </span>
@@ -1260,6 +1271,7 @@ export default function EditPropertyPage() {
               currentLanguage={currentLanguage as 'ko' | 'vi' | 'en'}
               onClose={() => setShowCalendar(false)}
               mode={calendarMode}
+              bookedRanges={bookedRanges}
               isOwnerMode={true}
             />
           </div>

@@ -155,18 +155,25 @@ export default function SignUpPage() {
         preferredLanguage: (currentLanguage === 'ko' || currentLanguage === 'vi') ? currentLanguage : 'en',
       };
 
-      await signUpWithEmail(signUpData);
+      const result = await signUpWithEmail(signUpData);
+      
+      if (result.error) {
+        setError(
+          result.error.code === 'auth/email-already-in-use'
+            ? (currentLanguage === 'ko' ? '이미 사용 중인 이메일입니다' : 'Email đã được sử dụng')
+            : result.error.code === 'auth/weak-password'
+            ? (currentLanguage === 'ko' ? '비밀번호가 너무 약합니다' : 'Mật khẩu quá yếu')
+            : result.error.message || (currentLanguage === 'ko' ? '회원가입에 실패했습니다' : 'Đăng ký thất bại')
+        );
+        return;
+      }
+
       // 성공 모달 표시
       setShowSuccessModal(true);
     } catch (error: any) {
-      console.error('Sign up error:', error);
-      setError(
-        error.code === 'auth/email-already-in-use'
-          ? (currentLanguage === 'ko' ? '이미 사용 중인 이메일입니다' : 'Email đã được sử dụng')
-          : error.code === 'auth/weak-password'
-          ? (currentLanguage === 'ko' ? '비밀번호가 너무 약합니다' : 'Mật khẩu quá yếu')
-          : error.message || (currentLanguage === 'ko' ? '회원가입에 실패했습니다' : 'Đăng ký thất bại')
-      );
+      // signUpWithEmail 내부에서 대부분 catch되지만 만약의 경우 대비
+      console.error('Sign up unexpected error:', error);
+      setError(currentLanguage === 'ko' ? '회원가입에 실패했습니다' : 'Đăng ký thất bại');
     } finally {
       setLoading(false);
     }

@@ -435,13 +435,24 @@ export default function AddPropertyPage() {
         ? 'Bất động sản đã được đăng ký thành công!'
         : 'Property registered successfully!');
       router.replace('/profile/my-properties');
-    } catch (error) {
-      console.error('매물 등록 실패:', error);
-      alert(currentLanguage === 'ko' 
-        ? '매물 등록 중 오류가 발생했습니다.'
-        : currentLanguage === 'vi'
-        ? 'Đã xảy ra lỗi khi đăng ký bất động sản.'
-        : 'An error occurred while registering the property.');
+    } catch (error: any) {
+      // 중복 등록 등 예상된 비즈니스 로직 에러는 콘솔 에러를 남기지 않음 (개발 오버레이 방지)
+      const knownErrors = ['OverlapDetected', 'AlreadyBooked'];
+      if (!knownErrors.includes(error.message)) {
+        console.error('매물 등록 중 예기치 못한 실패:', error);
+      }
+
+      if (error.message === 'OverlapDetected' || error.message === 'AlreadyBooked') {
+        alert(currentLanguage === 'ko' 
+          ? '이미 동일한 주소와 날짜에 등록된 매물이 있습니다.' 
+          : 'Đã có bất động sản được đăng ký với cùng địa chỉ và ngày.');
+      } else {
+        alert(currentLanguage === 'ko' 
+          ? '매물 등록 중 오류가 발생했습니다.'
+          : currentLanguage === 'vi'
+          ? 'Đã xảy ra lỗi khi đăng ký bất động sản.'
+          : 'An error occurred while registering the property.');
+      }
     } finally {
       setLoading(false);
     }
@@ -1125,6 +1136,7 @@ export default function AddPropertyPage() {
                 currentLanguage={currentLanguage as 'ko' | 'vi' | 'en'}
                 onClose={() => setShowCalendar(false)}
                 mode={calendarMode}
+                bookedRanges={[]}
                 isOwnerMode={true}
               />
             </div>

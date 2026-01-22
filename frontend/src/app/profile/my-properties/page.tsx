@@ -12,7 +12,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { getPropertiesByOwner, deleteProperty, permanentlyDeleteProperty, PropertyData } from '@/lib/api/properties';
+import { getPropertiesByOwner, deleteProperty, permanentlyDeleteProperty, PropertyData, PropertiesByOwnerResult } from '@/lib/api/properties';
 import { getCurrentUserData } from '@/lib/api/auth';
 import { getVerificationStatus } from '@/lib/api/kyc';
 import { ArrowLeft, MapPin, Trash2 } from 'lucide-react';
@@ -22,7 +22,20 @@ import Image from 'next/image';
 import { 
   formatPrice, 
   getCityName, 
+  parseDate, hasAvailableBookingPeriod, isAdvertisingProperty, PropertyDateRange,
+  isAvailableNow, formatDateForBadge
 } from '@/lib/utils/propertyUtils';
+
+type PropertyFetchResult = {
+  activeData: PropertyData[];
+  deletedData: PropertyData[];
+  visibleActiveData: PropertyData[];
+  // 매물 ID별 예약된 날짜 범위 (Map<propertyId, [{checkIn, checkOut}, ...]>
+  bookedDateRanges: Map<string, PropertyDateRange[]>;
+  // 광고 탭에서 제외할 매물 ID (예약은 있지만, 광고 가능한 남은 기간이 없는 매물)
+  excludedFromAdvertising: Set<string>;
+  reservedIds: Set<string>;
+};
 
 export default function MyPropertiesPage() {
   const router = useRouter();
@@ -40,6 +53,95 @@ export default function MyPropertiesPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [showPermanentDeleteConfirm, setShowPermanentDeleteConfirm] = useState<string | null>(null);
   const [allStepsCompleted, setAllStepsCompleted] = useState(false);
+  const [reservedPropertyIds, setReservedPropertyIds] = useState<Set<string>>(new Set());
+
+  const shouldShowPropertyInActiveTab = (
+    property: PropertyData,
+    bookedDateRanges: Map<string, PropertyDateRange[]>
+  ) => {
+    if (!isAdvertisingProperty(property)) {
+      return false;
+    }
+    if (!property.id) {
+      return true;
+    }
+    // 예약이 없는 매물은 항상 표시
+    const bookedRanges = bookedDateRanges.get(property.id) || [];
+    if (bookedRanges.length === 0) {
+      return true;
+    }
+    
+    // 예약은 있지만, 예약 가능한 기간이 남아있는지 확인
+    return hasAvailableBookingPeriod(property, bookedRanges);
+  };
+
+  const fetchAndFilterPropertyData = async (): Promise<PropertyFetchResult> => {
+    if (!user) {
+      throw new Error('User is not authenticated');
+    }
+
+    // getPropertiesByOwner가 이미 예약 정보를 포함한 결과 객체를 반환하도록 수정되었음
+    const [activeResult, deletedResult] = await Promise.all([
+      getPropertiesByOwner(user!.uid, false), // includeDeleted: false (삭제되지 않은 매물)
+      getPropertiesByOwner(user!.uid, true),  // includeDeleted: true (삭제된 매물)
+    ]);
+
+    const excludedFromAdvertising = new Set<string>();
+
+    // 예약 정보는 getPropertiesByOwner에서 가져온 bookedDateRanges 사용
+    const bookedDateRanges = activeResult.bookedDateRanges;
+
+    // activeResult.properties에 있는 매물 중 광고할 수 없는 매물 ID를 excludedFromAdvertising에 추가
+    activeResult.properties.forEach(property => {
+      // isAdvertisingProperty는 property.status가 'active'인지 확인
+      // hasAvailableBookingPeriod는 예약 가능한 7일 이상 연속 기간이 있는지 확인
+      if (
+        !isAdvertisingProperty(property) ||
+        !hasAvailableBookingPeriod(property, bookedDateRanges.get(property.id!) || [])
+      ) {
+        if (property.id) {
+          excludedFromAdvertising.add(property.id);
+        }
+      }
+    });
+
+    const visibleActiveData = activeResult.properties.filter(property => {
+      const isAvailableForAdvertising = shouldShowPropertyInActiveTab(property, bookedDateRanges);
+      return isAvailableForAdvertising;
+    });
+
+    return {
+      activeData: activeResult.properties,
+      deletedData: deletedResult.properties,
+      visibleActiveData,
+      bookedDateRanges,
+      excludedFromAdvertising,
+      reservedIds: excludedFromAdvertising,
+    };
+  };
+
+  const [advertisingCount, setAdvertisingCount] = useState(0);
+  const [deletedCount, setDeletedCount] = useState(0);
+
+  const applyPropertyResult = (result: PropertyFetchResult, tab: 'active' | 'deleted') => {
+    setReservedPropertyIds(result.excludedFromAdvertising);
+    setAllProperties([...result.activeData, ...result.deletedData]);
+    
+    // 광고 종료된 매물: 진짜 삭제된 매물 + 광고에서 제외된 매물
+    const excludedProperties = result.activeData.filter(p => 
+      result.excludedFromAdvertising.has(p.id!)
+    );
+
+    if (tab === 'active') {
+      setProperties(result.visibleActiveData);
+    } else {
+      // 삭제된 매물 탭에서는 진짜 삭제된 것과 광고 종료된 것을 함께 표시
+      setProperties([...result.deletedData, ...excludedProperties]);
+    }
+    
+    setAdvertisingCount(result.visibleActiveData.length);
+    setDeletedCount(result.deletedData.length + excludedProperties.length);
+  };
 
   useEffect(() => {
     if (!authLoading) {
@@ -63,10 +165,8 @@ export default function MyPropertiesPage() {
           }
 
           // 매물 데이터 가져오기
-          const activeData = await getPropertiesByOwner(user.uid, false);
-          const deletedData = await getPropertiesByOwner(user.uid, true);
-          setAllProperties([...activeData, ...deletedData]);
-          setProperties(activeTab === 'deleted' ? deletedData : activeData);
+          const result = await fetchAndFilterPropertyData();
+          applyPropertyResult(result, activeTab);
         } catch (error) {
           // Silent fail
         } finally {
@@ -93,10 +193,8 @@ export default function MyPropertiesPage() {
     const handleFocus = async () => {
       if (user && !authLoading) {
         try {
-          const activeData = await getPropertiesByOwner(user.uid, false);
-          const deletedData = await getPropertiesByOwner(user.uid, true);
-          setAllProperties([...activeData, ...deletedData]);
-          setProperties(activeTab === 'deleted' ? deletedData : activeData);
+          const result = await fetchAndFilterPropertyData();
+          applyPropertyResult(result, activeTab);
         } catch (error) {
           // Silent fail
         }
@@ -112,12 +210,8 @@ export default function MyPropertiesPage() {
     if (user && !authLoading) {
       const fetchProperties = async () => {
         try {
-          const activeData = await getPropertiesByOwner(user.uid, false);
-          const deletedData = await getPropertiesByOwner(user.uid, true);
-          setAllProperties([...activeData, ...deletedData]);
-          
-          const filtered = activeTab === 'deleted' ? deletedData : activeData;
-          setProperties(filtered);
+          const result = await fetchAndFilterPropertyData();
+          applyPropertyResult(result, activeTab);
         } catch (error) {
           // Silent fail
         }
@@ -140,16 +234,8 @@ export default function MyPropertiesPage() {
     try {
       await deleteProperty(propertyId);
       
-      // 데이터 새로고침
-      const activeData = await getPropertiesByOwner(user!.uid, false);
-      const deletedData = await getPropertiesByOwner(user!.uid, true);
-      
-      // allProperties 업데이트
-      setAllProperties([...activeData, ...deletedData]);
-      
-      // 삭제된 매물 탭으로 전환하고 삭제된 매물 표시
-      setActiveTab('deleted');
-      setProperties(deletedData);
+      const result = await fetchAndFilterPropertyData();
+      applyPropertyResult(result, activeTab); // 현재 탭 유지
       setShowDeleteConfirm(null);
     } catch (error) {
       alert(currentLanguage === 'ko' 
@@ -171,17 +257,8 @@ export default function MyPropertiesPage() {
       // 삭제 기록에 사용자 ID 포함
       await permanentlyDeleteProperty(propertyId, user!.uid);
       
-      // 데이터 새로고침
-      const activeData = await getPropertiesByOwner(user!.uid, false);
-      const deletedData = await getPropertiesByOwner(user!.uid, true);
-      
-      // allProperties 업데이트
-      setAllProperties([...activeData, ...deletedData]);
-      
-      // 삭제된 매물 탭에 있으면 삭제된 매물 목록 업데이트
-      if (activeTab === 'deleted') {
-        setProperties(deletedData);
-      }
+      const result = await fetchAndFilterPropertyData();
+      applyPropertyResult(result, activeTab); // 현재 탭 유지
       setShowPermanentDeleteConfirm(null);
     } catch (error) {
       alert(currentLanguage === 'ko' 
@@ -213,68 +290,6 @@ export default function MyPropertiesPage() {
     return currentLanguage === 'ko' ? '등록됨' : 
            currentLanguage === 'vi' ? 'Đã đăng' : 
            'Active';
-  };
-
-  // ISO 문자열 또는 Date 객체를 Date로 변환하는 헬퍼 함수
-  const parseDate = (dateInput: string | Date | undefined): Date | null => {
-    if (!dateInput) return null;
-    if (dateInput instanceof Date) {
-      return isNaN(dateInput.getTime()) ? null : dateInput;
-    }
-    if (typeof dateInput === 'string') {
-      const date = new Date(dateInput);
-      return isNaN(date.getTime()) ? null : date;
-    }
-    return null;
-  };
-
-  // 즉시 입주 가능 여부 확인 (날짜가 없으면 날짜 미정으로 처리)
-  const isAvailableNow = (checkInDate?: string | Date): boolean => {
-    if (!checkInDate) return false;
-    const checkIn = parseDate(checkInDate);
-    if (!checkIn) return false;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    checkIn.setHours(0, 0, 0, 0);
-    return checkIn <= today;
-  };
-
-  // 날짜 포맷팅 (배지용: 체크인 ~ 체크아웃)
-  const formatDateForBadge = (checkInDate?: string | Date, checkOutDate?: string | Date): string => {
-    if (!checkInDate) return '';
-    
-    const checkIn = parseDate(checkInDate);
-    if (!checkIn) return '';
-    
-    const checkOut = checkOutDate ? parseDate(checkOutDate) : null;
-    
-    const checkInMonth = checkIn.getMonth() + 1;
-    const checkInDay = checkIn.getDate();
-    
-    // 체크아웃 날짜가 있으면 함께 표시
-    if (checkOut) {
-      const checkOutMonth = checkOut.getMonth() + 1;
-      const checkOutDay = checkOut.getDate();
-      
-      if (currentLanguage === 'ko') {
-        return `${checkInMonth}월 ${checkInDay}일 ~ ${checkOutMonth}월 ${checkOutDay}일`;
-      } else if (currentLanguage === 'vi') {
-        return `${checkInDay}/${checkInMonth} ~ ${checkOutDay}/${checkOutMonth}`;
-      } else {
-        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        return `${monthNames[checkInMonth - 1]} ${checkInDay} ~ ${monthNames[checkOutMonth - 1]} ${checkOutDay}`;
-      }
-    }
-    
-    // 체크아웃 날짜가 없으면 체크인만 표시
-    if (currentLanguage === 'ko') {
-      return `${checkInMonth}월 ${checkInDay}일부터`;
-    } else if (currentLanguage === 'vi') {
-      return `Từ ngày ${checkInDay}/${checkInMonth}`;
-    } else {
-      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      return `From ${monthNames[checkInMonth - 1]} ${checkInDay}`;
-    }
   };
 
   if (authLoading || loading) {
@@ -338,7 +353,7 @@ export default function MyPropertiesPage() {
                  currentLanguage === 'vi' ? 'Bất động sản đã đăng' : 
                  'Active Properties'}
                 <span className="ml-2 text-xs">
-                  ({allProperties.filter(p => !p.deleted).length})
+                  ({advertisingCount})
                 </span>
               </button>
               <button
@@ -353,7 +368,7 @@ export default function MyPropertiesPage() {
                  currentLanguage === 'vi' ? 'Quảng cáo đã kết thúc' : 
                  'Expired Listings'}
                 <span className="ml-2 text-xs">
-                  ({allProperties.filter(p => p.deleted).length})
+                  ({deletedCount})
                 </span>
               </button>
             </div>
@@ -406,7 +421,7 @@ export default function MyPropertiesPage() {
                         ) : property.checkInDate ? (
                           <div className="bg-blue-500 text-white px-2.5 py-1.5 rounded-lg backdrop-blur-sm">
                             <span className="text-xs font-semibold">
-                              {formatDateForBadge(property.checkInDate, property.checkOutDate)}
+                              {formatDateForBadge(property.checkInDate, currentLanguage, property.checkOutDate)}
                             </span>
                           </div>
                         ) : (
@@ -451,32 +466,37 @@ export default function MyPropertiesPage() {
 
                       {/* 우측 하단: 버튼들 */}
                       <div className="absolute bottom-3 right-3 z-10 flex gap-2">
-                        {isRented ? (
-                          <div className="bg-green-500 text-white px-2 py-1 rounded text-xs font-medium">
-                            {getStatusText(property.status)}
-                          </div>
-                        ) : activeTab === 'active' ? (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setShowDeleteConfirm(property.id || null);
-                            }}
-                            className="bg-red-500 text-white p-2 rounded-lg hover:bg-red-600 transition-colors shadow-lg"
-                            aria-label="Delete"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                        {activeTab === 'active' ? (
+                          isRented ? (
+                            <div className="bg-green-500 text-white px-2 py-1 rounded text-xs font-medium">
+                              {getStatusText(property.status)}
+                            </div>
+                          ) : (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setShowDeleteConfirm(property.id || null);
+                              }}
+                              className="bg-red-500 text-white p-2 rounded-lg hover:bg-red-600 transition-colors shadow-lg"
+                              aria-label="Delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )
                         ) : (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setShowPermanentDeleteConfirm(property.id || null);
-                            }}
-                            className="bg-red-500 text-white p-2 rounded-lg hover:bg-red-600 transition-colors shadow-lg"
-                            aria-label="Permanent Delete"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <div className="flex gap-2">
+                            {/* 영구 삭제 버튼 */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setShowPermanentDeleteConfirm(property.id || null);
+                              }}
+                              className="bg-red-500 text-white p-2 rounded-lg hover:bg-red-600 transition-colors shadow-lg"
+                              aria-label="Permanent Delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -485,7 +505,7 @@ export default function MyPropertiesPage() {
                     <div
                       onClick={() => {
                         if (activeTab === 'deleted') {
-                          // 삭제된 매물: 사진 클릭 시 복구(수정) 페이지로 이동 (탭 정보 포함)
+                          // 삭제된 매물: 사진 클릭 시 재등록(수정) 페이지로 이동 (탭 정보 포함)
                           router.push(`/profile/my-properties/${property.id}/edit?tab=deleted`);
                         } else {
                           // 등록된 매물: 상세 페이지로 이동
@@ -568,10 +588,10 @@ export default function MyPropertiesPage() {
                 </h3>
                 <p className="text-gray-600 mb-6">
                   {currentLanguage === 'ko' 
-                    ? '이 매물을 삭제하시겠습니까? 삭제된 매물은 나중에 복구할 수 있습니다.'
+                    ? '이 매물을 삭제하시겠습니까? 삭제된 매물은 나중에 재등록할 수 있습니다.'
                     : currentLanguage === 'vi'
-                    ? 'Bạn có chắc chắn muốn xóa bất động sản này? Bất động sản đã xóa có thể được khôi phục sau.'
-                    : 'Are you sure you want to delete this property? Deleted properties can be restored later.'}
+                    ? 'Bạn có chắc chắn muốn xóa bất động sản này? Bất động sản đã xóa có thể được đăng lại sau.'
+                    : 'Are you sure you want to delete this property? Deleted properties can be re-registered later.'}
                 </p>
                 <div className="flex gap-3">
                   <button

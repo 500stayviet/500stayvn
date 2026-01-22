@@ -11,12 +11,13 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { getReservationsByOwner, updateReservationStatus } from '@/lib/api/reservations';
-import { getProperty } from '@/lib/api/properties';
+import { getReservationsByOwner, updateReservationStatus, deleteReservation } from '@/lib/api/reservations';
+import { getProperty, updateProperty, logCancelledProperty, handleCancellationRelist } from '@/lib/api/properties';
 import { getCurrentUserData } from '@/lib/api/auth';
 import { ReservationData } from '@/lib/api/reservations';
 import { PropertyData } from '@/lib/api/properties';
-import { ArrowLeft, Calendar, User, Mail, Phone, CheckCircle2, XCircle, MapPin } from 'lucide-react';
+import { markAllMessagesInRoomAsRead, findChatRoom } from '@/lib/api/chat';
+import { ArrowLeft, Calendar, User, Mail, Phone, CheckCircle2, XCircle, MapPin, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import TopBar from '@/components/TopBar';
 import Image from 'next/image';
@@ -65,7 +66,7 @@ export default function ReservationsPage() {
           // 예약 데이터 가져오기
           const reservationData = await getReservationsByOwner(
             user.uid,
-            activeTab === 'completed'
+            activeTab === 'completed' ? 'completed' : 'active'
           );
           
           // 각 예약에 매물 정보 추가
@@ -109,7 +110,7 @@ export default function ReservationsPage() {
         try {
           const reservationData = await getReservationsByOwner(
             user.uid,
-            activeTab === 'completed'
+            activeTab === 'completed' ? 'completed' : 'active'
           );
           
           const reservationsWithProperties: ReservationWithProperty[] = await Promise.all(
@@ -146,10 +147,68 @@ export default function ReservationsPage() {
     try {
       await updateReservationStatus(reservationId, newStatus);
       
+      // 예약 취소 시 매물 상태 변경 및 기록 남기기 (Rule 1, 2, 3)
+      if (newStatus === 'cancelled') {
+        const reservation = reservations.find(r => r.id === reservationId);
+        if (reservation) {
+          // 1. 취소 기록 남기기
+          await logCancelledProperty({
+            propertyId: reservation.propertyId,
+            reservationId: reservation.id,
+            ownerId: user!.uid
+          });
+
+          // 1-1. 관련 채팅방의 모든 메시지를 읽음 처리 (알림 제거용)
+          try {
+            const chatRoom = await findChatRoom(reservation.propertyId, user!.uid, reservation.tenantId);
+            if (chatRoom) {
+              await markAllMessagesInRoomAsRead(chatRoom.id);
+            }
+          } catch (chatError) {
+            console.error('Failed to mark messages as read on cancellation:', chatError);
+          }
+          
+          // 2. 통합 로직 실행 (병합 체크 -> 한도 체크 -> 광고 재개)
+          const result = await handleCancellationRelist(reservation.propertyId, user!.uid);
+          
+          // 3. 결과에 따른 알림 및 이동 처리
+          let message = '';
+          let targetTab = 'active';
+
+          switch (result.type) {
+            case 'merged':
+              message = currentLanguage === 'ko' 
+                ? '취소된 기간이 기존 광고 중인 매물과 병합되었습니다. 매물 개수가 유지됩니다.'
+                : 'The cancelled period has been merged with an existing ad.';
+              break;
+            case 'relisted':
+              message = currentLanguage === 'ko' 
+                ? '예약이 취소되어 매물이 다시 광고 중입니다.'
+                : 'Reservation cancelled. Property is back in advertising.';
+              break;
+            case 'limit_exceeded':
+              message = currentLanguage === 'ko' 
+                ? '광고 가능한 매물 한도(5개) 초과로 인해 해당 매물은 광고종료 탭으로 이동되었습니다.'
+                : 'Moved to Expired Listings due to ad limit (5 properties).';
+              targetTab = 'deleted';
+              break;
+            case 'short_term':
+              message = currentLanguage === 'ko' 
+                ? '남은 가용 기간이 7일 미만이라 광고종료 탭으로 이동되었습니다.'
+                : 'Moved to Expired Listings as the available period is less than 7 days.';
+              targetTab = 'deleted';
+              break;
+          }
+
+          alert(message);
+          router.push(`/profile/my-properties?tab=${targetTab}`);
+        }
+      }
+      
       // 데이터 새로고침
       const reservationData = await getReservationsByOwner(
         user!.uid,
-        activeTab === 'completed'
+        activeTab === 'completed' ? 'completed' : 'active'
       );
       
       const reservationsWithProperties: ReservationWithProperty[] = await Promise.all(
@@ -172,6 +231,39 @@ export default function ReservationsPage() {
           ? 'Đã xảy ra lỗi khi cập nhật trạng thái đặt phòng.'
           : 'An error occurred while updating reservation status.'
       );
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  // 예약 삭제 핸들러
+  const handleDeleteReservation = async (reservationId: string) => {
+    if (!reservationId || !confirm(currentLanguage === 'ko' ? '기록을 영구적으로 삭제하시겠습니까?' : 'Do you want to permanently delete the record?')) return;
+    
+    setUpdatingId(reservationId);
+    try {
+      await deleteReservation(reservationId);
+      
+      // 데이터 새로고침
+      const reservationData = await getReservationsByOwner(
+        user!.uid,
+        activeTab === 'completed' ? 'completed' : 'active'
+      );
+      
+      const reservationsWithProperties: ReservationWithProperty[] = await Promise.all(
+        reservationData.map(async (reservation) => {
+          try {
+            const property = await getProperty(reservation.propertyId);
+            return { ...reservation, property: property || undefined };
+          } catch (error) {
+            return { ...reservation, property: undefined };
+          }
+        })
+      );
+      
+      setReservations(reservationsWithProperties);
+    } catch (error) {
+      alert(currentLanguage === 'ko' ? '기록 삭제 중 오류가 발생했습니다.' : 'Error deleting record.');
     } finally {
       setUpdatingId(null);
     }
@@ -241,7 +333,7 @@ export default function ReservationsPage() {
   }
 
   const activeCount = reservations.filter(r => r.status === 'pending' || r.status === 'confirmed').length;
-  const completedCount = reservations.filter(r => r.status === 'completed').length;
+  const completedCount = reservations.filter(r => r.status === 'completed' || r.status === 'cancelled').length;
 
   return (
     <div className="min-h-screen bg-gray-100 flex justify-center">
@@ -452,6 +544,20 @@ export default function ReservationsPage() {
                               : (currentLanguage === 'ko' ? '예약 완료 처리' : 
                                  currentLanguage === 'vi' ? 'Hoàn thành đặt phòng' : 
                                  'Mark as Completed')}
+                          </button>
+                        </div>
+                      )}
+
+                      {/* 삭제 버튼 (취소된 경우에만 표시) */}
+                      {reservation.status === 'cancelled' && (
+                        <div className="pt-2 flex justify-end">
+                          <button
+                            onClick={() => handleDeleteReservation(reservation.id!)}
+                            disabled={updatingId === reservation.id}
+                            className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                            title={currentLanguage === 'ko' ? '기록 삭제' : 'Delete record'}
+                          >
+                            <Trash2 className="w-5 h-5" />
                           </button>
                         </div>
                       )}
