@@ -94,7 +94,7 @@ function generateId(): string {
  * 모든 예약 가져오기
  */
 export async function getAllBookings(): Promise<BookingData[]> {
-  if (typeof window === 'undefined') return [];
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return [];
   
   try {
     const data = localStorage.getItem(BOOKINGS_STORAGE_KEY);
@@ -241,6 +241,9 @@ export async function createBooking(
   },
   guestId: string
 ): Promise<BookingData> {
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+    throw new Error('Not supported in SSR');
+  }
   // 1. 중복 예약 체크 (Strict Overlap Check)
   const isBooked = await isDateRangeBooked(data.propertyId, data.checkInDate, data.checkOutDate);
   if (isBooked) {
@@ -340,6 +343,7 @@ export async function completePayment(
   bookingId: string,
   paymentMethod: BookingData['paymentMethod']
 ): Promise<BookingData | null> {
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return null;
   const bookings = await getAllBookings();
   const index = bookings.findIndex(b => b.id === bookingId);
   
@@ -361,6 +365,7 @@ export async function completePayment(
  * 예약 확정 처리
  */
 export async function confirmBooking(bookingId: string): Promise<BookingData | null> {
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return null;
   const bookings = await getAllBookings();
   const index = bookings.findIndex(b => b.id === bookingId);
   
@@ -405,6 +410,7 @@ export async function cancelBooking(
   bookingId: string,
   reason?: string
 ): Promise<{ booking: BookingData | null; relistResult?: any }> {
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return { booking: null };
   const bookings = await getAllBookings();
   const index = bookings.findIndex(b => b.id === bookingId);
   
@@ -488,6 +494,7 @@ export async function setChatRoomId(
   bookingId: string,
   chatRoomId: string
 ): Promise<BookingData | null> {
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return null;
   const bookings = await getAllBookings();
   const index = bookings.findIndex(b => b.id === bookingId);
   

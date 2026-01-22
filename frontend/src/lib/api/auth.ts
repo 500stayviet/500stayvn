@@ -77,6 +77,7 @@ function simpleHash(password: string): string {
  */
 export function getUsers(): UserData[] {
   try {
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') return [];
     const stored = localStorage.getItem(USERS_STORAGE_KEY);
     return stored ? JSON.parse(stored) : [];
   } catch {
@@ -88,6 +89,7 @@ export function getUsers(): UserData[] {
  * 사용자 목록 저장하기
  */
 export function saveUsers(users: UserData[]): void {
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
   localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
 }
 
@@ -95,6 +97,7 @@ export function saveUsers(users: UserData[]): void {
  * 현재 로그인한 사용자 ID 가져오기
  */
 export function getCurrentUserId(): string | null {
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return null;
   return localStorage.getItem(CURRENT_USER_KEY);
 }
 
@@ -125,6 +128,7 @@ export function getCurrentUserData(uid?: string): UserData | null | Promise<User
  * 현재 사용자 설정
  */
 function setCurrentUser(uid: string | null): void {
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
   if (uid) {
     localStorage.setItem(CURRENT_USER_KEY, uid);
   } else {

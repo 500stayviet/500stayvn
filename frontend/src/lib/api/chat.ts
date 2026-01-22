@@ -48,7 +48,7 @@ function generateMessageId(): string {
  * 모든 채팅방 가져오기
  */
 export async function getAllChatRooms(): Promise<ChatRoom[]> {
-  if (typeof window === 'undefined') return [];
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return [];
   
   try {
     const data = localStorage.getItem(CHAT_ROOMS_KEY);
@@ -148,7 +148,7 @@ export async function createChatRoom(data: {
  * 채팅방의 모든 메시지 가져오기
  */
 export async function getChatMessages(chatRoomId: string): Promise<ChatMessage[]> {
-  if (typeof window === 'undefined') return [];
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return [];
   
   try {
     const data = localStorage.getItem(MESSAGES_KEY);
@@ -171,7 +171,7 @@ export async function sendMessage(data: {
   senderName?: string;
   content: string;
 }): Promise<ChatMessage> {
-  if (typeof window === 'undefined') {
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
     throw new Error('Cannot send message on server side');
   }
   
@@ -215,7 +215,7 @@ export async function sendMessage(data: {
  * 메시지 읽음 처리
  */
 export async function markMessagesAsRead(chatRoomId: string, userId: string): Promise<void> {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
   
   const messagesData = localStorage.getItem(MESSAGES_KEY);
   const messages: ChatMessage[] = messagesData ? JSON.parse(messagesData) : [];
@@ -240,7 +240,7 @@ export async function markMessagesAsRead(chatRoomId: string, userId: string): Pr
  * 채팅방의 모든 메시지를 읽음 처리 (취소 시 등)
  */
 export async function markAllMessagesInRoomAsRead(chatRoomId: string): Promise<void> {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
   
   const messagesData = localStorage.getItem(MESSAGES_KEY);
   const messages: ChatMessage[] = messagesData ? JSON.parse(messagesData) : [];
@@ -288,7 +288,7 @@ export async function getUnreadMessageCount(userId: string): Promise<number> {
  * 역할별 읽지 않은 메시지 수 가져오기
  */
 export async function getUnreadCountsByRole(userId: string): Promise<{ asGuest: number; asOwner: number }> {
-  if (typeof window === 'undefined') return { asGuest: 0, asOwner: 0 };
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return { asGuest: 0, asOwner: 0 };
   
   try {
     const rooms = await getUserChatRooms(userId);
@@ -323,7 +323,7 @@ export async function getUnreadCountsByRole(userId: string): Promise<{ asGuest: 
  * 역할별 읽지 않은 메시지 모두 읽음 처리
  */
 export async function markAllChatAsReadByRole(userId: string, role: 'guest' | 'owner'): Promise<void> {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
   
   try {
     const rooms = await getUserChatRooms(userId);
@@ -362,7 +362,7 @@ export async function markAllChatAsReadByRole(userId: string, role: 'guest' | 'o
  * 채팅방별 읽지 않은 메시지 수
  */
 export async function getUnreadCountByRoom(chatRoomId: string, userId: string): Promise<number> {
-  if (typeof window === 'undefined') return 0;
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return 0;
   
   try {
     const messagesData = localStorage.getItem(MESSAGES_KEY);
