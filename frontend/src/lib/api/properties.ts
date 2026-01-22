@@ -8,7 +8,7 @@
 import { PropertyData } from '@/types/property';
 import { getReservationsByOwner, ReservationData } from './reservations';
 import { parseDate, toISODateString } from '@/lib/utils/dateUtils';
-import { isDateRangeBooked, getAllBookings } from './bookings';
+import { isDateRangeBooked, getAllBookings, BookingData } from './bookings';
 
 /**
  * 사용자의 동적 광고 한도 조회 (유료화 대비)
@@ -268,7 +268,7 @@ export async function recalculateAndSplitProperty(propertyId: string, bookingId?
   if (propertyId.includes('_child_')) return;
 
   // 예약 정보 가져오기
-  let booking;
+  let booking: BookingData | undefined | null;
   if (bookingId) {
     const { getBooking } = await import('./bookings');
     booking = await getBooking(bookingId);
@@ -276,7 +276,6 @@ export async function recalculateAndSplitProperty(propertyId: string, bookingId?
   
   if (!booking) {
     // 만약 bookingId가 없거나 못 찾으면, 가장 최근의 해당 매물 예약을 찾음
-    const { getAllBookings } = await import('./bookings');
     const allBookings = await getAllBookings();
     booking = allBookings
       .filter(b => b.propertyId === propertyId && (b.paymentStatus === 'paid' || b.status === 'confirmed'))
