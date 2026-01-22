@@ -339,12 +339,12 @@ export default function CalendarComponent({
       return 'text-gray-300 bg-gray-50 cursor-not-allowed line-through';
     }
 
-    if (isInvalidBlock && !isCheckoutDay) {
+    if (isInvalidBlock) {
       return 'text-gray-300 bg-gray-50 cursor-not-allowed line-through';
     }
     
     // Stay-over Logic: 체크아웃 날짜는 다음 사람의 체크인 날짜가 될 수 있음
-    if (isCheckoutDay && selectingCheckIn) {
+    if (isCheckoutDay && selectingCheckIn && !isInvalidBlock) {
       return 'text-blue-600 bg-blue-50/30 cursor-pointer font-bold ring-1 ring-blue-200';
     }
 
@@ -596,10 +596,10 @@ export default function CalendarComponent({
 
           // 비활성화 조건: 
           // 1. 이미 예약된 날짜 (체크아웃 당일 제외)
-          // 2. 가용 블록이 아닌 날짜 (단, 체크아웃 당일은 체크인 모드일 때 허용)
-          let isDisabled = isBooked || (isInvalidBlock && !isCheckoutDay);
+          // 2. 가용 블록이 아닌 날짜
+          let isDisabled = isBooked || isInvalidBlock;
           
-          // 체크아웃 당일 특수 처리: 체크인 선택 중일 때는 활성화
+          // 체크아웃 당일 특수 처리: 체크인 선택 중일 때 '가용 블록'인 경우에만 활성화
           if (isCheckoutDay && selectingCheckIn && !isInvalidBlock) {
             isDisabled = false;
           }
