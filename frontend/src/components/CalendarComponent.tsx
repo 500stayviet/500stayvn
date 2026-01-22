@@ -345,12 +345,12 @@ export default function CalendarComponent({
     
     // Stay-over Logic: 체크아웃 날짜는 다음 사람의 체크인 날짜가 될 수 있음
     if (isCheckoutDay && selectingCheckIn && !isInvalidBlock) {
-      return 'text-gray-700 hover:bg-blue-100 rounded-full cursor-pointer bg-white';
+      return 'text-blue-600 bg-blue-50/30 cursor-pointer font-bold ring-1 ring-blue-200';
     }
 
-    // 임차인 모드에서 체크인 시 7일 미만인 날짜는 일반 날짜와 동일하게 표시 (클릭 시 팝업으로 안내)
+    // 임차인 모드에서 체크인 시 7일 미만인 날짜는 연한 빨간색으로 표시
     if (!isOwnerMode && selectingCheckIn && !hasAtLeast7DaysAvailable(date)) {
-      return 'text-gray-700 hover:bg-blue-100 rounded-full cursor-pointer bg-white';
+      return 'text-red-300 cursor-pointer';
     }
 
     // checkInDate가 Date 객체인지 확인
@@ -600,7 +600,6 @@ export default function CalendarComponent({
           let isDisabled = isBooked || isInvalidBlock;
           
           // 체크아웃 당일 특수 처리: 체크인 선택 중일 때 '가용 블록'인 경우에만 활성화
-          // (사용자에게는 일반 날짜와 동일하게 보이게 함)
           if (isCheckoutDay && selectingCheckIn && !isInvalidBlock) {
             isDisabled = false;
           }
@@ -661,23 +660,60 @@ export default function CalendarComponent({
             </div>
           )
         ) : (
-          // 임차인 모드 범례 (단순화)
-          <div className="text-xs text-gray-600 space-y-2">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-white border border-gray-300 rounded-full flex-shrink-0"></div>
-              <span>{currentLanguage === 'ko' ? '예약 가능' : currentLanguage === 'vi' ? 'Có thể đặt' : 'Available'}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-blue-600 rounded-full flex-shrink-0"></div>
-              <span>{currentLanguage === 'ko' ? '선택됨' : currentLanguage === 'vi' ? 'Đã chọn' : 'Selected'}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-gray-50 border border-gray-200 rounded-full flex items-center justify-center">
-                <div className="w-full h-px bg-gray-300 rotate-45"></div>
+          // 임차인 모드 범례
+          selectingCheckIn ? (
+            <div className="text-xs text-gray-600 space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-white border border-gray-300 rounded-full flex-shrink-0"></div>
+                <span>{currentLanguage === 'ko' ? '선택 가능한 날짜' : currentLanguage === 'vi' ? 'Ngày có thể chọn' : 'Available dates'}</span>
               </div>
-              <span>{currentLanguage === 'ko' ? '예약 불가' : currentLanguage === 'vi' ? 'Không thể đặt' : 'Unavailable'}</span>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-green-600 rounded-full flex-shrink-0"></div>
+                <span>{currentLanguage === 'ko' ? '7일, 14일, 21일, 28일 단위로 예약 가능' : currentLanguage === 'vi' ? 'Có thể đặt theo đơn vị 7, 14, 21, 28 ngày' : 'Book in 7, 14, 21, 28 day units'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-gray-50 border border-gray-200 rounded-full flex items-center justify-center">
+                  <div className="w-full h-px bg-gray-300 rotate-45"></div>
+                </div>
+                <span>{currentLanguage === 'ko' ? '이미 예약됨 / 예약 불가' : currentLanguage === 'vi' ? 'Đã được đặt / Không thể đặt' : 'Booked / Unavailable'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded-full flex-shrink-0 bg-blue-50/30 ring-1 ring-blue-200">
+                  <span className="text-[8px] text-blue-600 flex items-center justify-center h-full font-bold">OUT</span>
+                </div>
+                <span>
+                  {currentLanguage === 'ko' ? '기존 예약 체크아웃 (체크인 가능)' : 
+                   currentLanguage === 'vi' ? 'Ngày trả phòng (Có thể nhận phòng)' : 
+                   'Existing Checkout (Check-in available)'}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded-full flex-shrink-0 bg-white border border-red-300">
+                  <span className="text-[10px] text-red-300 flex items-center justify-center h-full">31</span>
+                </div>
+                <span>
+                  {currentLanguage === 'ko' ? '가용 기간 7일 미만 (체크인 불가)' : 
+                   currentLanguage === 'vi' ? 'Thời gian còn lại dưới 7 ngày (Không thể nhận phòng)' : 
+                   'Less than 7 days available (Cannot check-in)'}
+                </span>
+              </div>
             </div>
-          </div>
+          ) : checkInDate ? (
+            <div className="text-xs text-gray-600 space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-green-100 rounded-full flex-shrink-0"></div>
+                <span>{currentLanguage === 'ko' ? '체크인 날짜부터 4주 범위' : currentLanguage === 'vi' ? 'Phạm vi 4 tuần từ ngày nhận phòng' : '4 weeks range from check-in'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-green-600 rounded-full flex-shrink-0"></div>
+                <span>{currentLanguage === 'ko' ? '체크아웃 가능 날짜 (7일, 14일, 21일, 28일 기간)' : currentLanguage === 'vi' ? 'Ngày trả phòng có thể (7, 14, 21, 28 ngày)' : 'Available check-out dates (7, 14, 21, 28 days period)'}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="text-xs text-gray-600">
+              {currentLanguage === 'ko' ? '체크인 날짜를 먼저 선택해주세요' : currentLanguage === 'vi' ? 'Vui lòng chọn ngày nhận phòng trước' : 'Please select check-in date first'}
+            </div>
+          )
         )}
       </div>
     </div>
