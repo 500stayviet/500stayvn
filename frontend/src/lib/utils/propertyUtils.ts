@@ -1,4 +1,4 @@
-import { PropertyData } from '@/lib/api/properties';
+import { PropertyData } from '@/types/property';
 import { toISODateString, parseDate } from './dateUtils';
 
 /**

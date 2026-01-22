@@ -17,7 +17,7 @@ import { SupportedLanguage } from '@/lib/api/translation';
 import { useProperties } from '@/hooks/useProperties';
 import { useAuth } from '@/hooks/useAuth';
 import { getUIText } from '@/utils/i18n';
-import { PropertyData } from '@/lib/api/properties';
+import { PropertyData } from '@/types/property';
 import PropertyModal from '@/components/map/PropertyModal';
 import { 
   formatPrice, 

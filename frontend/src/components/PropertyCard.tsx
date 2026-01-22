@@ -8,7 +8,7 @@
 
 import { Bed, Bath, Square, MapPin, Calendar, Users } from 'lucide-react';
 import Image from 'next/image';
-import { PropertyData } from '@/lib/api/properties';
+import { PropertyData } from '@/types/property';
 import { useTranslation } from '@/hooks/useTranslation';
 import { SupportedLanguage } from '@/lib/api/translation';
 import { getUIText } from '@/utils/i18n';

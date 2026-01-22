@@ -10,7 +10,8 @@
  */
 
 import { useState, useEffect } from 'react';
-import { PropertyData, subscribeToProperties, getAvailableProperties } from '@/lib/api/properties';
+import { subscribeToProperties, getAvailableProperties } from '@/lib/api/properties';
+import { PropertyData } from '@/types/property';
 
 /**
  * 매물 데이터와 로딩 상태를 관리하는 Hook

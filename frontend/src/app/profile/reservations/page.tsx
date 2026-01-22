@@ -15,7 +15,7 @@ import { getReservationsByOwner, updateReservationStatus, deleteReservation } fr
 import { getProperty, updateProperty, logCancelledProperty, handleCancellationRelist } from '@/lib/api/properties';
 import { getCurrentUserData } from '@/lib/api/auth';
 import { ReservationData } from '@/lib/api/reservations';
-import { PropertyData } from '@/lib/api/properties';
+import { PropertyData } from '@/types/property';
 import { markAllMessagesInRoomAsRead, findChatRoom } from '@/lib/api/chat';
 import { ArrowLeft, Calendar, User, Mail, Phone, CheckCircle2, XCircle, MapPin, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';

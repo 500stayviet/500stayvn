@@ -5,7 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import TopBar from '@/components/TopBar';
 import GrabMapComponent from '@/components/GrabMapComponent';
-import { getProperty, PropertyData } from '@/lib/api/properties';
+import { getProperty } from '@/lib/api/properties';
+import { PropertyData } from '@/types/property';
 import { useAuth } from '@/hooks/useAuth';
 import PropertyModal from '@/components/map/PropertyModal';
 import { 

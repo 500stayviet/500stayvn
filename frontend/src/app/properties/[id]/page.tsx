@@ -10,7 +10,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { getProperty, PropertyData } from '@/lib/api/properties';
+import { getProperty } from '@/lib/api/properties';
+import { PropertyData } from '@/types/property';
 import { useLanguage } from '@/contexts/LanguageContext';
 import Image from 'next/image';
 import { MapPin, Bed, Bath, Square, ArrowLeft, Wind, Sofa, UtensilsCrossed, WashingMachine, Refrigerator, Table, Shirt, Wifi, Calendar, Users, ChevronLeft, ChevronRight } from 'lucide-react';

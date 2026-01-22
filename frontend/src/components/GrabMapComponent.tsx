@@ -5,7 +5,8 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { MapPin } from 'lucide-react';
 import { searchPlaceIndexForText } from '@/lib/api/aws-location';
-import { getAvailableProperties, subscribeToProperties, PropertyData, getProperty } from '@/lib/api/properties';
+import { getAvailableProperties, subscribeToProperties, getProperty } from '@/lib/api/properties';
+import { PropertyData } from '@/types/property';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { searchRegions, regionToSuggestion } from '@/lib/data/vietnam-regions';
 import { 

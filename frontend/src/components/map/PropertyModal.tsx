@@ -12,7 +12,7 @@ import {
   Bed, 
   Bath, 
 } from 'lucide-react';
-import { PropertyData } from '@/lib/api/properties';
+import { PropertyData } from '@/types/property';
 import { getPropertyBookings, toISODateString } from '@/lib/api/bookings';
 import CalendarComponent from '@/components/CalendarComponent';
 import { useAuth } from '@/hooks/useAuth';
