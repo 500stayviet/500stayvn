@@ -178,12 +178,16 @@ export default function MapPage() {
                 <h2 className="text-xl font-bold text-gray-900">
                   {currentLanguage === 'ko' ? '주변 인기 숙소' : 
                    currentLanguage === 'vi' ? 'Chỗ ở phổ biến xung quanh' : 
+                   currentLanguage === 'ja' ? '周辺の人気宿泊施設' : 
+                   currentLanguage === 'zh' ? '周边热门住宿' : 
                    'Popular stays nearby'}
                 </h2>
                 <p className="text-xs text-gray-400 mt-1">
                   {nearbyProperties.length}
                   {currentLanguage === 'ko' ? '개의 매물이 검색되었습니다' : 
                    currentLanguage === 'vi' ? ' tài sản được tìm thấy' : 
+                   currentLanguage === 'ja' ? ' 件の物件が見つかりました' : 
+                   currentLanguage === 'zh' ? ' 个房源已找到' : 
                    ' properties found'}
                 </p>
               </div>

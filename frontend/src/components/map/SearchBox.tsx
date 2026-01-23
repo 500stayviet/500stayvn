@@ -116,17 +116,20 @@ export default function SearchBox({
                 if (suggestion.isRegion) {
                   // 1순위: 도시 / 2순위: 구
                   if (suggestion.regionType === 'city') {
-                    badgeText = currentLanguage === 'ko' ? '도시' : currentLanguage === 'vi' ? 'Thành phố' : 'City';
+                    const text = { ko: '도시', vi: 'Thành phố', en: 'City', ja: '都市', zh: '城市' };
+                    badgeText = text[currentLanguage] || text.en;
                     badgeColor = 'bg-blue-600';
                     badgeIcon = '🏙️';
                   } else {
-                    badgeText = currentLanguage === 'ko' ? '구/군' : currentLanguage === 'vi' ? 'Quận' : 'District';
+                    const text = { ko: '구/군', vi: 'Quận', en: 'District', ja: '区/郡', zh: '区/县' };
+                    badgeText = text[currentLanguage] || text.en;
                     badgeColor = 'bg-blue-500';
                     badgeIcon = '📍';
                   }
                 } else {
                   // 3순위: 대표 명소
-                  badgeText = currentLanguage === 'ko' ? '명소' : currentLanguage === 'vi' ? 'Địa danh' : 'Landmark';
+                  const text = { ko: '명소', vi: 'Địa danh', en: 'Landmark', ja: '名所', zh: '景点' };
+                  badgeText = text[currentLanguage] || text.en;
                   badgeColor = 'bg-amber-500';
                   badgeIcon = '⭐';
                 }

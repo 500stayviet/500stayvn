@@ -23,11 +23,11 @@ const STATUS_COLORS = {
   completed: 'bg-gray-100 text-gray-700',
 };
 
-const STATUS_LABELS = {
-  pending: { ko: '승인 대기 중', vi: 'Chờ phê duyệt', en: 'Pending Approval' },
-  confirmed: { ko: '확정됨', vi: 'Đã xác nhận', en: 'Confirmed' },
-  cancelled: { ko: '취소됨', vi: 'Đã hủy', en: 'Cancelled' },
-  completed: { ko: '완료됨', vi: 'Hoàn thành', en: 'Completed' },
+const STATUS_LABELS: Record<'pending' | 'confirmed' | 'cancelled' | 'completed', Record<SupportedLanguage, string>> = {
+  pending: { ko: '승인 대기 중', vi: 'Chờ phê duyệt', en: 'Pending Approval', ja: '承認待ち', zh: '待批准' },
+  confirmed: { ko: '확정됨', vi: 'Đã xác nhận', en: 'Confirmed', ja: '確定済み', zh: '已确认' },
+  cancelled: { ko: '취소됨', vi: 'Đã hủy', en: 'Cancelled', ja: 'キャンセル済み', zh: '已取消' },
+  completed: { ko: '완료됨', vi: 'Hoàn thành', en: 'Completed', ja: '完了済み', zh: '已完成' },
 };
 
 export default function MyBookingsPage() {

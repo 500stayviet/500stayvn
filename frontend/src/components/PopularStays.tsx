@@ -130,6 +130,10 @@ export default function PopularStays({ currentLanguage }: PopularStaysProps) {
             ? '지금 가장 인기 있는 숙소' 
             : currentLanguage === 'vi'
             ? 'Chỗ ở phổ biến nhất hiện tại'
+            : currentLanguage === 'ja'
+            ? '今最も人気のある宿泊施設'
+            : currentLanguage === 'zh'
+            ? '目前最受欢迎的住宿'
             : 'Popular Stays Now'}
         </h2>
 

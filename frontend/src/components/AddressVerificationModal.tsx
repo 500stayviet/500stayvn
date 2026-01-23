@@ -518,6 +518,10 @@ export default function AddressVerificationModal({
         return `${name}동`; // Park 2동
       } else if (language === 'en') {
         return `${name} Building`; // Park 2 Building
+      } else if (language === 'ja') {
+        return `${name}棟`;
+      } else if (language === 'zh') {
+        return `${name}栋`;
       }
     }
     
@@ -530,6 +534,10 @@ export default function AddressVerificationModal({
         return `${name}동`;
       } else if (language === 'en') {
         return `${name} Building`;
+      } else if (language === 'ja') {
+        return `${name}棟`;
+      } else if (language === 'zh') {
+        return `${name}栋`;
       }
     }
     
@@ -542,6 +550,10 @@ export default function AddressVerificationModal({
         return `${name}단지`;
       } else if (language === 'en') {
         return `${name} Zone`;
+      } else if (language === 'ja') {
+        return `${name}地区`;
+      } else if (language === 'zh') {
+        return `${name}社区`;
       }
     }
     
@@ -554,6 +566,10 @@ export default function AddressVerificationModal({
         return `${name}로비/홀`;
       } else if (language === 'en') {
         return `${name} Lobby`;
+      } else if (language === 'ja') {
+        return `${name}ロビー`;
+      } else if (language === 'zh') {
+        return `${name}大厅`;
       }
     }
     
@@ -566,6 +582,10 @@ export default function AddressVerificationModal({
         return `${name}호`;
       } else if (language === 'en') {
         return `${name} Apt`;
+      } else if (language === 'ja') {
+        return `${name}号室`;
+      } else if (language === 'zh') {
+        return `${name}单元`;
       }
     }
     

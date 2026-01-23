@@ -312,21 +312,42 @@ export function useLocationSearch(currentLanguage: SupportedLanguage) {
 export function getSuggestionBadge(suggestion: LocationSuggestion, currentLanguage: SupportedLanguage) {
   if (suggestion.isRegion) {
     if (suggestion.regionType === 'city') {
+      const text = {
+        ko: '도시',
+        vi: 'Thành phố',
+        en: 'City',
+        ja: '都市',
+        zh: '城市'
+      };
       return {
-        text: currentLanguage === 'ko' ? '도시' : currentLanguage === 'vi' ? 'Thành phố' : 'City',
+        text: text[currentLanguage] || text.en,
         color: 'bg-blue-600',
         icon: '🏙️',
       };
     } else {
+      const text = {
+        ko: '구/군',
+        vi: 'Quận',
+        en: 'District',
+        ja: '区/郡',
+        zh: '区/县'
+      };
       return {
-        text: currentLanguage === 'ko' ? '구/군' : currentLanguage === 'vi' ? 'Quận' : 'District',
+        text: text[currentLanguage] || text.en,
         color: 'bg-blue-500',
         icon: '📍',
       };
     }
   } else {
+    const text = {
+      ko: '명소',
+      vi: 'Địa danh',
+      en: 'Landmark',
+      ja: '名所',
+      zh: '景点'
+    };
     return {
-      text: currentLanguage === 'ko' ? '명소' : currentLanguage === 'vi' ? 'Địa danh' : 'Landmark',
+      text: text[currentLanguage] || text.en,
       color: 'bg-amber-500',
       icon: '⭐',
     };

@@ -284,6 +284,10 @@ export default function HeroSection({ currentLanguage }: HeroSectionProps) {
             ? '어디에서 살고 싶으신가요?' 
             : currentLanguage === 'vi'
             ? 'Bạn muốn sống ở đâu?'
+            : currentLanguage === 'ja'
+            ? 'どこに住みたいですか？'
+            : currentLanguage === 'zh'
+            ? '你想住在哪里？'
             : 'Where do you want to live?'}
         </h2>
 
