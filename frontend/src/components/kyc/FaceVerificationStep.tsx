@@ -22,10 +22,10 @@ interface FaceVerificationStepProps {
 
 // 안내 메시지 및 방향
 const faceDirections = [
-  { key: 'front', text: { ko: '정면을 보세요', vi: 'Nhìn thẳng về phía trước' }, duration: 3000 },
-  { key: 'left', text: { ko: '왼쪽을 보세요', vi: 'Nhìn sang trái' }, duration: 3000 },
-  { key: 'right', text: { ko: '오른쪽을 보세요', vi: 'Nhìn sang phải' }, duration: 3000 },
-  { key: 'up', text: { ko: '위를 보세요', vi: 'Nhìn lên trên' }, duration: 3000 },
+  { key: 'front', text: { ko: '정면을 보세요', vi: 'Nhìn thẳng về phía trước', en: 'Look straight ahead' }, duration: 3000 },
+  { key: 'left', text: { ko: '왼쪽을 보세요', vi: 'Nhìn sang trái', en: 'Look to the left' }, duration: 3000 },
+  { key: 'right', text: { ko: '오른쪽을 보세요', vi: 'Nhìn sang phải', en: 'Look to the right' }, duration: 3000 },
+  { key: 'up', text: { ko: '위를 보세요', vi: 'Nhìn lên trên', en: 'Look up' }, duration: 3000 },
 ];
 
 export default function FaceVerificationStep({
@@ -184,7 +184,7 @@ export default function FaceVerificationStep({
   };
 
   const currentDirection = faceDirections[currentDirectionIndex];
-  const currentGuideText = currentDirection?.text?.[currentLanguage] || currentDirection?.text?.ko || '';
+  const currentGuideText = (currentDirection?.text as any)?.[currentLanguage] || currentDirection?.text?.ko || '';
 
   return (
     <div className="w-full">
@@ -457,7 +457,7 @@ export default function FaceVerificationStep({
               {capturedImages.map((img, index) => (
                 <div key={index} className="space-y-2">
                   <p className="text-xs font-medium text-gray-700">
-                    {faceDirections.find((d) => d.key === img.direction)?.text?.[currentLanguage] || img.direction}
+                    {(faceDirections.find((d) => d.key === img.direction)?.text as any)?.[currentLanguage] || img.direction}
                   </p>
                   <div className="relative bg-gray-100 rounded-xl overflow-hidden aspect-square">
                     <img
