@@ -9,6 +9,7 @@
 import { useState } from 'react';
 import { BookingData } from '@/lib/api/bookings';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { SupportedLanguage } from '@/lib/api/translation';
 import { 
   X, Calendar, Clock, User, Phone, Home, 
   CreditCard, Copy, Check, Hash, Info, 
@@ -65,11 +66,11 @@ export default function BookingDetailsModal({ booking, onClose }: BookingDetails
   const vat = 0; // 0% 부가세
   const basePrice = booking.totalPrice;
 
-  const paymentMethodLabels: Record<string, { ko: string; vi: string; en: string }> = {
-    momo: { ko: 'MoMo', vi: 'MoMo', en: 'MoMo' },
-    zalopay: { ko: 'ZaloPay', vi: 'ZaloPay', en: 'ZaloPay' },
-    bank_transfer: { ko: '계좌이체', vi: 'Chuyển khoản', en: 'Bank Transfer' },
-    pay_at_property: { ko: '현장 결제', vi: 'Thanh toán tại chỗ', en: 'Pay at Property' }
+  const paymentMethodLabels: Record<string, Record<SupportedLanguage, string>> = {
+    momo: { ko: 'MoMo', vi: 'MoMo', en: 'MoMo', ja: 'MoMo', zh: 'MoMo' },
+    zalopay: { ko: 'ZaloPay', vi: 'ZaloPay', en: 'ZaloPay', ja: 'ZaloPay', zh: 'ZaloPay' },
+    bank_transfer: { ko: '계좌이체', vi: 'Chuyển khoản', en: 'Bank Transfer', ja: '銀行振込', zh: '银行转账' },
+    pay_at_property: { ko: '현장 결제', vi: 'Thanh toán tại chỗ', en: 'Pay at Property', ja: '現地払い', zh: '现场付款' }
   };
 
   const getPaymentMethodLabel = (method?: string) => {

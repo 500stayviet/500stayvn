@@ -45,7 +45,13 @@ export default function PhoneVerificationStep({
   // 인증번호 발송 (UI만 구현, 실제 API 연동은 추후)
   const handleSendCode = async () => {
     if (!phoneNumber || phoneNumber.length < 10) {
-      setError(currentLanguage === 'ko' ? '올바른 전화번호를 입력해주세요' : 'Vui lòng nhập số điện thoại hợp lệ');
+      setError(
+        currentLanguage === 'ko' ? '올바른 전화번호를 입력해주세요' : 
+        currentLanguage === 'vi' ? 'Vui lòng nhập số điện thoại hợp lệ' : 
+        currentLanguage === 'ja' ? '有効な電話番号を入力してください' : 
+        currentLanguage === 'zh' ? '请输入有效的电话号码' : 
+        'Please enter a valid phone number'
+      );
       return;
     }
 
@@ -66,7 +72,13 @@ export default function PhoneVerificationStep({
   // 인증번호 확인
   const handleVerifyCode = async () => {
     if (!verificationCode || verificationCode.length !== 6) {
-      setError(currentLanguage === 'ko' ? '6자리 인증번호를 입력해주세요' : 'Vui lòng nhập mã xác thực 6 chữ số');
+      setError(
+        currentLanguage === 'ko' ? '6자리 인증번호를 입력해주세요' : 
+        currentLanguage === 'vi' ? 'Vui lòng nhập mã xác thực 6 chữ số' : 
+        currentLanguage === 'ja' ? '6桁の認証コードを入力してください' : 
+        currentLanguage === 'zh' ? '请输入6位验证码' : 
+        'Please enter 6-digit verification code'
+      );
       return;
     }
 
@@ -104,19 +116,33 @@ export default function PhoneVerificationStep({
                 <Phone className="w-8 h-8 text-blue-600" />
               </div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                {currentLanguage === 'ko' ? '전화번호 인증' : 'Xác thực số điện thoại'}
+                {currentLanguage === 'ko' ? '전화번호 인증' : 
+                 currentLanguage === 'vi' ? 'Xác thực số điện thoại' : 
+                 currentLanguage === 'ja' ? '電話番号認証' : 
+                 currentLanguage === 'zh' ? '手机号验证' : 
+                 'Phone Verification'}
               </h2>
               <p className="text-sm text-gray-600">
                 {currentLanguage === 'ko' 
                   ? '임대인 인증을 위해 전화번호를 인증해주세요'
-                  : 'Vui lòng xác thực số điện thoại để xác nhận chủ nhà'}
+                  : currentLanguage === 'vi'
+                  ? 'Vui lòng xác thực số điện thoại để xác nhận chủ nhà'
+                  : currentLanguage === 'ja'
+                  ? 'ホスト認証のために電話번호を認証してください'
+                  : currentLanguage === 'zh'
+                  ? '请验证手机号以进行房东认证'
+                  : 'Please verify your phone number for host verification'}
               </p>
             </div>
 
             {/* 전화번호 입력 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {currentLanguage === 'ko' ? '전화번호' : 'Số điện thoại'}
+                {currentLanguage === 'ko' ? '전화번호' : 
+                 currentLanguage === 'vi' ? 'Số điện thoại' : 
+                 currentLanguage === 'ja' ? '電話番号' : 
+                 currentLanguage === 'zh' ? '手机号' : 
+                 'Phone Number'}
                 <span className="text-red-500 text-xs ml-1">*</span>
               </label>
               <div className="relative">
@@ -144,11 +170,16 @@ export default function PhoneVerificationStep({
               </div>
             )}
 
-            {/* 다음 버튼 (테스트용: 전화번호만 입력) */}
             <button
               onClick={() => {
                 if (!phoneNumber || phoneNumber.length < 10) {
-                  setError(currentLanguage === 'ko' ? '올바른 전화번호를 입력해주세요' : 'Vui lòng nhập số điện thoại hợp lệ');
+                  setError(
+                    currentLanguage === 'ko' ? '올바른 전화번호를 입력해주세요' : 
+                    currentLanguage === 'vi' ? 'Vui lòng nhập số điện thoại hợp lệ' : 
+                    currentLanguage === 'ja' ? '有効な電話番号を入力してください' : 
+                    currentLanguage === 'zh' ? '请输入有效的电话号码' : 
+                    'Please enter a valid phone number'
+                  );
                   return;
                 }
                 // 테스트용: 전화번호만 입력하면 완료
@@ -161,7 +192,11 @@ export default function PhoneVerificationStep({
               disabled={!phoneNumber}
               className="w-full py-3.5 px-4 bg-blue-600 text-white rounded-xl font-semibold text-base hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              <span>{currentLanguage === 'ko' ? '다음' : 'Tiếp theo'}</span>
+              <span>{currentLanguage === 'ko' ? '다음' : 
+                     currentLanguage === 'vi' ? 'Tiếp theo' : 
+                     currentLanguage === 'ja' ? '次へ' : 
+                     currentLanguage === 'zh' ? '下一步' : 
+                     'Next'}</span>
               <ArrowRight className="w-5 h-5" />
             </button>
           </motion.div>
@@ -179,19 +214,33 @@ export default function PhoneVerificationStep({
                 <CheckCircle2 className="w-8 h-8 text-green-600" />
               </div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                {currentLanguage === 'ko' ? '인증번호 입력' : 'Nhập mã xác thực'}
+                {currentLanguage === 'ko' ? '인증번호 입력' : 
+                 currentLanguage === 'vi' ? 'Nhập mã xác thực' : 
+                 currentLanguage === 'ja' ? '認証コード入力' : 
+                 currentLanguage === 'zh' ? '输入验证码' : 
+                 'Enter Verification Code'}
               </h2>
               <p className="text-sm text-gray-600">
                 {currentLanguage === 'ko' 
                   ? `${phoneNumber}로 발송된 인증번호를 입력해주세요`
-                  : `Vui lòng nhập mã xác thực đã gửi đến ${phoneNumber}`}
+                  : currentLanguage === 'vi'
+                  ? `Vui lòng nhập mã xác thực đã gửi đến ${phoneNumber}`
+                  : currentLanguage === 'ja'
+                  ? `${phoneNumber}に送信された認証コードを入力してください`
+                  : currentLanguage === 'zh'
+                  ? `请输入发送到 ${phoneNumber} 的验证码`
+                  : `Please enter the verification code sent to ${phoneNumber}`}
               </p>
             </div>
 
             {/* 인증번호 입력 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {currentLanguage === 'ko' ? '인증번호 (6자리)' : 'Mã xác thực (6 chữ số)'}
+                {currentLanguage === 'ko' ? '인증번호 (6자리)' : 
+                 currentLanguage === 'vi' ? 'Mã xác thực (6 chữ số)' : 
+                 currentLanguage === 'ja' ? '認証コード (6桁)' : 
+                 currentLanguage === 'zh' ? '验证码 (6位)' : 
+                 'Verification Code (6 digits)'}
                 <span className="text-red-500 text-xs ml-1">*</span>
               </label>
               <input
@@ -227,17 +276,24 @@ export default function PhoneVerificationStep({
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  {currentLanguage === 'ko' ? '인증 중...' : 'Đang xác thực...'}
+                  {currentLanguage === 'ko' ? '인증 중...' : 
+                   currentLanguage === 'vi' ? 'Đang xác thực...' : 
+                   currentLanguage === 'ja' ? '認証中...' : 
+                   currentLanguage === 'zh' ? '验证中...' : 
+                   'Verifying...'}
                 </>
               ) : (
                 <>
-                  <span>{currentLanguage === 'ko' ? '인증하기' : 'Xác thực'}</span>
+                  <span>{currentLanguage === 'ko' ? '인증하기' : 
+                         currentLanguage === 'vi' ? 'Xác thực' : 
+                         currentLanguage === 'ja' ? '認証する' : 
+                         currentLanguage === 'zh' ? '立即验证' : 
+                         'Verify'}</span>
                   <ArrowRight className="w-5 h-5" />
                 </>
               )}
             </button>
 
-            {/* 다시 발송 */}
             <button
               onClick={() => {
                 setStep('input');
@@ -246,7 +302,11 @@ export default function PhoneVerificationStep({
               }}
               className="w-full py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
             >
-              {currentLanguage === 'ko' ? '인증번호 다시 받기' : 'Gửi lại mã xác thực'}
+              {currentLanguage === 'ko' ? '인증번호 다시 받기' : 
+               currentLanguage === 'vi' ? 'Gửi lại mã xác thực' : 
+               currentLanguage === 'ja' ? '認証コードを再送' : 
+               currentLanguage === 'zh' ? '重新发送验证码' : 
+               'Resend Code'}
             </button>
           </motion.div>
         )}
