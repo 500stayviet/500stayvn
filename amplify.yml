@@ -3,22 +3,19 @@ frontend:
   phases:
     preBuild:
       commands:
-        # frontend 폴더가 보이면 들어가서 설치, 아니면 현재 위치에서 설치
         - if [ -d "frontend" ]; then cd frontend && npm install; else npm install; fi
     build:
       commands:
-        # frontend 폴더가 있으면 들어가서 prisma 생성 및 빌드 실행
         - |
           if [ -d "frontend" ]; then
             cd frontend
             npx prisma generate --schema=../backend/functions/prisma/schema.prisma || echo "Prisma Skip"
             npm run build
           else
-            npx prisma generate --schema=../backend/functions/prisma/schema.prisma || echo "Prisma Skip"
+            npx prisma generate --schema=./backend/functions/prisma/schema.prisma || echo "Prisma Skip"
             npm run build
           fi
   artifacts:
-    # 빌드 결과물이 frontend/.next에 있는지 .next에 있는지 자동으로 찾음
     baseDirectory: frontend/.next
     files:
       - '**/*'
