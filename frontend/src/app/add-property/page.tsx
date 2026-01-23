@@ -1072,7 +1072,7 @@ export default function AddPropertyPage() {
                   {AMENITY_OPTIONS.map((amenity) => {
                     const Icon = amenity.icon;
                     const isSelected = selectedAmenities.includes(amenity.id);
-                    const langKey = currentLanguage as 'ko' | 'vi' | 'en';
+                    const langKey = currentLanguage;
                     const label = amenity.label[langKey] || amenity.label.en;
 
                     return (
@@ -1133,7 +1133,7 @@ export default function AddPropertyPage() {
                   setCheckOutDate(date);
                   setShowCalendar(false);
                 }}
-                currentLanguage={currentLanguage as 'ko' | 'vi' | 'en'}
+                currentLanguage={currentLanguage}
                 onClose={() => setShowCalendar(false)}
                 mode={calendarMode}
                 bookedRanges={[]}

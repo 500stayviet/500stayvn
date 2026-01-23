@@ -501,7 +501,7 @@ export default function AddressVerificationModal({
 
 
   // 건물 수식어 다국어 변환 함수 (부수적 키워드만 현지화, 고유 명사는 원문 유지)
-  const translateBuildingTerms = (text: string, language: string): string => {
+  const translateBuildingTerms = (text: string, language: SupportedLanguage): string => {
     if (language === 'vi') {
       // 베트남어는 원문 그대로
       return text;

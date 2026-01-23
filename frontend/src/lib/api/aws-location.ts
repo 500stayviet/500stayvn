@@ -18,7 +18,7 @@ const API_BASE_URL = '/api/aws-location';
  */
 export async function searchPlaceIndexForText(
   text: string,
-  language: string = 'vi'
+  language: SupportedLanguage = 'vi'
 ): Promise<any[]> {
   try {
     if (!text || text.trim().length === 0) {
@@ -62,7 +62,7 @@ export async function searchPlaceIndexForText(
  */
 export async function searchPlaceIndexForSuggestions(
   text: string,
-  language: string = 'vi',
+  language: SupportedLanguage = 'vi',
   biasPosition?: { lat: number; lng: number }
 ): Promise<any[]> {
   try {
@@ -135,7 +135,7 @@ export async function searchPlaceIndexForSuggestions(
 export async function searchPlaceIndexForPosition(
   latitude: number,
   longitude: number,
-  language: string = 'vi'
+  language: SupportedLanguage = 'vi'
 ): Promise<any[]> {
   try {
     const response = await fetch(API_BASE_URL, {
@@ -174,7 +174,7 @@ export async function searchPlaceIndexForPosition(
  */
 export async function getPlaceById(
   placeId: string,
-  language: string = 'vi'
+  language: SupportedLanguage = 'vi'
 ): Promise<any | null> {
   try {
     if (!placeId || placeId.trim().length === 0) {
@@ -212,7 +212,7 @@ export async function getPlaceById(
  * 언어 코드 변환
  * SupportedLanguage를 AWS Location Service 언어 코드로 변환
  */
-export function getLocationServiceLanguage(language: string): string {
+export function getLocationServiceLanguage(language: SupportedLanguage): string {
   const languageMap: Record<string, string> = {
     ko: 'ko',
     vi: 'vi',

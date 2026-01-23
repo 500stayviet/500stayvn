@@ -11,13 +11,15 @@
 import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
+import { SupportedLanguage } from '@/lib/api/translation';
+
 interface CalendarComponentProps {
   checkInDate: Date | null;
   checkOutDate: Date | null;
   onCheckInSelect: (date: Date) => void;
   onCheckOutSelect: (date: Date) => void;
   onCheckInReset?: () => void; // 체크인 날짜 초기화 콜백
-  currentLanguage: 'ko' | 'vi' | 'en';
+  currentLanguage: SupportedLanguage;
   onClose: () => void;
   mode: 'checkin' | 'checkout';
   minDate?: Date; // 선택 가능한 최소 날짜 (매물의 임대 시작일)
@@ -465,12 +467,18 @@ export default function CalendarComponent({
     ? ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월']
     : currentLanguage === 'vi'
     ? ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12']
+    : currentLanguage === 'ja' || currentLanguage === 'zh'
+    ? ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
     : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
   const dayNames = currentLanguage === 'ko'
     ? ['일', '월', '화', '수', '목', '금', '토']
     : currentLanguage === 'vi'
     ? ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
+    : currentLanguage === 'ja'
+    ? ['日', '月', '火', '水', '木', '金', '土']
+    : currentLanguage === 'zh'
+    ? ['日', '一', '二', '三', '四', '五', '六']
     : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   // 달력 날짜 생성

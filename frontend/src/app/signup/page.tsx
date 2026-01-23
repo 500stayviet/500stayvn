@@ -59,8 +59,7 @@ export default function SignUpPage() {
   
   // currentLanguage가 변경되면 formData도 업데이트
   useEffect(() => {
-    // 지원하지 않는 언어는 영어로 설정
-    const lang = (currentLanguage === 'ko' || currentLanguage === 'vi') ? currentLanguage : 'en';
+    const lang = (currentLanguage === 'ko' || currentLanguage === 'vi' || currentLanguage === 'ja' || currentLanguage === 'zh') ? currentLanguage : 'en';
     setFormData(prev => ({ ...prev, preferredLanguage: lang }));
   }, [currentLanguage]);
 
@@ -151,8 +150,7 @@ export default function SignUpPage() {
         ...(formData.fullName && { fullName: formData.fullName }),
         ...(formData.phoneNumber && { phoneNumber: formData.phoneNumber }),
         ...(formData.gender && { gender: formData.gender }),
-        // 지원하지 않는 언어는 영어로 설정
-        preferredLanguage: (currentLanguage === 'ko' || currentLanguage === 'vi') ? currentLanguage : 'en',
+        preferredLanguage: (currentLanguage === 'ko' || currentLanguage === 'vi' || currentLanguage === 'ja' || currentLanguage === 'zh') ? currentLanguage : 'en',
       };
 
       const result = await signUpWithEmail(signUpData);
@@ -230,11 +228,13 @@ export default function SignUpPage() {
                 className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-full transition-all duration-200"
               >
                 <Globe className="w-4 h-4" />
-                <span className="text-base">
-                  {currentLanguage === 'ko' ? '🇰🇷' : 
-                   currentLanguage === 'vi' ? '🇻🇳' : 
-                   '🇺🇸'}
-                </span>
+              <span className="text-base">
+                {currentLanguage === 'ko' ? '🇰🇷' : 
+                 currentLanguage === 'vi' ? '🇻🇳' : 
+                 currentLanguage === 'ja' ? '🇯🇵' : 
+                 currentLanguage === 'zh' ? '🇨🇳' : 
+                 '🇺🇸'}
+              </span>
               </button>
 
               {/* 언어 드롭다운 */}
@@ -244,6 +244,8 @@ export default function SignUpPage() {
                     { code: 'en' as SupportedLanguage, name: 'English', flag: '🇺🇸' },
                     { code: 'vi' as SupportedLanguage, name: 'Tiếng Việt', flag: '🇻🇳' },
                     { code: 'ko' as SupportedLanguage, name: '한국어', flag: '🇰🇷' },
+                    { code: 'ja' as SupportedLanguage, name: '日本語', flag: '🇯🇵' },
+                    { code: 'zh' as SupportedLanguage, name: '中文', flag: '🇨🇳' },
                   ].map((lang) => (
                     <button
                       key={lang.code}
@@ -363,13 +365,15 @@ export default function SignUpPage() {
               <select
                 id="preferredLanguage"
                 name="preferredLanguage"
-                value={formData.preferredLanguage}
+                value={formData.preferredLanguage || 'en'}
                 onChange={handleChange}
                 className="w-full px-4 py-2.5 text-sm bg-white/80 backdrop-blur-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               >
                 <option value="ko">한국어</option>
                 <option value="vi">Tiếng Việt</option>
                 <option value="en">English</option>
+                <option value="ja">日本語</option>
+                <option value="zh">中文</option>
               </select>
             </div>
 

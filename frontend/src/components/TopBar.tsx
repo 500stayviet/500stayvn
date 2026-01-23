@@ -185,6 +185,8 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
     { code: 'en', name: 'English', flag: '🇺🇸' },
     { code: 'vi', name: 'Tiếng Việt', flag: '🇻🇳' },
     { code: 'ko', name: '한국어', flag: '🇰🇷' },
+    { code: 'ja', name: '日本語', flag: '🇯🇵' },
+    { code: 'zh', name: '中文', flag: '🇨🇳' },
   ];
 
   const currentLang = languages.find(lang => lang.code === currentLanguage) || languages[0];

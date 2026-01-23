@@ -274,7 +274,7 @@ export default function SearchPage() {
   // 달력 날짜 포맷
   const formatDate = (date: Date | null): string => {
     if (!date) return '';
-    return date.toLocaleDateString(currentLanguage === 'ko' ? 'ko-KR' : currentLanguage === 'vi' ? 'vi-VN' : 'en-US', {
+    return date.toLocaleDateString(currentLanguage === 'ko' ? 'ko-KR' : currentLanguage === 'vi' ? 'vi-VN' : currentLanguage === 'ja' ? 'ja-JP' : currentLanguage === 'zh' ? 'zh-CN' : 'en-US', {
       month: 'short',
       day: 'numeric',
     });
@@ -540,7 +540,7 @@ export default function SearchPage() {
                   setCheckOutDate(null);
                   setCalendarMode('checkin');
                 }}
-                currentLanguage={currentLanguage as 'ko' | 'vi' | 'en'}
+                currentLanguage={currentLanguage}
                 onClose={closeCalendar}
                 mode={calendarMode}
               />

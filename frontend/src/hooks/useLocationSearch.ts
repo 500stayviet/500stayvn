@@ -160,10 +160,12 @@ export const cleanSubAddress = (text: string, language?: string): string => {
   return result.replace(/\s+/g, ' ').trim().replace(/^,\s*/, '').replace(/,\s*$/, '').replace(/,\s*,/g, ',');
 };
 
+import { SupportedLanguage } from '@/lib/api/translation';
+
 // ============================================================================
 // useLocationSearch 훅
 // ============================================================================
-export function useLocationSearch(currentLanguage: string) {
+export function useLocationSearch(currentLanguage: SupportedLanguage) {
   const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -307,7 +309,7 @@ export function useLocationSearch(currentLanguage: string) {
 }
 
 // 뱃지 정보 가져오기
-export function getSuggestionBadge(suggestion: LocationSuggestion, currentLanguage: string) {
+export function getSuggestionBadge(suggestion: LocationSuggestion, currentLanguage: SupportedLanguage) {
   if (suggestion.isRegion) {
     if (suggestion.regionType === 'city') {
       return {

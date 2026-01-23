@@ -156,7 +156,7 @@ export default function PropertyDetailPage() {
                     <div className="absolute top-3 left-3 bg-blue-500 text-white px-3 py-1.5 rounded-lg backdrop-blur-sm z-20 flex items-center gap-2">
                       <Calendar className="w-3.5 h-3.5" />
                       <span className="text-xs font-bold">
-                        {formatDateForBadge(property.checkInDate, currentLanguage as any)}
+                        {formatDateForBadge(property.checkInDate, currentLanguage)}
                       </span>
                     </div>
                   ) : (
@@ -259,9 +259,9 @@ export default function PropertyDetailPage() {
                 <div className="flex items-center gap-2 text-sm text-gray-900">
                   <Calendar className="w-4 h-4 text-gray-600" />
                   <span className="font-medium">
-                    {property.checkInDate && formatDate(property.checkInDate, currentLanguage as any)}
+                    {property.checkInDate && formatDate(property.checkInDate, currentLanguage)}
                     {property.checkInDate && property.checkOutDate && ' ~ '}
-                    {property.checkOutDate && formatDate(property.checkOutDate, currentLanguage as any)}
+                    {property.checkOutDate && formatDate(property.checkOutDate, currentLanguage)}
                   </span>
                 </div>
               </div>
@@ -311,8 +311,7 @@ export default function PropertyDetailPage() {
                 <div className="grid grid-cols-3 gap-3">
                   {AMENITY_OPTIONS.filter(amenity => property.amenities?.includes(amenity.id)).map((amenity) => {
                     const Icon = amenity.icon;
-                    const langKey = currentLanguage as 'ko' | 'vi' | 'en';
-                    const label = amenity.label[langKey] || amenity.label.en;
+                    const label = amenity.label[currentLanguage] || amenity.label.en;
                     
                     return (
                       <div

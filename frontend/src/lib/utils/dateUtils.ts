@@ -1,3 +1,5 @@
+import { SupportedLanguage } from '../api/translation';
+
 /**
  * Date Utilities (날짜 관련 유틸리티)
  */
@@ -59,7 +61,7 @@ export const isAvailableNow = (checkInDate?: string | Date): boolean => {
  */
 export const formatDateForBadge = (
   checkInDate: string | Date | undefined, 
-  lang: 'ko' | 'vi' | 'en',
+  lang: SupportedLanguage,
   checkOutDate?: string | Date | undefined
 ): string => {
   const checkIn = parseDate(checkInDate);
@@ -78,6 +80,10 @@ export const formatDateForBadge = (
       return `${checkInMonth}월 ${checkInDay}일 ~ ${checkOutMonth}월 ${checkOutDay}일`;
     } else if (lang === 'vi') {
       return `${checkInDay}/${checkInMonth} ~ ${checkOutDay}/${checkOutMonth}`;
+    } else if (lang === 'ja') {
+      return `${checkInMonth}月${checkInDay}日 ~ ${checkOutMonth}月${checkOutDay}日`;
+    } else if (lang === 'zh') {
+      return `${checkInMonth}月${checkInDay}日 ~ ${checkOutMonth}月${checkOutDay}日`;
     } else {
       const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       return `${monthNames[checkInMonth - 1]} ${checkInDay} ~ ${monthNames[checkOutMonth - 1]} ${checkOutDay}`;
@@ -88,6 +94,10 @@ export const formatDateForBadge = (
     return `${checkInMonth}월 ${checkInDay}일부터`;
   } else if (lang === 'vi') {
     return `Từ ${checkInDay}/${checkInMonth}`;
+  } else if (lang === 'ja') {
+    return `${checkInMonth}月${checkInDay}日から`;
+  } else if (lang === 'zh') {
+    return `从${checkInMonth}月${checkInDay}日开始`;
   } else {
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return `From ${monthNames[checkInMonth - 1]} ${checkInDay}`;
@@ -97,11 +107,11 @@ export const formatDateForBadge = (
 /**
  * 날짜 포맷팅 (표준: 예: 2024. 1. 21)
  */
-export const formatDate = (dateInput: string | Date | undefined, lang: 'ko' | 'vi' | 'en'): string => {
+export const formatDate = (dateInput: string | Date | undefined, lang: SupportedLanguage): string => {
   const date = parseDate(dateInput);
   if (!date) return '';
   return date.toLocaleDateString(
-    lang === 'ko' ? 'ko-KR' : lang === 'vi' ? 'vi-VN' : 'en-US',
+    lang === 'ko' ? 'ko-KR' : lang === 'vi' ? 'vi-VN' : lang === 'ja' ? 'ja-JP' : lang === 'zh' ? 'zh-CN' : 'en-US',
     { year: 'numeric', month: 'short', day: 'numeric' }
   );
 };

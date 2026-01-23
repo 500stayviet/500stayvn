@@ -143,6 +143,14 @@ export default function MyBookingsPage() {
     const year = date.getFullYear();
     const hours = date.getHours().toString().padStart(2, '0');
     const minutes = date.getMinutes().toString().padStart(2, '0');
+    
+    if (currentLanguage === 'ko') {
+      return `${year}년 ${month}월 ${day}일 ${hours}:${minutes}`;
+    } else if (currentLanguage === 'ja') {
+      return `${year}年${month}月${day}日 ${hours}:${minutes}`;
+    } else if (currentLanguage === 'zh') {
+      return `${year}年${month}月${day}日 ${hours}:${minutes}`;
+    }
     return `${day}/${month}/${year} ${hours}:${minutes}`;
   };
   
@@ -152,6 +160,14 @@ export default function MyBookingsPage() {
     const day = date.getDate().toString().padStart(2, '0');
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const year = date.getFullYear();
+    
+    if (currentLanguage === 'ko') {
+      return `${year}년 ${month}월 ${day}일`;
+    } else if (currentLanguage === 'ja') {
+      return `${year}年${month}月${day}일`;
+    } else if (currentLanguage === 'zh') {
+      return `${year}年${month}月${day}일`;
+    }
     return `${day}/${month}/${year}`;
   };
 
@@ -447,7 +463,7 @@ export default function MyBookingsPage() {
                 {/* 예약 상태 */}
                 <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
                   <span className={`text-xs font-medium px-2 py-1 rounded-full ${STATUS_COLORS[booking.status]}`}>
-                    {STATUS_LABELS[booking.status][currentLanguage as keyof typeof STATUS_LABELS['pending']] || STATUS_LABELS[booking.status].en}
+                    {STATUS_LABELS[booking.status][currentLanguage] || STATUS_LABELS[booking.status].en}
                   </span>
                   <span className="text-xs text-gray-500">
                     {booking.createdAt && formatDateTime(booking.createdAt)}

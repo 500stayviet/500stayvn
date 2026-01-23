@@ -165,7 +165,7 @@ export default function BookingPage() {
   const formatDate = (date: Date | null) => {
     if (!date) return '';
     return date.toLocaleDateString(
-      currentLanguage === 'ko' ? 'ko-KR' : currentLanguage === 'vi' ? 'vi-VN' : 'en-US',
+      currentLanguage === 'ko' ? 'ko-KR' : currentLanguage === 'vi' ? 'vi-VN' : currentLanguage === 'ja' ? 'ja-JP' : currentLanguage === 'zh' ? 'zh-CN' : 'en-US',
       { year: 'numeric', month: 'short', day: 'numeric' }
     );
   };

@@ -264,7 +264,7 @@ export default function MapPage() {
                               ) : (
                                 <div className="bg-blue-500 text-white px-2 py-1 rounded-lg shadow-sm">
                                   <span className="text-[10px] font-bold">
-                                    {formatDateForBadge(property.checkInDate, currentLanguage as any)}
+                                    {formatDateForBadge(property.checkInDate, currentLanguage)}
                                   </span>
                                 </div>
                               )}

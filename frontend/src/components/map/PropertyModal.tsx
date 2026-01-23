@@ -26,9 +26,11 @@ import {
   formatDateForBadge 
 } from '@/lib/utils/dateUtils';
 
+import { SupportedLanguage } from '@/lib/api/translation';
+
 interface PropertyModalProps {
   propertyData: PropertyData;
-  currentLanguage: string;
+  currentLanguage: SupportedLanguage;
   onClose: () => void;
   onPrev?: () => void;
   onNext?: () => void;
@@ -155,7 +157,7 @@ export default function PropertyModal({
             <div className="absolute top-3 left-3 bg-blue-500 text-white px-3 py-1.5 rounded-lg z-10 flex items-center gap-2">
               <Calendar className="w-3.5 h-3.5" />
               <span className="text-xs font-bold">
-                {formatDateForBadge(propertyData.checkInDate, currentLanguage as any)}
+                {formatDateForBadge(propertyData.checkInDate, currentLanguage)}
               </span>
             </div>
           )}
@@ -269,7 +271,7 @@ export default function PropertyModal({
                     const date = parseDate(propertyData.checkInDate);
                     if (!date) return '';
                     return date.toLocaleDateString(
-                      currentLanguage === 'ko' ? 'ko-KR' : currentLanguage === 'vi' ? 'vi-VN' : 'en-US',
+                      currentLanguage === 'ko' ? 'ko-KR' : currentLanguage === 'vi' ? 'vi-VN' : currentLanguage === 'ja' ? 'ja-JP' : currentLanguage === 'zh' ? 'zh-CN' : 'en-US',
                       { year: 'numeric', month: 'short', day: 'numeric' }
                     );
                   })()}
@@ -278,7 +280,7 @@ export default function PropertyModal({
                     const date = parseDate(propertyData.checkOutDate);
                     if (!date) return '';
                     return date.toLocaleDateString(
-                      currentLanguage === 'ko' ? 'ko-KR' : currentLanguage === 'vi' ? 'vi-VN' : 'en-US',
+                      currentLanguage === 'ko' ? 'ko-KR' : currentLanguage === 'vi' ? 'vi-VN' : currentLanguage === 'ja' ? 'ja-JP' : currentLanguage === 'zh' ? 'zh-CN' : 'en-US',
                       { year: 'numeric', month: 'short', day: 'numeric' }
                     );
                   })()}
@@ -471,7 +473,7 @@ export default function PropertyModal({
                 setModalCheckOutDate(null);
                 setModalCalendarMode('checkin');
               }}
-              currentLanguage={currentLanguage as 'ko' | 'vi' | 'en'}
+              currentLanguage={currentLanguage}
               onClose={() => setShowModalCalendar(false)}
               mode={modalCalendarMode}
               minDate={parseDate(propertyData.checkInDate) || undefined}
