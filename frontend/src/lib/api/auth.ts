@@ -5,7 +5,7 @@
  * 브라우저 LocalStorage에 사용자 데이터를 저장하고 관리
  */
 
-import { VerificationStatus } from '@/types/kyc.types';
+import { VerificationStatus, PrivateData } from '@/types/kyc.types';
 import { SupportedLanguage } from '@/lib/api/translation';
 
 /**
@@ -21,6 +21,7 @@ export interface UserData {
   role?: 'user' | 'admin';
   is_owner?: boolean;
   verification_status?: VerificationStatus;
+  private_data?: PrivateData;
   kyc_steps?: {
     step1?: boolean;
     step2?: boolean;
