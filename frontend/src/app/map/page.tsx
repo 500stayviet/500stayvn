@@ -105,14 +105,18 @@ export default function MapPage() {
   const locationLoading = loadingParam === 'true'; // 위치 로딩 중 상태
 
   // 매물 선택 시 지도 중심 이동
-  const handlePropertySelect = (index: number, property: Property) => {
+  const handlePropertySelect = (index: number, property?: Property) => {
     setSelectedPropertyIndex(index);
-    setSelectedProperty(property);
+    
+    const selected = property || (nearbyProperties && nearbyProperties[index]);
+    if (selected) {
+      setSelectedProperty(selected);
+    }
     
     // 슬라이더 이동
     if (cardSliderRef.current) {
       const container = cardSliderRef.current;
-      const cardWidth = container.scrollWidth / nearbyProperties.length;
+      const cardWidth = container.scrollWidth / (nearbyProperties.length || 1);
       container.scrollTo({ left: index * cardWidth, behavior: 'smooth' });
     }
   };
