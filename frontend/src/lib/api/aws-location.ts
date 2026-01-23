@@ -5,6 +5,8 @@
  * CORS 문제를 해결하기 위해 Next.js API Route를 통해 서버 사이드에서 호출
  */
 
+import { SupportedLanguage } from './translation';
+
 const API_BASE_URL = '/api/aws-location';
 
 /**

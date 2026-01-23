@@ -1068,7 +1068,7 @@ export default function EditPropertyPage() {
                   const Icon = amenity.icon;
                   const isSelected = selectedAmenities.includes(amenity.id);
                   const langKey = currentLanguage as 'ko' | 'vi' | 'en';
-                  const label = amenity.label[langKey] || amenity.label.en;
+                  const label = (amenity.label as any)[langKey] || amenity.label.en;
 
                   return (
                     <button

@@ -387,7 +387,7 @@ export default function PropertyDetailPage() {
                 <div className="grid grid-cols-3 gap-3">
                   {AMENITY_OPTIONS.filter(amenity => property.amenities?.includes(amenity.id)).map((amenity) => {
                     const Icon = amenity.icon;
-                    const label = amenity.label[currentLanguage] || amenity.label.en;
+                    const label = (amenity.label as any)[currentLanguage] || amenity.label.en;
                     
                     return (
                       <div

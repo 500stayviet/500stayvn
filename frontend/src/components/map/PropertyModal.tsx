@@ -333,7 +333,7 @@ export default function PropertyModal({
               <div className="grid grid-cols-3 gap-2">
                 {AMENITY_OPTIONS.filter(amenity => propertyData.amenities?.includes(amenity.id)).map((amenity) => {
                   const Icon = amenity.icon;
-                  const label = amenity.label[currentLanguage as keyof typeof amenity.label] || amenity.label.en;
+                  const label = (amenity.label as any)[currentLanguage] || amenity.label.en;
                   
                   return (
                     <div

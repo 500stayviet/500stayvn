@@ -469,7 +469,7 @@ export default function HostBookingsPage() {
                 {/* 예약 상태 */}
                 <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
                   <span className={`text-xs font-medium px-2 py-1 rounded-full ${STATUS_COLORS[booking.status]}`}>
-                    {STATUS_LABELS[booking.status][currentLanguage] || STATUS_LABELS[booking.status].en}
+                    {(STATUS_LABELS[booking.status] as any)[currentLanguage] || (STATUS_LABELS[booking.status] as any).en}
                   </span>
                   <span className="text-xs text-gray-500">
                     {booking.createdAt && formatDateTime(booking.createdAt)}

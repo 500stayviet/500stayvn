@@ -143,12 +143,24 @@ export default function IdDocumentStep({
   // 폼 제출
   const handleSubmit = () => {
     if (!formData.idNumber || !formData.fullName || !formData.dateOfBirth) {
-      setError(currentLanguage === 'ko' ? '필수 항목을 모두 입력해주세요' : 'Vui lòng điền đầy đủ các trường bắt buộc');
+      setError(
+        currentLanguage === 'ko' ? '필수 항목을 모두 입력해주세요' : 
+        currentLanguage === 'vi' ? 'Vui lòng điền đầy đủ các trường bắt buộc' : 
+        currentLanguage === 'ja' ? '必須項目をすべて入力してください' : 
+        currentLanguage === 'zh' ? '请填写所有必填项' : 
+        'Please fill in all required fields'
+      );
       return;
     }
 
     if (!idType || !frontImageFile) {
-      setError(currentLanguage === 'ko' ? '이미지를 선택해주세요' : 'Vui lòng chọn hình ảnh');
+      setError(
+        currentLanguage === 'ko' ? '이미지를 선택해주세요' : 
+        currentLanguage === 'vi' ? 'Vui lòng chọn hình ảnh' : 
+        currentLanguage === 'ja' ? '画像を選択してください' : 
+        currentLanguage === 'zh' ? '请选择图片' : 
+        'Please select an image'
+      );
       return;
     }
 
@@ -182,12 +194,22 @@ export default function IdDocumentStep({
                 <FileText className="w-8 h-8 text-blue-600" />
               </div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                {currentLanguage === 'ko' ? '신분증 촬영' : 'Chụp ảnh giấy tờ'}
+                {currentLanguage === 'ko' ? '신분증 촬영' : 
+                 currentLanguage === 'vi' ? 'Chụp ảnh giấy tờ' : 
+                 currentLanguage === 'ja' ? '身分証明書撮影' : 
+                 currentLanguage === 'zh' ? '证件拍摄' : 
+                 'ID Capture'}
               </h2>
               <p className="text-sm text-gray-600">
                 {currentLanguage === 'ko' 
                   ? '테스트용: 다음 버튼을 눌러 진행하세요'
-                  : 'Để kiểm tra: Nhấn nút Tiếp theo để tiếp tục'}
+                  : currentLanguage === 'vi'
+                  ? 'Để kiểm tra: Nhấn nút Tiếp theo để tiếp tục'
+                  : currentLanguage === 'ja'
+                  ? 'テスト用: 次へボタンを押して進んでください'
+                  : currentLanguage === 'zh'
+                  ? '测试用: 请点击下一步继续'
+                  : 'For testing: Click Next to continue'}
               </p>
             </div>
 
@@ -228,7 +250,11 @@ export default function IdDocumentStep({
               }}
               className="w-full py-3.5 px-4 bg-blue-600 text-white rounded-xl font-semibold text-base hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
             >
-              <span>{currentLanguage === 'ko' ? '다음' : 'Tiếp theo'}</span>
+              <span>{currentLanguage === 'ko' ? '다음' : 
+                     currentLanguage === 'vi' ? 'Tiếp theo' : 
+                     currentLanguage === 'ja' ? '次へ' : 
+                     currentLanguage === 'zh' ? '下一步' : 
+                     'Next'}</span>
               <ArrowRight className="w-5 h-5" />
             </button>
           </motion.div>
@@ -440,19 +466,33 @@ export default function IdDocumentStep({
           >
             <div className="text-center">
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                {currentLanguage === 'ko' ? '신분증 정보 입력' : 'Nhập thông tin giấy tờ'}
+                {currentLanguage === 'ko' ? '신분증 정보 입력' : 
+                 currentLanguage === 'vi' ? 'Nhập thông tin giấy tờ' : 
+                 currentLanguage === 'ja' ? '身分証明書情報入力' : 
+                 currentLanguage === 'zh' ? '填写证件信息' : 
+                 'Enter ID Information'}
               </h2>
               <p className="text-sm text-gray-600">
                 {currentLanguage === 'ko' 
                   ? '신분증에 기재된 정보를 입력해주세요'
-                  : 'Vui lòng nhập thông tin trên giấy tờ'}
+                  : currentLanguage === 'vi'
+                  ? 'Vui lòng nhập thông tin trên giấy tờ'
+                  : currentLanguage === 'ja'
+                  ? '身分証明書に記載された情報を入力してください'
+                  : currentLanguage === 'zh'
+                  ? '请输入证件上的信息'
+                  : 'Please enter the information as shown on your ID'}
               </p>
             </div>
 
             {/* 이름 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {currentLanguage === 'ko' ? '이름' : 'Họ tên'}
+                {currentLanguage === 'ko' ? '이름' : 
+                 currentLanguage === 'vi' ? 'Họ tên' : 
+                 currentLanguage === 'ja' ? '氏名' : 
+                 currentLanguage === 'zh' ? '姓名' : 
+                 'Full Name'}
                 <span className="text-red-500 text-xs ml-1">*</span>
               </label>
               <input
@@ -470,7 +510,11 @@ export default function IdDocumentStep({
             {/* 신분증 번호 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {currentLanguage === 'ko' ? '신분증 번호' : 'Số giấy tờ'}
+                {currentLanguage === 'ko' ? '신분증 번호' : 
+                 currentLanguage === 'vi' ? 'Số giấy tờ' : 
+                 currentLanguage === 'ja' ? '身분증番号' : 
+                 currentLanguage === 'zh' ? '证件号码' : 
+                 'ID Number'}
                 <span className="text-red-500 text-xs ml-1">*</span>
               </label>
               <input
@@ -488,7 +532,11 @@ export default function IdDocumentStep({
             {/* 생년월일 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {currentLanguage === 'ko' ? '생년월일' : 'Ngày sinh'}
+                {currentLanguage === 'ko' ? '생년월일' : 
+                 currentLanguage === 'vi' ? 'Ngày sinh' : 
+                 currentLanguage === 'ja' ? '生年月日' : 
+                 currentLanguage === 'zh' ? '出生日期' : 
+                 'Date of Birth'}
                 <span className="text-red-500 text-xs ml-1">*</span>
               </label>
               <input
@@ -506,7 +554,11 @@ export default function IdDocumentStep({
             {/* 발급일 (선택) */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {currentLanguage === 'ko' ? '발급일' : 'Ngày cấp'} (선택)
+                {currentLanguage === 'ko' ? '발급일' : 
+                 currentLanguage === 'vi' ? 'Ngày cấp' : 
+                 currentLanguage === 'ja' ? '発行日' : 
+                 currentLanguage === 'zh' ? '签发日期' : 
+                 'Issue Date'} (선택)
               </label>
               <input
                 type="date"
@@ -519,7 +571,11 @@ export default function IdDocumentStep({
             {/* 만료일 (선택) */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {currentLanguage === 'ko' ? '만료일' : 'Ngày hết hạn'} (선택)
+                {currentLanguage === 'ko' ? '만료일' : 
+                 currentLanguage === 'vi' ? 'Ngày hết hạn' : 
+                 currentLanguage === 'ja' ? '有効期限' : 
+                 currentLanguage === 'zh' ? '有效期限' : 
+                 'Expiry Date'} (선택)
               </label>
               <input
                 type="date"
@@ -541,7 +597,11 @@ export default function IdDocumentStep({
               onClick={handleSubmit}
               className="w-full py-3.5 px-4 bg-blue-600 text-white rounded-xl font-semibold text-base hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
             >
-              <span>{currentLanguage === 'ko' ? '다음 단계' : 'Bước tiếp theo'}</span>
+              <span>{currentLanguage === 'ko' ? '다음 단계' : 
+                     currentLanguage === 'vi' ? 'Bước tiếp theo' : 
+                     currentLanguage === 'ja' ? '次へ' : 
+                     currentLanguage === 'zh' ? '下一步' : 
+                     'Next Step'}</span>
               <ArrowRight className="w-5 h-5" />
             </button>
           </motion.div>

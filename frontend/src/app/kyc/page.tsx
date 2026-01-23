@@ -98,7 +98,15 @@ export default function KYCPage() {
       setCurrentStep(2);
     } catch (err: any) {
       console.error('Phone verification error:', err);
-      setError(err.message || (currentLanguage === 'ko' ? '전화번호 인증에 실패했습니다' : 'Xác thực số điện thoại thất bại'));
+      setError(
+        err.message || (
+          currentLanguage === 'ko' ? '전화번호 인증에 실패했습니다' : 
+          currentLanguage === 'vi' ? 'Xác thực số điện thoại thất bại' : 
+          currentLanguage === 'ja' ? '電話番号認証に失敗しました' : 
+          currentLanguage === 'zh' ? '手机号验证失败' : 
+          'Phone verification failed'
+        )
+      );
     } finally {
       setLoading(false);
     }
@@ -126,7 +134,15 @@ export default function KYCPage() {
       setCurrentStep(3);
     } catch (err: any) {
       console.error('ID document error:', err);
-      setError(err.message || (currentLanguage === 'ko' ? '신분증 저장에 실패했습니다' : 'Lưu giấy tờ thất bại'));
+      setError(
+        err.message || (
+          currentLanguage === 'ko' ? '신분증 저장에 실패했습니다' : 
+          currentLanguage === 'vi' ? 'Lưu giấy tờ thất bại' : 
+          currentLanguage === 'ja' ? '身分証明書の保存に失敗しました' : 
+          currentLanguage === 'zh' ? '证件保存失败' : 
+          'ID document save failed'
+        )
+      );
     } finally {
       setLoading(false);
     }
@@ -180,7 +196,15 @@ export default function KYCPage() {
       setCurrentStep(3);
     } catch (err: any) {
       console.error('ID document next error:', err);
-      setError(err.message || (currentLanguage === 'ko' ? '다음 단계로 이동에 실패했습니다' : 'Chuyển bước tiếp theo thất bại'));
+      setError(
+        err.message || (
+          currentLanguage === 'ko' ? '다음 단계로 이동에 실패했습니다' : 
+          currentLanguage === 'vi' ? 'Chuyển bước tiếp theo thất bại' : 
+          currentLanguage === 'ja' ? '次のステップへの移動に失敗しました' : 
+          currentLanguage === 'zh' ? '跳转下一步失败' : 
+          'Failed to move to the next step'
+        )
+      );
     } finally {
       setLoading(false);
     }
@@ -254,17 +278,29 @@ export default function KYCPage() {
   const steps = [
     {
       number: 1,
-      title: currentLanguage === 'ko' ? '전화번호 인증' : 'Xác thực số điện thoại',
+      title: currentLanguage === 'ko' ? '전화번호 인증' : 
+             currentLanguage === 'vi' ? 'Xác thực số điện thoại' : 
+             currentLanguage === 'ja' ? '電話番号認証' : 
+             currentLanguage === 'zh' ? '手机号验证' : 
+             'Phone Verification',
       completed: phoneData !== null,
     },
     {
       number: 2,
-      title: currentLanguage === 'ko' ? '신분증 촬영' : 'Chụp ảnh giấy tờ',
+      title: currentLanguage === 'ko' ? '신분증 촬영' : 
+             currentLanguage === 'vi' ? 'Chụp ảnh giấy tờ' : 
+             currentLanguage === 'ja' ? '身分証明書撮影' : 
+             currentLanguage === 'zh' ? '证件拍摄' : 
+             'ID Capture',
       completed: idDocumentData !== null,
     },
     {
       number: 3,
-      title: currentLanguage === 'ko' ? '얼굴 인증' : 'Xác thực khuôn mặt',
+      title: currentLanguage === 'ko' ? '얼굴 인증' : 
+             currentLanguage === 'vi' ? 'Xác thực khuôn mặt' : 
+             currentLanguage === 'ja' ? '顔認証' : 
+             currentLanguage === 'zh' ? '面部识别' : 
+             'Face Verification',
       completed: faceData !== null,
     },
   ];
@@ -283,12 +319,22 @@ export default function KYCPage() {
           {/* 헤더 */}
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-900 mb-1">
-              {currentLanguage === 'ko' ? '임대인 인증' : 'Xác thực chủ nhà'}
+              {currentLanguage === 'ko' ? '임대인 인증' : 
+               currentLanguage === 'vi' ? 'Xác thực chủ nhà' : 
+               currentLanguage === 'ja' ? 'ホスト認証' : 
+               currentLanguage === 'zh' ? '房东认证' : 
+               'Host Verification'}
             </h1>
             <p className="text-sm text-gray-600">
               {currentLanguage === 'ko' 
                 ? '3단계 인증을 완료해주세요'
-                : 'Vui lòng hoàn thành 3 bước xác thực'}
+                : currentLanguage === 'vi'
+                ? 'Vui lòng hoàn thành 3 bước xác thực'
+                : currentLanguage === 'ja'
+                ? '3段階の認証を完了してください'
+                : currentLanguage === 'zh'
+                ? '请完成三步验证'
+                : 'Please complete the 3-step verification'}
             </p>
           </div>
 

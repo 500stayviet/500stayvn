@@ -79,12 +79,22 @@ export default function AdminKYCPage() {
           {/* 헤더 */}
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-900 mb-1">
-              {currentLanguage === 'ko' ? 'KYC 데이터 관리' : 'Quản lý dữ liệu KYC'}
+              {currentLanguage === 'ko' ? 'KYC 데이터 관리' : 
+               currentLanguage === 'vi' ? 'Quản lý dữ liệu KYC' : 
+               currentLanguage === 'ja' ? 'KYCデータ管理' : 
+               currentLanguage === 'zh' ? 'KYC数据管理' : 
+               'KYC Data Management'}
             </h1>
             <p className="text-sm text-gray-600">
               {currentLanguage === 'ko' 
                 ? `총 ${kycUsers.length}명의 인증 데이터`
-                : `Tổng ${kycUsers.length} dữ liệu xác thực`}
+                : currentLanguage === 'vi'
+                ? `Tổng ${kycUsers.length} dữ liệu xác thực`
+                : currentLanguage === 'ja'
+                ? `合計 ${kycUsers.length} 件の認証データ`
+                : currentLanguage === 'zh'
+                ? `共 ${kycUsers.length} 条验证数据`
+                : `Total ${kycUsers.length} verification data`}
             </p>
           </div>
 
@@ -96,7 +106,11 @@ export default function AdminKYCPage() {
               className="flex-1 py-3 px-4 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
               <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-              <span>{currentLanguage === 'ko' ? '새로고침' : 'Làm mới'}</span>
+              <span>{currentLanguage === 'ko' ? '새로고침' : 
+                     currentLanguage === 'vi' ? 'Làm mới' : 
+                     currentLanguage === 'ja' ? '更新' : 
+                     currentLanguage === 'zh' ? '刷新' : 
+                     'Refresh'}</span>
             </button>
             <button
               onClick={handleDownloadCSV}
@@ -104,7 +118,11 @@ export default function AdminKYCPage() {
               className="flex-1 py-3 px-4 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               <Download className={`w-5 h-5 ${downloading ? 'animate-spin' : ''}`} />
-              <span>{currentLanguage === 'ko' ? 'CSV 다운로드' : 'Tải CSV'}</span>
+              <span>{currentLanguage === 'ko' ? 'CSV 다운로드' : 
+                     currentLanguage === 'vi' ? 'Tải CSV' : 
+                     currentLanguage === 'ja' ? 'CSVダウンロード' : 
+                     currentLanguage === 'zh' ? '下载 CSV' : 
+                     'Download CSV'}</span>
             </button>
           </div>
 
@@ -120,7 +138,11 @@ export default function AdminKYCPage() {
             <div className="text-center py-12">
               <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
               <p className="text-gray-500">
-                {currentLanguage === 'ko' ? 'KYC 데이터가 없습니다' : 'Không có dữ liệu KYC'}
+                {currentLanguage === 'ko' ? 'KYC 데이터가 없습니다' : 
+                 currentLanguage === 'vi' ? 'Không có dữ liệu KYC' : 
+                 currentLanguage === 'ja' ? 'KYCデータがありません' : 
+                 currentLanguage === 'zh' ? '暂无 KYC 数据' : 
+                 'No KYC data found'}
               </p>
             </div>
           ) : (
@@ -132,7 +154,7 @@ export default function AdminKYCPage() {
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <p className="font-semibold text-gray-900">{user.fullName || '이름 없음'}</p>
+                      <p className="font-semibold text-gray-900">{user.fullName || (currentLanguage === 'ko' ? '이름 없음' : currentLanguage === 'vi' ? 'Không tên' : currentLanguage === 'ja' ? '名前なし' : currentLanguage === 'zh' ? '无姓名' : 'No Name')}</p>
                       <p className="text-sm text-gray-600">{user.email}</p>
                       <p className="text-sm text-gray-600">{user.phoneNumber || '-'}</p>
                     </div>
@@ -147,23 +169,36 @@ export default function AdminKYCPage() {
                           : 'bg-gray-100 text-gray-700'
                       }`}
                     >
-                      {user.verificationStatus === 'verified'
-                        ? '인증완료'
-                        : user.verificationStatus === 'pending'
-                        ? '심사중'
-                        : user.verificationStatus === 'rejected'
-                        ? '거부'
-                        : '미인증'}
+                      {(() => {
+                        const status = user.verificationStatus;
+                        if (status === 'verified') return currentLanguage === 'ko' ? '인증완료' : currentLanguage === 'vi' ? 'Đã xác thực' : currentLanguage === 'ja' ? '認証済み' : currentLanguage === 'zh' ? '已验证' : 'Verified';
+                        if (status === 'pending') return currentLanguage === 'ko' ? '심사중' : currentLanguage === 'vi' ? 'Đang duyệt' : currentLanguage === 'ja' ? '審査中' : currentLanguage === 'zh' ? '审核中' : 'Pending';
+                        if (status === 'rejected') return currentLanguage === 'ko' ? '거부' : currentLanguage === 'vi' ? 'Từ chối' : currentLanguage === 'ja' ? '拒否' : currentLanguage === 'zh' ? '已拒绝' : 'Rejected';
+                        return currentLanguage === 'ko' ? '미인증' : currentLanguage === 'vi' ? 'Chưa xác thực' : currentLanguage === 'ja' ? '未認証' : currentLanguage === 'zh' ? '未验证' : 'Unverified';
+                      })()}
                     </span>
                   </div>
                   <div className="text-xs text-gray-500 space-y-1">
                     <p>
-                      {currentLanguage === 'ko' ? '신분증' : 'Giấy tờ'}:{' '}
-                      {user.idType === 'passport' ? '여권' : user.idType === 'id_card' ? '신분증' : '-'}
+                      {currentLanguage === 'ko' ? '신분증' : 
+                       currentLanguage === 'vi' ? 'Giấy tờ' : 
+                       currentLanguage === 'ja' ? '身分証明書' : 
+                       currentLanguage === 'zh' ? '证件' : 
+                       'ID'}:{' '}
+                      {(() => {
+                        const type = user.idType;
+                        if (type === 'passport') return currentLanguage === 'ko' ? '여권' : currentLanguage === 'vi' ? 'Hộ chiếu' : currentLanguage === 'ja' ? 'パスポート' : currentLanguage === 'zh' ? '护照' : 'Passport';
+                        if (type === 'id_card') return currentLanguage === 'ko' ? '신분증' : currentLanguage === 'vi' ? 'CMND/CCCD' : currentLanguage === 'ja' ? '身分証明書' : currentLanguage === 'zh' ? '身份证' : 'ID Card';
+                        return '-';
+                      })()}
                     </p>
                     {user.dateOfBirth && (
                       <p>
-                        {currentLanguage === 'ko' ? '생년월일' : 'Ngày sinh'}: {user.dateOfBirth}
+                        {currentLanguage === 'ko' ? '생년월일' : 
+                         currentLanguage === 'vi' ? 'Ngày sinh' : 
+                         currentLanguage === 'ja' ? '生年月日' : 
+                         currentLanguage === 'zh' ? '出生日期' : 
+                         'Date of Birth'}: {user.dateOfBirth}
                       </p>
                     )}
                   </div>

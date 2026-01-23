@@ -718,6 +718,8 @@ export default function ProfilePage() {
                     <p className="text-sm font-medium text-gray-900">
                       {currentLanguage === 'ko' ? '한국어' : 
                        currentLanguage === 'vi' ? 'Tiếng Việt' : 
+                       currentLanguage === 'ja' ? '日本語' : 
+                       currentLanguage === 'zh' ? '中文' : 
                        'English'}
                     </p>
                   </div>
@@ -736,6 +738,8 @@ export default function ProfilePage() {
                       { code: 'en' as SupportedLanguage, name: 'English', flag: '🇺🇸' },
                       { code: 'vi' as SupportedLanguage, name: 'Tiếng Việt', flag: '🇻🇳' },
                       { code: 'ko' as SupportedLanguage, name: '한국어', flag: '🇰🇷' },
+                      { code: 'ja' as SupportedLanguage, name: '日本語', flag: '🇯🇵' },
+                      { code: 'zh' as SupportedLanguage, name: '中文', flag: '🇨🇳' },
                     ].map((lang) => (
                       <button
                         key={lang.code}

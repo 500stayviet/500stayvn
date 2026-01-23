@@ -1073,7 +1073,7 @@ export default function AddPropertyPage() {
                     const Icon = amenity.icon;
                     const isSelected = selectedAmenities.includes(amenity.id);
                     const langKey = currentLanguage;
-                    const label = amenity.label[currentLanguage] || amenity.label.en;
+                    const label = (amenity.label as any)[currentLanguage] || amenity.label.en;
 
                     return (
                       <button

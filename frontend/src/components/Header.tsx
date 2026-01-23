@@ -39,6 +39,8 @@ export default function Header({ currentLanguage = 'en', onLanguageChange }: Hea
     { code: 'en', name: 'English', flag: '🇺🇸' },
     { code: 'vi', name: 'Tiếng Việt', flag: '🇻🇳' },
     { code: 'ko', name: '한국어', flag: '🇰🇷' },
+    { code: 'ja', name: '日本語', flag: '🇯🇵' },
+    { code: 'zh', name: '中文', flag: '🇨🇳' },
   ];
 
   // 현재 선택된 언어 정보 찾기

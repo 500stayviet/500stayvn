@@ -184,7 +184,7 @@ export default function FaceVerificationStep({
   };
 
   const currentDirection = faceDirections[currentDirectionIndex];
-  const currentGuideText = (currentDirection?.text as any)?.[currentLanguage] || currentDirection?.text?.ko || '';
+  const currentGuideText = currentDirection?.text ? ((currentDirection.text as any)[currentLanguage] || currentDirection.text.ko || '') : '';
 
   return (
     <div className="w-full">
@@ -204,16 +204,25 @@ export default function FaceVerificationStep({
                 <Camera className="w-8 h-8 text-blue-600" />
               </div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                {currentLanguage === 'ko' ? '얼굴 인증' : 'Xác thực khuôn mặt'}
+                {currentLanguage === 'ko' ? '얼굴 인증' : 
+                 currentLanguage === 'vi' ? 'Xác thực khuôn mặt' : 
+                 currentLanguage === 'ja' ? '顔認証' : 
+                 currentLanguage === 'zh' ? '面部识别' : 
+                 'Face Verification'}
               </h2>
               <p className="text-sm text-gray-600">
                 {currentLanguage === 'ko' 
                   ? '테스트용: 다음 버튼을 눌러 진행하세요'
-                  : 'Để kiểm tra: Nhấn nút Tiếp theo để tiếp tục'}
+                  : currentLanguage === 'vi'
+                  ? 'Để kiểm tra: Nhấn nút Tiếp theo để tiếp tục'
+                  : currentLanguage === 'ja'
+                  ? 'テスト用: 次へボタンを押して進んでください'
+                  : currentLanguage === 'zh'
+                  ? '测试用: 请点击下一步继续'
+                  : 'For testing: Click Next to continue'}
               </p>
             </div>
 
-            {/* 테스트용: 바로 다음 버튼 */}
             <button
               onClick={() => {
                 // 테스트용: 더미 데이터로 완료 처리
@@ -243,7 +252,11 @@ export default function FaceVerificationStep({
               }}
               className="w-full py-3.5 px-4 bg-blue-600 text-white rounded-xl font-semibold text-base hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
             >
-              <span>{currentLanguage === 'ko' ? '다음' : 'Tiếp theo'}</span>
+              <span>{currentLanguage === 'ko' ? '다음' : 
+                     currentLanguage === 'vi' ? 'Tiếp theo' : 
+                     currentLanguage === 'ja' ? '次へ' : 
+                     currentLanguage === 'zh' ? '下一步' : 
+                     'Next'}</span>
               <ArrowRight className="w-5 h-5" />
             </button>
           </motion.div>
@@ -319,12 +332,22 @@ export default function FaceVerificationStep({
           >
             <div className="text-center">
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                {currentLanguage === 'ko' ? '얼굴 촬영' : 'Chụp ảnh khuôn mặt'}
+                {currentLanguage === 'ko' ? '얼굴 촬영' : 
+                 currentLanguage === 'vi' ? 'Chụp ảnh khuôn mặt' : 
+                 currentLanguage === 'ja' ? '顔撮影' : 
+                 currentLanguage === 'zh' ? '面부拍摄' : 
+                 'Face Capture'}
               </h2>
               <p className="text-sm text-gray-600">
                 {currentLanguage === 'ko' 
                   ? `${currentDirectionIndex + 1}/${faceDirections.length} 단계`
-                  : `Bước ${currentDirectionIndex + 1}/${faceDirections.length}`}
+                  : currentLanguage === 'vi'
+                  ? `Bước ${currentDirectionIndex + 1}/${faceDirections.length}`
+                  : currentLanguage === 'ja'
+                  ? `ステップ ${currentDirectionIndex + 1}/${faceDirections.length}`
+                  : currentLanguage === 'zh'
+                  ? `第 ${currentDirectionIndex + 1}/${faceDirections.length} 步`
+                  : `Step ${currentDirectionIndex + 1}/${faceDirections.length}`}
               </p>
             </div>
 
@@ -443,12 +466,22 @@ export default function FaceVerificationStep({
                 <CheckCircle2 className="w-8 h-8 text-green-600" />
               </div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                {currentLanguage === 'ko' ? '촬영 완료' : 'Hoàn thành chụp ảnh'}
+                {currentLanguage === 'ko' ? '촬영 완료' : 
+                 currentLanguage === 'vi' ? 'Hoàn thành chụp ảnh' : 
+                 currentLanguage === 'ja' ? '撮影完了' : 
+                 currentLanguage === 'zh' ? '拍摄完成' : 
+                 'Capture Complete'}
               </h2>
               <p className="text-sm text-gray-600">
                 {currentLanguage === 'ko' 
                   ? '촬영된 이미지를 확인해주세요'
-                  : 'Vui lòng xác nhận hình ảnh đã chụp'}
+                  : currentLanguage === 'vi'
+                  ? 'Vui lòng xác nhận hình ảnh đã chụp'
+                  : currentLanguage === 'ja'
+                  ? '撮影された画像を確認してください'
+                  : currentLanguage === 'zh'
+                  ? '请确认拍摄的图片'
+                  : 'Please review the captured images'}
               </p>
             </div>
 
@@ -457,7 +490,10 @@ export default function FaceVerificationStep({
               {capturedImages.map((img, index) => (
                 <div key={index} className="space-y-2">
                   <p className="text-xs font-medium text-gray-700">
-                    {(faceDirections.find((d) => d.key === img.direction)?.text as any)?.[currentLanguage] || img.direction}
+                    {(() => {
+                      const dir = faceDirections.find((d) => d.key === img.direction);
+                      return dir?.text ? ((dir.text as any)[currentLanguage] || dir.text.ko || img.direction) : img.direction;
+                    })()}
                   </p>
                   <div className="relative bg-gray-100 rounded-xl overflow-hidden aspect-square">
                     <img
@@ -470,20 +506,27 @@ export default function FaceVerificationStep({
               ))}
             </div>
 
-            {/* 버튼들 */}
             <div className="flex gap-3">
               <button
                 onClick={handleRetake}
                 className="flex-1 py-3 px-4 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-all"
               >
-                {currentLanguage === 'ko' ? '다시 촬영' : 'Chụp lại'}
+                {currentLanguage === 'ko' ? '다시 촬영' : 
+                 currentLanguage === 'vi' ? 'Chụp lại' : 
+                 currentLanguage === 'ja' ? '撮り直し' : 
+                 currentLanguage === 'zh' ? '重新拍摄' : 
+                 'Retake'}
               </button>
               <button
                 onClick={handleConfirm}
                 className="flex-1 py-3 px-4 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
               >
                 <CheckCircle2 className="w-5 h-5" />
-                <span>{currentLanguage === 'ko' ? '완료' : 'Hoàn thành'}</span>
+                <span>{currentLanguage === 'ko' ? '완료' : 
+                       currentLanguage === 'vi' ? 'Hoàn thành' : 
+                       currentLanguage === 'ja' ? '完了' : 
+                       currentLanguage === 'zh' ? '完成' : 
+                       'Confirm'}</span>
               </button>
             </div>
           </motion.div>
