@@ -5,6 +5,7 @@ import { Search, X } from 'lucide-react';
 import { getUIText } from '@/utils/i18n';
 import { cleanDisplayName, cleanSubAddress } from '@/hooks/useLocationSearch';
 import { Suggestion, getResultType } from '@/types/map';
+import { SupportedLanguage } from '@/lib/api/translation';
 
 interface SearchBoxProps {
   searchValue: string;
@@ -16,7 +17,7 @@ interface SearchBoxProps {
   setShowSuggestions: (show: boolean) => void;
   onSelectSuggestion: (suggestion: Suggestion) => void;
   isSearching: boolean;
-  currentLanguage: string;
+  currentLanguage: SupportedLanguage;
 }
 
 export default function SearchBox({
