@@ -200,7 +200,7 @@ export default function IdDocumentStep({
                 } else {
                   // 기존 로직: 더미 데이터로 완료 처리
                   const dummyData: IdDocumentData = {
-                    idType: 'id_card',
+                    type: 'id_card',
                     idNumber: 'TEST123456',
                     fullName: 'Test User',
                     dateOfBirth: '1990-01-01',
