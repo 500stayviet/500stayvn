@@ -23,6 +23,8 @@ const STATUS_COLORS = {
   completed: 'bg-gray-100 text-gray-700',
 };
 
+import { SupportedLanguage } from '@/lib/api/translation';
+
 const STATUS_LABELS: Record<'pending' | 'confirmed' | 'cancelled' | 'completed', Record<SupportedLanguage, string>> = {
   pending: { ko: '승인 대기 중', vi: 'Chờ duyệt', en: 'Pending', ja: '承認待ち', zh: '待批准' },
   confirmed: { ko: '확정됨', vi: 'Đã xác nhận', en: 'Confirmed', ja: '確定済み', zh: '已确认' },

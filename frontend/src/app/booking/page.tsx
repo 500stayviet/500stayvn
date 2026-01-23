@@ -18,9 +18,15 @@ import { createBooking, completePayment, confirmBooking, toISODateString, Bookin
 import { ArrowLeft, Calendar, Users, MapPin, Clock, CreditCard, CheckCircle, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import TopBar from '@/components/TopBar';
+import { SupportedLanguage } from '@/lib/api/translation';
 
 // 결제 수단 옵션
-const PAYMENT_METHODS = [
+const PAYMENT_METHODS: readonly { 
+  id: string; 
+  name: string | Record<SupportedLanguage, string>; 
+  icon: string; 
+  color: string; 
+}[] = [
   { id: 'momo', name: 'MoMo', icon: '💜', color: 'bg-pink-500' },
   { id: 'zalopay', name: 'ZaloPay', icon: '💙', color: 'bg-blue-500' },
   { id: 'bank_transfer', name: { ko: '계좌이체', vi: 'Chuyển khoản', en: 'Bank Transfer', ja: '銀行振込', zh: '银行转账' }, icon: '🏦', color: 'bg-green-500' },
@@ -28,9 +34,13 @@ const PAYMENT_METHODS = [
 ] as const;
 
 // 국가 번호 목록
-const COUNTRY_CODES = [
+const COUNTRY_CODES: readonly { 
+  code: string; 
+  country: string; 
+  name: Record<SupportedLanguage, string>; 
+}[] = [
   { code: '+82', country: '🇰🇷', name: { ko: '한국', vi: 'Hàn Quốc', en: 'South Korea', ja: '韓国', zh: '韩国' } },
-  { code: '+84', country: '🇻🇳', name: { ko: '베트남', vi: 'Việt Nam', en: 'Vietnam', ja: 'ベトナム', zh: '越南' } },
+  { code: '+84', country: '🇻🇳', name: { ko: '베트남', vi: 'Việt Nam', en: 'Vietnam', ja: '베트남', zh: '越南' } },
   { code: '+1', country: '🇺🇸', name: { ko: '미국', vi: 'Mỹ', en: 'USA', ja: 'アメリカ', zh: '美国' } },
   { code: '+81', country: '🇯🇵', name: { ko: '일본', vi: 'Nhật Bản', en: 'Japan', ja: '日本', zh: '日本' } },
   { code: '+86', country: '🇨🇳', name: { ko: '중국', vi: 'Trung Quốc', en: 'China', ja: '中国', zh: '中国' } },
@@ -40,7 +50,7 @@ const COUNTRY_CODES = [
   { code: '+63', country: '🇵🇭', name: { ko: '필리핀', vi: 'Philippines', en: 'Philippines', ja: 'フィリピン', zh: '菲律宾' } },
   { code: '+62', country: '🇮🇩', name: { ko: '인도네시아', vi: 'Indonesia', en: 'Indonesia', ja: 'インドネシア', zh: '印度尼西亚' } },
   { code: '+91', country: '🇮🇳', name: { ko: '인도', vi: 'Ấn Độ', en: 'India', ja: 'インド', zh: '印度' } },
-  { code: '+44', country: '🇬🇧', name: { ko: '영국', vi: 'Anh', en: 'UK', ja: 'イギリス', zh: '英国' } },
+  { code: '+44', country: '🇬🇧', name: { ko: '영국', vi: 'Anh', en: 'UK', ja: '英国', zh: '英国' } },
   { code: '+49', country: '🇩🇪', name: { ko: '독일', vi: 'Đức', en: 'Germany', ja: 'ドイツ', zh: '德国' } },
   { code: '+33', country: '🇫🇷', name: { ko: '프랑스', vi: 'Pháp', en: 'France', ja: 'フランス', zh: '法国' } },
   { code: '+61', country: '🇦🇺', name: { ko: '호주', vi: 'Úc', en: 'Australia', ja: 'オーストラリア', zh: '澳大利亚' } },
@@ -592,7 +602,7 @@ export default function BookingPage() {
                     <span className="font-medium text-gray-900 flex-1 text-left">
                       {typeof method.name === 'string' 
                         ? method.name 
-                        : method.name[currentLanguage as keyof typeof method.name] || method.name.en
+                        : (method.name as any)[currentLanguage] || method.name.en
                       }
                     </span>
                     {selectedPaymentMethod === method.id && (
