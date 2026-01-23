@@ -39,7 +39,7 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
       // 1순위: localStorage에서 언어 가져오기 (비로그인 사용자용)
       if (typeof window !== 'undefined') {
         const storedLanguage = localStorage.getItem(STORAGE_KEY);
-        if (storedLanguage && ['en', 'ko', 'vi'].includes(storedLanguage)) {
+        if (storedLanguage && ['en', 'ko', 'vi', 'ja', 'zh'].includes(storedLanguage)) {
           setCurrentLanguageState(storedLanguage as SupportedLanguage);
           setLoading(false);
           return;
@@ -73,7 +73,7 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
             // preferredLanguage가 없으면 localStorage의 언어 사용
             if (typeof window !== 'undefined') {
               const storedLanguage = localStorage.getItem(STORAGE_KEY);
-              if (storedLanguage && ['en', 'ko', 'vi'].includes(storedLanguage)) {
+              if (storedLanguage && ['en', 'ko', 'vi', 'ja', 'zh'].includes(storedLanguage)) {
                 setCurrentLanguageState(storedLanguage as SupportedLanguage);
               }
             }

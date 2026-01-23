@@ -14,11 +14,13 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [supportedLangs, setSupportedLangs] = useState<SupportedLanguage[]>([]);
 
-  const languages: SupportedLanguage[] = ['en', 'ko', 'vi'];
+  const languages: SupportedLanguage[] = ['en', 'ko', 'vi', 'ja', 'zh'];
   const languageNames: Record<SupportedLanguage, string> = {
     en: 'English',
     ko: '한국어',
     vi: 'Tiếng Việt',
+    ja: '日本語',
+    zh: '中文',
   };
 
   // 지원 언어 목록 조회

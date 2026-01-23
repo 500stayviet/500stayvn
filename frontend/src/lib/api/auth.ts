@@ -17,7 +17,7 @@ export interface UserData {
   displayName?: string;
   phoneNumber?: string;
   gender?: 'male' | 'female';
-  preferredLanguage?: 'ko' | 'vi' | 'en';
+  preferredLanguage?: SupportedLanguage;
   role?: 'user' | 'admin';
   is_owner?: boolean;
   verification_status?: VerificationStatus;
@@ -43,7 +43,7 @@ export interface SignUpData {
   fullName?: string;
   phoneNumber?: string;
   gender?: 'male' | 'female';
-  preferredLanguage?: 'ko' | 'vi' | 'en';
+  preferredLanguage?: SupportedLanguage;
 }
 
 /**

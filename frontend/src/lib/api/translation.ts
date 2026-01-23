@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { FIREBASE_FUNCTIONS } from '../firebase-config';
 
-export type SupportedLanguage = 'en' | 'ko' | 'vi';
+export type SupportedLanguage = 'en' | 'ko' | 'vi' | 'ja' | 'zh';
 
 export interface TranslationRequest {
   text: string;
