@@ -120,7 +120,7 @@ export async function saveIdDocument(
 
     users[userIndex] = {
       ...users[userIndex],
-      private_data: privateData as any,
+      private_data: privateData,
       kyc_steps: {
         ...users[userIndex].kyc_steps,
         step2: true, // Step 2 완료 토큰
@@ -162,13 +162,13 @@ export async function saveFaceVerification(
     users[userIndex] = {
       ...users[userIndex],
       private_data: {
-        ...(users[userIndex].private_data as any),
+        ...(users[userIndex].private_data as PrivateData),
         faceImageUrl: imageUrls[0], // 정면 이미지를 기본 이미지로
         faceImages: images.map((img, index) => ({
           direction: img.direction,
           imageUrl: imageUrls[index],
         })),
-      } as any,
+      },
       kyc_steps: {
         ...users[userIndex].kyc_steps,
         step3: true, // Step 3 완료 토큰

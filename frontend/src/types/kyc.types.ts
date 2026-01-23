@@ -66,4 +66,11 @@ export interface PrivateData {
   idType: IdType;
   issueDate?: string;
   expiryDate?: string;
+  idDocumentFrontImage?: string;
+  idDocumentBackImage?: string;
+  faceImageUrl?: string;
+  faceImages?: {
+    direction: string;
+    imageUrl: string;
+  }[];
 }
