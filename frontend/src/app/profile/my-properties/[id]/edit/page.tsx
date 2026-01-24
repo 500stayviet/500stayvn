@@ -247,7 +247,7 @@ export default function EditPropertyPage() {
         const language = getLocationServiceLanguage(currentLanguage);
         const suggestions = await searchPlaceIndexForSuggestions(
           value,
-          language as SupportedLanguage,
+          language as any,
         );
         setAddressSuggestions(suggestions);
         setShowSuggestions(suggestions.length > 0);
