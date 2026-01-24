@@ -8,6 +8,7 @@
     "postinstall": "npx prisma generate"
   },
   "dependencies": {
+    "@aws-amplify/adapter-nextjs": "^2.0.0",
     "@aws-sdk/client-s3": "^3.975.0",
     "@prisma/client": "^5.10.0",
     "@tailwindcss/postcss": "^4.1.18",
