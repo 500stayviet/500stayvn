@@ -1,14 +1,13 @@
 /**
  * Sign Up Page (회원가입 페이지 - 이메일/비밀번호만 필수)
- * 
- * - 이메일/비밀번호만 필수 입력
+ * * - 이메일/비밀번호만 필수 입력
  * - 이름, 전화번호, 성별, 언어는 선택 사항
  * - 비밀번호 확인 필드 제거 (비밀번호 필드의 show/hide 기능으로 확인)
  */
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react'; // Suspense 추가
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { 
@@ -29,7 +28,8 @@ import TopBar from '@/components/TopBar';
 import { getUIText } from '@/utils/i18n';
 import { signUpWithEmail, SignUpData } from '@/lib/api/auth';
 
-export default function SignUpPage() {
+// 1. 실제 회원가입 로직과 UI가 담긴 내부 컴포넌트
+function SignupContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnUrl = searchParams.get('returnUrl') || '/';
@@ -132,7 +132,6 @@ export default function SignUpPage() {
     e.preventDefault();
     setError('');
 
-    // 비밀번호 길이 확인
     if (formData.password.length < 6) {
       setError(currentLanguage === 'ko' 
         ? '비밀번호는 최소 6자 이상이어야 합니다' 
@@ -146,7 +145,6 @@ export default function SignUpPage() {
       const signUpData: SignUpData = {
         email: formData.email,
         password: formData.password,
-        // 선택 사항들 (값이 있을 때만 포함)
         ...(formData.fullName && { fullName: formData.fullName }),
         ...(formData.phoneNumber && { phoneNumber: formData.phoneNumber }),
         ...(formData.gender && { gender: formData.gender }),
@@ -166,10 +164,8 @@ export default function SignUpPage() {
         return;
       }
 
-      // 성공 모달 표시
       setShowSuccessModal(true);
     } catch (error: any) {
-      // signUpWithEmail 내부에서 대부분 catch되지만 만약의 경우 대비
       console.error('Sign up unexpected error:', error);
       setError(currentLanguage === 'ko' ? '회원가입에 실패했습니다' : 'Đăng ký thất bại');
     } finally {
@@ -180,21 +176,18 @@ export default function SignUpPage() {
   return (
     <div className="min-h-screen bg-gray-100 flex justify-center">
       <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative">
-        {/* 상단 바 */}
         <TopBar 
           currentLanguage={currentLanguage}
           onLanguageChange={setCurrentLanguage}
           hideLanguageSelector={true}
         />
 
-        {/* 회원가입 콘텐츠 */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
           className="px-6 py-6"
         >
-          {/* 뒤로가기 버튼 */}
           <button
             onClick={() => router.push('/login')}
             className="flex items-center gap-2 text-gray-700 hover:text-gray-900 mb-4 transition-colors"
@@ -203,7 +196,6 @@ export default function SignUpPage() {
             <span className="font-medium">{currentLanguage === 'ko' ? '로그인으로' : 'Về đăng nhập'}</span>
           </button>
 
-          {/* 헤더 */}
           <div className="mb-6 flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 mb-1">
@@ -220,7 +212,6 @@ export default function SignUpPage() {
               </p>
             </div>
             
-            {/* 언어 선택 */}
             <div className="relative" ref={languageMenuRef}>
               <button
                 type="button"
@@ -237,7 +228,6 @@ export default function SignUpPage() {
               </span>
               </button>
 
-              {/* 언어 드롭다운 */}
               {isLanguageMenuOpen && (
                 <div className="absolute right-0 mt-2 w-44 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50">
                   {[
@@ -264,9 +254,7 @@ export default function SignUpPage() {
             </div>
           </div>
 
-          {/* 회원가입 폼 */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* 이름 입력 (선택 사항) */}
             <div>
               <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-1.5">
                 {currentLanguage === 'ko' ? '이름' : 'Họ tên'}
@@ -288,7 +276,6 @@ export default function SignUpPage() {
               </div>
             </div>
 
-            {/* 전화번호 입력 (선택 사항) */}
             <div>
               <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 mb-1.5">
                 {currentLanguage === 'ko' ? '전화번호' : 'Số điện thoại'}
@@ -324,7 +311,6 @@ export default function SignUpPage() {
               </div>
             </div>
 
-            {/* 성별 선택 (선택 사항) */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 {currentLanguage === 'ko' ? '성별' : 'Giới tính'}
@@ -356,7 +342,6 @@ export default function SignUpPage() {
               </div>
             </div>
 
-            {/* 주 사용 언어 (선택 사항) */}
             <div>
               <label htmlFor="preferredLanguage" className="block text-sm font-medium text-gray-700 mb-1.5">
                 {currentLanguage === 'ko' ? '주 사용 언어' : 'Ngôn ngữ ưa thích'}
@@ -377,7 +362,6 @@ export default function SignUpPage() {
               </select>
             </div>
 
-            {/* 이메일 입력 (필수) */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1.5">
                 {getUIText('email', currentLanguage)}
@@ -400,7 +384,6 @@ export default function SignUpPage() {
               </div>
             </div>
 
-            {/* 비밀번호 입력 (필수) - show/hide 기능 포함 */}
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1.5">
                 {getUIText('password', currentLanguage)}
@@ -424,14 +407,12 @@ export default function SignUpPage() {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
-                  title={showPassword ? (currentLanguage === 'ko' ? '비밀번호 숨기기' : 'Ẩn mật khẩu') : (currentLanguage === 'ko' ? '비밀번호 보기' : 'Hiện mật khẩu')}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
 
-            {/* 에러 메시지 */}
             {error && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
@@ -442,7 +423,6 @@ export default function SignUpPage() {
               </motion.div>
             )}
 
-            {/* 회원가입 버튼 */}
             <button
               type="submit"
               disabled={loading}
@@ -467,7 +447,6 @@ export default function SignUpPage() {
         </motion.div>
       </div>
 
-      {/* 회원가입 성공 모달 */}
       {showSuccessModal && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <motion.div
@@ -480,33 +459,39 @@ export default function SignUpPage() {
                 <CheckCircle2 className="w-8 h-8 text-green-600" />
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-2">
-                {currentLanguage === 'ko' ? '회원가입 완료!' : 
-                 currentLanguage === 'vi' ? 'Đăng ký thành công!' : 
-                 'Sign Up Successful!'}
+                {currentLanguage === 'ko' ? '회원가입 완료!' : 'Đăng ký thành công!'}
               </h3>
               <p className="text-sm text-gray-600 mb-6">
                 {currentLanguage === 'ko' 
                   ? '환영합니다! 이제 서비스를 이용하실 수 있습니다.'
-                  : currentLanguage === 'vi'
-                  ? 'Chào mừng bạn! Bây giờ bạn có thể sử dụng dịch vụ.'
-                  : 'Welcome! You can now use our service.'}
+                  : 'Chào mừng bạn! Bây giờ bạn có thể sử dụng dịch vụ.'}
               </p>
               <button
                 onClick={() => {
                   setShowSuccessModal(false);
-                  // returnUrl이 있으면 해당 페이지로, 없으면 홈으로 이동
                   router.push(returnUrl);
                 }}
                 className="w-full py-3 px-6 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-all"
               >
-                {currentLanguage === 'ko' ? '시작하기' : 
-                 currentLanguage === 'vi' ? 'Bắt đầu' : 
-                 'Get Started'}
+                {currentLanguage === 'ko' ? '시작하기' : 'Bắt đầu'}
               </button>
             </div>
           </motion.div>
         </div>
       )}
     </div>
+  );
+}
+
+// 2. 외부에서 사용할 래퍼 컴포넌트 (빌드 에러 방지용 Suspense)
+export default function SignUpPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-gray-500">로딩 중...</div>
+      </div>
+    }>
+      <SignupContent />
+    </Suspense>
   );
 }
