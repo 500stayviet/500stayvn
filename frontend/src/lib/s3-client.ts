@@ -1,35 +1,42 @@
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 
-// 1. AWS S3 클라이언트 설정 (환경변수 사용)
-const s3Client = new S3Client({
-  region: process.env.NEXT_PUBLIC_MY_S3_REGION || "ap-southeast-1",
-  credentials: {
-    accessKeyId: process.env.NEXT_PUBLIC_MY_S3_ACCESS_KEY || "",
-    secretAccessKey: process.env.NEXT_PUBLIC_MY_S3_SECRET_KEY || "",
-  },
-});
-
-/**
- * 이미지 파일을 S3에 업로드하고 URL을 반환하는 함수
- */
 export const uploadToS3 = async (
   file: File,
   folder: string = "properties",
 ): Promise<string> => {
-  const fileName = `${folder}/${Date.now()}-${file.name}`;
+  // 1. 변수명을 직접 참조하여 Next.js가 빌드 타임에 값을 주입하게 함
+  const region = process.env.NEXT_PUBLIC_MY_S3_REGION || "ap-southeast-1";
+  const accessKeyId = process.env.NEXT_PUBLIC_MY_S3_ACCESS_KEY;
+  const secretAccessKey = process.env.NEXT_PUBLIC_MY_S3_SECRET_KEY;
+  const bucketName = process.env.NEXT_PUBLIC_MY_S3_BUCKET_NAME;
+
+  if (!accessKeyId || !secretAccessKey || !bucketName) {
+    throw new Error(
+      "S3 설정값이 누락되었습니다. .env.local 파일을 확인하세요.",
+    );
+  }
+
+  // 2. 함수 안에서 클라이언트 생성 (process 에러 방지 핵심)
+  const s3Client = new S3Client({
+    region: region,
+    credentials: {
+      accessKeyId: accessKeyId.trim(), // 혹시 모를 공백 제거
+      secretAccessKey: secretAccessKey.trim(),
+    },
+  });
+
+  const fileName = `${folder}/${Date.now()}-${file.name.replace(/\s+/g, "_")}`;
 
   const command = new PutObjectCommand({
-    Bucket: process.env.NEXT_PUBLIC_MY_S3_BUCKET_NAME,
+    Bucket: bucketName.trim(),
     Key: fileName,
     Body: file,
     ContentType: file.type,
-    ACL: "public-read", // 누구나 사진을 볼 수 있게 설정
   });
 
   try {
     await s3Client.send(command);
-    // 업로드된 이미지의 공개 주소(URL) 반환
-    return `https://${process.env.NEXT_PUBLIC_MY_S3_BUCKET_NAME}.s3.${process.env.NEXT_PUBLIC_MY_S3_REGION}.amazonaws.com/${fileName}`;
+    return `https://${bucketName.trim()}.s3.${region}.amazonaws.com/${fileName}`;
   } catch (error) {
     console.error("S3 업로드 에러:", error);
     throw error;
