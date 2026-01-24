@@ -1,8 +1,9 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  // 여기에 standalone 설정을 추가합니다. (404 해결 핵심)
+  output: 'standalone', 
+  
   images: {
-    // 외부 이미지 호스트 허용
     remotePatterns: [
       {
         protocol: 'https',
@@ -10,13 +11,6 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
-      // 향후 다른 이미지 호스트 추가 가능
-      // {
-      //   protocol: 'https',
-      //   hostname: 'firebasestorage.googleapis.com',
-      //   port: '',
-      //   pathname: '/**',
-      // },
     ],
   },
 };
