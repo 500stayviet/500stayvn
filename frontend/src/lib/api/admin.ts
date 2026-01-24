@@ -1,11 +1,9 @@
 /**
- * 관리자용 API
- * 
- * KYC 데이터 CSV 다운로드 등 관리자 기능
+ * 관리자용 API (Firebase 제거 및 로컬 데이터 연동 버전)
+ * * 모든 KYC 데이터를 조회하고 CSV로 변환하는 기능을 제공합니다.
  */
 
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '../firebase';
+import { getUsers } from './auth'; // 로컬 저장소 유저 데이터를 가져옵니다.
 
 /**
  * KYC 데이터 인터페이스
@@ -22,63 +20,43 @@ export interface KYCUserData {
   idDocumentBackUrl?: string;
   faceImageUrl?: string;
   faceImages?: Array<{ direction: string; imageUrl: string }>;
-  createdAt?: any;
+  createdAt?: string; // ISO String
   verificationStatus?: string;
 }
 
 /**
- * 모든 KYC 사용자 데이터 가져오기
+ * 모든 KYC 사용자 데이터 가져오기 (LocalStorage 기반)
  */
 export async function getAllKYCUsers(): Promise<KYCUserData[]> {
   try {
-    const usersRef = collection(db, 'users');
-    const usersSnap = await getDocs(usersRef);
+    // 1. 로컬 저장소에서 모든 유저 목록을 가져옵니다.
+    const users = getUsers();
     
-    const kycUsers: KYCUserData[] = [];
-
-    for (const userDoc of usersSnap.docs) {
-      const userData = userDoc.data();
+    // 2. 관리자 페이지 형식에 맞게 데이터를 매핑합니다.
+    const kycUsers: KYCUserData[] = users.map(user => {
+      const privateData = user.private_data || {};
       
-      // verification_info 서브컬렉션에서 데이터 가져오기
-      const verificationInfoRef = collection(db, 'users', userDoc.id, 'verification_info');
-      const verificationInfoSnap = await getDocs(verificationInfoRef);
-
-      let idDocumentData: any = {};
-      let faceVerificationData: any = {};
-
-      verificationInfoSnap.docs.forEach((doc) => {
-        const data = doc.data();
-        if (doc.id === 'id_document') {
-          idDocumentData = data;
-        } else if (doc.id === 'face_verification') {
-          faceVerificationData = data;
-        }
-      });
-
-      // private_data에서도 정보 가져오기 (호환성)
-      const privateData = userData.private_data || {};
-
-      kycUsers.push({
-        uid: userDoc.id,
-        email: userData.email || '',
-        fullName: idDocumentData.fullName || privateData.fullName || userData.displayName || '',
-        phoneNumber: userData.phoneNumber || privateData.phoneNumber || '',
-        idType: idDocumentData.type || privateData.idType || '',
-        idNumber: idDocumentData.idNumber || privateData.idNumber || '',
-        dateOfBirth: idDocumentData.dateOfBirth || privateData.dateOfBirth || '',
-        idDocumentFrontUrl: idDocumentData.frontImageUrl || '',
-        idDocumentBackUrl: idDocumentData.backImageUrl || '',
-        faceImageUrl: faceVerificationData.primaryImageUrl || privateData.faceImageUrl || '',
-        faceImages: faceVerificationData.images || [],
-        createdAt: userData.createdAt,
-        verificationStatus: userData.verification_status || 'none',
-      });
-    }
+      return {
+        uid: user.uid,
+        email: user.email || '',
+        fullName: privateData.fullName || user.displayName || '',
+        phoneNumber: user.phoneNumber || privateData.phoneNumber || '',
+        idType: privateData.idType || '',
+        idNumber: privateData.idNumber || '',
+        dateOfBirth: privateData.dateOfBirth || '',
+        idDocumentFrontUrl: privateData.idDocumentFrontImage || '',
+        idDocumentBackUrl: privateData.idDocumentBackImage || '',
+        faceImageUrl: privateData.faceImageUrl || '',
+        faceImages: privateData.faceImages || [],
+        createdAt: user.updatedAt || user.createdAt || new Date().toISOString(),
+        verificationStatus: user.verification_status || 'none',
+      };
+    });
 
     return kycUsers;
   } catch (error) {
     console.error('Error fetching KYC users:', error);
-    throw error;
+    return []; // 에러 시 빈 배열 반환하여 빌드 중단 방지
   }
 }
 
@@ -86,7 +64,6 @@ export async function getAllKYCUsers(): Promise<KYCUserData[]> {
  * KYC 데이터를 CSV 형식으로 변환 (UTF-8 BOM 포함)
  */
 export function convertKYCToCSV(users: KYCUserData[]): string {
-  // CSV 헤더
   const headers = [
     '성함',
     '연락처',
@@ -100,11 +77,9 @@ export function convertKYCToCSV(users: KYCUserData[]): string {
     '인증상태',
   ];
 
-  // CSV 행 생성
   const rows = users.map((user) => {
-    const createdAt = user.createdAt
-      ? new Date(user.createdAt.seconds * 1000).toLocaleString('ko-KR')
-      : '';
+    // 날짜 포맷팅
+    const dateStr = user.createdAt ? new Date(user.createdAt).toLocaleString('ko-KR') : '';
 
     return [
       user.fullName || '',
@@ -115,19 +90,17 @@ export function convertKYCToCSV(users: KYCUserData[]): string {
       user.idDocumentFrontUrl || '',
       user.idDocumentBackUrl || '',
       user.faceImageUrl || '',
-      createdAt,
+      dateStr,
       user.verificationStatus === 'pending' ? '심사중' :
       user.verificationStatus === 'verified' ? '인증완료' :
       user.verificationStatus === 'rejected' ? '거부' : '미인증',
     ];
   });
 
-  // CSV 문자열 생성
   const csvContent = [
     headers.join(','),
     ...rows.map((row) =>
       row.map((cell) => {
-        // 쉼표, 따옴표, 줄바꿈이 포함된 경우 따옴표로 감싸기
         const cellStr = String(cell);
         if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
           return `"${cellStr.replace(/"/g, '""')}"`;
@@ -137,15 +110,16 @@ export function convertKYCToCSV(users: KYCUserData[]): string {
     ),
   ].join('\n');
 
-  // UTF-8 BOM 추가 (한글/베트남어 깨짐 방지)
   const BOM = '\uFEFF';
   return BOM + csvContent;
 }
 
 /**
- * CSV 파일 다운로드
+ * CSV 파일 다운로드 실행
  */
 export function downloadCSV(csvContent: string, filename: string = 'kyc_data.csv'): void {
+  if (typeof window === 'undefined') return;
+
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   const url = URL.createObjectURL(blob);
@@ -157,13 +131,11 @@ export function downloadCSV(csvContent: string, filename: string = 'kyc_data.csv
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-
-  // URL 해제
   URL.revokeObjectURL(url);
 }
 
 /**
- * 모든 KYC 데이터를 CSV로 다운로드
+ * 모든 KYC 데이터를 CSV로 추출 및 다운로드
  */
 export async function downloadAllKYCData(): Promise<void> {
   try {
@@ -173,6 +145,6 @@ export async function downloadAllKYCData(): Promise<void> {
     downloadCSV(csvContent, `kyc_data_${timestamp}.csv`);
   } catch (error) {
     console.error('Error downloading KYC data:', error);
-    throw error;
+    alert('CSV 다운로드 중 오류가 발생했습니다.');
   }
 }

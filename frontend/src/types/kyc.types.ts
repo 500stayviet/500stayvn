@@ -5,12 +5,12 @@
 /**
  * 인증 상태
  */
-export type VerificationStatus = 'none' | 'pending' | 'verified' | 'rejected';
+export type VerificationStatus = "none" | "pending" | "verified" | "rejected";
 
 /**
  * 신분증 유형
  */
-export type IdType = 'passport' | 'id_card';
+export type IdType = "passport" | "id_card";
 
 /**
  * KYC 단계
@@ -23,27 +23,33 @@ export type KYCStep = 1 | 2 | 3;
 export interface PhoneVerificationData {
   phoneNumber: string;
   verificationCode?: string;
-  verificationId?: string; // Firebase Phone Auth verification ID
+  verificationId?: string;
 }
 
 /**
  * 신분증 정보
  */
 export interface IdDocumentData {
-  type: IdType; // 'passport' | 'id_card'
-  idNumber: string; // 신분증 번호
-  fullName: string; // 이름
-  dateOfBirth: string; // 생년월일 (YYYY-MM-DD)
-  issueDate?: string; // 발급일
-  expiryDate?: string; // 만료일
-  imageUrl?: string; // 촬영된 신분증 이미지 URL
+  type: IdType;
+  idNumber: string;
+  fullName: string;
+  dateOfBirth: string;
+  issueDate?: string;
+  expiryDate?: string;
+  imageUrl?: string; // (참고용)
+  frontImageUrl?: string; // S3 업로드 URL
+  backImageUrl?: string; // S3 업로드 URL
 }
 
 /**
  * 얼굴 인증 데이터
  */
 export interface FaceVerificationData {
-  imageUrl?: string; // 촬영된 얼굴 이미지 URL
+  imageUrl?: string;
+  faceImages?: {
+    direction: string;
+    imageUrl: string;
+  }[];
 }
 
 /**
@@ -56,16 +62,19 @@ export interface KYCData {
 }
 
 /**
- * Firestore에 저장될 민감 정보 (private_data 필드)
+ * 유저 정보 및 관리자 페이지 연동을 위한 민감 정보 (private_data 필드)
+ * 모든 필드에 ?를 추가하여 데이터가 아직 없는 상태에서도 admin.ts에서 에러가 나지 않도록 합니다.
  */
 export interface PrivateData {
-  fullName: string;
-  idNumber: string;
-  dateOfBirth: string;
-  phoneNumber: string;
-  idType: IdType;
+  fullName?: string;
+  idNumber?: string;
+  dateOfBirth?: string;
+  phoneNumber?: string;
+  idType?: IdType | string;
   issueDate?: string;
   expiryDate?: string;
+
+  // AWS S3 이미지 주소 저장을 위한 필드
   idDocumentFrontImage?: string;
   idDocumentBackImage?: string;
   faceImageUrl?: string;
