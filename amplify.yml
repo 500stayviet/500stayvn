@@ -7,7 +7,7 @@ frontend:
         - npm install
     build:
       commands:
-        # 이미 frontend 폴더 안에 있으므로 경로 지정 없이 바로 실행합니다.
+        # 이미 frontend 폴더 내부에 있으므로 추가적인 cd 없이 실행
         - npx prisma generate
         - npm run build
   artifacts:
