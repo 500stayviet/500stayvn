@@ -12,7 +12,7 @@ frontend:
         # Next.js 빌드 실행
         - npm run build
   artifacts:
-    # Next.js App Router의 표준 빌드 출력 폴더 지정
+    # 경로를 .next 폴더 전체로 지정하여 모든 라우팅 파일을 포함시킴
     baseDirectory: frontend/.next
     files:
       - '**/*'
@@ -20,9 +20,3 @@ frontend:
     paths:
       - frontend/node_modules/**/*
       - frontend/.next/cache/**/*
-
-# 리디렉션 규칙을 yml에 명시적으로 포함 (선택 사항이지만 권장)
-# customRules:
-#   - source: '/<*>'
-#     target: '/index.html'
-#     status: '200'
