@@ -7,7 +7,8 @@
  */
 
 'use client';
-
+import { uploadToS3 } from '@/lib/s3-client'; // S3 업로드 함수 추가
+import { updateUserData } from '@/lib/api/auth'; // 사용자 데이터 업데이트 함수 확인
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -21,6 +22,32 @@ import { SupportedLanguage } from '@/lib/api/translation';
 import TopBar from '@/components/TopBar';
 
 export default function ProfilePage() {
+  // [추가] 프로필 사진 업로드 및 DB 저장 핸들러
+  const handleProfileImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    setLoading(true); // 로딩 표시
+    try {
+      // 1. AWS S3에 프로필 사진 업로드 (폴더명: profile-pics)
+      const imageUrl = await uploadToS3(file, "profile-pics");
+
+      // 2. 업로드된 S3 주소를 사용자 DB에 업데이트
+      await updateUserData(user.uid, {
+        photoURL: imageUrl
+      });
+
+      // 3. 화면 데이터 즉시 갱신
+      setUserData(prev => prev ? { ...prev, photoURL: imageUrl } : null);
+      
+      alert(currentLanguage === 'ko' ? '프로필 사진이 변경되었습니다.' : 'Ảnh đại diện đã được thay đổi.');
+    } catch (error) {
+      console.error("프로필 업로드 에러:", error);
+      alert('업로드 실패');
+    } finally {
+      setLoading(false);
+    }
+  };
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const { currentLanguage, setCurrentLanguage } = useLanguage();
