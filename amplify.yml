@@ -11,13 +11,42 @@ frontend:
         - npx prisma generate
         # Next.js 빌드 실행
         - npm run build
+        # Amplify 호스팅 디렉토리 생성
+        - mkdir -p .amplify-hosting/static
+        - mkdir -p .amplify-hosting/compute
+        # .next 빌드 결과를 .amplify-hosting으로 복사
+        - cp -r .next/static .amplify-hosting/static/ || true
+        - cp -r .next/server .amplify-hosting/compute/ || true
+        - cp -r public .amplify-hosting/static/ || true
+        # deploy-manifest.json 생성
+        - |
+          cat > .amplify-hosting/deploy-manifest.json <<EOF
+          {
+            "version": "1.0",
+            "framework": "nextjs",
+            "buildOutput": {
+              "baseDirectory": ".",
+              "staticAssets": [
+                {
+                  "path": "static",
+                  "cacheControl": "public, max-age=31536000, immutable"
+                }
+              ],
+              "computeAssets": [
+                {
+                  "path": "compute"
+                }
+              ]
+            }
+          }
+          EOF
+        # 디버깅: 생성된 파일 확인
+        - ls -la .amplify-hosting/
+        - cat .amplify-hosting/deploy-manifest.json
   artifacts:
-    baseDirectory: frontend
+    baseDirectory: frontend/.amplify-hosting
     files:
-      - '.next/**/*'
-      - 'public/**/*'
-      - 'package.json'
-      - 'node_modules/**/*'
+      - '**/*'
   cache:
     paths:
       - frontend/node_modules/**/*
