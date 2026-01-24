@@ -152,10 +152,17 @@ function EditPropertyContent() {
     }, 300);
   };
 
-  // 폼 제출 (Updates 에러 수정 핵심 로직)
+  // 폼 제출 (Updates 에러 수정 및 Prisma 스키마 필드 매칭 완료)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!coordinates || !user) return;
+    if (!coordinates || !user) {
+      alert(
+        currentLanguage === "ko"
+          ? "주소를 선택해주세요."
+          : "Please select address.",
+      );
+      return;
+    }
     setLoading(true);
 
     try {
@@ -171,40 +178,51 @@ function EditPropertyContent() {
         ),
       );
 
-      // 2. 최종 이미지 리스트 (기존 URL + 새 Base64)
-      const finalImages = [
+      // 2. 최종 이미지 리스트 생성 (기존 URL + 새 Base64)
+      // 여기서 imageUrls 변수가 확실하게 정의됩니다.
+      const imageUrls = [
         ...imagePreviews.filter((url) => !url.startsWith("blob:")),
         ...newImages,
       ];
 
-      // 3. Updates 객체 타입 안전하게 구성
+      // 3. Updates 객체 구성 (Prisma 스키마의 lat, lng 필드와 100% 일치)
       const updates: any = {
         title: apartmentName || address,
-        price: parseInt(weeklyRent.replace(/\D/g, "") || "0"),
+        original_description: address, // 스키마 필드명 일치
+        price: parseFloat(weeklyRent.replace(/\D/g, "") || "0"), // 숫자로 변환
         priceUnit: "vnd",
+        area: 0, // 스키마 필수값 대비 (기본값)
         bedrooms: Number(bedrooms),
         bathrooms: Number(bathrooms),
+
+        // [핵심] coordinates 객체 대신 스키마 필드명 lat, lng로 각각 할당
+        lat: coordinates?.lat ? parseFloat(coordinates.lat.toString()) : null,
+        lng: coordinates?.lng ? parseFloat(coordinates.lng.toString()) : null,
+
         address: address,
-        images: finalImages,
-        amenities: selectedAmenities,
-        maxAdults: Number(maxAdults),
-        maxChildren: Number(maxChildren),
-        coordinates: { lat: coordinates.lat, lng: coordinates.lng },
         unitNumber:
           buildingNumber && roomNumber
             ? `${buildingNumber}동 ${roomNumber}호`
-            : undefined,
-        checkInDate: checkInDate ? new Date(checkInDate).toISOString() : null,
-        checkOutDate: checkOutDate
-          ? new Date(checkOutDate).toISOString()
-          : null,
+            : null,
+        images: imageUrls, // 위에서 정의한 imageUrls 사용 (빨간줄 해결)
+        amenities: selectedAmenities,
+        maxAdults: Number(maxAdults),
+        maxChildren: Number(maxChildren),
+
+        // 날짜 데이터 (Date 객체로 전달)
+        checkInDate: checkInDate ? new Date(checkInDate) : null,
+        checkOutDate: checkOutDate ? new Date(checkOutDate) : null,
       };
+
+      console.log("Sending updates to DB:", updates);
 
       if (isDeleted) await restoreProperty(propertyId);
       await updateProperty(propertyId, updates);
+
       alert(currentLanguage === "ko" ? "수정 완료!" : "Updated!");
       router.push(`/profile/my-properties/${propertyId}`);
     } catch (err) {
+      console.error("Update failed:", err);
       alert("Error: " + (err as any).message);
     } finally {
       setLoading(false);

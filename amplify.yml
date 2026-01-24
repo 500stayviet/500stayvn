@@ -3,24 +3,28 @@ frontend:
   phases:
     preBuild:
       commands:
-        - if [ -d "frontend" ]; then cd frontend && npm install; else npm install; fi
+        # 1. 의존성 설치
+        - cd frontend && npm install
     build:
       commands:
+        # 2. 파일 탐색 후 Prisma 생성 (가장 확실한 경로들 모두 시도)
         - |
-          if [ -d "frontend" ]; then
-            cd frontend
-            npx prisma generate --schema=../backend/functions/prisma/schema.prisma || echo "Prisma Skip"
-            npm run build
+          cd frontend
+          if [ -f "../backend/functions/prisma/schema.prisma" ]; then
+            npx prisma generate --schema=../backend/functions/prisma/schema.prisma
+          elif [ -f "./backend/functions/prisma/schema.prisma" ]; then
+            npx prisma generate --schema=./backend/functions/prisma/schema.prisma
           else
-            npx prisma generate --schema=./backend/functions/prisma/schema.prisma || echo "Prisma Skip"
-            npm run build
+            echo "Prisma schema not found. Searching..."
+            find .. -name "schema.prisma" -exec npx prisma generate --schema={} \;
           fi
+        # 3. Next.js 빌드
+        - cd frontend && npm run build
   artifacts:
     baseDirectory: frontend/.next
     files:
-      - '**/*'
+      - "**/*"
   cache:
     paths:
       - frontend/node_modules/**/*
       - frontend/.next/cache/**/*
-      - node_modules/**/*

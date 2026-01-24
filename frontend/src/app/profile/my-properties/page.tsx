@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react"; // 1. Suspense 추가
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -32,7 +32,8 @@ type PropertyFetchResult = {
   reservedIds: Set<string>;
 };
 
-export default function MyPropertiesPage() {
+// --- 실제 로직을 담당하는 컴포넌트 ---
+function MyPropertiesContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
@@ -50,7 +51,6 @@ export default function MyPropertiesPage() {
   const [advertisingCount, setAdvertisingCount] = useState(0);
   const [deletedCount, setDeletedCount] = useState(0);
 
-  // --- 기존 로직 유지 (데이터 필터링 및 페칭) ---
   const shouldShowPropertyInActiveTab = (
     property: PropertyData,
     bookedDateRanges: Map<string, PropertyDateRange[]>,
@@ -114,7 +114,6 @@ export default function MyPropertiesPage() {
     setDeletedCount(result.deletedData.length + excludedProperties.length);
   };
 
-  // 초기 데이터 로드 및 탭 변경 감지
   useEffect(() => {
     const init = async () => {
       if (!authLoading && user) {
@@ -142,7 +141,6 @@ export default function MyPropertiesPage() {
     init();
   }, [user, authLoading, searchParams]);
 
-  // 삭제 핸들러 (기존 유지)
   const handleDelete = async (id: string) => {
     setDeletingId(id);
     try {
@@ -171,7 +169,6 @@ export default function MyPropertiesPage() {
     }
   };
 
-  // --- UI 헬퍼 함수 ---
   const getStatusConfig = (status?: string) => {
     if (status === "rented") {
       return {
@@ -215,7 +212,6 @@ export default function MyPropertiesPage() {
         />
 
         <div className="px-5 py-6">
-          {/* 헤더 부분 */}
           <div className="mb-6">
             <button
               onClick={() => router.push("/profile")}
@@ -228,7 +224,6 @@ export default function MyPropertiesPage() {
               {currentLanguage === "ko" ? "내 매물 관리" : "My Properties"}
             </h1>
 
-            {/* 탭 디자인 개선 */}
             <div className="flex gap-2 mt-5 bg-gray-100 p-1.5 rounded-xl">
               {(["active", "deleted"] as const).map((tab) => (
                 <button
@@ -261,7 +256,6 @@ export default function MyPropertiesPage() {
             </div>
           </div>
 
-          {/* 매물 목록 */}
           <div className="space-y-5">
             {properties.length === 0 ? (
               <div className="text-center py-20 text-gray-400">
@@ -280,7 +274,6 @@ export default function MyPropertiesPage() {
                     key={property.id}
                     className={`group relative rounded-2xl overflow-hidden border-[3px] shadow-md transition-all ${config.borderColor}`}
                   >
-                    {/* 가로 긴 이미지 레이아웃 (16:9 비율 유지) */}
                     <div
                       className="relative w-full aspect-[16/9] cursor-pointer"
                       onClick={() =>
@@ -298,7 +291,6 @@ export default function MyPropertiesPage() {
                         className="object-cover group-hover:scale-105 transition-transform duration-500"
                       />
 
-                      {/* 상단 오버레이 (상태 및 가격) */}
                       <div className="absolute top-3 left-3 right-3 flex justify-between items-start">
                         <div
                           className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-white text-xs font-bold shadow-lg ${config.bgColor}`}
@@ -315,7 +307,6 @@ export default function MyPropertiesPage() {
                         </div>
                       </div>
 
-                      {/* 하단 오버레이 (주소 정보) */}
                       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4">
                         <div className="flex items-center gap-2 text-white">
                           <MapPin className="w-3.5 h-3.5 text-blue-400" />
@@ -333,9 +324,7 @@ export default function MyPropertiesPage() {
                       </div>
                     </div>
 
-                    {/* 액션 버튼 (삭제) */}
                     <div className="absolute top-3 right-3 flex gap-2">
-                      {/* 계약 완료(rented)가 아닐 때만 삭제 버튼 노출 */}
                       {property.status !== "rented" && (
                         <button
                           onClick={(e) => {
@@ -357,7 +346,6 @@ export default function MyPropertiesPage() {
           </div>
         </div>
 
-        {/* --- 삭제 확인 모달 부분 (기존 로직 유지) --- */}
         <AnimatePresence>
           {(showDeleteConfirm || showPermanentDeleteConfirm) && (
             <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6">
@@ -403,5 +391,20 @@ export default function MyPropertiesPage() {
         </AnimatePresence>
       </div>
     </div>
+  );
+}
+
+// --- Next.js 빌드 에러 해결을 위한 외부 래퍼 컴포넌트 ---
+export default function MyPropertiesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          로딩 중...
+        </div>
+      }
+    >
+      <MyPropertiesContent />
+    </Suspense>
   );
 }
