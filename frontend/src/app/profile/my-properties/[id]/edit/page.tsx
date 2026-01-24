@@ -269,7 +269,7 @@ export default function EditPropertyPage() {
     try {
       // 선택한 주소의 상세 정보 가져오기
       const language = getLocationServiceLanguage(currentLanguage);
-      const results = await searchPlaceIndexForText(text, language);
+      const results = await searchPlaceIndexForText(text, language as any);
 
       if (results.length > 0) {
         const result = results[0];
