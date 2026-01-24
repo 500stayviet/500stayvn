@@ -1,13 +1,12 @@
 /**
  * 예약된 매물 관리 페이지
- * 
- * - 임차인이 예약한 매물 목록 표시
+ * * - 임차인이 예약한 매물 목록 표시
  * - 예약된 매물 / 예약완료된 매물 탭
  */
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react'; // Suspense 추가
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -26,7 +25,8 @@ interface ReservationWithProperty extends ReservationData {
   property?: PropertyData;
 }
 
-export default function ReservationsPage() {
+// 1. 실제 로직이 담긴 컴포넌트
+function ReservationsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
@@ -51,25 +51,21 @@ export default function ReservationsPage() {
         try {
           setLoading(true);
           
-          // 사용자 데이터 및 인증 상태 확인
           const userData = await getCurrentUserData(user.uid);
           const kycSteps = userData?.kyc_steps || {};
           const completed = (kycSteps.step1 && kycSteps.step2 && kycSteps.step3) || false;
           setAllStepsCompleted(completed);
 
-          // 인증 3단계가 완료되지 않았으면 프로필 페이지로 리다이렉트
           if (!completed) {
             router.push('/profile');
             return;
           }
 
-          // 예약 데이터 가져오기
           const reservationData = await getReservationsByOwner(
             user.uid,
             activeTab === 'completed' ? 'completed' : 'active'
           );
           
-          // 각 예약에 매물 정보 추가
           const reservationsWithProperties: ReservationWithProperty[] = await Promise.all(
             reservationData.map(async (reservation) => {
               try {
@@ -93,7 +89,6 @@ export default function ReservationsPage() {
     }
   }, [user, authLoading, router, activeTab]);
 
-  // URL 쿼리 파라미터에서 탭 정보 읽기
   useEffect(() => {
     const tab = searchParams.get('tab');
     if (tab === 'completed') {
@@ -103,7 +98,6 @@ export default function ReservationsPage() {
     }
   }, [searchParams]);
 
-  // 탭 변경 시 데이터 새로고침 및 URL 업데이트
   useEffect(() => {
     if (user && !authLoading) {
       const fetchReservations = async () => {
@@ -131,7 +125,6 @@ export default function ReservationsPage() {
       };
       fetchReservations();
       
-      // URL 업데이트 (뒤로가기 지원)
       const newUrl = activeTab === 'completed' 
         ? '/profile/reservations?tab=completed'
         : '/profile/reservations';
@@ -139,7 +132,6 @@ export default function ReservationsPage() {
     }
   }, [activeTab, user, authLoading]);
 
-  // 예약 상태 업데이트 핸들러
   const handleUpdateStatus = async (reservationId: string, newStatus: ReservationData['status']) => {
     if (!reservationId) return;
     
@@ -147,18 +139,15 @@ export default function ReservationsPage() {
     try {
       await updateReservationStatus(reservationId, newStatus);
       
-      // 예약 취소 시 매물 상태 변경 및 기록 남기기 (Rule 1, 2, 3)
       if (newStatus === 'cancelled') {
         const reservation = reservations.find(r => r.id === reservationId);
         if (reservation) {
-          // 1. 취소 기록 남기기
           await logCancelledProperty({
             propertyId: reservation.propertyId,
             reservationId: reservation.id,
             ownerId: user!.uid
           });
 
-          // 1-1. 관련 채팅방의 모든 메시지를 읽음 처리 (알림 제거용)
           try {
             const chatRoom = await findChatRoom(reservation.propertyId, user!.uid, reservation.tenantId);
             if (chatRoom) {
@@ -168,10 +157,8 @@ export default function ReservationsPage() {
             console.error('Failed to mark messages as read on cancellation:', chatError);
           }
           
-          // 2. 통합 로직 실행 (병합 체크 -> 한도 체크 -> 광고 재개)
           const result = await handleCancellationRelist(reservation.propertyId, user!.uid);
           
-          // 3. 결과에 따른 알림 및 이동 처리
           let message = '';
           let targetTab = 'active';
 
@@ -205,7 +192,6 @@ export default function ReservationsPage() {
         }
       }
       
-      // 데이터 새로고침
       const reservationData = await getReservationsByOwner(
         user!.uid,
         activeTab === 'completed' ? 'completed' : 'active'
@@ -236,7 +222,6 @@ export default function ReservationsPage() {
     }
   };
 
-  // 예약 삭제 핸들러
   const handleDeleteReservation = async (reservationId: string) => {
     if (!reservationId || !confirm(currentLanguage === 'ko' ? '기록을 영구적으로 삭제하시겠습니까?' : 'Do you want to permanently delete the record?')) return;
     
@@ -244,7 +229,6 @@ export default function ReservationsPage() {
     try {
       await deleteReservation(reservationId);
       
-      // 데이터 새로고침
       const reservationData = await getReservationsByOwner(
         user!.uid,
         activeTab === 'completed' ? 'completed' : 'active'
@@ -269,7 +253,6 @@ export default function ReservationsPage() {
     }
   };
 
-  // 날짜 포맷팅
   const formatDate = (dateInput: string | Date | undefined): string => {
     if (!dateInput) return '';
     const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
@@ -288,7 +271,6 @@ export default function ReservationsPage() {
     }
   };
 
-  // 예약 상태 텍스트
   const getStatusText = (status: ReservationData['status']) => {
     if (status === 'pending') {
       return currentLanguage === 'ko' ? '예약 대기' : 
@@ -308,7 +290,6 @@ export default function ReservationsPage() {
            'Cancelled';
   };
 
-  // 예약 상태 색상
   const getStatusColor = (status: ReservationData['status']) => {
     if (status === 'pending') return 'bg-yellow-500';
     if (status === 'confirmed') return 'bg-blue-500';
@@ -338,16 +319,13 @@ export default function ReservationsPage() {
   return (
     <div className="min-h-screen bg-gray-100 flex justify-center">
       <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative">
-        {/* 상단 바 */}
         <TopBar 
           currentLanguage={currentLanguage}
           onLanguageChange={setCurrentLanguage}
           hideLanguageSelector={false}
         />
 
-        {/* 콘텐츠 */}
         <div className="px-6 py-6">
-          {/* 헤더 */}
           <div className="mb-6">
             <button
               onClick={() => router.push('/profile')}
@@ -367,7 +345,6 @@ export default function ReservationsPage() {
             </h1>
           </div>
 
-          {/* 탭 */}
           <div className="mb-6 flex gap-2 bg-gray-100 rounded-xl p-1">
             <button
               onClick={() => setActiveTab('active')}
@@ -405,7 +382,6 @@ export default function ReservationsPage() {
             </button>
           </div>
 
-          {/* 예약 목록 */}
           {reservations.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-gray-500">
@@ -433,7 +409,6 @@ export default function ReservationsPage() {
                     animate={{ opacity: 1, y: 0 }}
                     className="bg-white rounded-2xl shadow-lg border-2 border-gray-100 overflow-hidden"
                   >
-                    {/* 매물 이미지 */}
                     <div className="relative h-48 w-full">
                       <Image
                         src={imageUrl}
@@ -442,7 +417,6 @@ export default function ReservationsPage() {
                         className="object-cover"
                         sizes="(max-width: 430px) 100vw, 430px"
                       />
-                      {/* 상태 배지 */}
                       <div className="absolute top-4 left-4">
                         <span className={`${getStatusColor(reservation.status)} text-white px-3 py-1 rounded-lg text-xs font-semibold shadow-lg`}>
                           {getStatusText(reservation.status)}
@@ -450,9 +424,7 @@ export default function ReservationsPage() {
                       </div>
                     </div>
 
-                    {/* 매물 정보 */}
                     <div className="p-4 space-y-4">
-                      {/* 매물 제목 */}
                       {property && (
                         <div>
                           <h3 className="text-lg font-bold text-gray-900 mb-1">
@@ -467,7 +439,6 @@ export default function ReservationsPage() {
                         </div>
                       )}
 
-                      {/* 예약 날짜 */}
                       <div className="flex items-center gap-2 text-sm text-gray-700">
                         <Calendar className="w-4 h-4 text-gray-500" />
                         <span>
@@ -475,7 +446,6 @@ export default function ReservationsPage() {
                         </span>
                       </div>
 
-                      {/* 임차인 정보 */}
                       <div className="border-t border-gray-200 pt-4 space-y-2">
                         <p className="text-xs font-semibold text-gray-500 uppercase">
                           {currentLanguage === 'ko' ? '임차인 정보' : 
@@ -502,7 +472,6 @@ export default function ReservationsPage() {
                         )}
                       </div>
 
-                      {/* 액션 버튼 (예약된 매물 탭에서만) */}
                       {activeTab === 'active' && reservation.status === 'pending' && (
                         <div className="flex gap-2 pt-2">
                           <button
@@ -548,7 +517,6 @@ export default function ReservationsPage() {
                         </div>
                       )}
 
-                      {/* 삭제 버튼 (취소된 경우에만 표시) */}
                       {reservation.status === 'cancelled' && (
                         <div className="pt-2 flex justify-end">
                           <button
@@ -570,5 +538,18 @@ export default function ReservationsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// 2. 외부에서 사용할 래퍼 컴포넌트 (Suspense 적용)
+export default function ReservationsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-gray-500">로딩 중...</div>
+      </div>
+    }>
+      <ReservationsContent />
+    </Suspense>
   );
 }
