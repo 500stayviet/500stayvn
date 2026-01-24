@@ -1,31 +1,49 @@
 /**
  * 매물 수정 페이지
- * 
+ *
  * - 기존 매물 데이터를 불러와서 폼에 채움
  * - 수정 완료 버튼 클릭 시 DB에 저장
  */
 
-'use client';
+"use client";
 
-import { useState, useEffect, useRef } from 'react';
-import { useRouter, useParams, useSearchParams } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { getProperty, updateProperty, restoreProperty, permanentlyDeleteProperty } from '@/lib/api/properties';
-import { PropertyData } from '@/types/property';
-import { getPropertyBookings } from '@/lib/api/bookings';
-import { searchPlaceIndexForSuggestions, searchPlaceIndexForText, getLocationServiceLanguage } from '@/lib/api/aws-location';
-import { Camera, MapPin, Loader2, X, Maximize2, ArrowLeft, Calendar, Users, ChevronLeft, ChevronRight, Bed, Bath } from 'lucide-react';
-import TopBar from '@/components/TopBar';
-import CalendarComponent from '@/components/CalendarComponent';
+import { useState, useEffect, useRef } from "react";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
+import { useLanguage } from "@/contexts/LanguageContext";
+import {
+  getProperty,
+  updateProperty,
+  restoreProperty,
+  permanentlyDeleteProperty,
+} from "@/lib/api/properties";
+import { PropertyData } from "@/types/property";
+import { getPropertyBookings } from "@/lib/api/bookings";
+import {
+  searchPlaceIndexForSuggestions,
+  searchPlaceIndexForText,
+  getLocationServiceLanguage,
+} from "@/lib/api/aws-location";
+import {
+  Camera,
+  MapPin,
+  Loader2,
+  X,
+  Maximize2,
+  ArrowLeft,
+  Calendar,
+  Users,
+  ChevronLeft,
+  ChevronRight,
+  Bed,
+  Bath,
+} from "lucide-react";
+import TopBar from "@/components/TopBar";
+import CalendarComponent from "@/components/CalendarComponent";
 
-import { AMENITY_OPTIONS } from '@/lib/constants/amenities';
-import { 
-  formatFullPrice, 
-} from '@/lib/utils/propertyUtils';
-import { 
-  parseDate, 
-} from '@/lib/utils/dateUtils';
+import { AMENITY_OPTIONS } from "@/lib/constants/amenities";
+import { formatFullPrice } from "@/lib/utils/propertyUtils";
+import { parseDate } from "@/lib/utils/dateUtils";
 
 export default function EditPropertyPage() {
   const router = useRouter();
@@ -34,41 +52,55 @@ export default function EditPropertyPage() {
   const propertyId = params.id as string;
   const { user, loading: authLoading } = useAuth();
   const { currentLanguage, setCurrentLanguage } = useLanguage();
-  const fromDeletedTab = searchParams.get('tab') === 'deleted';
+  const fromDeletedTab = searchParams.get("tab") === "deleted";
   const [loading, setLoading] = useState(false);
   const [loadingProperty, setLoadingProperty] = useState(true);
   const [propertyLoaded, setPropertyLoaded] = useState(false);
   const [isDeleted, setIsDeleted] = useState(false);
-  const [showPermanentDeleteConfirm, setShowPermanentDeleteConfirm] = useState(false);
+  const [showPermanentDeleteConfirm, setShowPermanentDeleteConfirm] =
+    useState(false);
 
   // 폼 상태
   const [images, setImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
-  const [address, setAddress] = useState('');
-  const [apartmentName, setApartmentName] = useState('');
-  const [buildingNumber, setBuildingNumber] = useState(''); // 동
-  const [roomNumber, setRoomNumber] = useState(''); // 호실
-  const [weeklyRent, setWeeklyRent] = useState('');
+  const [address, setAddress] = useState("");
+  const [apartmentName, setApartmentName] = useState("");
+  const [buildingNumber, setBuildingNumber] = useState(""); // 동
+  const [roomNumber, setRoomNumber] = useState(""); // 호실
+  const [weeklyRent, setWeeklyRent] = useState("");
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
-  const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null);
+  const [coordinates, setCoordinates] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
   const [maxAdults, setMaxAdults] = useState(1);
   const [maxChildren, setMaxChildren] = useState(0);
   const [bedrooms, setBedrooms] = useState(1);
   const [bathrooms, setBathrooms] = useState(1);
-  
+
   // 임대 희망 날짜
   const [showCalendar, setShowCalendar] = useState(false);
-  const [calendarMode, setCalendarMode] = useState<'checkin' | 'checkout'>('checkin');
+  const [calendarMode, setCalendarMode] = useState<"checkin" | "checkout">(
+    "checkin",
+  );
   const [checkInDate, setCheckInDate] = useState<Date | null>(null);
   const [checkOutDate, setCheckOutDate] = useState<Date | null>(null);
-  const [bookedRanges, setBookedRanges] = useState<{ checkIn: Date; checkOut: Date }[]>([]);
+  const [bookedRanges, setBookedRanges] = useState<
+    { checkIn: Date; checkOut: Date }[]
+  >([]);
 
   // 사진첩 모달 상태
   const [showPhotoLibrary, setShowPhotoLibrary] = useState(false);
   const [photoLibraryFiles, setPhotoLibraryFiles] = useState<File[]>([]);
-  const [photoLibraryPreviews, setPhotoLibraryPreviews] = useState<string[]>([]);
-  const [selectedLibraryIndices, setSelectedLibraryIndices] = useState<Set<number>>(new Set());
-  const [fullScreenImageIndex, setFullScreenImageIndex] = useState<number | null>(null);
+  const [photoLibraryPreviews, setPhotoLibraryPreviews] = useState<string[]>(
+    [],
+  );
+  const [selectedLibraryIndices, setSelectedLibraryIndices] = useState<
+    Set<number>
+  >(new Set());
+  const [fullScreenImageIndex, setFullScreenImageIndex] = useState<
+    number | null
+  >(null);
 
   // 이미지 소스 선택 메뉴 상태
   const [showImageSourceMenu, setShowImageSourceMenu] = useState(false);
@@ -85,43 +117,49 @@ export default function EditPropertyPage() {
   useEffect(() => {
     // 이미 로드되었으면 실행하지 않음
     if (propertyLoaded) return;
-    
+
     if (!authLoading && user && propertyId) {
       const loadProperty = async () => {
         try {
           const property = await getProperty(propertyId);
-          
+
           if (!property) {
-            alert(currentLanguage === 'ko' 
-              ? '매물을 찾을 수 없습니다.'
-              : currentLanguage === 'vi'
-              ? 'Không tìm thấy bất động sản.'
-              : 'Property not found.');
-            router.push('/profile/my-properties');
+            alert(
+              currentLanguage === "ko"
+                ? "매물을 찾을 수 없습니다."
+                : currentLanguage === "vi"
+                  ? "Không tìm thấy bất động sản."
+                  : "Property not found.",
+            );
+            router.push("/profile/my-properties");
             return;
           }
 
           // 삭제되었거나 광고 종료된 매물인지 확인
-          const isExpOrDel = property.deleted || property.status !== 'active';
+          const isExpOrDel = property.deleted || property.status !== "active";
           setIsDeleted(isExpOrDel);
-          
+
           // 본인의 매물인지 확인
           if (property.ownerId !== user.uid) {
-            alert(currentLanguage === 'ko' 
-              ? '권한이 없습니다.'
-              : currentLanguage === 'vi'
-              ? 'Không có quyền.'
-              : 'No permission.');
-            router.push('/profile/my-properties');
+            alert(
+              currentLanguage === "ko"
+                ? "권한이 없습니다."
+                : currentLanguage === "vi"
+                  ? "Không có quyền."
+                  : "No permission.",
+            );
+            router.push("/profile/my-properties");
             return;
           }
-          
+
           // 기존 데이터로 폼 채우기 (한 번만)
-          setAddress(property.address || '');
-          setWeeklyRent(property.price ? property.price.toString().replace(/\D/g, '') : '');
+          setAddress(property.address || "");
+          setWeeklyRent(
+            property.price ? property.price.toString().replace(/\D/g, "") : "",
+          );
           setSelectedAmenities(property.amenities || []);
           setCoordinates(property.coordinates);
-          
+
           // 동호수 분리
           if (property.unitNumber) {
             const unitMatch = property.unitNumber.match(/(\S+)동\s*(\S+)호/);
@@ -135,45 +173,47 @@ export default function EditPropertyPage() {
               if (roomMatch) setRoomNumber(roomMatch[1]);
             }
           }
-          
+
           // 이미지 URL을 미리보기로 설정
           if (property.images && property.images.length > 0) {
             setImagePreviews(property.images);
           }
-          
+
           // 인원 수 로드
           setMaxAdults(property.maxAdults || 1);
           setMaxChildren(property.maxChildren || 0);
-          
+
           // 방/화장실 수 로드
           setBedrooms(property.bedrooms || 1);
           setBathrooms(property.bathrooms || 1);
-          
+
           // 날짜 로드 (ISO 문자열을 Date 객체로 변환)
           // 날짜 파싱 (ISO 문자열 또는 Date 객체 대응)
           const propCheckInDate = parseDate(property.checkInDate);
           const propCheckOutDate = parseDate(property.checkOutDate);
-          
+
           if (propCheckInDate) setCheckInDate(propCheckInDate);
           if (propCheckOutDate) setCheckOutDate(propCheckOutDate);
-          
+
           // 예약 정보 로드
           const bookings = await getPropertyBookings(propertyId);
-          const ranges = bookings.map(b => ({
+          const ranges = bookings.map((b) => ({
             checkIn: new Date(b.checkInDate),
-            checkOut: new Date(b.checkOutDate)
+            checkOut: new Date(b.checkOutDate),
           }));
           setBookedRanges(ranges);
 
           // 데이터 로드 완료 플래그 설정 (한 번만 로드되도록)
           setPropertyLoaded(true);
         } catch (error) {
-          alert(currentLanguage === 'ko' 
-            ? '매물 정보를 불러오는 중 오류가 발생했습니다.'
-            : currentLanguage === 'vi'
-            ? 'Đã xảy ra lỗi khi tải thông tin bất động sản.'
-            : 'Error loading property information.');
-          router.push('/profile/my-properties');
+          alert(
+            currentLanguage === "ko"
+              ? "매물 정보를 불러오는 중 오류가 발생했습니다."
+              : currentLanguage === "vi"
+                ? "Đã xảy ra lỗi khi tải thông tin bất động sản."
+                : "Error loading property information.",
+          );
+          router.push("/profile/my-properties");
         } finally {
           setLoadingProperty(false);
         }
@@ -184,7 +224,9 @@ export default function EditPropertyPage() {
   }, [propertyId, user, authLoading, router]);
 
   // 주소 입력 시 추천 목록 가져오기 (AWS Location Service)
-  const handleAddressInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAddressInputChange = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const value = e.target.value;
     setAddress(value);
 
@@ -203,11 +245,14 @@ export default function EditPropertyPage() {
     debounceTimerRef.current = setTimeout(async () => {
       try {
         const language = getLocationServiceLanguage(currentLanguage);
-        const suggestions = await searchPlaceIndexForSuggestions(value, language);
+        const suggestions = await searchPlaceIndexForSuggestions(
+          value,
+          language as SupportedLanguage,
+        );
         setAddressSuggestions(suggestions);
         setShowSuggestions(suggestions.length > 0);
       } catch (error) {
-        console.error('Error fetching address suggestions:', error);
+        console.error("Error fetching address suggestions:", error);
         setAddressSuggestions([]);
         setShowSuggestions(false);
       }
@@ -216,7 +261,7 @@ export default function EditPropertyPage() {
 
   // 추천 주소 선택
   const handleSelectSuggestion = async (suggestion: any) => {
-    const text = suggestion.Text || '';
+    const text = suggestion.Text || "";
     setAddress(text);
     setShowSuggestions(false);
     setAddressSuggestions([]);
@@ -225,24 +270,24 @@ export default function EditPropertyPage() {
       // 선택한 주소의 상세 정보 가져오기
       const language = getLocationServiceLanguage(currentLanguage);
       const results = await searchPlaceIndexForText(text, language);
-      
+
       if (results.length > 0) {
         const result = results[0];
         const position = result.Place?.Geometry?.Point || [];
-        
+
         if (position.length >= 2) {
-          setCoordinates({ 
+          setCoordinates({
             lat: position[1], // 위도
-            lng: position[0]  // 경도
+            lng: position[0], // 경도
           });
         }
-        
+
         if (result.Place?.Label) {
           setAddress(result.Place.Label);
         }
       }
     } catch (error) {
-      console.error('Error getting place details:', error);
+      console.error("Error getting place details:", error);
     }
   };
 
@@ -265,12 +310,12 @@ export default function EditPropertyPage() {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    const previews = files.map(file => URL.createObjectURL(file));
+    const previews = files.map((file) => URL.createObjectURL(file));
     setPhotoLibraryPreviews(previews);
     setPhotoLibraryFiles(files);
     setSelectedLibraryIndices(new Set());
     setShowPhotoLibrary(true);
-    e.target.value = '';
+    e.target.value = "";
   };
 
   // 사진첩에서 사진 선택/해제
@@ -278,7 +323,7 @@ export default function EditPropertyPage() {
     const maxSelectable = 5 - imagePreviews.length;
     if (maxSelectable <= 0) return;
 
-    setSelectedLibraryIndices(prev => {
+    setSelectedLibraryIndices((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(index)) {
         newSet.delete(index);
@@ -295,19 +340,19 @@ export default function EditPropertyPage() {
   const handleConfirmPhotoSelection = () => {
     const selectedFiles = Array.from(selectedLibraryIndices)
       .sort((a, b) => a - b)
-      .map(index => photoLibraryFiles[index]);
+      .map((index) => photoLibraryFiles[index]);
 
     if (selectedFiles.length === 0) return;
 
     const newImages = [...images, ...selectedFiles];
     setImages(newImages);
 
-    const newPreviews = selectedFiles.map(file => URL.createObjectURL(file));
+    const newPreviews = selectedFiles.map((file) => URL.createObjectURL(file));
     setImagePreviews([...imagePreviews, ...newPreviews]);
 
     setShowPhotoLibrary(false);
     setPhotoLibraryFiles([]);
-    photoLibraryPreviews.forEach(url => URL.revokeObjectURL(url));
+    photoLibraryPreviews.forEach((url) => URL.revokeObjectURL(url));
     setPhotoLibraryPreviews([]);
     setSelectedLibraryIndices(new Set());
     setFullScreenImageIndex(null);
@@ -337,8 +382,8 @@ export default function EditPropertyPage() {
 
     const preview = URL.createObjectURL(file);
     setImagePreviews([...imagePreviews, preview]);
-    
-    e.target.value = '';
+
+    e.target.value = "";
   };
 
   const handleAddImageClick = () => {
@@ -360,22 +405,22 @@ export default function EditPropertyPage() {
   const handleImageRemove = (index: number) => {
     const newImages = images.filter((_, i) => i !== index);
     const newPreviews = imagePreviews.filter((_, i) => i !== index);
-    
+
     // URL 해제 (blob URL인 경우만)
-    if (imagePreviews[index].startsWith('blob:')) {
+    if (imagePreviews[index].startsWith("blob:")) {
       URL.revokeObjectURL(imagePreviews[index]);
     }
-    
+
     setImages(newImages);
     setImagePreviews(newPreviews);
   };
 
   // 편의시설 선택/해제
   const toggleAmenity = (amenityId: string) => {
-    setSelectedAmenities(prev => 
+    setSelectedAmenities((prev) =>
       prev.includes(amenityId)
-        ? prev.filter(id => id !== amenityId)
-        : [...prev, amenityId]
+        ? prev.filter((id) => id !== amenityId)
+        : [...prev, amenityId],
     );
   };
 
@@ -384,39 +429,47 @@ export default function EditPropertyPage() {
     e.preventDefault();
 
     if (!coordinates) {
-      alert(currentLanguage === 'ko' 
-        ? '주소를 선택해주세요.'
-        : currentLanguage === 'vi'
-        ? 'Vui lòng chọn địa chỉ.'
-        : 'Please select an address.');
+      alert(
+        currentLanguage === "ko"
+          ? "주소를 선택해주세요."
+          : currentLanguage === "vi"
+            ? "Vui lòng chọn địa chỉ."
+            : "Please select an address.",
+      );
       return;
     }
 
     if (imagePreviews.length === 0) {
-      alert(currentLanguage === 'ko' 
-        ? '최소 1장의 사진이 필요합니다.'
-        : currentLanguage === 'vi'
-        ? 'Cần ít nhất 1 ảnh.'
-        : 'Please upload at least 1 image.');
+      alert(
+        currentLanguage === "ko"
+          ? "최소 1장의 사진이 필요합니다."
+          : currentLanguage === "vi"
+            ? "Cần ít nhất 1 ảnh."
+            : "Please upload at least 1 image.",
+      );
       return;
     }
 
-    const rentValue = parseInt(weeklyRent.replace(/\D/g, ''));
+    const rentValue = parseInt(weeklyRent.replace(/\D/g, ""));
     if (isNaN(rentValue) || rentValue <= 0) {
-      alert(currentLanguage === 'ko' 
-        ? '1주일 임대료를 입력해주세요.'
-        : currentLanguage === 'vi'
-        ? 'Vui lòng nhập giá thuê 1 tuần.'
-        : 'Please enter weekly rent.');
+      alert(
+        currentLanguage === "ko"
+          ? "1주일 임대료를 입력해주세요."
+          : currentLanguage === "vi"
+            ? "Vui lòng nhập giá thuê 1 tuần."
+            : "Please enter weekly rent.",
+      );
       return;
     }
 
     if (!user) {
-      alert(currentLanguage === 'ko' 
-        ? '로그인이 필요합니다.'
-        : currentLanguage === 'vi'
-        ? 'Cần đăng nhập.'
-        : 'Please login.');
+      alert(
+        currentLanguage === "ko"
+          ? "로그인이 필요합니다."
+          : currentLanguage === "vi"
+            ? "Cần đăng nhập."
+            : "Please login.",
+      );
       return;
     }
 
@@ -425,30 +478,33 @@ export default function EditPropertyPage() {
       // 동호수 조합 (비공개 - 별도 필드로만 저장)
       // 호실 번호는 4자리로 패딩 (예: 1호 → 0001호)
       const formatRoomNumber = (room: string) => {
-        const num = parseInt(room.replace(/\D/g, ''));
+        const num = parseInt(room.replace(/\D/g, ""));
         if (isNaN(num)) return room;
-        return num.toString().padStart(4, '0');
+        return num.toString().padStart(4, "0");
       };
 
-      const unitNumber = buildingNumber && roomNumber 
-        ? `${buildingNumber}동 ${formatRoomNumber(roomNumber)}호`
-        : buildingNumber 
-        ? `${buildingNumber}동`
-        : roomNumber
-        ? `${formatRoomNumber(roomNumber)}호`
-        : undefined;
+      const unitNumber =
+        buildingNumber && roomNumber
+          ? `${buildingNumber}동 ${formatRoomNumber(roomNumber)}호`
+          : buildingNumber
+            ? `${buildingNumber}동`
+            : roomNumber
+              ? `${formatRoomNumber(roomNumber)}호`
+              : undefined;
 
       // 주소와 설명에는 동호수 포함하지 않음 (비공개)
-      const publicAddress = `${apartmentName ? `${apartmentName}, ` : ''}${address}`;
+      const publicAddress = `${apartmentName ? `${apartmentName}, ` : ""}${address}`;
 
       // 기존 이미지 URL과 새로 추가된 이미지 구분
       // imagePreviews에는 기존 URL(string)과 새로 추가된 File의 preview URL이 섞여있음
       // TODO: 새로 추가된 이미지가 있으면 Firebase Storage에 업로드
       // 지금은 임시로 기존 URL만 유지
       // 기존 이미지 URL (base64 또는 URL)와 새로 추가한 이미지 파일을 base64로 변환
-      const existingImageUrls = imagePreviews.filter(url => typeof url === 'string' && !url.startsWith('blob:'));
-      const newImageFiles = images.filter(img => img instanceof File);
-      
+      const existingImageUrls = imagePreviews.filter(
+        (url) => typeof url === "string" && !url.startsWith("blob:"),
+      );
+      const newImageFiles = images.filter((img) => img instanceof File);
+
       // 새 이미지를 base64로 변환
       const newImageBase64s: string[] = [];
       for (const file of newImageFiles) {
@@ -460,7 +516,7 @@ export default function EditPropertyPage() {
         });
         newImageBase64s.push(base64);
       }
-      
+
       // 기존 이미지와 새 이미지 합치기
       const imageUrls = [...existingImageUrls, ...newImageBase64s];
 
@@ -468,8 +524,8 @@ export default function EditPropertyPage() {
       const updates: any = {
         title: apartmentName || address,
         original_description: publicAddress, // 동호수 제외
-        price: parseInt(weeklyRent.replace(/\D/g, '')),
-        priceUnit: 'vnd',
+        price: parseInt(weeklyRent.replace(/\D/g, "")),
+        priceUnit: "vnd",
         bedrooms: bedrooms,
         bathrooms: bathrooms,
         coordinates,
@@ -480,49 +536,58 @@ export default function EditPropertyPage() {
         maxAdults: maxAdults,
         maxChildren: maxChildren,
       };
-      
+
       // 날짜는 Date 객체로 전달 (updateProperty에서 ISO 문자열로 변환됨)
       if (checkInDate !== null && checkInDate !== undefined) {
         updates.checkInDate = checkInDate;
       } else {
         updates.checkInDate = undefined;
       }
-      
+
       if (checkOutDate !== null && checkOutDate !== undefined) {
         updates.checkOutDate = checkOutDate;
       } else {
         updates.checkOutDate = undefined;
       }
 
-      console.log('Updating property with dates:', { checkInDate: updates.checkInDate, checkOutDate: updates.checkOutDate });
-      
+      console.log("Updating property with dates:", {
+        checkInDate: updates.checkInDate,
+        checkOutDate: updates.checkOutDate,
+      });
+
       // 삭제된 매물인 경우 복구(재등록)
       if (isDeleted) {
         await restoreProperty(propertyId);
         await updateProperty(propertyId, updates);
-        alert(currentLanguage === 'ko' 
-          ? '매물이 성공적으로 재등록되었습니다!'
-          : currentLanguage === 'vi'
-          ? 'Bất động sản đã được đăng lại thành công!'
-          : 'Property re-registered successfully!');
+        alert(
+          currentLanguage === "ko"
+            ? "매물이 성공적으로 재등록되었습니다!"
+            : currentLanguage === "vi"
+              ? "Bất động sản đã được đăng lại thành công!"
+              : "Property re-registered successfully!",
+        );
         // 재등록 후 매물 관리창으로 이동
-        router.replace('/profile/my-properties');
+        router.replace("/profile/my-properties");
       } else {
         await updateProperty(propertyId, updates);
-        alert(currentLanguage === 'ko' 
-          ? '매물이 성공적으로 수정되었습니다!'
-          : currentLanguage === 'vi'
-          ? 'Bất động sản đã được cập nhật thành công!'
-          : 'Property updated successfully!');
+        alert(
+          currentLanguage === "ko"
+            ? "매물이 성공적으로 수정되었습니다!"
+            : currentLanguage === "vi"
+              ? "Bất động sản đã được cập nhật thành công!"
+              : "Property updated successfully!",
+        );
         // 수정 후 상세 페이지로 이동
         router.replace(`/profile/my-properties/${propertyId}`);
       }
     } catch (error) {
-      alert(currentLanguage === 'ko' 
-        ? '매물 수정 중 오류가 발생했습니다.'
-        : currentLanguage === 'vi'
-        ? 'Đã xảy ra lỗi khi cập nhật bất động sản.'
-        : 'An error occurred while updating the property.');
+      alert(
+        currentLanguage === "ko"
+          ? "매물 수정 중 오류가 발생했습니다."
+          : currentLanguage === "vi"
+            ? "Đã xảy ra lỗi khi cập nhật bất động sản."
+            : "An error occurred while updating the property.",
+      );
     } finally {
       setLoading(false);
     }
@@ -532,7 +597,11 @@ export default function EditPropertyPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-gray-500">
-          {currentLanguage === 'ko' ? '로딩 중...' : currentLanguage === 'vi' ? 'Đang tải...' : 'Loading...'}
+          {currentLanguage === "ko"
+            ? "로딩 중..."
+            : currentLanguage === "vi"
+              ? "Đang tải..."
+              : "Loading..."}
         </div>
       </div>
     );
@@ -545,7 +614,7 @@ export default function EditPropertyPage() {
   return (
     <div className="min-h-screen bg-gray-100 flex justify-center">
       <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative">
-        <TopBar 
+        <TopBar
           currentLanguage={currentLanguage}
           onLanguageChange={setCurrentLanguage}
           hideLanguageSelector={false}
@@ -557,22 +626,28 @@ export default function EditPropertyPage() {
             <button
               onClick={() => {
                 if (fromDeletedTab || isDeleted) {
-                  router.push('/profile/my-properties?tab=deleted');
+                  router.push("/profile/my-properties?tab=deleted");
                 } else {
-                  router.push('/profile/my-properties');
+                  router.push("/profile/my-properties");
                 }
               }}
               className="flex items-center gap-2 text-gray-700 hover:text-gray-900 mb-4 transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
               <span className="font-medium">
-                {currentLanguage === 'ko' ? '뒤로' : 
-                 currentLanguage === 'vi' ? 'Quay lại' : 
-                 'Back'}
+                {currentLanguage === "ko"
+                  ? "뒤로"
+                  : currentLanguage === "vi"
+                    ? "Quay lại"
+                    : "Back"}
               </span>
             </button>
             <h1 className="text-2xl font-bold text-gray-900 mb-1">
-              {currentLanguage === 'ko' ? '매물 수정' : currentLanguage === 'vi' ? 'Chỉnh sửa bất động sản' : 'Edit Property'}
+              {currentLanguage === "ko"
+                ? "매물 수정"
+                : currentLanguage === "vi"
+                  ? "Chỉnh sửa bất động sản"
+                  : "Edit Property"}
             </h1>
           </div>
 
@@ -580,7 +655,11 @@ export default function EditPropertyPage() {
             {/* 이미지 업로드 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {currentLanguage === 'ko' ? '사진 등록' : currentLanguage === 'vi' ? 'Đăng ảnh' : 'Upload Photos'}
+                {currentLanguage === "ko"
+                  ? "사진 등록"
+                  : currentLanguage === "vi"
+                    ? "Đăng ảnh"
+                    : "Upload Photos"}
                 <span className="text-red-500 text-xs ml-1">*</span>
                 <span className="text-gray-500 text-xs ml-2">
                   ({imagePreviews.length}/5)
@@ -588,8 +667,15 @@ export default function EditPropertyPage() {
               </label>
               <div className="grid grid-cols-3 gap-3">
                 {imagePreviews.map((preview, index) => (
-                  <div key={index} className="relative aspect-square rounded-xl overflow-hidden border-2 border-gray-200">
-                    <img src={preview} alt={`Preview ${index + 1}`} className="w-full h-full object-cover" />
+                  <div
+                    key={index}
+                    className="relative aspect-square rounded-xl overflow-hidden border-2 border-gray-200"
+                  >
+                    <img
+                      src={preview}
+                      alt={`Preview ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
                     <button
                       type="button"
                       onClick={() => handleImageRemove(index)}
@@ -608,7 +694,11 @@ export default function EditPropertyPage() {
                     >
                       <Camera className="w-8 h-8 text-gray-400 mb-1" />
                       <span className="text-xs text-gray-500">
-                        {currentLanguage === 'ko' ? '추가' : currentLanguage === 'vi' ? 'Thêm' : 'Add'}
+                        {currentLanguage === "ko"
+                          ? "추가"
+                          : currentLanguage === "vi"
+                            ? "Thêm"
+                            : "Add"}
                       </span>
                     </button>
                   </>
@@ -638,7 +728,11 @@ export default function EditPropertyPage() {
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
                   <div className="w-full bg-white rounded-t-3xl p-6">
                     <h3 className="text-lg font-bold mb-4 text-center">
-                      {currentLanguage === 'ko' ? '사진 추가' : currentLanguage === 'vi' ? 'Thêm ảnh' : 'Add Photo'}
+                      {currentLanguage === "ko"
+                        ? "사진 추가"
+                        : currentLanguage === "vi"
+                          ? "Thêm ảnh"
+                          : "Add Photo"}
                     </h3>
                     <div className="space-y-3">
                       <button
@@ -646,21 +740,33 @@ export default function EditPropertyPage() {
                         onClick={handleSelectFromLibrary}
                         className="w-full py-4 px-4 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors"
                       >
-                        {currentLanguage === 'ko' ? '사진첩에서 선택' : currentLanguage === 'vi' ? 'Chọn từ thư viện' : 'Select from Library'}
+                        {currentLanguage === "ko"
+                          ? "사진첩에서 선택"
+                          : currentLanguage === "vi"
+                            ? "Chọn từ thư viện"
+                            : "Select from Library"}
                       </button>
                       <button
                         type="button"
                         onClick={handleTakePhoto}
                         className="w-full py-4 px-4 bg-gray-200 text-gray-900 rounded-xl font-medium hover:bg-gray-300 transition-colors"
                       >
-                        {currentLanguage === 'ko' ? '카메라로 촬영' : currentLanguage === 'vi' ? 'Chụp ảnh' : 'Take Photo'}
+                        {currentLanguage === "ko"
+                          ? "카메라로 촬영"
+                          : currentLanguage === "vi"
+                            ? "Chụp ảnh"
+                            : "Take Photo"}
                       </button>
                       <button
                         type="button"
                         onClick={() => setShowImageSourceMenu(false)}
                         className="w-full py-4 px-4 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors"
                       >
-                        {currentLanguage === 'ko' ? '취소' : currentLanguage === 'vi' ? 'Hủy' : 'Cancel'}
+                        {currentLanguage === "ko"
+                          ? "취소"
+                          : currentLanguage === "vi"
+                            ? "Hủy"
+                            : "Cancel"}
                       </button>
                     </div>
                   </div>
@@ -674,14 +780,20 @@ export default function EditPropertyPage() {
                     <div className="flex-1 overflow-hidden flex flex-col">
                       <div className="p-4 border-b border-gray-800 flex items-center justify-between">
                         <h3 className="text-white font-semibold">
-                          {currentLanguage === 'ko' ? '사진 선택' : currentLanguage === 'vi' ? 'Chọn ảnh' : 'Select Photos'}
+                          {currentLanguage === "ko"
+                            ? "사진 선택"
+                            : currentLanguage === "vi"
+                              ? "Chọn ảnh"
+                              : "Select Photos"}
                         </h3>
                         <button
                           type="button"
                           onClick={() => {
                             setShowPhotoLibrary(false);
                             setPhotoLibraryFiles([]);
-                            photoLibraryPreviews.forEach(url => URL.revokeObjectURL(url));
+                            photoLibraryPreviews.forEach((url) =>
+                              URL.revokeObjectURL(url),
+                            );
                             setPhotoLibraryPreviews([]);
                             setSelectedLibraryIndices(new Set());
                           }}
@@ -694,20 +806,29 @@ export default function EditPropertyPage() {
                       <div className="flex-1 overflow-y-auto p-4">
                         <div className="grid grid-cols-3 gap-2">
                           {photoLibraryPreviews.map((preview, index) => {
-                            const isSelected = selectedLibraryIndices.has(index);
+                            const isSelected =
+                              selectedLibraryIndices.has(index);
                             return (
                               <div
                                 key={index}
                                 onClick={() => togglePhotoSelection(index)}
                                 className={`relative aspect-square rounded-lg overflow-hidden border-2 ${
-                                  isSelected ? 'border-blue-500' : 'border-transparent'
+                                  isSelected
+                                    ? "border-blue-500"
+                                    : "border-transparent"
                                 }`}
                               >
-                                <img src={preview} alt={`Photo ${index + 1}`} className="w-full h-full object-cover" />
+                                <img
+                                  src={preview}
+                                  alt={`Photo ${index + 1}`}
+                                  className="w-full h-full object-cover"
+                                />
                                 {isSelected && (
                                   <div className="absolute inset-0 bg-blue-500/30 flex items-center justify-center">
                                     <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                                      <span className="text-white text-sm font-bold">✓</span>
+                                      <span className="text-white text-sm font-bold">
+                                        ✓
+                                      </span>
                                     </div>
                                   </div>
                                 )}
@@ -734,11 +855,11 @@ export default function EditPropertyPage() {
                           disabled={selectedLibraryIndices.size === 0}
                           className="w-full py-3 px-4 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
-                          {currentLanguage === 'ko' 
+                          {currentLanguage === "ko"
                             ? `선택한 ${selectedLibraryIndices.size}장 추가`
-                            : currentLanguage === 'vi'
-                            ? `Thêm ${selectedLibraryIndices.size} ảnh đã chọn`
-                            : `Add ${selectedLibraryIndices.size} selected`}
+                            : currentLanguage === "vi"
+                              ? `Thêm ${selectedLibraryIndices.size} ảnh đã chọn`
+                              : `Add ${selectedLibraryIndices.size} selected`}
                         </button>
                       </div>
                     </div>
@@ -756,7 +877,11 @@ export default function EditPropertyPage() {
                       >
                         <ArrowLeft className="w-5 h-5" />
                         <span className="font-medium">
-                          {currentLanguage === 'ko' ? '사진첩' : currentLanguage === 'vi' ? 'Thư viện ảnh' : 'Library'}
+                          {currentLanguage === "ko"
+                            ? "사진첩"
+                            : currentLanguage === "vi"
+                              ? "Thư viện ảnh"
+                              : "Library"}
                         </span>
                       </button>
                       <button
@@ -775,12 +900,20 @@ export default function EditPropertyPage() {
             {/* 주소 입력 (자동완성) */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {currentLanguage === 'ko' ? '주소 입력 (자동완성)' : currentLanguage === 'vi' ? 'Nhập địa chỉ (Tự động hoàn thành)' : 'Enter Address (Autocomplete)'}
+                {currentLanguage === "ko"
+                  ? "주소 입력 (자동완성)"
+                  : currentLanguage === "vi"
+                    ? "Nhập địa chỉ (Tự động hoàn thành)"
+                    : "Enter Address (Autocomplete)"}
                 <span className="text-red-500 text-xs ml-1">*</span>
                 {coordinates && (
                   <span className="ml-2 text-green-600 text-xs flex items-center gap-1">
                     <MapPin className="w-3 h-3" />
-                    {currentLanguage === 'ko' ? '선택됨' : currentLanguage === 'vi' ? 'Đã chọn' : 'Selected'}
+                    {currentLanguage === "ko"
+                      ? "선택됨"
+                      : currentLanguage === "vi"
+                        ? "Đã chọn"
+                        : "Selected"}
                   </span>
                 )}
               </label>
@@ -798,37 +931,48 @@ export default function EditPropertyPage() {
                   onBlur={() => {
                     setTimeout(() => setShowSuggestions(false), 200);
                   }}
-                  placeholder={currentLanguage === 'ko' ? '주소를 입력하세요 (예: 41 hoang sa)' : currentLanguage === 'vi' ? 'Nhập địa chỉ (VD: 41 hoang sa)' : 'Enter address (e.g., 41 hoang sa)'}
+                  placeholder={
+                    currentLanguage === "ko"
+                      ? "주소를 입력하세요 (예: 41 hoang sa)"
+                      : currentLanguage === "vi"
+                        ? "Nhập địa chỉ (VD: 41 hoang sa)"
+                        : "Enter address (e.g., 41 hoang sa)"
+                  }
                   className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   required
                 />
-                
+
                 {/* 추천 주소 드롭다운 */}
                 {showSuggestions && addressSuggestions.length > 0 && (
                   <div className="absolute z-50 w-full mt-1 bg-white border-2 border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
-                      {addressSuggestions.map((suggestion, index) => (
-                        <button
-                          key={suggestion.PlaceId || index}
-                          type="button"
-                          onClick={() => handleSelectSuggestion(suggestion)}
-                          className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0"
-                        >
-                          <div className="flex items-start gap-2">
-                            <MapPin className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-900 truncate">
-                                {suggestion.Text}
-                              </p>
-                            </div>
+                    {addressSuggestions.map((suggestion, index) => (
+                      <button
+                        key={suggestion.PlaceId || index}
+                        type="button"
+                        onClick={() => handleSelectSuggestion(suggestion)}
+                        className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0"
+                      >
+                        <div className="flex items-start gap-2">
+                          <MapPin className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">
+                              {suggestion.Text}
+                            </p>
                           </div>
-                        </button>
-                      ))}
+                        </div>
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
               {apartmentName && (
                 <p className="mt-2 text-sm text-gray-600">
-                  {currentLanguage === 'ko' ? '아파트 이름' : currentLanguage === 'vi' ? 'Tên chung cư' : 'Apartment Name'}: {apartmentName}
+                  {currentLanguage === "ko"
+                    ? "아파트 이름"
+                    : currentLanguage === "vi"
+                      ? "Tên chung cư"
+                      : "Apartment Name"}
+                  : {apartmentName}
                 </p>
               )}
             </div>
@@ -839,50 +983,82 @@ export default function EditPropertyPage() {
             {/* 동호수 입력 */}
             <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
               <label className="block text-sm font-medium text-gray-700 mb-3">
-                {currentLanguage === 'ko' ? '동호수' : currentLanguage === 'vi' ? 'Số phòng' : 'Unit Number'}
+                {currentLanguage === "ko"
+                  ? "동호수"
+                  : currentLanguage === "vi"
+                    ? "Số phòng"
+                    : "Unit Number"}
               </label>
               <div className="grid grid-cols-2 gap-3 mb-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                    {currentLanguage === 'ko' ? '동' : currentLanguage === 'vi' ? 'Tòa' : 'Building'}
+                    {currentLanguage === "ko"
+                      ? "동"
+                      : currentLanguage === "vi"
+                        ? "Tòa"
+                        : "Building"}
                   </label>
                   <input
                     type="text"
                     value={buildingNumber}
                     onChange={(e) => setBuildingNumber(e.target.value)}
-                    placeholder={currentLanguage === 'ko' ? '예: A, 1' : currentLanguage === 'vi' ? 'VD: A, 1' : 'e.g., A, 1'}
+                    placeholder={
+                      currentLanguage === "ko"
+                        ? "예: A, 1"
+                        : currentLanguage === "vi"
+                          ? "VD: A, 1"
+                          : "e.g., A, 1"
+                    }
                     className="w-full px-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                    {currentLanguage === 'ko' ? '호실' : currentLanguage === 'vi' ? 'Phòng' : 'Room'}
+                    {currentLanguage === "ko"
+                      ? "호실"
+                      : currentLanguage === "vi"
+                        ? "Phòng"
+                        : "Room"}
                   </label>
                   <input
                     type="text"
                     value={roomNumber}
                     onChange={(e) => setRoomNumber(e.target.value)}
-                    placeholder={currentLanguage === 'ko' ? '예: 101, 201' : currentLanguage === 'vi' ? 'VD: 101, 201' : 'e.g., 101, 201'}
+                    placeholder={
+                      currentLanguage === "ko"
+                        ? "예: 101, 201"
+                        : currentLanguage === "vi"
+                          ? "VD: 101, 201"
+                          : "e.g., 101, 201"
+                    }
                     className="w-full px-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
                   />
                 </div>
               </div>
               <p className="text-xs text-gray-500">
-                {currentLanguage === 'ko' ? '동호수는 예약이 완료된 이후에 임차인에게만 표시됩니다.' : currentLanguage === 'vi' ? 'Số phòng chỉ hiển thị cho người thuê sau khi đặt chỗ hoàn tất.' : 'Unit number will only be displayed to tenants after booking is completed.'}
+                {currentLanguage === "ko"
+                  ? "동호수는 예약이 완료된 이후에 임차인에게만 표시됩니다."
+                  : currentLanguage === "vi"
+                    ? "Số phòng chỉ hiển thị cho người thuê sau khi đặt chỗ hoàn tất."
+                    : "Unit number will only be displayed to tenants after booking is completed."}
               </p>
             </div>
 
             {/* 임대 희망 날짜 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-3">
-                {currentLanguage === 'ko' ? '임대 희망 날짜' : currentLanguage === 'vi' ? 'Ngày cho thuê mong muốn' : 'Desired Rental Dates'}
+                {currentLanguage === "ko"
+                  ? "임대 희망 날짜"
+                  : currentLanguage === "vi"
+                    ? "Ngày cho thuê mong muốn"
+                    : "Desired Rental Dates"}
               </label>
               <div className="grid grid-cols-2 gap-3">
                 {/* 체크인 날짜 */}
                 <button
                   type="button"
                   onClick={() => {
-                    setCalendarMode('checkin');
+                    setCalendarMode("checkin");
                     setShowCalendar(true);
                   }}
                   className="flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border-2 border-gray-200"
@@ -891,30 +1067,59 @@ export default function EditPropertyPage() {
                     <Calendar className="w-4 h-4 text-gray-600" />
                     <div className="text-left">
                       <div className="text-xs text-gray-500">
-                        {currentLanguage === 'ko' ? '시작일' : currentLanguage === 'vi' ? 'Ngày bắt đầu' : 'Start Date'}
+                        {currentLanguage === "ko"
+                          ? "시작일"
+                          : currentLanguage === "vi"
+                            ? "Ngày bắt đầu"
+                            : "Start Date"}
                       </div>
                       <div className="text-sm font-medium text-gray-900">
-                        {checkInDate ? (() => {
-                          try {
-                            let date: Date;
-                            if (checkInDate instanceof Date) {
-                              date = checkInDate;
-                            } else if (typeof checkInDate === 'string') {
-                              date = new Date(checkInDate);
-                            } else {
-                              return currentLanguage === 'ko' ? '날짜 선택' : currentLanguage === 'vi' ? 'Chọn ngày' : 'Select date';
-                            }
-                            if (isNaN(date.getTime())) {
-                              return currentLanguage === 'ko' ? '날짜 선택' : currentLanguage === 'vi' ? 'Chọn ngày' : 'Select date';
-                            }
-                            return date.toLocaleDateString(currentLanguage === 'ko' ? 'ko-KR' : currentLanguage === 'vi' ? 'vi-VN' : 'en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                            });
-                          } catch {
-                            return currentLanguage === 'ko' ? '날짜 선택' : currentLanguage === 'vi' ? 'Chọn ngày' : 'Select date';
-                          }
-                        })() : (currentLanguage === 'ko' ? '날짜 선택' : currentLanguage === 'vi' ? 'Chọn ngày' : 'Select date')}
+                        {checkInDate
+                          ? (() => {
+                              try {
+                                let date: Date;
+                                if (checkInDate instanceof Date) {
+                                  date = checkInDate;
+                                } else if (typeof checkInDate === "string") {
+                                  date = new Date(checkInDate);
+                                } else {
+                                  return currentLanguage === "ko"
+                                    ? "날짜 선택"
+                                    : currentLanguage === "vi"
+                                      ? "Chọn ngày"
+                                      : "Select date";
+                                }
+                                if (isNaN(date.getTime())) {
+                                  return currentLanguage === "ko"
+                                    ? "날짜 선택"
+                                    : currentLanguage === "vi"
+                                      ? "Chọn ngày"
+                                      : "Select date";
+                                }
+                                return date.toLocaleDateString(
+                                  currentLanguage === "ko"
+                                    ? "ko-KR"
+                                    : currentLanguage === "vi"
+                                      ? "vi-VN"
+                                      : "en-US",
+                                  {
+                                    month: "short",
+                                    day: "numeric",
+                                  },
+                                );
+                              } catch {
+                                return currentLanguage === "ko"
+                                  ? "날짜 선택"
+                                  : currentLanguage === "vi"
+                                    ? "Chọn ngày"
+                                    : "Select date";
+                              }
+                            })()
+                          : currentLanguage === "ko"
+                            ? "날짜 선택"
+                            : currentLanguage === "vi"
+                              ? "Chọn ngày"
+                              : "Select date"}
                       </div>
                     </div>
                   </div>
@@ -924,7 +1129,7 @@ export default function EditPropertyPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    setCalendarMode('checkout');
+                    setCalendarMode("checkout");
                     setShowCalendar(true);
                   }}
                   className="flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border-2 border-gray-200"
@@ -933,33 +1138,62 @@ export default function EditPropertyPage() {
                     <Calendar className="w-4 h-4 text-gray-600" />
                     <div className="text-left">
                       <div className="text-xs text-gray-500">
-                        {currentLanguage === 'ko' ? '종료일' : currentLanguage === 'vi' ? 'Ngày kết thúc' : 'End Date'}
+                        {currentLanguage === "ko"
+                          ? "종료일"
+                          : currentLanguage === "vi"
+                            ? "Ngày kết thúc"
+                            : "End Date"}
                       </div>
                       <div className="text-sm font-medium text-gray-900">
-                        {checkOutDate ? (() => {
-                          try {
-                            let date: Date | null = null;
-                            if (checkOutDate instanceof Date) {
-                              date = checkOutDate;
-                            } else if (typeof checkOutDate === 'string') {
-                              date = new Date(checkOutDate);
-                            }
-                            if (!date || isNaN(date.getTime())) {
-                              return currentLanguage === 'ko' ? '날짜 선택' : currentLanguage === 'vi' ? 'Chọn ngày' : 'Select date';
-                            }
-                            const month = date.getMonth() + 1;
-                            const day = date.getDate();
-                            if (isNaN(month) || isNaN(day)) {
-                              return currentLanguage === 'ko' ? '날짜 선택' : currentLanguage === 'vi' ? 'Chọn ngày' : 'Select date';
-                            }
-                            return date.toLocaleDateString(currentLanguage === 'ko' ? 'ko-KR' : currentLanguage === 'vi' ? 'vi-VN' : 'en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                            });
-                          } catch {
-                            return currentLanguage === 'ko' ? '날짜 선택' : currentLanguage === 'vi' ? 'Chọn ngày' : 'Select date';
-                          }
-                        })() : (currentLanguage === 'ko' ? '날짜 선택' : currentLanguage === 'vi' ? 'Chọn ngày' : 'Select date')}
+                        {checkOutDate
+                          ? (() => {
+                              try {
+                                let date: Date | null = null;
+                                if (checkOutDate instanceof Date) {
+                                  date = checkOutDate;
+                                } else if (typeof checkOutDate === "string") {
+                                  date = new Date(checkOutDate);
+                                }
+                                if (!date || isNaN(date.getTime())) {
+                                  return currentLanguage === "ko"
+                                    ? "날짜 선택"
+                                    : currentLanguage === "vi"
+                                      ? "Chọn ngày"
+                                      : "Select date";
+                                }
+                                const month = date.getMonth() + 1;
+                                const day = date.getDate();
+                                if (isNaN(month) || isNaN(day)) {
+                                  return currentLanguage === "ko"
+                                    ? "날짜 선택"
+                                    : currentLanguage === "vi"
+                                      ? "Chọn ngày"
+                                      : "Select date";
+                                }
+                                return date.toLocaleDateString(
+                                  currentLanguage === "ko"
+                                    ? "ko-KR"
+                                    : currentLanguage === "vi"
+                                      ? "vi-VN"
+                                      : "en-US",
+                                  {
+                                    month: "short",
+                                    day: "numeric",
+                                  },
+                                );
+                              } catch {
+                                return currentLanguage === "ko"
+                                  ? "날짜 선택"
+                                  : currentLanguage === "vi"
+                                    ? "Chọn ngày"
+                                    : "Select date";
+                              }
+                            })()
+                          : currentLanguage === "ko"
+                            ? "날짜 선택"
+                            : currentLanguage === "vi"
+                              ? "Chọn ngày"
+                              : "Select date"}
                       </div>
                     </div>
                   </div>
@@ -970,15 +1204,26 @@ export default function EditPropertyPage() {
             {/* 1주일 임대료 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {currentLanguage === 'ko' ? '1주일 임대료' : currentLanguage === 'vi' ? 'Giá thuê 1 tuần' : 'Weekly Rent'}
+                {currentLanguage === "ko"
+                  ? "1주일 임대료"
+                  : currentLanguage === "vi"
+                    ? "Giá thuê 1 tuần"
+                    : "Weekly Rent"}
                 <span className="text-red-500 text-xs ml-1">*</span>
               </label>
               <div className="flex items-center gap-2">
                 <input
                   type="text"
-                  value={weeklyRent ? parseInt(weeklyRent.replace(/\D/g, '') || '0', 10).toLocaleString() : ''}
+                  value={
+                    weeklyRent
+                      ? parseInt(
+                          weeklyRent.replace(/\D/g, "") || "0",
+                          10,
+                        ).toLocaleString()
+                      : ""
+                  }
                   onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, '');
+                    const value = e.target.value.replace(/\D/g, "");
                     setWeeklyRent(value);
                   }}
                   placeholder="0"
@@ -988,14 +1233,22 @@ export default function EditPropertyPage() {
                 <span className="text-gray-600 font-medium">VND</span>
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                {currentLanguage === 'ko' ? '공과금/관리비 포함' : currentLanguage === 'vi' ? 'Bao gồm tiện ích/phí quản lý' : 'Utilities/Management fees included'}
+                {currentLanguage === "ko"
+                  ? "공과금/관리비 포함"
+                  : currentLanguage === "vi"
+                    ? "Bao gồm tiện ích/phí quản lý"
+                    : "Utilities/Management fees included"}
               </p>
             </div>
 
             {/* 방/화장실 수 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-3">
-                {currentLanguage === 'ko' ? '방/화장실 수' : currentLanguage === 'vi' ? 'Số phòng/phòng tắm' : 'Bedrooms/Bathrooms'}
+                {currentLanguage === "ko"
+                  ? "방/화장실 수"
+                  : currentLanguage === "vi"
+                    ? "Số phòng/phòng tắm"
+                    : "Bedrooms/Bathrooms"}
               </label>
               <div className="grid grid-cols-2 gap-3">
                 {/* 침실 */}
@@ -1004,9 +1257,15 @@ export default function EditPropertyPage() {
                     <Bed className="w-4 h-4 text-gray-600" />
                     <div>
                       <div className="text-xs text-gray-500">
-                        {currentLanguage === 'ko' ? '침실' : currentLanguage === 'vi' ? 'Phòng ngủ' : 'Bedrooms'}
+                        {currentLanguage === "ko"
+                          ? "침실"
+                          : currentLanguage === "vi"
+                            ? "Phòng ngủ"
+                            : "Bedrooms"}
                       </div>
-                      <div className="text-sm font-medium text-gray-900">{bedrooms}</div>
+                      <div className="text-sm font-medium text-gray-900">
+                        {bedrooms}
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1033,9 +1292,15 @@ export default function EditPropertyPage() {
                     <Bath className="w-4 h-4 text-gray-600" />
                     <div>
                       <div className="text-xs text-gray-500">
-                        {currentLanguage === 'ko' ? '화장실' : currentLanguage === 'vi' ? 'Phòng tắm' : 'Bathrooms'}
+                        {currentLanguage === "ko"
+                          ? "화장실"
+                          : currentLanguage === "vi"
+                            ? "Phòng tắm"
+                            : "Bathrooms"}
                       </div>
-                      <div className="text-sm font-medium text-gray-900">{bathrooms}</div>
+                      <div className="text-sm font-medium text-gray-900">
+                        {bathrooms}
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1061,14 +1326,19 @@ export default function EditPropertyPage() {
             {/* 편의시설 옵션 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-3">
-                {currentLanguage === 'ko' ? '편의시설' : currentLanguage === 'vi' ? 'Tiện ích' : 'Amenities'}
+                {currentLanguage === "ko"
+                  ? "편의시설"
+                  : currentLanguage === "vi"
+                    ? "Tiện ích"
+                    : "Amenities"}
               </label>
               <div className="grid grid-cols-3 gap-3">
                 {AMENITY_OPTIONS.map((amenity) => {
                   const Icon = amenity.icon;
                   const isSelected = selectedAmenities.includes(amenity.id);
-                  const langKey = currentLanguage as 'ko' | 'vi' | 'en';
-                  const label = (amenity.label as any)[langKey] || amenity.label.en;
+                  const langKey = currentLanguage as "ko" | "vi" | "en";
+                  const label =
+                    (amenity.label as any)[langKey] || amenity.label.en;
 
                   return (
                     <button
@@ -1077,12 +1347,16 @@ export default function EditPropertyPage() {
                       onClick={() => toggleAmenity(amenity.id)}
                       className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all ${
                         isSelected
-                          ? 'border-blue-500 bg-blue-50 text-blue-700'
-                          : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                          ? "border-blue-500 bg-blue-50 text-blue-700"
+                          : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
                       }`}
                     >
-                      <Icon className={`w-6 h-6 ${isSelected ? 'text-blue-600' : 'text-gray-400'}`} />
-                      <span className="text-xs font-medium text-center">{label}</span>
+                      <Icon
+                        className={`w-6 h-6 ${isSelected ? "text-blue-600" : "text-gray-400"}`}
+                      />
+                      <span className="text-xs font-medium text-center">
+                        {label}
+                      </span>
                     </button>
                   );
                 })}
@@ -1092,7 +1366,11 @@ export default function EditPropertyPage() {
             {/* 최대 인원 수 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-3">
-                {currentLanguage === 'ko' ? '최대 인원 수' : currentLanguage === 'vi' ? 'Số người tối đa' : 'Maximum Guests'}
+                {currentLanguage === "ko"
+                  ? "최대 인원 수"
+                  : currentLanguage === "vi"
+                    ? "Số người tối đa"
+                    : "Maximum Guests"}
               </label>
               <div className="grid grid-cols-2 gap-3">
                 {/* 성인 */}
@@ -1101,9 +1379,15 @@ export default function EditPropertyPage() {
                     <Users className="w-4 h-4 text-gray-600" />
                     <div>
                       <div className="text-xs text-gray-500">
-                        {currentLanguage === 'ko' ? '성인' : currentLanguage === 'vi' ? 'Người lớn' : 'Adults'}
+                        {currentLanguage === "ko"
+                          ? "성인"
+                          : currentLanguage === "vi"
+                            ? "Người lớn"
+                            : "Adults"}
                       </div>
-                      <div className="text-sm font-medium text-gray-900">{maxAdults}</div>
+                      <div className="text-sm font-medium text-gray-900">
+                        {maxAdults}
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1130,15 +1414,23 @@ export default function EditPropertyPage() {
                     <Users className="w-4 h-4 text-gray-600" />
                     <div>
                       <div className="text-xs text-gray-500">
-                        {currentLanguage === 'ko' ? '어린이' : currentLanguage === 'vi' ? 'Trẻ em' : 'Children'}
+                        {currentLanguage === "ko"
+                          ? "어린이"
+                          : currentLanguage === "vi"
+                            ? "Trẻ em"
+                            : "Children"}
                       </div>
-                      <div className="text-sm font-medium text-gray-900">{maxChildren}</div>
+                      <div className="text-sm font-medium text-gray-900">
+                        {maxChildren}
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => setMaxChildren(Math.max(0, maxChildren - 1))}
+                      onClick={() =>
+                        setMaxChildren(Math.max(0, maxChildren - 1))
+                      }
                       className="p-1 hover:bg-gray-100 rounded-full transition-colors"
                     >
                       <ChevronLeft className="w-4 h-4 text-gray-600" />
@@ -1158,27 +1450,46 @@ export default function EditPropertyPage() {
             {/* 수정완료/재등록 버튼 */}
             <button
               type="submit"
-              disabled={loading || !coordinates || imagePreviews.length === 0 || !weeklyRent}
+              disabled={
+                loading ||
+                !coordinates ||
+                imagePreviews.length === 0 ||
+                !weeklyRent
+              }
               className="w-full py-4 px-6 bg-blue-600 text-white rounded-xl font-semibold text-base hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center justify-center gap-2"
             >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    <span>
-                      {isDeleted 
-                        ? (currentLanguage === 'ko' ? '재등록 중...' : currentLanguage === 'vi' ? 'Đang đăng lại...' : 'Re-registering...')
-                        : (currentLanguage === 'ko' ? '수정 중...' : currentLanguage === 'vi' ? 'Đang cập nhật...' : 'Updating...')
-                      }
-                    </span>
-                  </>
-                ) : (
+              {loading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
                   <span>
-                    {isDeleted 
-                      ? (currentLanguage === 'ko' ? '재등록' : currentLanguage === 'vi' ? 'Đăng lại' : 'Re-register')
-                      : (currentLanguage === 'ko' ? '수정완료' : currentLanguage === 'vi' ? 'Hoàn thành' : 'Update Complete')
-                    }
+                    {isDeleted
+                      ? currentLanguage === "ko"
+                        ? "재등록 중..."
+                        : currentLanguage === "vi"
+                          ? "Đang đăng lại..."
+                          : "Re-registering..."
+                      : currentLanguage === "ko"
+                        ? "수정 중..."
+                        : currentLanguage === "vi"
+                          ? "Đang cập nhật..."
+                          : "Updating..."}
                   </span>
-                )}
+                </>
+              ) : (
+                <span>
+                  {isDeleted
+                    ? currentLanguage === "ko"
+                      ? "재등록"
+                      : currentLanguage === "vi"
+                        ? "Đăng lại"
+                        : "Re-register"
+                    : currentLanguage === "ko"
+                      ? "수정완료"
+                      : currentLanguage === "vi"
+                        ? "Hoàn thành"
+                        : "Update Complete"}
+                </span>
+              )}
             </button>
           </form>
         </div>
@@ -1192,25 +1503,29 @@ export default function EditPropertyPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-bold text-gray-900 mb-2">
-              {currentLanguage === 'ko' ? '매물 영구 삭제' : 
-               currentLanguage === 'vi' ? 'Xóa vĩnh viễn bất động sản' : 
-               'Permanently Delete Property'}
+              {currentLanguage === "ko"
+                ? "매물 영구 삭제"
+                : currentLanguage === "vi"
+                  ? "Xóa vĩnh viễn bất động sản"
+                  : "Permanently Delete Property"}
             </h3>
             <p className="text-gray-600 mb-6">
-              {currentLanguage === 'ko' 
-                ? '이 매물을 영구적으로 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.'
-                : currentLanguage === 'vi'
-                ? 'Bạn có chắc chắn muốn xóa vĩnh viễn bất động sản này? Hành động này không thể hoàn tác.'
-                : 'Are you sure you want to permanently delete this property? This action cannot be undone.'}
+              {currentLanguage === "ko"
+                ? "이 매물을 영구적으로 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."
+                : currentLanguage === "vi"
+                  ? "Bạn có chắc chắn muốn xóa vĩnh viễn bất động sản này? Hành động này không thể hoàn tác."
+                  : "Are you sure you want to permanently delete this property? This action cannot be undone."}
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowPermanentDeleteConfirm(false)}
                 className="flex-1 py-2 px-4 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
               >
-                {currentLanguage === 'ko' ? '취소' : 
-                 currentLanguage === 'vi' ? 'Hủy' : 
-                 'Cancel'}
+                {currentLanguage === "ko"
+                  ? "취소"
+                  : currentLanguage === "vi"
+                    ? "Hủy"
+                    : "Cancel"}
               </button>
               <button
                 onClick={async () => {
@@ -1218,18 +1533,22 @@ export default function EditPropertyPage() {
                     setLoading(true);
                     // 삭제 기록에 사용자 ID 포함
                     await permanentlyDeleteProperty(propertyId, user?.uid);
-                    alert(currentLanguage === 'ko' 
-                      ? '매물이 영구적으로 삭제되었습니다.'
-                      : currentLanguage === 'vi'
-                      ? 'Bất động sản đã được xóa vĩnh viễn.'
-                      : 'Property has been permanently deleted.');
-                    router.replace('/profile/my-properties');
+                    alert(
+                      currentLanguage === "ko"
+                        ? "매물이 영구적으로 삭제되었습니다."
+                        : currentLanguage === "vi"
+                          ? "Bất động sản đã được xóa vĩnh viễn."
+                          : "Property has been permanently deleted.",
+                    );
+                    router.replace("/profile/my-properties");
                   } catch (error) {
-                    alert(currentLanguage === 'ko' 
-                      ? '매물 영구 삭제 중 오류가 발생했습니다.'
-                      : currentLanguage === 'vi'
-                      ? 'Đã xảy ra lỗi khi xóa vĩnh viễn bất động sản.'
-                      : 'An error occurred while permanently deleting the property.');
+                    alert(
+                      currentLanguage === "ko"
+                        ? "매물 영구 삭제 중 오류가 발생했습니다."
+                        : currentLanguage === "vi"
+                          ? "Đã xảy ra lỗi khi xóa vĩnh viễn bất động sản."
+                          : "An error occurred while permanently deleting the property.",
+                    );
                   } finally {
                     setLoading(false);
                     setShowPermanentDeleteConfirm(false);
@@ -1239,12 +1558,16 @@ export default function EditPropertyPage() {
                 className="flex-1 py-2 px-4 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading
-                  ? (currentLanguage === 'ko' ? '삭제 중...' : 
-                     currentLanguage === 'vi' ? 'Đang xóa...' : 
-                     'Deleting...')
-                  : (currentLanguage === 'ko' ? '영구 삭제' : 
-                     currentLanguage === 'vi' ? 'Xóa vĩnh viễn' : 
-                     'Permanently Delete')}
+                  ? currentLanguage === "ko"
+                    ? "삭제 중..."
+                    : currentLanguage === "vi"
+                      ? "Đang xóa..."
+                      : "Deleting..."
+                  : currentLanguage === "ko"
+                    ? "영구 삭제"
+                    : currentLanguage === "vi"
+                      ? "Xóa vĩnh viễn"
+                      : "Permanently Delete"}
               </button>
             </div>
           </div>
@@ -1253,7 +1576,7 @@ export default function EditPropertyPage() {
 
       {/* 달력 모달 */}
       {showCalendar && (
-        <div 
+        <div
           className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
           onClick={() => setShowCalendar(false)}
         >
@@ -1264,14 +1587,14 @@ export default function EditPropertyPage() {
               onCheckInSelect={(date) => {
                 setCheckInDate(date);
                 setCheckOutDate(null);
-                setCalendarMode('checkout');
+                setCalendarMode("checkout");
                 setShowCalendar(true);
               }}
               onCheckOutSelect={(date) => {
                 setCheckOutDate(date);
                 setShowCalendar(false);
               }}
-              currentLanguage={currentLanguage as 'ko' | 'vi' | 'en'}
+              currentLanguage={currentLanguage as "ko" | "vi" | "en"}
               onClose={() => setShowCalendar(false)}
               mode={calendarMode}
               bookedRanges={bookedRanges}
