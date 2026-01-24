@@ -12,10 +12,12 @@ frontend:
         # Next.js 빌드 실행
         - npm run build
   artifacts:
-    # 경로를 .next 폴더 전체로 지정하여 모든 라우팅 파일을 포함시킴
-    baseDirectory: frontend/.next
+    baseDirectory: frontend
     files:
-      - '**/*'
+      - '.next/**/*'
+      - 'public/**/*'
+      - 'package.json'
+      - 'node_modules/**/*'
   cache:
     paths:
       - frontend/node_modules/**/*
