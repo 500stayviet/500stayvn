@@ -1,22 +1,21 @@
 version: 1
-applications:
-  - frontend: frontend
-    appRoot: frontend
-    phases:
-      preBuild:
-        commands:
-          - nvm install 20
-          - nvm use 20
-          - npm ci
-      build:
-        commands:
-          - npx prisma generate
-          - npm run build
-    artifacts: # 👈 이 줄의 들여쓰기가 매우 중요합니다.
-      baseDirectory: .next
-      files:
-        - '**/*'
-    cache:
-      paths:
-        - node_modules/**/*
-        - .next/cache/**/*
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - nvm install 20
+        - nvm use 20
+        - cd frontend
+        - npm ci
+    build:
+      commands:
+        - npx prisma generate
+        - npm run build
+  artifacts:
+    baseDirectory: frontend/.next
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - frontend/node_modules/**/*
+      - frontend/.next/cache/**/*
