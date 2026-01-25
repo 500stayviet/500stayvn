@@ -34,37 +34,50 @@ import BookingDetailsModal from "@/components/BookingDetailsModal";
 import Image from "next/image";
 import { SupportedLanguage } from "@/lib/api/translation";
 
+// 새로운 상태별 색상 (Tailwind CSS 기준)
 const STATUS_COLORS = {
-  pending: "bg-yellow-100 text-yellow-700",
-  confirmed: "bg-green-100 text-green-700",
-  cancelled: "bg-red-100 text-red-700",
-  completed: "bg-gray-100 text-gray-700",
+  // 활성 예약 그룹
+  pending: "bg-yellow-100 text-yellow-800 border border-yellow-300", // 예약 요청
+  confirmed: "bg-green-100 text-green-800 border border-green-300", // 예약 확정
+  
+  // 종료 내역 그룹
+  cancelled_before: "bg-gray-100 text-gray-700 border border-gray-300", // 요청 취소 (승인 전)
+  cancelled_after: "bg-red-100 text-red-800 border border-red-300", // 예약 취소 (확정 후)
+  completed: "bg-gray-100 text-gray-700 border border-gray-300",
 };
 
+// 새로운 상태 라벨 (다국어 지원)
 const STATUS_LABELS: Record<
-  "pending" | "confirmed" | "cancelled" | "completed",
+  "pending" | "confirmed" | "cancelled_before" | "cancelled_after" | "completed",
   Record<SupportedLanguage, string>
 > = {
   pending: {
-    ko: "승인 대기 중",
-    vi: "Chờ duyệt",
-    en: "Pending",
-    ja: "承認待ち",
-    zh: "待批准",
+    ko: "예약 요청",
+    vi: "Yêu cầu đặt phòng",
+    en: "Booking Request",
+    ja: "予約リクエスト",
+    zh: "预订请求",
   },
   confirmed: {
-    ko: "확정됨",
-    vi: "Đã xác nhận",
-    en: "Confirmed",
-    ja: "確定済み",
-    zh: "已确认",
+    ko: "예약 확정",
+    vi: "Đặt phòng đã xác nhận",
+    en: "Booking Confirmed",
+    ja: "予約確定",
+    zh: "预订确认",
   },
-  cancelled: {
-    ko: "취소됨",
-    vi: "Đã hủy",
-    en: "Cancelled",
-    ja: "キャンセル済み",
-    zh: "已取消",
+  cancelled_before: {
+    ko: "요청 취소",
+    vi: "Yêu cầu đã hủy",
+    en: "Request Cancelled",
+    ja: "リクエストキャンセル",
+    zh: "请求取消",
+  },
+  cancelled_after: {
+    ko: "예약 취소",
+    vi: "Đặt phòng đã hủy",
+    en: "Booking Cancelled",
+    ja: "予約キャンセル",
+    zh: "预订取消",
   },
   completed: {
     ko: "완료됨",
@@ -73,6 +86,12 @@ const STATUS_LABELS: Record<
     ja: "完了済み",
     zh: "已完成",
   },
+};
+
+// 취소 유형 판단 함수
+const getCancellationType = (booking: BookingData): "cancelled_before" | "cancelled_after" => {
+  // confirmedAt 필드가 있으면 확정 후 취소, 없으면 승인 전 취소
+  return booking.confirmedAt ? "cancelled_after" : "cancelled_before";
 };
 
 // 1. 실제 로직이 담긴 컴포넌트 (BookingsContent)
@@ -97,22 +116,16 @@ function BookingsContent() {
 
   const tabParam = searchParams.get("tab");
   const initialFilter =
-    tabParam === "pending" ||
-    tabParam === "confirmed" ||
-    tabParam === "cancelled"
+    tabParam === "active" || tabParam === "closed"
       ? tabParam
-      : "pending";
-  const [filter, setFilter] = useState<"pending" | "confirmed" | "cancelled">(
+      : "active";
+  const [filter, setFilter] = useState<"active" | "closed">(
     initialFilter,
   );
 
   useEffect(() => {
     const newTab = searchParams.get("tab");
-    if (
-      newTab === "pending" ||
-      newTab === "confirmed" ||
-      newTab === "cancelled"
-    ) {
+    if (newTab === "active" || newTab === "closed") {
       setFilter(newTab);
     }
   }, [searchParams]);
@@ -184,7 +197,15 @@ function BookingsContent() {
     };
   }, [user, bookings]);
 
-  const filteredBookings = bookings.filter((b) => b.status === filter);
+  // 활성 예약: pending + confirmed 상태
+  const activeBookings = bookings.filter((b) => 
+    b.status === "pending" || b.status === "confirmed"
+  );
+  
+  // 종료 내역: cancelled 상태
+  const closedBookings = bookings.filter((b) => b.status === "cancelled");
+  
+  const filteredBookings = filter === "active" ? activeBookings : closedBookings;
   const formatDateTime = (dateStr: string) => {
     const date = new Date(dateStr);
     return `${date.getDate().toString().padStart(2, "0")}/${(date.getMonth() + 1).toString().padStart(2, "0")}/${date.getFullYear()} ${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
@@ -361,69 +382,113 @@ function BookingsContent() {
         </div>
 
         <div className="px-4 py-3 border-b border-gray-200 flex gap-2">
-          {["pending", "confirmed", "cancelled"].map((t) => (
+          {[
+            { id: "active", labelKey: "activeBookings" as const },
+            { id: "closed", labelKey: "closedHistory" as const }
+          ].map((tab) => (
             <button
-              key={t}
-              onClick={() => setFilter(t as any)}
-              className={`px-3 py-2 rounded-full text-sm font-medium ${filter === t ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600"}`}
+              key={tab.id}
+              onClick={() => setFilter(tab.id as "active" | "closed")}
+              className={`px-3 py-2 rounded-full text-sm font-medium ${filter === tab.id ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600"}`}
             >
-              {
-                (STATUS_LABELS[t as keyof typeof STATUS_LABELS] as any)[
-                  currentLanguage
-                ]
+              {tab.id === "active" 
+                ? (currentLanguage === "ko" ? "활성 예약" : 
+                   currentLanguage === "vi" ? "Đặt phòng đang hoạt động" :
+                   currentLanguage === "en" ? "Active Bookings" :
+                   currentLanguage === "ja" ? "アクティブな予約" : "活跃预订")
+                : (currentLanguage === "ko" ? "종료 내역" :
+                   currentLanguage === "vi" ? "Lịch sử đã đóng" :
+                   currentLanguage === "en" ? "Closed History" :
+                   currentLanguage === "ja" ? "終了済み履歴" : "已结束记录")
               }
             </button>
           ))}
         </div>
 
         <div className="p-4 space-y-4">
-          {filteredBookings.map((booking) => (
-            <div
-              key={booking.id}
-              className="bg-white border rounded-xl p-4 shadow-sm"
-              onClick={() => setSelectedBookingForDetails(booking)}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <span
-                  className={`text-xs font-medium px-2 py-1 rounded-full ${STATUS_COLORS[booking.status]}`}
-                >
-                  {(STATUS_LABELS[booking.status] as any)[currentLanguage]}
-                </span>
-              </div>
-              <p className="font-semibold truncate">
-                {booking.propertyAddress || booking.propertyTitle}
-              </p>
-              <p className="text-xs text-gray-500">
-                {formatDate(booking.checkInDate)} -{" "}
-                {formatDate(booking.checkOutDate)}
-              </p>
-              <div className="mt-4 flex gap-2">
-                {booking.status === "pending" && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleConfirm(booking.id!);
-                    }}
-                    className="flex-1 py-2 bg-green-600 text-white rounded-lg text-xs font-bold"
+          {filteredBookings.map((booking) => {
+            // 상태별 배지 정보 결정
+            let statusColorClass = "";
+            let statusLabel = "";
+            
+            if (booking.status === "pending") {
+              statusColorClass = STATUS_COLORS.pending;
+              statusLabel = STATUS_LABELS.pending[currentLanguage];
+            } else if (booking.status === "confirmed") {
+              statusColorClass = STATUS_COLORS.confirmed;
+              statusLabel = STATUS_LABELS.confirmed[currentLanguage];
+            } else if (booking.status === "cancelled") {
+              const cancellationType = getCancellationType(booking);
+              statusColorClass = STATUS_COLORS[cancellationType];
+              statusLabel = STATUS_LABELS[cancellationType][currentLanguage];
+            } else if (booking.status === "completed") {
+              statusColorClass = STATUS_COLORS.completed;
+              statusLabel = STATUS_LABELS.completed[currentLanguage];
+            } else {
+              statusColorClass = "bg-gray-100 text-gray-700";
+              statusLabel = booking.status;
+            }
+            
+            return (
+              <div
+                key={booking.id}
+                className="bg-white border rounded-xl p-4 shadow-sm"
+                onClick={() => setSelectedBookingForDetails(booking)}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span
+                    className={`text-xs font-medium px-2 py-1 rounded-full ${statusColorClass}`}
                   >
-                    승인
-                  </button>
-                )}
-                {(booking.status === "confirmed" ||
-                  booking.status === "completed") && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleChat(booking);
-                    }}
-                    className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold"
-                  >
-                    대화하기
-                  </button>
-                )}
+                    {statusLabel}
+                  </span>
+                </div>
+                <p className="font-semibold truncate">
+                  {booking.propertyAddress || booking.propertyTitle}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {formatDate(booking.checkInDate)} -{" "}
+                  {formatDate(booking.checkOutDate)}
+                </p>
+                <div className="mt-4 flex gap-2">
+                  {booking.status === "pending" && (
+                    <>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleConfirm(booking.id!);
+                        }}
+                        className="flex-1 py-2 bg-green-600 text-white rounded-lg text-xs font-bold"
+                      >
+                        승인
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedBookingForCancel(booking);
+                          setShowCancelModal(true);
+                        }}
+                        className="flex-1 py-2 bg-red-600 text-white rounded-lg text-xs font-bold"
+                      >
+                        취소
+                      </button>
+                    </>
+                  )}
+                  {(booking.status === "confirmed" ||
+                    booking.status === "completed") && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleChat(booking);
+                      }}
+                      className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold"
+                    >
+                      대화하기
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
         {showCancelModal && selectedBookingForCancel && (
           <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4">

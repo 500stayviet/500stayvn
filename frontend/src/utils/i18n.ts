@@ -152,7 +152,16 @@ export type UITextKey =
   | 'nowOwnerDesc'
   | 'profileImageUpdated'
   | 'uploadFailed'
-  | 'notRegistered';
+  | 'notRegistered'
+  | 'chat'
+  | 'cancellation'
+  | 'agreeCancellationPolicy'
+  | 'activeBookings'
+  | 'closedHistory'
+  | 'bookingRequest'
+  | 'bookingConfirmed'
+  | 'requestCancelled'
+  | 'bookingCancelled';
 
 /**
  * 언어별 UI 텍스트 사전
@@ -301,6 +310,15 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     profileImageUpdated: '프로필 사진이 변경되었습니다.',
     uploadFailed: '업로드 실패',
     notRegistered: '등록되지 않음',
+    chat: '채팅',
+    cancellation: '취소',
+    agreeCancellationPolicy: '취소 정책에 동의합니다',
+    activeBookings: '활성 예약',
+    closedHistory: '종료 내역',
+    bookingRequest: '예약 요청',
+    bookingConfirmed: '예약 확정',
+    requestCancelled: '요청 취소',
+    bookingCancelled: '예약 취소',
   },
   vi: {
     login: 'Đăng nhập',
@@ -445,6 +463,15 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     profileImageUpdated: 'Ảnh đại diện đã được thay đổi.',
     uploadFailed: 'Tải lên thất bại',
     notRegistered: 'Chưa đăng ký',
+    chat: 'Trò chuyện',
+    cancellation: 'Hủy bỏ',
+    agreeCancellationPolicy: 'Tôi đồng ý với chính sách hủy',
+    activeBookings: 'Đặt phòng đang hoạt động',
+    closedHistory: 'Lịch sử đã đóng',
+    bookingRequest: 'Yêu cầu đặt phòng',
+    bookingConfirmed: 'Đặt phòng đã xác nhận',
+    requestCancelled: 'Yêu cầu đã hủy',
+    bookingCancelled: 'Đặt phòng đã hủy',
   },
   en: {
     login: 'Login',
@@ -589,6 +616,15 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     profileImageUpdated: 'Profile picture updated.',
     uploadFailed: 'Upload failed',
     notRegistered: 'Not registered',
+    chat: 'Chat',
+    cancellation: 'Cancellation',
+    agreeCancellationPolicy: 'I agree to the cancellation policy',
+    activeBookings: 'Active Bookings',
+    closedHistory: 'Closed History',
+    bookingRequest: 'Booking Request',
+    bookingConfirmed: 'Booking Confirmed',
+    requestCancelled: 'Request Cancelled',
+    bookingCancelled: 'Booking Cancelled',
   },
   ja: {
     login: 'ログイン',
@@ -733,6 +769,15 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     profileImageUpdated: 'プロフィール写真が更新されました。',
     uploadFailed: 'アップロードに失敗しました',
     notRegistered: '未登録',
+    chat: 'チャット',
+    cancellation: 'キャンセル',
+    agreeCancellationPolicy: 'キャンセルポリシーに同意します',
+    activeBookings: 'アクティブな予約',
+    closedHistory: '終了済み履歴',
+    bookingRequest: '予約リクエスト',
+    bookingConfirmed: '予約確定',
+    requestCancelled: 'リクエストキャンセル',
+    bookingCancelled: '予約キャンセル',
   },
   zh: {
     login: '登录',
@@ -877,6 +922,15 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     profileImageUpdated: '个人资料照片已更新。',
     uploadFailed: '上传失败',
     notRegistered: '未注册',
+    chat: '聊天',
+    cancellation: '取消',
+    agreeCancellationPolicy: '我同意取消政策',
+    activeBookings: '活跃预订',
+    closedHistory: '已结束记录',
+    bookingRequest: '预订请求',
+    bookingConfirmed: '预订确认',
+    requestCancelled: '请求取消',
+    bookingCancelled: '预订取消',
   },
 };
 
