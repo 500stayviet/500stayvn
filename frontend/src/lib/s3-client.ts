@@ -27,14 +27,19 @@ export const uploadToS3 = async (
 
   const fileName = `${folder}/${Date.now()}-${file.name.replace(/\s+/g, "_")}`;
 
-  const command = new PutObjectCommand({
-    Bucket: bucketName.trim(),
-    Key: fileName,
-    Body: file,
-    ContentType: file.type,
-  });
-
   try {
+    // File 객체를 ArrayBuffer로 변환하여 Uint8Array로 전달
+    // AWS SDK v3의 ReadableStream 변환 문제 해결
+    const arrayBuffer = await file.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
+
+    const command = new PutObjectCommand({
+      Bucket: bucketName.trim(),
+      Key: fileName,
+      Body: uint8Array,
+      ContentType: file.type,
+    });
+
     await s3Client.send(command);
     return `https://${bucketName.trim()}.s3.${region}.amazonaws.com/${fileName}`;
   } catch (error) {
