@@ -1,21 +1,22 @@
 version: 1
-frontend:
-  phases:
-    preBuild:
-      commands:
-        - cd frontend
-        - npm install
-    build:
-      commands:
-        # Prisma 클라이언트 생성
-        - npx prisma generate
-        # Next.js 빌드 실행
-        - npm run build
-  artifacts:
-    baseDirectory: frontend/.next
-    files:
-      - '**/*'
-  cache:
-    paths:
-      - frontend/node_modules/**/*
-      - frontend/.next/cache/**/*
+applications:
+  - frontend: frontend
+    appRoot: frontend
+    phases:
+      preBuild:
+        commands:
+          - nvm install 20
+          - nvm use 20
+          - npm ci
+      build:
+        commands:
+          - npx prisma generate
+          - npm run build
+    artifacts:
+      baseDirectory: .next
+      files:
+        - '**/*'
+    cache:
+      paths:
+        - node_modules/**/*
+        - .next/cache/**/*
