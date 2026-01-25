@@ -33,6 +33,7 @@ import TopBar from "@/components/TopBar";
 import CalendarComponent from "@/components/CalendarComponent";
 import { AMENITY_OPTIONS } from "@/lib/constants/amenities";
 import { parseDate } from "@/lib/utils/dateUtils";
+import { getUIText } from "@/utils/i18n";
 
 // 1. 모든 비즈니스 로직을 담은 내부 컴포넌트
 function EditPropertyContent() {
@@ -157,9 +158,11 @@ function EditPropertyContent() {
     e.preventDefault();
     if (!coordinates || !user) {
       alert(
-        currentLanguage === "ko"
-          ? "주소를 선택해주세요."
-          : "Please select address.",
+        currentLanguage === "ko" ? "주소를 선택해주세요." :
+        currentLanguage === "zh" ? "请选择地址。" :
+        currentLanguage === "vi" ? "Vui lòng chọn địa chỉ." :
+        currentLanguage === "ja" ? "住所を選択してください。" :
+        "Please select address."
       );
       return;
     }
@@ -219,11 +222,24 @@ function EditPropertyContent() {
       if (isDeleted) await restoreProperty(propertyId);
       await updateProperty(propertyId, updates);
 
-      alert(currentLanguage === "ko" ? "수정 완료!" : "Updated!");
+      alert(
+        currentLanguage === "ko" ? "수정 완료!" :
+        currentLanguage === "zh" ? "修改完成！" :
+        currentLanguage === "vi" ? "Chỉnh sửa hoàn tất!" :
+        currentLanguage === "ja" ? "編集完了！" :
+        "Updated!"
+      );
       router.push(`/profile/my-properties/${propertyId}`);
     } catch (err) {
       console.error("Update failed:", err);
-      alert("Error: " + (err as any).message);
+      const errorMessage = (err as any).message || String(err);
+      alert(
+        currentLanguage === "ko" ? `오류가 발생했습니다: ${errorMessage}` :
+        currentLanguage === "zh" ? `发生错误: ${errorMessage}` :
+        currentLanguage === "vi" ? `Đã xảy ra lỗi: ${errorMessage}` :
+        currentLanguage === "ja" ? `エラーが発生しました: ${errorMessage}` :
+        `Error occurred: ${errorMessage}`
+      );
     } finally {
       setLoading(false);
     }
@@ -248,17 +264,23 @@ function EditPropertyContent() {
             onClick={() => router.back()}
             className="flex items-center gap-2 mb-4 text-gray-600"
           >
-            <ArrowLeft size={20} /> Back
+            <ArrowLeft size={20} /> {getUIText('back', currentLanguage)}
           </button>
           <h1 className="text-2xl font-bold mb-6">
-            {currentLanguage === "ko" ? "매물 수정" : "Edit Property"}
+            {currentLanguage === "ko" ? "매물 수정" : 
+             currentLanguage === "zh" ? "编辑房产" : 
+             currentLanguage === "vi" ? "Chỉnh sửa bất động sản" :
+             currentLanguage === "ja" ? "物件編集" : "Edit Property"}
           </h1>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* 사진 섹션 */}
             <section>
               <label className="block text-sm font-bold mb-2">
-                Photos ({imagePreviews.length}/5)
+                {currentLanguage === "ko" ? "사진" : 
+                 currentLanguage === "zh" ? "照片" :
+                 currentLanguage === "vi" ? "Ảnh" :
+                 currentLanguage === "ja" ? "写真" : "Photos"} ({imagePreviews.length}/5)
               </label>
               <div className="grid grid-cols-3 gap-2">
                 {imagePreviews.map((p, i) => (
@@ -288,7 +310,12 @@ function EditPropertyContent() {
                     className="aspect-square border-2 border-dashed rounded-xl flex flex-col items-center justify-center text-gray-400"
                   >
                     <Camera size={24} />
-                    <span className="text-[10px] mt-1">Add</span>
+                    <span className="text-[10px] mt-1">
+                      {currentLanguage === "ko" ? "추가" : 
+                       currentLanguage === "zh" ? "添加" :
+                       currentLanguage === "vi" ? "Thêm" :
+                       currentLanguage === "ja" ? "追加" : "Add"}
+                    </span>
                   </button>
                 )}
               </div>
@@ -296,7 +323,9 @@ function EditPropertyContent() {
 
             {/* 주소 섹션 */}
             <section className="relative">
-              <label className="block text-sm font-bold mb-2">Address</label>
+              <label className="block text-sm font-bold mb-2">
+                {getUIText('address', currentLanguage)}
+              </label>
               <input
                 type="text"
                 value={address}
@@ -334,7 +363,7 @@ function EditPropertyContent() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-bold mb-2">
-                  Price (VND)
+                  {getUIText('price', currentLanguage)} (VND)
                 </label>
                 <input
                   type="text"
@@ -349,7 +378,9 @@ function EditPropertyContent() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold mb-2">Adults</label>
+                <label className="block text-sm font-bold mb-2">
+                  {getUIText('adults', currentLanguage)}
+                </label>
                 <div className="flex items-center justify-between p-2 border rounded-xl">
                   <button
                     type="button"
@@ -370,7 +401,9 @@ function EditPropertyContent() {
 
             {/* 편의시설 */}
             <section>
-              <label className="block text-sm font-bold mb-3">Amenities</label>
+              <label className="block text-sm font-bold mb-3">
+                {getUIText('amenities', currentLanguage)}
+              </label>
               <div className="grid grid-cols-3 gap-2">
                 {AMENITY_OPTIONS.map((opt) => (
                   <button
@@ -402,9 +435,11 @@ function EditPropertyContent() {
                 }}
                 className="p-3 border rounded-xl text-left"
               >
-                <p className="text-[10px] text-gray-400">Start</p>
+                <p className="text-[10px] text-gray-400">
+                  {getUIText('checkIn', currentLanguage)}
+                </p>
                 <p className="text-xs font-bold">
-                  {checkInDate ? checkInDate.toLocaleDateString() : "Select"}
+                  {checkInDate ? checkInDate.toLocaleDateString() : getUIText('selectDate', currentLanguage)}
                 </p>
               </button>
               <button
@@ -415,9 +450,11 @@ function EditPropertyContent() {
                 }}
                 className="p-3 border rounded-xl text-left"
               >
-                <p className="text-[10px] text-gray-400">End</p>
+                <p className="text-[10px] text-gray-400">
+                  {getUIText('checkOut', currentLanguage)}
+                </p>
                 <p className="text-xs font-bold">
-                  {checkOutDate ? checkOutDate.toLocaleDateString() : "Select"}
+                  {checkOutDate ? checkOutDate.toLocaleDateString() : getUIText('selectDate', currentLanguage)}
                 </p>
               </button>
             </div>
@@ -430,9 +467,15 @@ function EditPropertyContent() {
               {loading ? (
                 <Loader2 className="animate-spin" />
               ) : isDeleted ? (
-                "Re-register"
+                currentLanguage === "ko" ? "재등록" : 
+                currentLanguage === "zh" ? "重新注册" :
+                currentLanguage === "vi" ? "Đăng ký lại" :
+                currentLanguage === "ja" ? "再登録" : "Re-register"
               ) : (
-                "Update Property"
+                currentLanguage === "ko" ? "매물 수정" : 
+                currentLanguage === "zh" ? "编辑房产" :
+                currentLanguage === "vi" ? "Chỉnh sửa bất động sản" :
+                currentLanguage === "ja" ? "物件編集" : "Update Property"
               )}
             </button>
           </form>
@@ -485,7 +528,10 @@ function EditPropertyContent() {
               }}
               className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold"
             >
-              Photo Library
+              {currentLanguage === "ko" ? "사진 라이브러리" : 
+               currentLanguage === "zh" ? "照片库" :
+               currentLanguage === "vi" ? "Thư viện ảnh" :
+               currentLanguage === "ja" ? "写真ライブラリ" : "Photo Library"}
             </button>
             <button
               type="button"
@@ -495,14 +541,17 @@ function EditPropertyContent() {
               }}
               className="w-full py-4 bg-gray-100 rounded-xl font-bold"
             >
-              Camera
+              {currentLanguage === "ko" ? "카메라" : 
+               currentLanguage === "zh" ? "相机" :
+               currentLanguage === "vi" ? "Máy ảnh" :
+               currentLanguage === "ja" ? "カメラ" : "Camera"}
             </button>
             <button
               type="button"
               onClick={() => setShowImageSourceMenu(false)}
               className="w-full py-4 text-gray-400"
             >
-              Cancel
+              {getUIText('cancel', currentLanguage)}
             </button>
           </div>
         </div>

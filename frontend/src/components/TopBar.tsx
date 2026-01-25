@@ -51,6 +51,13 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
   const userMenuRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
   
+  // 초기 언어 설정 시 html lang 속성 설정
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.lang = currentLanguage;
+    }
+  }, [currentLanguage]);
+
   // localStorage에서 읽은 알림 ID와 알림 설정 로드
   useEffect(() => {
     if (user) {
@@ -196,6 +203,11 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
   const handleLanguageSelect = async (lang: SupportedLanguage) => {
     await setCurrentLanguage(lang);
     setIsLanguageMenuOpen(false);
+    
+    // html 요소의 lang 속성 업데이트 (폰트 최적화용)
+    if (typeof document !== 'undefined') {
+      document.documentElement.lang = lang;
+    }
   };
 
   // 로그인 아이콘 클릭
