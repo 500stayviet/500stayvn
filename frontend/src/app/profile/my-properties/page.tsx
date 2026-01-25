@@ -21,7 +21,7 @@ import {
   hasAvailableBookingPeriod,
   PropertyDateRange,
 } from "@/lib/utils/propertyUtils";
-import { isAvailableNow, formatDateForBadge } from "@/lib/utils/dateUtils";
+import { getUIText } from "@/utils/i18n";
 
 type PropertyFetchResult = {
   activeData: PropertyData[];
@@ -174,24 +174,14 @@ function MyPropertiesContent() {
       return {
         borderColor: "border-green-500",
         bgColor: "bg-green-500",
-        text:
-          currentLanguage === "ko"
-            ? "계약 완료"
-            : currentLanguage === "vi"
-              ? "Đã cho thuê"
-              : "Rented",
+        text: getUIText('rented', currentLanguage),
         icon: <CheckCircle2 className="w-3 h-3" />,
       };
     }
     return {
       borderColor: "border-red-500",
       bgColor: "bg-red-500",
-      text:
-        currentLanguage === "ko"
-          ? "계약 전"
-          : currentLanguage === "vi"
-            ? "Chưa thuê"
-            : "Active",
+      text: getUIText('notRented', currentLanguage),
       icon: <Clock className="w-3 h-3" />,
     };
   };
@@ -199,7 +189,7 @@ function MyPropertiesContent() {
   if (authLoading || loading)
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        로딩 중...
+        {getUIText('loading', currentLanguage)}
       </div>
     );
 
@@ -218,10 +208,10 @@ function MyPropertiesContent() {
               className="flex items-center gap-1 text-gray-500 mb-4"
             >
               <ArrowLeft className="w-4 h-4" />{" "}
-              <span>{currentLanguage === "ko" ? "뒤로" : "Back"}</span>
+              <span>{getUIText('back', currentLanguage)}</span>
             </button>
             <h1 className="text-2xl font-bold text-gray-900">
-              {currentLanguage === "ko" ? "내 매물 관리" : "My Properties"}
+              {getUIText('myProperties', currentLanguage)}
             </h1>
 
             <div className="flex gap-2 mt-5 bg-gray-100 p-1.5 rounded-xl">
@@ -242,12 +232,8 @@ function MyPropertiesContent() {
                   }`}
                 >
                   {tab === "active"
-                    ? currentLanguage === "ko"
-                      ? "등록 매물"
-                      : "Active"
-                    : currentLanguage === "ko"
-                      ? "광고 종료"
-                      : "Expired"}
+                    ? getUIText('activeProperties', currentLanguage)
+                    : getUIText('expiredProperties', currentLanguage)}
                   <span className="ml-1.5 opacity-60">
                     ({tab === "active" ? advertisingCount : deletedCount})
                   </span>
@@ -259,7 +245,7 @@ function MyPropertiesContent() {
           <div className="space-y-5">
             {properties.length === 0 ? (
               <div className="text-center py-20 text-gray-400">
-                등록된 매물이 없습니다.
+                {getUIText('noProperties', currentLanguage)}
               </div>
             ) : (
               properties.map((property) => {
@@ -356,12 +342,14 @@ function MyPropertiesContent() {
                 className="bg-white rounded-3xl p-6 w-full max-w-xs shadow-2xl"
               >
                 <h3 className="text-xl font-bold text-gray-900 mb-2">
-                  {showPermanentDeleteConfirm ? "영구 삭제" : "매물 삭제"}
+                  {showPermanentDeleteConfirm 
+                    ? getUIText('permanentDeleteConfirmTitle', currentLanguage) 
+                    : getUIText('deleteConfirmTitle', currentLanguage)}
                 </h3>
                 <p className="text-gray-500 text-sm mb-6 leading-relaxed">
                   {showPermanentDeleteConfirm
-                    ? "이 작업은 절대 되돌릴 수 없습니다. 정말로 영구 삭제하시겠습니까?"
-                    : "삭제된 매물은 [광고 종료] 탭에서 확인 및 재등록이 가능합니다."}
+                    ? getUIText('permanentDeleteConfirmDesc', currentLanguage)
+                    : getUIText('deleteConfirmDesc', currentLanguage)}
                 </p>
                 <div className="flex gap-3">
                   <button
@@ -371,7 +359,7 @@ function MyPropertiesContent() {
                     }}
                     className="flex-1 py-3 bg-gray-100 text-gray-600 rounded-xl font-semibold"
                   >
-                    취소
+                    {getUIText('cancel', currentLanguage)}
                   </button>
                   <button
                     onClick={() =>
@@ -382,7 +370,7 @@ function MyPropertiesContent() {
                     disabled={!!deletingId}
                     className="flex-1 py-3 bg-red-500 text-white rounded-xl font-semibold disabled:bg-red-300"
                   >
-                    {deletingId ? "처리중" : "삭제"}
+                    {deletingId ? getUIText('processing', currentLanguage) : getUIText('delete', currentLanguage)}
                   </button>
                 </div>
               </motion.div>
@@ -396,11 +384,12 @@ function MyPropertiesContent() {
 
 // --- Next.js 빌드 에러 해결을 위한 외부 래퍼 컴포넌트 ---
 export default function MyPropertiesPage() {
+  const { currentLanguage } = useLanguage();
   return (
     <Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          로딩 중...
+          {getUIText('loading', currentLanguage)}
         </div>
       }
     >

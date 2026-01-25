@@ -12,7 +12,7 @@ import PropertyModal from "@/components/map/PropertyModal";
 import { formatPrice, getCityName } from "@/lib/utils/propertyUtils";
 import { isAvailableNow, formatDateForBadge } from "@/lib/utils/dateUtils";
 import Image from "next/image";
-import { MapPin, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { getUIText } from "@/utils/i18n";
 
 interface Property {
   id: string;
@@ -157,13 +157,11 @@ function MapContent() {
             <div className="px-6 mb-4 flex justify-between items-end">
               <div>
                 <h2 className="text-xl font-bold text-gray-900">
-                  {currentLanguage === "ko"
-                    ? "주변 인기 숙소"
-                    : "Popular stays nearby"}
+                  {getUIText('popularStaysNearby', currentLanguage)}
                 </h2>
                 <p className="text-xs text-gray-400 mt-1">
                   {nearbyProperties.length}{" "}
-                  {currentLanguage === "ko" ? "개의 매물" : "properties"}
+                  {getUIText('propertiesCount', currentLanguage)}
                 </p>
               </div>
             </div>
@@ -236,7 +234,7 @@ function MapContent() {
           <div className="absolute inset-0 z-[110] bg-black/20 flex items-center justify-center">
             <div className="bg-white p-4 rounded-2xl flex items-center gap-3">
               <Loader2 className="animate-spin text-blue-600" />
-              <span>Loading...</span>
+              <span>{getUIText('loading', currentLanguage)}</span>
             </div>
           </div>
         )}
@@ -247,11 +245,13 @@ function MapContent() {
 
 // 2. 외부에 노출되는 페이지 컴포넌트 (Suspense 적용)
 export default function MapPage() {
+  const { currentLanguage } = useLanguage();
   return (
     <Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center bg-white">
           <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+          <span className="ml-2">{getUIText('loading', currentLanguage)}</span>
         </div>
       }
     >

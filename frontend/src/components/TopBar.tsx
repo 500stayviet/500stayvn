@@ -16,6 +16,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getGuestBookings, getOwnerBookings, BookingData } from '@/lib/api/bookings';
 import { getUnreadCountsByRole, markAllChatAsReadByRole, markAllMessagesInRoomAsRead } from '@/lib/api/chat';
+import { getUIText } from '@/utils/i18n';
 
 interface TopBarProps {
   currentLanguage?: SupportedLanguage;
@@ -294,9 +295,7 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
                         <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50 max-h-[70vh] overflow-y-auto">
                           <div className="px-4 py-2 border-b border-gray-100">
                             <h3 className="font-bold text-gray-900">
-                              {currentLanguage === 'ko' ? '알림' : 
-                               currentLanguage === 'vi' ? 'Thông báo' : 
-                               'Notifications'}
+                              {getUIText('notifications', currentLanguage)}
                             </h3>
                           </div>
 
@@ -316,14 +315,11 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm font-bold text-gray-900">
-                                    {currentLanguage === 'ko' ? '새로운 메시지 (임차인)' : 
-                                     currentLanguage === 'vi' ? 'Tin nhắn mới (Khách)' : 
-                                     'New Message (Guest)'}
+                                    {getUIText('newMessagesGuest', currentLanguage)}
                                   </p>
                                   <p className="text-xs text-blue-600 mt-0.5">
-                                    {currentLanguage === 'ko' ? `${unreadChatCounts.asGuest}개의 읽지 않은 메시지가 있습니다` : 
-                                     currentLanguage === 'vi' ? `Có ${unreadChatCounts.asGuest} tin nhắn chưa đọc` : 
-                                     `You have ${unreadChatCounts.asGuest} unread message(s)`}
+                                    {currentLanguage === 'ko' ? `${unreadChatCounts.asGuest}${getUIText('unreadMessages', currentLanguage)}` : 
+                                     `${unreadChatCounts.asGuest} ${getUIText('unreadMessages', currentLanguage)}`}
                                   </p>
                                 </div>
                               </button>
@@ -346,14 +342,11 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm font-bold text-gray-900">
-                                    {currentLanguage === 'ko' ? '새로운 메시지 (임대인)' : 
-                                     currentLanguage === 'vi' ? 'Tin nhắn mới (Chủ nhà)' : 
-                                     'New Message (Host)'}
+                                    {getUIText('newMessagesHost', currentLanguage)}
                                   </p>
                                   <p className="text-xs text-green-600 mt-0.5">
-                                    {currentLanguage === 'ko' ? `${unreadChatCounts.asOwner}개의 읽지 않은 메시지가 있습니다` : 
-                                     currentLanguage === 'vi' ? `Có ${unreadChatCounts.asOwner} tin nhắn chưa đọc` : 
-                                     `You have ${unreadChatCounts.asOwner} unread message(s)`}
+                                    {currentLanguage === 'ko' ? `${unreadChatCounts.asOwner}${getUIText('unreadMessages', currentLanguage)}` : 
+                                     `${unreadChatCounts.asOwner} ${getUIText('unreadMessages', currentLanguage)}`}
                                   </p>
                                 </div>
                               </button>
@@ -365,9 +358,7 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
                             <div className="border-b border-gray-100">
                               <div className="px-4 py-2 bg-blue-50">
                                 <p className="text-xs font-semibold text-blue-600">
-                                  {currentLanguage === 'ko' ? '🏠 내 예약 (임차인)' : 
-                                   currentLanguage === 'vi' ? '🏠 Đặt phòng của tôi' : 
-                                   '🏠 My Bookings (Guest)'}
+                                  {getUIText('myBookingsGuest', currentLanguage)}
                                 </p>
                               </div>
                               {notifications.asGuest.map((booking) => {
@@ -421,9 +412,9 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
                                           booking.status === 'cancelled' ? 'bg-red-100 text-red-700' :
                                           'bg-gray-100 text-gray-700'
                                         }`}>
-                                          {booking.status === 'pending' ? (currentLanguage === 'ko' ? '승인대기' : currentLanguage === 'vi' ? 'Chờ duyệt' : 'Pending') :
-                                           booking.status === 'confirmed' ? (currentLanguage === 'ko' ? '예약확정' : currentLanguage === 'vi' ? 'Đã xác nhận' : 'Confirmed') :
-                                           booking.status === 'cancelled' ? (currentLanguage === 'ko' ? '취소됨' : currentLanguage === 'vi' ? 'Đã hủy' : 'Cancelled') :
+                                          {booking.status === 'pending' ? getUIText('pending', currentLanguage) :
+                                           booking.status === 'confirmed' ? getUIText('confirmed', currentLanguage) :
+                                           booking.status === 'cancelled' ? getUIText('cancelled', currentLanguage) :
                                            booking.status}
                                         </span>
                                       </div>
@@ -439,9 +430,7 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
                             <div>
                               <div className="px-4 py-2 bg-green-50">
                                 <p className="text-xs font-semibold text-green-600">
-                                  {currentLanguage === 'ko' ? '🔑 받은 예약 (임대인)' : 
-                                   currentLanguage === 'vi' ? '🔑 Yêu cầu đặt phòng' : 
-                                   '🔑 Booking Requests (Host)'}
+                                  {getUIText('bookingRequestsHost', currentLanguage)}
                                 </p>
                               </div>
                               {notifications.asOwner.map((booking) => {
@@ -487,7 +476,7 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
                                           )}
                                         </div>
                                         <p className="text-xs text-gray-500 mt-0.5">
-                                          {booking.guestName || (currentLanguage === 'ko' ? '게스트' : 'Guest')} · {formatDateTime(booking.checkInDate)}
+                                          {booking.guestName || getUIText('guest', currentLanguage)} · {formatDateTime(booking.checkInDate)}
                                         </p>
                                         <span className={`inline-block mt-1 text-xs px-2 py-0.5 rounded-full font-medium ${
                                           booking.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
@@ -495,9 +484,9 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
                                           booking.status === 'cancelled' ? 'bg-red-100 text-red-700' :
                                           'bg-gray-100 text-gray-700'
                                         }`}>
-                                          {booking.status === 'pending' ? (currentLanguage === 'ko' ? '승인대기' : currentLanguage === 'vi' ? 'Chờ duyệt' : 'Pending') :
-                                           booking.status === 'confirmed' ? (currentLanguage === 'ko' ? '예약확정' : currentLanguage === 'vi' ? 'Đã xác nhận' : 'Confirmed') :
-                                           booking.status === 'cancelled' ? (currentLanguage === 'ko' ? '취소됨' : currentLanguage === 'vi' ? 'Đã hủy' : 'Cancelled') :
+                                          {booking.status === 'pending' ? getUIText('pending', currentLanguage) :
+                                           booking.status === 'confirmed' ? getUIText('confirmed', currentLanguage) :
+                                           booking.status === 'cancelled' ? getUIText('cancelled', currentLanguage) :
                                            booking.status}
                                         </span>
                                       </div>
@@ -513,9 +502,7 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
                             <div className="px-4 py-8 text-center">
                               <Bell className="w-8 h-8 text-gray-300 mx-auto mb-2" />
                               <p className="text-sm text-gray-500">
-                                {currentLanguage === 'ko' ? '알림이 없습니다' : 
-                                 currentLanguage === 'vi' ? 'Không có thông báo' : 
-                                 'No notifications'}
+                                {getUIText('noProperties', currentLanguage)}
                               </p>
                             </div>
                           )}
@@ -531,9 +518,7 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
                                   : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                               }`}
                             >
-                              {currentLanguage === 'ko' ? '모두 읽음' : 
-                               currentLanguage === 'vi' ? 'Đánh dấu đã đọc' : 
-                               'Mark all read'}
+                              {getUIText('markAllRead', currentLanguage)}
                             </button>
                             <button
                               onClick={toggleNotifications}
@@ -544,12 +529,8 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
                               }`}
                             >
                               {notificationsEnabled 
-                                ? (currentLanguage === 'ko' ? '알림 끄기' : 
-                                   currentLanguage === 'vi' ? 'Tắt thông báo' : 
-                                   'Turn off')
-                                : (currentLanguage === 'ko' ? '알림 켜기' : 
-                                   currentLanguage === 'vi' ? 'Bật thông báo' : 
-                                   'Turn on')
+                                ? getUIText('turnOffNotifications', currentLanguage)
+                                : getUIText('turnOnNotifications', currentLanguage)
                               }
                             </button>
                           </div>
@@ -582,9 +563,7 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
                         >
                           <User className="w-4 h-4" />
                           <span>
-                            {currentLanguage === 'ko' ? '개인정보' : 
-                             currentLanguage === 'vi' ? 'Thông tin cá nhân' : 
-                             'Profile'}
+                            {getUIText('profile', currentLanguage)}
                           </span>
                         </button>
                         <button
@@ -593,9 +572,7 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
                         >
                           <LogOut className="w-4 h-4" />
                           <span>
-                            {currentLanguage === 'ko' ? '로그아웃' : 
-                             currentLanguage === 'vi' ? 'Đăng xuất' : 
-                             'Logout'}
+                            {getUIText('logout', currentLanguage)}
                           </span>
                         </button>
                       </div>
@@ -614,9 +591,7 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
                     </button>
                     {/* 툴팁 */}
                     <div className="absolute right-0 top-full mt-2 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none z-50">
-                      {currentLanguage === 'ko' ? '로그인' : 
-                       currentLanguage === 'vi' ? 'Đăng nhập' : 
-                       'Login'}
+                      {getUIText('login', currentLanguage)}
                       {/* 툴팁 화살표 */}
                       <div className="absolute bottom-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
                     </div>

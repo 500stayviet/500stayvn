@@ -21,10 +21,7 @@ import { Suggestion } from '@/types/map';
 import { 
   formatPrice, 
 } from '@/lib/utils/propertyUtils';
-import { 
-  parseDate, 
-  formatDateForBadge 
-} from '@/lib/utils/dateUtils';
+import { getUIText } from '@/utils/i18n';
 
 interface Property {
   id: string;
@@ -990,10 +987,10 @@ export default function GrabMapComponent({
         popupContent = `
           <div style="padding: 8px; max-width: 280px;">
             <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #FF6B35;">
-              ${clusterProperties.length}개의 매물
+              ${clusterProperties.length}${getUIText('propertiesCount', currentLanguage)}
             </div>
             <div style="font-size: 11px; color: #6b7280; margin-bottom: 8px;">
-              확대하면 각 매물의 정확한 위치를 확인할 수 있습니다
+              ${getUIText('zoomInToSeeExactLocation', currentLanguage)}
             </div>
             <div style="max-height: 200px; overflow-y: auto;">
               ${clusterProperties
@@ -1013,7 +1010,7 @@ export default function GrabMapComponent({
                     ${formatPrice(price, 'vnd')}
                   </div>
                   <div style="font-size: 10px; color: #9ca3af;">
-                    📍 중심에서 ${(distance * 1000).toFixed(0)}m
+                    📍 ${getUIText('distanceFromCenter', currentLanguage)} ${(distance * 1000).toFixed(0)}m
                   </div>
                 </div>
               `;
@@ -1034,7 +1031,7 @@ export default function GrabMapComponent({
               ${formatPrice(price, 'vnd')}
             </div>
             <div style="font-size: 11px; color: #3b82f6; margin-top: 6px; text-align: center;">
-              ${currentLanguage === 'ko' ? '탭하여 상세보기' : currentLanguage === 'vi' ? 'Nhấn để xem chi tiết' : 'Tap to view details'}
+              ${getUIText('tapToViewDetails', currentLanguage)}
             </div>
           </div>
         `;
@@ -1677,16 +1674,12 @@ export default function GrabMapComponent({
             <div className="flex items-center gap-3 mb-4">
               <MapPin className="w-6 h-6 text-blue-500" />
               <h3 className="text-lg font-semibold text-gray-900">
-                {currentLanguage === 'ko' && '위치 권한 요청'}
-                {currentLanguage === 'vi' && 'Yêu cầu quyền truy cập vị trí'}
-                {currentLanguage === 'en' && 'Location Permission Request'}
+                {getUIText('locationPermissionTitle', currentLanguage)}
               </h3>
             </div>
 
             <p className="text-gray-600 mb-6">
-              {currentLanguage === 'ko' && '지도에서 내 위치를 표시하기 위해 위치 권한이 필요합니다. 위치 정보는 지도에 내 위치 마커를 표시하는 데만 사용됩니다.'}
-              {currentLanguage === 'vi' && 'Chúng tôi cần quyền truy cập vị trí để hiển thị vị trí của bạn trên bản đồ. Thông tin vị trí chỉ được sử dụng để hiển thị điểm đánh dấu vị trí của bạn trên bản đồ.'}
-              {currentLanguage === 'en' && 'We need location permission to show your location on the map. Location information is only used to display your location marker on the map.'}
+              {getUIText('locationPermissionDesc', currentLanguage)}
             </p>
 
             <div className="flex gap-3">
@@ -1697,17 +1690,13 @@ export default function GrabMapComponent({
                 }}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
               >
-                {currentLanguage === 'ko' && '거부'}
-                {currentLanguage === 'vi' && 'Từ chối'}
-                {currentLanguage === 'en' && 'Deny'}
+                {getUIText('deny', currentLanguage)}
               </button>
               <button
                 onClick={requestLocation}
                 className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
               >
-                {currentLanguage === 'ko' && '동의'}
-                {currentLanguage === 'vi' && 'Đồng ý'}
-                {currentLanguage === 'en' && 'Allow'}
+                {getUIText('allow', currentLanguage)}
               </button>
             </div>
           </div>

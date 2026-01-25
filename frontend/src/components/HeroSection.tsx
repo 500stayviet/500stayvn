@@ -207,13 +207,7 @@ export default function HeroSection({ currentLanguage }: HeroSectionProps) {
   // 위치 권한 요청 (모달에서 동의 버튼 클릭 시)
   const handleRequestLocationPermission = async () => {
     if (!navigator.geolocation) {
-      alert(
-        currentLanguage === 'ko'
-          ? '이 브라우저는 위치 서비스를 지원하지 않습니다.'
-          : currentLanguage === 'vi'
-          ? 'Trình duyệt này không hỗ trợ dịch vụ vị trí.'
-          : 'This browser does not support location services.'
-      );
+      alert(getUIText('locationNotSupported', currentLanguage));
       setShowLocationPermissionModal(false);
       saveLocationPermissionToken('denied');
       router.push('/map?denied=true');
@@ -280,15 +274,7 @@ export default function HeroSection({ currentLanguage }: HeroSectionProps) {
       <div className="relative z-10 h-full flex flex-col items-center justify-center px-4">
         {/* 메인 문구 */}
         <h2 className="text-2xl sm:text-3xl font-bold text-white text-center mb-6 drop-shadow-lg max-w-md">
-          {currentLanguage === 'ko' 
-            ? '어디에서 살고 싶으신가요?' 
-            : currentLanguage === 'vi'
-            ? 'Bạn muốn sống ở đâu?'
-            : currentLanguage === 'ja'
-            ? 'どこに住みたいですか？'
-            : currentLanguage === 'zh'
-            ? '你想住在哪里？'
-            : 'Where do you want to live?'}
+          {getUIText('whereDoYouWantToLive', currentLanguage)}
         </h2>
 
         {/* 검색창 */}
@@ -366,7 +352,7 @@ export default function HeroSection({ currentLanguage }: HeroSectionProps) {
                 <div className="flex items-center justify-center gap-2 text-gray-500">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
                   <span className="text-sm">
-                    {currentLanguage === 'ko' ? '검색 중...' : currentLanguage === 'vi' ? 'Đang tìm kiếm...' : 'Searching...'}
+                    {getUIText('searching', currentLanguage)}
                   </span>
                 </div>
               </div>
@@ -381,11 +367,7 @@ export default function HeroSection({ currentLanguage }: HeroSectionProps) {
         >
           <MapPin className="w-5 h-5 text-blue-600" />
           <span>
-            {currentLanguage === 'ko'
-              ? '지도로 매물 찾기'
-              : currentLanguage === 'vi'
-              ? 'Tìm bất động sản trên bản đồ'
-              : 'Find Properties on Map'}
+            {getUIText('findPropertiesOnMap', currentLanguage)}
           </span>
         </button>
       </div>
@@ -399,18 +381,10 @@ export default function HeroSection({ currentLanguage }: HeroSectionProps) {
                 <MapPin className="w-8 h-8 text-blue-600" />
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-2">
-                {currentLanguage === 'ko'
-                  ? '현재 위치 사용'
-                  : currentLanguage === 'vi'
-                  ? 'Sử dụng vị trí hiện tại'
-                  : 'Use Current Location'}
+                {getUIText('useCurrentLocation', currentLanguage)}
               </h3>
               <p className="text-gray-600 text-sm">
-                {currentLanguage === 'ko'
-                  ? '지도에서 현재 위치를 표시하고 주변 매물을 찾기 위해 위치 정보가 필요합니다.'
-                  : currentLanguage === 'vi'
-                  ? 'Chúng tôi cần thông tin vị trí để hiển thị vị trí hiện tại trên bản đồ và tìm bất động sản xung quanh.'
-                  : 'We need location information to show your current location on the map and find nearby properties.'}
+                {getUIText('locationPermissionDesc', currentLanguage)}
               </p>
             </div>
 
@@ -424,20 +398,12 @@ export default function HeroSection({ currentLanguage }: HeroSectionProps) {
                   <>
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                     <span>
-                      {currentLanguage === 'ko'
-                        ? '요청 중...'
-                        : currentLanguage === 'vi'
-                        ? 'Đang yêu cầu...'
-                        : 'Requesting...'}
+                      {getUIText('requesting', currentLanguage)}
                     </span>
                   </>
                 ) : (
                   <span>
-                    {currentLanguage === 'ko'
-                      ? '위치 권한 허용'
-                      : currentLanguage === 'vi'
-                      ? 'Cho phép quyền vị trí'
-                      : 'Allow Location Access'}
+                    {getUIText('allowLocationAccess', currentLanguage)}
                   </span>
                 )}
               </button>
@@ -446,11 +412,7 @@ export default function HeroSection({ currentLanguage }: HeroSectionProps) {
                 disabled={requestingLocation}
                 className="w-full bg-gray-100 text-gray-700 py-3 px-4 rounded-lg font-semibold hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {currentLanguage === 'ko'
-                  ? '건너뛰기'
-                  : currentLanguage === 'vi'
-                  ? 'Bỏ qua'
-                  : 'Skip'}
+                {getUIText('skip', currentLanguage)}
               </button>
             </div>
           </div>

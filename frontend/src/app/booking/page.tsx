@@ -29,6 +29,7 @@ import {
 import Image from "next/image";
 import TopBar from "@/components/TopBar";
 import { SupportedLanguage } from "@/lib/api/translation";
+import InternationalPhoneInput from "@/components/auth/InternationalPhoneInput";
 
 // 결제 수단 옵션
 const PAYMENT_METHODS: readonly {
@@ -129,7 +130,6 @@ function BookingContent() {
     adults: 1,
     children: 0,
   });
-  const [countryCode, setCountryCode] = useState("+84");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [agreeTerms, setAgreeTerms] = useState(false);
 
@@ -202,7 +202,7 @@ function BookingContent() {
           propertyId: property.id!,
           guestName: guestInfo.name,
           guestEmail: guestInfo.email,
-          guestPhone: `${countryCode} ${phoneNumber.replace(/-/g, "")}`,
+          guestPhone: phoneNumber,
           guestMessage: guestInfo.message,
           checkInDate: toISODateString(checkInDate),
           checkOutDate: toISODateString(checkOutDate),
@@ -322,24 +322,13 @@ function BookingContent() {
                   setGuestInfo({ ...guestInfo, name: e.target.value })
                 }
               />
-              <div className="flex gap-2">
-                <select
-                  className="border rounded-xl p-3 bg-white text-sm"
-                  value={countryCode}
-                  onChange={(e) => setCountryCode(e.target.value)}
-                >
-                  {COUNTRY_CODES.map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.country} {c.code}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="tel"
-                  placeholder="전화번호"
-                  className="flex-1 p-3 border rounded-xl text-sm"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
+              <div className="space-y-4">
+                <InternationalPhoneInput 
+                  currentLanguage={currentLanguage}
+                  onPhoneChange={(normalized, isComplete) => {
+                    setPhoneNumber(normalized);
+                  }}
+                  initialValue={user?.phoneNumber || ''}
                 />
               </div>
               <label className="flex items-start gap-3 text-xs text-gray-600 cursor-pointer">

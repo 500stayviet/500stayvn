@@ -1,141 +1,183 @@
 /**
- * Sign Up Page (회원가입 페이지 - 이메일/비밀번호만 필수)
- * * - 이메일/비밀번호만 필수 입력
- * - 이름, 전화번호, 성별, 언어는 선택 사항
- * - 비밀번호 확인 필드 제거 (비밀번호 필드의 show/hide 기능으로 확인)
+ * Sign Up Page (회원가입 페이지 - 개편 버전)
+ * - 이메일, 비밀번호, 비밀번호 확인, 이름, 전화번호 필수
+ * - 전화번호 인증(OTP) 조건부 프로세스 포함
  */
 
 'use client';
 
-import { useState, useEffect, useRef, Suspense } from 'react'; // Suspense 추가
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Mail, 
   Lock, 
   Eye, 
   EyeOff, 
   User, 
-  Phone, 
   ArrowRight,
   ArrowLeft,
   CheckCircle2,
-  Globe
+  Globe,
+  ShieldCheck
 } from 'lucide-react';
 import { SupportedLanguage } from '@/lib/api/translation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import TopBar from '@/components/TopBar';
 import { getUIText } from '@/utils/i18n';
 import { signUpWithEmail, SignUpData } from '@/lib/api/auth';
+import InternationalPhoneInput from '@/components/auth/InternationalPhoneInput';
+import { signIn } from "next-auth/react";
 
-// 1. 실제 회원가입 로직과 UI가 담긴 내부 컴포넌트
 function SignupContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnUrl = searchParams.get('returnUrl') || '/';
   const { currentLanguage, setCurrentLanguage } = useLanguage();
+  
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
-  const [otpSent, setOtpSent] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
   
-  const [formData, setFormData] = useState<SignUpData>({
+  // OTP 관련 상태
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [otpError, setOtpError] = useState('');
+  
+  // 조건부 인증 설정
+  const requirePhoneVerification = process.env.NEXT_PUBLIC_REQUIRE_PHONE_VERIFICATION === 'true';
+  
+  const [formData, setFormData] = useState({
     email: '',
     password: '',
+    confirmPassword: '',
     fullName: '',
     phoneNumber: '',
-    gender: 'male',
-    preferredLanguage: currentLanguage, // Context의 현재 언어로 초기화
+    isPhoneComplete: false,
+    gender: 'male' as 'male' | 'female',
+    preferredLanguage: currentLanguage,
   });
+
   const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
   const languageMenuRef = useRef<HTMLDivElement>(null);
 
-  // 언어 변경 핸들러
-  const handleLanguageChange = async (lang: SupportedLanguage) => {
-    await setCurrentLanguage(lang);
-    setIsLanguageMenuOpen(false);
-  };
-  
-  // currentLanguage가 변경되면 formData도 업데이트
   useEffect(() => {
-    const lang = (currentLanguage === 'ko' || currentLanguage === 'vi' || currentLanguage === 'ja' || currentLanguage === 'zh') ? currentLanguage : 'en';
+    const lang = (['ko', 'vi', 'ja', 'zh'].includes(currentLanguage)) ? currentLanguage : 'en';
     setFormData(prev => ({ ...prev, preferredLanguage: lang }));
   }, [currentLanguage]);
 
-  // 외부 클릭 시 언어 메뉴 닫기
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (languageMenuRef.current && !languageMenuRef.current.contains(event.target as Node)) {
         setIsLanguageMenuOpen(false);
       }
     };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
-    if (isLanguageMenuOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isLanguageMenuOpen]);
-
-  // 폼 입력 핸들러
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    setError('');
+  };
+
+  const handlePhoneChange = (normalizedPhone: string, isComplete: boolean) => {
+    setFormData(prev => ({ 
+      ...prev, 
+      phoneNumber: normalizedPhone, 
+      isPhoneComplete: isComplete 
     }));
-    setError('');
-  };
-
-  // 성별 선택 핸들러
-  const handleGenderSelect = (gender: 'male' | 'female') => {
-    setFormData((prev) => ({ ...prev, gender }));
-  };
-
-  // 전화번호 포맷팅 (베트남 형식)
-  const formatPhoneNumber = (value: string): string => {
-    const numbers = value.replace(/\D/g, '');
-    if (numbers.startsWith('84')) {
-      return `+${numbers}`;
-    } else if (numbers.startsWith('0')) {
-      return `+84${numbers.substring(1)}`;
-    } else if (numbers) {
-      return `+84${numbers}`;
+    // 번호가 바뀌면 인증 상태 초기화
+    if (normalizedPhone !== formData.phoneNumber) {
+      setIsPhoneVerified(false);
+      setOtpSent(false);
+      setOtpCode('');
     }
-    return '';
   };
 
-  // 전화번호 입력 핸들러
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatPhoneNumber(e.target.value);
-    setFormData((prev) => ({ ...prev, phoneNumber: formatted }));
+  const handleSendOTP = async (normalizedPhone: string): Promise<boolean> => {
+    setLoading(true);
     setError('');
-  };
-
-  // OTP 발송 버튼 (UI만 구현)
-  const handleSendOTP = () => {
-    if (!formData.phoneNumber || formData.phoneNumber.length < 10) {
-      setError(currentLanguage === 'ko' 
-        ? '올바른 전화번호를 입력해주세요' 
-        : 'Vui lòng nhập số điện thoại hợp lệ');
-      return;
+    try {
+      const response = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNumber: normalizedPhone }),
+      });
+      
+      if (response.ok) {
+        setOtpSent(true);
+        setOtpError('');
+        return true;
+      } else {
+        const data = await response.json();
+        setError(data.error || 'Failed to send OTP');
+        return false;
+      }
+    } catch (err) {
+      setError('System error occurred while sending OTP');
+      return false;
+    } finally {
+      setLoading(false);
     }
-    setOtpSent(true);
-    setTimeout(() => setOtpSent(false), 5000);
   };
 
-  // 회원가입 제출 핸들러
+  const handleVerifyOTP = async () => {
+    if (otpCode.length !== 6) return;
+    
+    setIsVerifyingOtp(true);
+    setOtpError('');
+    try {
+      const response = await fetch('/api/auth/send-otp', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          phoneNumber: formData.phoneNumber, 
+          code: otpCode 
+        }),
+      });
+      
+      if (response.ok) {
+        setIsPhoneVerified(true);
+        setOtpError('');
+      } else {
+        const data = await response.json();
+        setOtpError(data.error || 'Invalid code');
+      }
+    } catch (err) {
+      setOtpError('Verification error');
+    } finally {
+      setIsVerifyingOtp(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
 
+    // 유효성 검사 (전화번호는 선택 사항)
+    if (!formData.email || !formData.password || !formData.fullName) {
+      setError(currentLanguage === 'ko' ? '모든 필수 필드를 입력해주세요' : 'Vui lòng điền đầy đủ thông tin');
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      setError(currentLanguage === 'ko' ? '비밀번호가 일치하지 않습니다' : 'Mật khẩu không khớp');
+      return;
+    }
+
     if (formData.password.length < 6) {
-      setError(currentLanguage === 'ko' 
-        ? '비밀번호는 최소 6자 이상이어야 합니다' 
-        : 'Mật khẩu phải có ít nhất 6 ký tự');
+      setError(currentLanguage === 'ko' ? '비밀번호는 최소 6자 이상이어야 합니다' : 'Mật khẩu phải có ít nhất 6 ký tự');
+      return;
+    }
+
+    // 조건부 인증 체크
+    if (requirePhoneVerification && !isPhoneVerified) {
+      setError(currentLanguage === 'ko' ? '전화번호 인증이 필요합니다' : 'Vui lòng xác thực số điện thoại');
       return;
     }
 
@@ -145,33 +187,44 @@ function SignupContent() {
       const signUpData: SignUpData = {
         email: formData.email,
         password: formData.password,
-        ...(formData.fullName && { fullName: formData.fullName }),
-        ...(formData.phoneNumber && { phoneNumber: formData.phoneNumber }),
-        ...(formData.gender && { gender: formData.gender }),
-        preferredLanguage: (currentLanguage === 'ko' || currentLanguage === 'vi' || currentLanguage === 'ja' || currentLanguage === 'zh') ? currentLanguage : 'en',
+        fullName: formData.fullName,
+        phoneNumber: formData.phoneNumber || '', // 전화번호는 선택 사항
+        gender: formData.gender,
+        preferredLanguage: formData.preferredLanguage as SupportedLanguage,
       };
 
       const result = await signUpWithEmail(signUpData);
       
       if (result.error) {
-        setError(
-          result.error.code === 'auth/email-already-in-use'
-            ? (currentLanguage === 'ko' ? '이미 사용 중인 이메일입니다' : 'Email đã được sử dụng')
-            : result.error.code === 'auth/weak-password'
-            ? (currentLanguage === 'ko' ? '비밀번호가 너무 약합니다' : 'Mật khẩu quá yếu')
-            : result.error.message || (currentLanguage === 'ko' ? '회원가입에 실패했습니다' : 'Đăng ký thất bại')
-        );
+        setError(result.error.message || 'Signup failed');
         return;
       }
 
-      setShowSuccessModal(true);
+      router.push('/');
     } catch (error: any) {
-      console.error('Sign up unexpected error:', error);
-      setError(currentLanguage === 'ko' ? '회원가입에 실패했습니다' : 'Đăng ký thất bại');
+      setError('An unexpected error occurred');
     } finally {
       setLoading(false);
     }
   };
+
+  const handleSocialLogin = async (provider: "google" | "facebook") => {
+    setLoading(true);
+    try {
+      await signIn(provider, { callbackUrl: '/' });
+    } catch (error) {
+      setError('Social login failed');
+      setLoading(false);
+    }
+  };
+
+  // 가입 버튼 활성화 로직: 로딩 중이 아니고, 필수 필드(이메일, 비밀번호, 이름)가 입력되었으며, (전화번호를 입력한 경우에만 인증 완료 필요)
+  const isSignupDisabled = loading || 
+    !formData.email || 
+    !formData.password || 
+    !formData.fullName || 
+    (formData.phoneNumber && !formData.isPhoneComplete) || 
+    (formData.phoneNumber && requirePhoneVerification && !isPhoneVerified);
 
   return (
     <div className="min-h-screen bg-gray-100 flex justify-center">
@@ -185,310 +238,224 @@ function SignupContent() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="px-6 py-6"
+          className="px-6 py-6 pb-20"
         >
           <button
             onClick={() => router.push('/login')}
             className="flex items-center gap-2 text-gray-700 hover:text-gray-900 mb-4 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span className="font-medium">{currentLanguage === 'ko' ? '로그인으로' : 'Về đăng nhập'}</span>
+            <span className="font-medium">{getUIText('loginToSignup', currentLanguage)}</span>
           </button>
 
-          <div className="mb-6 flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-1">
-                {currentLanguage === 'ko' ? '회원가입' : 
-                 currentLanguage === 'vi' ? 'Đăng ký' : 
-                 'Sign Up'}
-              </h1>
-              <p className="text-gray-500 text-sm">
-                {currentLanguage === 'ko' 
-                  ? '새 계정을 만들어 시작하세요'
-                  : currentLanguage === 'vi'
-                  ? 'Tạo tài khoản mới để bắt đầu'
-                  : 'Create a new account to get started'}
-              </p>
-            </div>
-            
-            <div className="relative" ref={languageMenuRef}>
-              <button
-                type="button"
-                onClick={() => setIsLanguageMenuOpen(!isLanguageMenuOpen)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-full transition-all duration-200"
-              >
-                <Globe className="w-4 h-4" />
-              <span className="text-base">
-                {currentLanguage === 'ko' ? '🇰🇷' : 
-                 currentLanguage === 'vi' ? '🇻🇳' : 
-                 currentLanguage === 'ja' ? '🇯🇵' : 
-                 currentLanguage === 'zh' ? '🇨🇳' : 
-                 '🇺🇸'}
-              </span>
-              </button>
-
-              {isLanguageMenuOpen && (
-                <div className="absolute right-0 mt-2 w-44 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50">
-                  {[
-                    { code: 'en' as SupportedLanguage, name: 'English', flag: '🇺🇸' },
-                    { code: 'vi' as SupportedLanguage, name: 'Tiếng Việt', flag: '🇻🇳' },
-                    { code: 'ko' as SupportedLanguage, name: '한국어', flag: '🇰🇷' },
-                    { code: 'ja' as SupportedLanguage, name: '日本語', flag: '🇯🇵' },
-                    { code: 'zh' as SupportedLanguage, name: '中文', flag: '🇨🇳' },
-                  ].map((lang) => (
-                    <button
-                      key={lang.code}
-                      type="button"
-                      onClick={() => handleLanguageChange(lang.code)}
-                      className={`w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 flex items-center gap-3 transition-colors ${
-                        currentLanguage === lang.code ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-700'
-                      }`}
-                    >
-                      <span className="text-lg">{lang.flag}</span>
-                      <span>{lang.name}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+          <div className="mb-8">
+            <h1 className="text-2xl font-bold text-gray-900 mb-1">
+              {getUIText('signupWelcome', currentLanguage)}
+            </h1>
+            <p className="text-gray-500 text-sm">
+              {getUIText('signupSub', currentLanguage)}
+            </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* 이름 입력 */}
             <div>
-              <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-1.5">
-                {currentLanguage === 'ko' ? '이름' : 'Họ tên'}
-                <span className="text-gray-400 text-xs ml-1">({currentLanguage === 'ko' ? '선택' : 'Tùy chọn'})</span>
+              <label className="block text-sm font-bold text-gray-700 mb-1.5">
+                {getUIText('fullName', currentLanguage)} <span className="text-red-500">*</span>
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <User className="h-4 w-4 text-gray-400" />
-                </div>
+                <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                 <input
-                  id="fullName"
                   name="fullName"
                   type="text"
                   value={formData.fullName}
                   onChange={handleChange}
-                  className="w-full pl-10 pr-4 py-2.5 text-sm bg-white/80 backdrop-blur-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-400"
-                  placeholder={currentLanguage === 'ko' ? '이름을 입력하세요 (선택)' : 'Nhập họ tên (tùy chọn)'}
+                  required
+                  className="w-full pl-10 pr-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                  placeholder={currentLanguage === 'ko' ? '실명을 입력하세요' : 'Nhập họ tên thật'}
                 />
               </div>
             </div>
 
-            <div>
-              <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 mb-1.5">
-                {currentLanguage === 'ko' ? '전화번호' : 'Số điện thoại'}
-                <span className="text-gray-400 text-xs ml-1">({currentLanguage === 'ko' ? '선택' : 'Tùy chọn'})</span>
-              </label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Phone className="h-4 w-4 text-gray-400" />
-                  </div>
-                  <input
-                    id="phoneNumber"
-                    name="phoneNumber"
-                    type="tel"
-                    value={formData.phoneNumber}
-                    onChange={handlePhoneChange}
-                    className="w-full pl-10 pr-4 py-2.5 text-sm bg-white/80 backdrop-blur-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-400"
-                    placeholder="+84... (선택)"
-                  />
+            {/* 전화번호 입력 (InternationalPhoneInput 사용) */}
+            <div className="space-y-3">
+              <InternationalPhoneInput 
+                currentLanguage={currentLanguage}
+                onPhoneChange={handlePhoneChange}
+                onSendOtp={handleSendOTP}
+                isLoading={loading}
+                disabled={isPhoneVerified}
+              />
+              
+              {/* OTP 입력창 (발송된 경우에만 표시) */}
+              <AnimatePresence>
+                {otpSent && !isPhoneVerified && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="space-y-2"
+                  >
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <ShieldCheck className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                        <input
+                          type="text"
+                          maxLength={6}
+                          value={otpCode}
+                          onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                          placeholder="6-digit code"
+                          className="w-full pl-10 pr-4 py-2.5 text-sm border-2 border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleVerifyOTP}
+                        disabled={otpCode.length !== 6 || isVerifyingOtp}
+                        className="px-6 bg-blue-600 text-white rounded-xl font-bold text-sm disabled:bg-gray-200 disabled:text-gray-400"
+                      >
+                        {isVerifyingOtp ? '...' : (currentLanguage === 'ko' ? '인증' : 'Xác minh')}
+                      </button>
+                    </div>
+                    {otpError && <p className="text-xs text-red-500 pl-1">{otpError}</p>}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {isPhoneVerified && (
+                <div className="flex items-center gap-2 text-green-600 text-sm font-bold bg-green-50 p-3 rounded-xl border border-green-100">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>{currentLanguage === 'ko' ? '전화번호 인증 완료' : 'Đã xác minh số điện thoại'}</span>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleSendOTP}
-                  disabled={otpSent || !formData.phoneNumber}
-                  className="px-3 py-2.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-xs whitespace-nowrap"
-                >
-                  {otpSent ? (
-                    <CheckCircle2 className="h-4 w-4" />
-                  ) : (
-                    currentLanguage === 'ko' ? 'OTP' : 'OTP'
-                  )}
-                </button>
-              </div>
+              )}
             </div>
 
+            {/* 이메일 입력 */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                {currentLanguage === 'ko' ? '성별' : 'Giới tính'}
-                <span className="text-gray-400 text-xs ml-1">({currentLanguage === 'ko' ? '선택' : 'Tùy chọn'})</span>
-              </label>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleGenderSelect('male')}
-                  className={`flex-1 py-2.5 px-4 rounded-xl font-medium text-sm transition-all ${
-                    formData.gender === 'male'
-                      ? 'bg-blue-600 text-white shadow-lg'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {currentLanguage === 'ko' ? '남성' : 'Nam'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleGenderSelect('female')}
-                  className={`flex-1 py-2.5 px-4 rounded-xl font-medium text-sm transition-all ${
-                    formData.gender === 'female'
-                      ? 'bg-blue-600 text-white shadow-lg'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {currentLanguage === 'ko' ? '여성' : 'Nữ'}
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="preferredLanguage" className="block text-sm font-medium text-gray-700 mb-1.5">
-                {currentLanguage === 'ko' ? '주 사용 언어' : 'Ngôn ngữ ưa thích'}
-                <span className="text-gray-400 text-xs ml-1">({currentLanguage === 'ko' ? '선택' : 'Tùy chọn'})</span>
-              </label>
-              <select
-                id="preferredLanguage"
-                name="preferredLanguage"
-                value={formData.preferredLanguage || 'en'}
-                onChange={handleChange}
-                className="w-full px-4 py-2.5 text-sm bg-white/80 backdrop-blur-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              >
-                <option value="ko">한국어</option>
-                <option value="vi">Tiếng Việt</option>
-                <option value="en">English</option>
-                <option value="ja">日本語</option>
-                <option value="zh">中文</option>
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1.5">
-                {getUIText('email', currentLanguage)}
-                <span className="text-red-500 text-xs ml-1">*</span>
+              <label className="block text-sm font-bold text-gray-700 mb-1.5">
+                {getUIText('email', currentLanguage)} <span className="text-red-500">*</span>
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-4 w-4 text-gray-400" />
-                </div>
+                <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                 <input
-                  id="email"
                   name="email"
                   type="email"
                   value={formData.email}
                   onChange={handleChange}
-                  placeholder={getUIText('emailPlaceholder', currentLanguage)}
                   required
-                  className="w-full pl-10 pr-4 py-2.5 text-sm bg-white/80 backdrop-blur-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-400"
+                  className="w-full pl-10 pr-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                  placeholder={getUIText('emailPlaceholder', currentLanguage)}
                 />
               </div>
             </div>
 
+            {/* 비밀번호 입력 */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1.5">
-                {getUIText('password', currentLanguage)}
-                <span className="text-red-500 text-xs ml-1">*</span>
+              <label className="block text-sm font-bold text-gray-700 mb-1.5">
+                {getUIText('password', currentLanguage)} <span className="text-red-500">*</span>
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-4 w-4 text-gray-400" />
-                </div>
+                <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                 <input
-                  id="password"
                   name="password"
                   type={showPassword ? 'text' : 'password'}
                   value={formData.password}
                   onChange={handleChange}
-                  placeholder={getUIText('passwordPlaceholder', currentLanguage)}
                   required
-                  className="w-full pl-10 pr-10 py-2.5 text-sm bg-white/80 backdrop-blur-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-400"
+                  className="w-full pl-10 pr-10 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                  placeholder={getUIText('passwordPlaceholder', currentLanguage)}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                  className="absolute right-3 top-3 text-gray-400"
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+
+            {/* 비밀번호 확인 입력 */}
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1.5">
+                {currentLanguage === 'ko' ? '비밀번호 확인' : 'Xác nhận mật khẩu'} <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <input
+                  name="confirmPassword"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  required
+                  className="w-full pl-10 pr-10 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                  placeholder={currentLanguage === 'ko' ? '비밀번호를 다시 입력하세요' : 'Nhập lại mật khẩu'}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-3 text-gray-400"
+                >
+                  {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
             </div>
 
             {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm"
-              >
+              <div className="p-4 bg-red-50 border border-red-100 text-red-600 text-sm rounded-xl">
                 {error}
-              </motion.div>
+              </div>
             )}
 
             <button
               type="submit"
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white py-3 px-6 rounded-full font-semibold text-sm hover:from-blue-700 hover:to-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all shadow-lg hover:shadow-xl active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-6"
+              disabled={isSignupDisabled}
+              className={`w-full py-4 rounded-full font-bold text-base shadow-lg transition-all flex items-center justify-center gap-2 mt-4 ${
+                !isSignupDisabled
+                  ? 'bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98]'
+                  : 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
+              }`}
             >
-              {loading ? (
-                <span className="flex items-center gap-2">
-                  <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  {currentLanguage === 'ko' ? '가입 중...' : 'Đang đăng ký...'}
-                </span>
-              ) : (
-                <>
-                  <span>{currentLanguage === 'ko' ? '회원가입' : 'Đăng ký'}</span>
-                  <ArrowRight className="h-4 w-4" />
-                </>
-              )}
+              {loading ? '...' : getUIText('signup', currentLanguage)}
+              <ArrowRight size={20} />
             </button>
           </form>
+
+          <div className="relative my-8 text-center text-xs text-gray-400 font-bold">
+            <span className="bg-white px-4 relative z-10">OR</span>
+            <div className="absolute top-1/2 w-full border-t border-gray-100"></div>
+          </div>
+
+          <div className="space-y-3">
+            <button
+              type="button"
+              onClick={() => handleSocialLogin("google")}
+              className="w-full border-2 border-gray-200 py-3 rounded-full text-sm font-bold flex items-center justify-center gap-3 hover:bg-gray-50 transition-all"
+            >
+              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="Google" />
+              <span>{getUIText('googleContinue', currentLanguage)}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSocialLogin("facebook")}
+              className="w-full bg-[#1877F2] text-white py-3 rounded-full text-sm font-bold flex items-center justify-center gap-3 hover:bg-blue-700 transition-all"
+            >
+              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/facebook.svg" className="w-5 h-5" alt="Facebook" />
+              <span>{getUIText('facebookContinue', currentLanguage)}</span>
+            </button>
+          </div>
         </motion.div>
       </div>
-
-      {showSuccessModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl"
-          >
-            <div className="text-center">
-              <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                <CheckCircle2 className="w-8 h-8 text-green-600" />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">
-                {currentLanguage === 'ko' ? '회원가입 완료!' : 'Đăng ký thành công!'}
-              </h3>
-              <p className="text-sm text-gray-600 mb-6">
-                {currentLanguage === 'ko' 
-                  ? '환영합니다! 이제 서비스를 이용하실 수 있습니다.'
-                  : 'Chào mừng bạn! Bây giờ bạn có thể sử dụng dịch vụ.'}
-              </p>
-              <button
-                onClick={() => {
-                  setShowSuccessModal(false);
-                  router.push(returnUrl);
-                }}
-                className="w-full py-3 px-6 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-all"
-              >
-                {currentLanguage === 'ko' ? '시작하기' : 'Bắt đầu'}
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
     </div>
   );
 }
 
-// 2. 외부에서 사용할 래퍼 컴포넌트 (빌드 에러 방지용 Suspense)
 export default function SignUpPage() {
+  const { currentLanguage } = useLanguage();
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-gray-500">로딩 중...</div>
+        <div className="text-gray-500">{getUIText('loading', currentLanguage)}</div>
       </div>
     }>
       <SignupContent />

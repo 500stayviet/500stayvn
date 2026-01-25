@@ -126,15 +126,7 @@ export default function PopularStays({ currentLanguage }: PopularStaysProps) {
       <div className="w-full px-4">
         {/* 타이틀 - 항상 표시 */}
         <h2 className="text-xl font-bold text-gray-900 mb-6 px-2">
-          {currentLanguage === 'ko' 
-            ? '지금 가장 인기 있는 숙소' 
-            : currentLanguage === 'vi'
-            ? 'Chỗ ở phổ biến nhất hiện tại'
-            : currentLanguage === 'ja'
-            ? '今最も人気のある宿泊施設'
-            : currentLanguage === 'zh'
-            ? '目前最受欢迎的住宿'
-            : 'Popular Stays Now'}
+          {getUIText('popularStaysTitle', currentLanguage)}
         </h2>
 
         {/* 로딩 중일 때 */}
@@ -223,9 +215,7 @@ export default function PopularStays({ currentLanguage }: PopularStaysProps) {
                         <div className="bg-green-500 text-white px-3 py-1.5 rounded-lg shadow-lg flex items-center gap-1.5">
                           <div className="w-2 h-2 bg-white rounded-full"></div>
                           <span className="text-xs font-semibold">
-                            {currentLanguage === 'ko' ? '즉시 입주 가능' : 
-                             currentLanguage === 'vi' ? 'Có thể vào ngay' : 
-                             'Available Now'}
+                            {getUIText('availableNow', currentLanguage)}
                           </span>
                         </div>
                       ) : (

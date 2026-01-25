@@ -151,10 +151,8 @@ export async function signUpWithEmail(data: SignUpData): Promise<any> {
   try {
     const users = getUsers();
 
-    // 이메일 중복 확인 (삭제되지 않은 사용자만 체크)
-    const existingUser = users.find(
-      (u) => u.email === data.email && !u.deleted,
-    );
+    // 이메일 중복 확인
+    const existingUser = users.find((u) => u.email === data.email);
     if (existingUser) {
       // ⚠️ Turbopack 에러 오버레이 방지를 위해 Error 대신 객체 반환
       return {
@@ -163,50 +161,6 @@ export async function signUpWithEmail(data: SignUpData): Promise<any> {
           message: "Email already in use",
         },
       };
-    }
-
-    // 삭제된 사용자가 있으면 복구 가능 (30일 이내)
-    const deletedUser = users.find((u) => u.email === data.email && u.deleted);
-    if (deletedUser && deletedUser.deletedAt) {
-      const deletedDate = new Date(deletedUser.deletedAt);
-      const daysSinceDeletion =
-        (Date.now() - deletedDate.getTime()) / (1000 * 60 * 60 * 24);
-
-      // 30일 이내면 복구 가능
-      if (daysSinceDeletion <= 30) {
-        // 기존 사용자 데이터 복구
-        const userIndex = users.findIndex((u) => u.uid === deletedUser.uid);
-        if (userIndex !== -1) {
-          users[userIndex] = {
-            ...deletedUser,
-            password: simpleHash(data.password), // 새 비밀번호로 업데이트
-            deleted: false,
-            deletedAt: undefined,
-            updatedAt: new Date().toISOString(),
-          };
-          saveUsers(users);
-          setCurrentUser(deletedUser.uid);
-
-          return {
-            user: {
-              uid: deletedUser.uid,
-              email: deletedUser.email,
-              displayName: deletedUser.displayName || null,
-              updateProfile: async (profile: { displayName?: string }) => {
-                const users = getUsers();
-                const userIndex = users.findIndex(
-                  (u) => u.uid === deletedUser.uid,
-                );
-                if (userIndex !== -1) {
-                  users[userIndex].displayName = profile.displayName;
-                  users[userIndex].updatedAt = new Date().toISOString();
-                  saveUsers(users);
-                }
-              },
-            },
-          };
-        }
-      }
     }
 
     // 새 사용자 생성
@@ -272,16 +226,9 @@ export async function signInWithEmail(
     const hashedPassword = simpleHash(password);
 
     // 이메일로 사용자 찾기 (비밀번호 확인 전)
-    const userByEmail = users.find((u) => u.email === email && !u.deleted);
+    const userByEmail = users.find((u) => u.email === email);
 
     if (!userByEmail) {
-      // 삭제된 사용자인지 확인
-      const deletedUser = users.find((u) => u.email === email && u.deleted);
-      if (deletedUser) {
-        return {
-          error: { code: "auth/account-deleted", message: "Account deleted" },
-        };
-      }
       // 이메일이 존재하지 않음
       return {
         error: { code: "auth/user-not-found", message: "User not found" },
@@ -432,8 +379,8 @@ export async function verifyOwner(
 
 /**
  * 회원 탈퇴
- * - 사용자 데이터는 삭제하지 않고 deleted 플래그만 설정
- * - 30일 후 재가입 가능
+ * - 사용자 데이터를 완전히 삭제
+ * - 재가입 시 새로운 계정으로 생성됨
  */
 export async function deleteAccount(uid: string): Promise<void> {
   try {
@@ -444,14 +391,8 @@ export async function deleteAccount(uid: string): Promise<void> {
       throw new Error("User not found");
     }
 
-    // 삭제 플래그 설정 (실제 데이터는 보관)
-    users[userIndex] = {
-      ...users[userIndex],
-      deleted: true,
-      deletedAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
+    // 사용자 데이터를 배열에서 완전히 제거
+    users.splice(userIndex, 1);
     saveUsers(users);
 
     // 로그아웃

@@ -26,7 +26,7 @@ import {
   formatDateForBadge 
 } from '@/lib/utils/dateUtils';
 
-import { SupportedLanguage } from '@/lib/api/translation';
+import { getUIText } from '@/utils/i18n';
 
 interface PropertyModalProps {
   propertyData: PropertyData;
@@ -148,9 +148,7 @@ export default function PropertyModal({
             <div className="absolute top-3 left-3 bg-green-500 text-white px-3 py-1.5 rounded-lg z-10 flex items-center gap-2">
               <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
               <span className="text-xs font-bold">
-                {currentLanguage === 'ko' ? '즉시입주가능' : 
-                 currentLanguage === 'vi' ? 'Có thể vào ở ngay' : 
-                 'Available Now'}
+                {getUIText('immediateEntry', currentLanguage)}
               </span>
             </div>
           ) : propertyData.checkInDate && (
@@ -221,7 +219,7 @@ export default function PropertyModal({
           {/* 주소 (원문 그대로 표시) */}
           <div>
             <p className="text-xs text-gray-500 mb-1">
-              {currentLanguage === 'ko' ? '주소' : currentLanguage === 'vi' ? 'Địa chỉ' : 'Address'}
+              {getUIText('address', currentLanguage)}
             </p>
             <p className="text-sm font-medium text-gray-900">
               {propertyData.address || propertyData.title}
@@ -231,27 +229,18 @@ export default function PropertyModal({
           {/* 가격 + 체크인/체크아웃 시간 */}
           <div>
             <p className="text-xs text-gray-500 mb-1">
-              {currentLanguage === 'ko' ? '1주일 임대료' : 
-               currentLanguage === 'vi' ? 'Giá thuê 1 tuần' : 
-               'Weekly Rent'}
+              {getUIText('weeklyRent', currentLanguage)}
             </p>
             <p className="text-lg font-bold text-gray-900">
               {formatFullPrice(propertyData.price, propertyData.priceUnit)}
             </p>
             <p className="text-xs text-gray-500 mt-1">
-              {currentLanguage === 'ko' ? '공과금/관리비 포함' : 
-               currentLanguage === 'vi' ? 'Bao gồm tiện ích/phí quản lý' : 
-               'Utilities/Management fees included'}
+              {getUIText('utilitiesIncluded', currentLanguage)}
             </p>
             {/* 체크인/체크아웃 시간 */}
             {(propertyData.checkInTime || propertyData.checkOutTime) && (
               <p className="text-xs text-blue-600 mt-2">
-                {currentLanguage === 'ko' 
-                  ? `체크인 ${propertyData.checkInTime || '14:00'} 이후 · 체크아웃 ${propertyData.checkOutTime || '12:00'} 이전`
-                  : currentLanguage === 'vi'
-                  ? `Nhận phòng sau ${propertyData.checkInTime || '14:00'} · Trả phòng trước ${propertyData.checkOutTime || '12:00'}`
-                  : `Check-in after ${propertyData.checkInTime || '14:00'} · Check-out before ${propertyData.checkOutTime || '12:00'}`
-                }
+                {getUIText('checkIn', currentLanguage)} {propertyData.checkInTime || '14:00'} {getUIText('checkInAfter', currentLanguage)} · {getUIText('checkOut', currentLanguage)} {propertyData.checkOutTime || '12:00'} {getUIText('checkOutBefore', currentLanguage)}
               </p>
             )}
           </div>
@@ -260,9 +249,7 @@ export default function PropertyModal({
           {(propertyData.checkInDate || propertyData.checkOutDate) && (
             <div>
               <p className="text-xs text-gray-500 mb-1">
-                {currentLanguage === 'ko' ? '임대 가능 날짜' : 
-                 currentLanguage === 'vi' ? 'Ngày cho thuê' : 
-                 'Available Dates'}
+                {getUIText('availableDates', currentLanguage)}
               </p>
               <div className="flex items-center gap-2 text-sm text-gray-900">
                 <Calendar className="w-4 h-4 text-gray-600" />
@@ -293,18 +280,14 @@ export default function PropertyModal({
           {(propertyData.maxAdults || propertyData.maxChildren) && (
             <div>
               <p className="text-xs text-gray-500 mb-1">
-                {currentLanguage === 'ko' ? '최대 인원 수' : 
-                 currentLanguage === 'vi' ? 'Số người tối đa' : 
-                 'Maximum Guests'}
+                {getUIText('maxGuests', currentLanguage)}
               </p>
               <div className="flex items-center gap-4 text-sm text-gray-900">
                 {propertyData.maxAdults !== undefined && (
                   <div className="flex items-center gap-2">
                     <Users className="w-4 h-4 text-gray-600" />
                     <span className="font-medium">
-                      {currentLanguage === 'ko' ? `성인 ${propertyData.maxAdults}명` : 
-                       currentLanguage === 'vi' ? `${propertyData.maxAdults} người lớn` : 
-                       `${propertyData.maxAdults} adults`}
+                      {getUIText('adults', currentLanguage)} {propertyData.maxAdults}
                     </span>
                   </div>
                 )}
@@ -312,9 +295,7 @@ export default function PropertyModal({
                   <div className="flex items-center gap-2">
                     <Users className="w-4 h-4 text-gray-600" />
                     <span className="font-medium">
-                      {currentLanguage === 'ko' ? `어린이 ${propertyData.maxChildren}명` : 
-                       currentLanguage === 'vi' ? `${propertyData.maxChildren} trẻ em` : 
-                       `${propertyData.maxChildren} children`}
+                      {getUIText('children', currentLanguage)} {propertyData.maxChildren}
                     </span>
                   </div>
                 )}
@@ -325,9 +306,7 @@ export default function PropertyModal({
           {/* 편의시설 */}
           <div>
             <p className="text-xs text-gray-500 mb-3">
-              {currentLanguage === 'ko' ? '편의시설' : 
-               currentLanguage === 'vi' ? 'Tiện ích' : 
-               'Amenities'}
+              {getUIText('amenities', currentLanguage)}
             </p>
             {propertyData.amenities && propertyData.amenities.length > 0 ? (
               <div className="grid grid-cols-3 gap-2">
@@ -348,9 +327,7 @@ export default function PropertyModal({
               </div>
             ) : (
               <p className="text-sm text-gray-400 text-center py-3">
-                {currentLanguage === 'ko' ? '편의시설 정보가 없습니다' : 
-                 currentLanguage === 'vi' ? 'Không có thông tin tiện ích' : 
-                 'No amenities information'}
+                {getUIText('noAmenities', currentLanguage)}
               </p>
             )}
           </div>
@@ -358,9 +335,7 @@ export default function PropertyModal({
           {/* 날짜 선택 */}
           <div className="pt-2 border-t border-gray-100">
             <p className="text-xs text-gray-500 mb-3">
-              {currentLanguage === 'ko' ? '예약 날짜 선택' : 
-               currentLanguage === 'vi' ? 'Chọn ngày đặt phòng' : 
-               'Select Booking Dates'}
+              {getUIText('selectBookingDates', currentLanguage)}
             </p>
             <div className="grid grid-cols-2 gap-2">
               {/* 체크인 선택 */}
@@ -376,7 +351,7 @@ export default function PropertyModal({
                 }`}
               >
                 <span className="text-[10px] text-gray-500 mb-1">
-                  {currentLanguage === 'ko' ? '체크인' : currentLanguage === 'vi' ? 'Nhận phòng' : 'Check-in'}
+                  {getUIText('checkIn', currentLanguage)}
                 </span>
                 <span className={`text-sm font-semibold ${modalCheckInDate ? 'text-blue-600' : 'text-gray-400'}`}>
                   {modalCheckInDate 
@@ -384,7 +359,7 @@ export default function PropertyModal({
                         currentLanguage === 'ko' ? 'ko-KR' : currentLanguage === 'vi' ? 'vi-VN' : 'en-US',
                         { month: 'short', day: 'numeric' }
                       )
-                    : (currentLanguage === 'ko' ? '날짜 선택' : currentLanguage === 'vi' ? 'Chọn ngày' : 'Select')
+                    : getUIText('selectDate', currentLanguage)
                   }
                 </span>
               </button>
@@ -402,7 +377,7 @@ export default function PropertyModal({
                 }`}
               >
                 <span className="text-[10px] text-gray-500 mb-1">
-                  {currentLanguage === 'ko' ? '체크아웃' : currentLanguage === 'vi' ? 'Trả phòng' : 'Check-out'}
+                  {getUIText('checkOut', currentLanguage)}
                 </span>
                 <span className={`text-sm font-semibold ${modalCheckOutDate ? 'text-blue-600' : 'text-gray-400'}`}>
                   {modalCheckOutDate 
@@ -410,7 +385,7 @@ export default function PropertyModal({
                         currentLanguage === 'ko' ? 'ko-KR' : currentLanguage === 'vi' ? 'vi-VN' : 'en-US',
                         { month: 'short', day: 'numeric' }
                       )
-                    : (currentLanguage === 'ko' ? '날짜 선택' : currentLanguage === 'vi' ? 'Chọn ngày' : 'Select')
+                    : getUIText('selectDate', currentLanguage)
                   }
                 </span>
               </button>
@@ -441,8 +416,8 @@ export default function PropertyModal({
               }`}
             >
               {modalCheckInDate && modalCheckOutDate
-                ? (currentLanguage === 'ko' ? '예약하기' : currentLanguage === 'vi' ? 'Đặt phòng' : 'Book Now')
-                : (currentLanguage === 'ko' ? '날짜를 선택하세요' : currentLanguage === 'vi' ? 'Vui lòng chọn ngày' : 'Select dates')
+                ? getUIText('bookNow', currentLanguage)
+                : getUIText('selectDatesFirst', currentLanguage)
               }
             </button>
           </div>
