@@ -12,7 +12,7 @@ applications:
         commands:
           - npx prisma generate
           - npm run build
-    artifacts:
+    artifacts: # 👈 이 줄의 들여쓰기가 매우 중요합니다.
       baseDirectory: .next
       files:
         - '**/*'
