@@ -1,22 +1,48 @@
 {
-    "version": 1,
-    "framework": { "name": "nextjs", "version": "15.1.0" },
-    "imageSettings": { "dangerouslyAllowSVG": false },
-    "routes": [
+  "version": 1,
+  "framework": {
+    "name": "nextjs",
+    "version": "15.1.0"
+  },
+  "imageSettings": {
+    "sizes": [100, 200, 1920],
+    "domains": [],
+    "remotePatterns": [
       {
-        "path": "/_next/static/*",
-        "target": { "kind": "Static", "cacheControl": "public, max-age=31536000, immutable" }
-      },
-      {
-        "path": "/*",
-        "target": { "kind": "Compute", "src": "default" }
+        "protocol": "https",
+        "hostname": "images.unsplash.com",
+        "pathname": "/**"
       }
     ],
-    "computeResources": [
-      {
-        "name": "default",
-        "runtime": "nodejs20.x",
-        "entrypoint": "server.js"
+    "formats": [],
+    "minimumCacheTTL": 60,
+    "dangerouslyAllowSVG": false
+  },
+  "routes": [
+    {
+      "path": "/_next/static/*",
+      "target": {
+        "kind": "Static",
+        "cacheControl": "public, max-age=31536000, immutable"
       }
-    ]
-  }
+    },
+    {
+      "path": "/*.*",
+      "target": {
+        "kind": "Static",
+        "cacheControl": "public, max-age=2"
+      },
+      "fallback": {
+        "kind": "Compute",
+        "src": "default"
+      }
+    },
+    {
+      "path": "/*",
+      "target": {
+        "kind": "Compute",
+        "src": "default"
+      }
+    }
+  ]
+}
