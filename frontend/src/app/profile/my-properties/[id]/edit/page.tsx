@@ -229,7 +229,8 @@ function EditPropertyContent() {
         currentLanguage === "ja" ? "編集完了！" :
         "Updated!"
       );
-      router.push(`/profile/my-properties/${propertyId}`);
+      // 매물 수정 완료 후 내매물관리페이지의 등록매물 탭으로 이동
+      router.push('/profile/my-properties');
     } catch (err) {
       console.error("Update failed:", err);
       const errorMessage = (err as any).message || String(err);
