@@ -357,42 +357,415 @@ function EditPropertyContent() {
               )}
             </section>
 
-            {/* 가격 & 기본 정보 */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-bold mb-2">
-                  {getUIText('price', currentLanguage)} (VND)
-                </label>
+            {/* 구분선 */}
+            <div className="border-t border-gray-200 my-4"></div>
+
+            {/* 동호수 입력 (동, 호실 분리) */}
+            <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                {currentLanguage === "ko" ? "동호수" : 
+                 currentLanguage === "zh" ? "房号" : 
+                 currentLanguage === "vi" ? "Số phòng" :
+                 currentLanguage === "ja" ? "部屋番号" : "Unit Number"}
+              </label>
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                {/* 동 입력 */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                    {currentLanguage === "ko" ? "동" : 
+                     currentLanguage === "zh" ? "栋" : 
+                     currentLanguage === "vi" ? "Tòa" :
+                     currentLanguage === "ja" ? "棟" : "Building"}
+                  </label>
+                  <input
+                    type="text"
+                    value={buildingNumber}
+                    onChange={(e) => setBuildingNumber(e.target.value)}
+                    placeholder={
+                      currentLanguage === "ko" ? "예: A, 1" : 
+                      currentLanguage === "zh" ? "例如: A, 1" : 
+                      currentLanguage === "vi" ? "VD: A, 1" :
+                      currentLanguage === "ja" ? "例: A, 1" : "e.g., A, 1"
+                    }
+                    className="w-full px-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
+                  />
+                </div>
+                {/* 호실 입력 */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                    {currentLanguage === "ko" ? "호실" : 
+                     currentLanguage === "zh" ? "房间" : 
+                     currentLanguage === "vi" ? "Phòng" :
+                     currentLanguage === "ja" ? "号室" : "Room"}
+                  </label>
+                  <input
+                    type="text"
+                    value={roomNumber}
+                    onChange={(e) => setRoomNumber(e.target.value)}
+                    placeholder={
+                      currentLanguage === "ko" ? "예: 101, 301" : 
+                      currentLanguage === "zh" ? "例如: 101, 301" : 
+                      currentLanguage === "vi" ? "VD: 101, 301" :
+                      currentLanguage === "ja" ? "例: 101, 301" : "e.g., 101, 301"
+                    }
+                    className="w-full px-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 flex items-start gap-1">
+                <span className="text-blue-600">ℹ️</span>
+                <span>
+                  {currentLanguage === "ko" ? "동호수는 예약이 완료된 이후에 임차인에게만 표시됩니다." : 
+                   currentLanguage === "zh" ? "房号仅在预订完成后对租客显示。" : 
+                   currentLanguage === "vi" ? "Số phòng chỉ hiển thị cho người thuê sau khi đặt chỗ được hoàn thành." :
+                   currentLanguage === "ja" ? "部屋番号は予約完了後にのみ借主に表示されます。" : "Unit number will only be visible to tenants after booking is completed."}
+                </span>
+              </p>
+            </div>
+
+            {/* 임대 희망 날짜 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                {currentLanguage === "ko" ? "임대 희망 날짜" : 
+                 currentLanguage === "zh" ? "期望租赁日期" : 
+                 currentLanguage === "vi" ? "Ngày cho thuê mong muốn" :
+                 currentLanguage === "ja" ? "希望賃貸期間" : "Desired Rental Dates"}
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                {/* 체크인 날짜 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCalendarMode("checkin");
+                    setShowCalendar(true);
+                  }}
+                  className="flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border-2 border-gray-200"
+                >
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-gray-600" />
+                    <div className="text-left">
+                      <div className="text-xs text-gray-500">
+                        {currentLanguage === "ko" ? "시작일" : 
+                         currentLanguage === "zh" ? "开始日期" : 
+                         currentLanguage === "vi" ? "Ngày bắt đầu" :
+                         currentLanguage === "ja" ? "開始日" : "Start Date"}
+                      </div>
+                      <div className="text-sm font-medium text-gray-900">
+                        {checkInDate
+                          ? (() => {
+                              try {
+                                let date: Date | null = null;
+                                if (checkInDate instanceof Date) {
+                                  date = checkInDate;
+                                } else if (typeof checkInDate === "string") {
+                                  date = new Date(checkInDate);
+                                }
+                                if (!date || isNaN(date.getTime())) {
+                                  return currentLanguage === "ko" ? "날짜 선택" : 
+                                         currentLanguage === "zh" ? "选择日期" : 
+                                         currentLanguage === "vi" ? "Chọn ngày" :
+                                         currentLanguage === "ja" ? "日付を選択" : "Select date";
+                                }
+                                const month = date.getMonth() + 1;
+                                const day = date.getDate();
+                                if (isNaN(month) || isNaN(day)) {
+                                  return currentLanguage === "ko" ? "날짜 선택" : 
+                                         currentLanguage === "zh" ? "选择日期" : 
+                                         currentLanguage === "vi" ? "Chọn ngày" :
+                                         currentLanguage === "ja" ? "日付を選択" : "Select date";
+                                }
+                                return date.toLocaleDateString(
+                                  currentLanguage === "ko" ? "ko-KR" : 
+                                  currentLanguage === "zh" ? "zh-CN" : 
+                                  currentLanguage === "vi" ? "vi-VN" :
+                                  currentLanguage === "ja" ? "ja-JP" : "en-US",
+                                  {
+                                    month: "short",
+                                    day: "numeric",
+                                  },
+                                );
+                              } catch {
+                                return currentLanguage === "ko" ? "날짜 선택" : 
+                                       currentLanguage === "zh" ? "选择日期" : 
+                                       currentLanguage === "vi" ? "Chọn ngày" :
+                                       currentLanguage === "ja" ? "日付を選択" : "Select date";
+                              }
+                            })()
+                          : currentLanguage === "ko" ? "날짜 선택" : 
+                            currentLanguage === "zh" ? "选择日期" : 
+                            currentLanguage === "vi" ? "Chọn ngày" :
+                            currentLanguage === "ja" ? "日付を選択" : "Select date"}
+                      </div>
+                    </div>
+                  </div>
+                </button>
+
+                {/* 체크아웃 날짜 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCalendarMode("checkout");
+                    setShowCalendar(true);
+                  }}
+                  className="flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border-2 border-gray-200"
+                >
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-gray-600" />
+                    <div className="text-left">
+                      <div className="text-xs text-gray-500">
+                        {currentLanguage === "ko" ? "종료일" : 
+                         currentLanguage === "zh" ? "结束日期" : 
+                         currentLanguage === "vi" ? "Ngày kết thúc" :
+                         currentLanguage === "ja" ? "終了日" : "End Date"}
+                      </div>
+                      <div className="text-sm font-medium text-gray-900">
+                        {checkOutDate
+                          ? (() => {
+                              try {
+                                let date: Date | null = null;
+                                if (checkOutDate instanceof Date) {
+                                  date = checkOutDate;
+                                } else if (typeof checkOutDate === "string") {
+                                  date = new Date(checkOutDate);
+                                }
+                                if (!date || isNaN(date.getTime())) {
+                                  return currentLanguage === "ko" ? "날짜 선택" : 
+                                         currentLanguage === "zh" ? "选择日期" : 
+                                         currentLanguage === "vi" ? "Chọn ngày" :
+                                         currentLanguage === "ja" ? "日付を選択" : "Select date";
+                                }
+                                const month = date.getMonth() + 1;
+                                const day = date.getDate();
+                                if (isNaN(month) || isNaN(day)) {
+                                  return currentLanguage === "ko" ? "날짜 선택" : 
+                                         currentLanguage === "zh" ? "选择日期" : 
+                                         currentLanguage === "vi" ? "Chọn ngày" :
+                                         currentLanguage === "ja" ? "日付を選択" : "Select date";
+                                }
+                                return date.toLocaleDateString(
+                                  currentLanguage === "ko" ? "ko-KR" : 
+                                  currentLanguage === "zh" ? "zh-CN" : 
+                                  currentLanguage === "vi" ? "vi-VN" :
+                                  currentLanguage === "ja" ? "ja-JP" : "en-US",
+                                  {
+                                    month: "short",
+                                    day: "numeric",
+                                  },
+                                );
+                              } catch {
+                                return currentLanguage === "ko" ? "날짜 선택" : 
+                                       currentLanguage === "zh" ? "选择日期" : 
+                                       currentLanguage === "vi" ? "Chọn ngày" :
+                                       currentLanguage === "ja" ? "日付を選択" : "Select date";
+                              }
+                            })()
+                          : currentLanguage === "ko" ? "날짜 선택" : 
+                            currentLanguage === "zh" ? "选择日期" : 
+                            currentLanguage === "vi" ? "Chọn ngày" :
+                            currentLanguage === "ja" ? "日付を選択" : "Select date"}
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* 최대 인원 수 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                {currentLanguage === "ko" ? "최대 인원 수" : 
+                 currentLanguage === "zh" ? "最大入住人数" : 
+                 currentLanguage === "vi" ? "Số người tối đa" :
+                 currentLanguage === "ja" ? "最大人数" : "Maximum Guests"}
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                {/* 성인 */}
+                <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg border-2 border-gray-200">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-gray-600" />
+                    <div>
+                      <div className="text-xs text-gray-500">
+                        {currentLanguage === "ko" ? "성인" : 
+                         currentLanguage === "zh" ? "成人" : 
+                         currentLanguage === "vi" ? "Người lớn" :
+                         currentLanguage === "ja" ? "大人" : "Adults"}
+                      </div>
+                      <div className="text-sm font-medium text-gray-900">
+                        {maxAdults}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setMaxAdults(Math.max(1, maxAdults - 1))}
+                      className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                    >
+                      <ChevronLeft className="w-4 h-4 text-gray-600" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMaxAdults(maxAdults + 1)}
+                      className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                    >
+                      <ChevronRight className="w-4 h-4 text-gray-600" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* 어린이 */}
+                <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg border-2 border-gray-200">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-gray-600" />
+                    <div>
+                      <div className="text-xs text-gray-500">
+                        {currentLanguage === "ko" ? "어린이" : 
+                         currentLanguage === "zh" ? "儿童" : 
+                         currentLanguage === "vi" ? "Trẻ em" :
+                         currentLanguage === "ja" ? "子供" : "Children"}
+                      </div>
+                      <div className="text-sm font-medium text-gray-900">
+                        {maxChildren}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setMaxChildren(Math.max(0, maxChildren - 1))
+                      }
+                      className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                    >
+                      <ChevronLeft className="w-4 h-4 text-gray-600" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMaxChildren(maxChildren + 1)}
+                      className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                    >
+                      <ChevronRight className="w-4 h-4 text-gray-600" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 1주일 임대료 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {currentLanguage === "ko" ? "1주일 임대료" : 
+                 currentLanguage === "zh" ? "每周租金" : 
+                 currentLanguage === "vi" ? "Giá thuê 1 tuần" :
+                 currentLanguage === "ja" ? "1週間賃料" : "Weekly Rent"}
+                <span className="text-red-500 text-xs ml-1">*</span>
+                <span className="text-gray-500 text-xs ml-2 font-normal">
+                  (
+                  {currentLanguage === "ko" ? "공과금/관리비 포함" : 
+                   currentLanguage === "zh" ? "包含水电费/管理费" : 
+                   currentLanguage === "vi" ? "Bao gồm phí dịch vụ/quản lý" :
+                   currentLanguage === "ja" ? "光熱費・管理費込み" : "Utilities/Management fees included"}
+                  )
+                </span>
+              </label>
+              <div className="flex items-center gap-2">
                 <input
                   type="text"
                   value={
-                    weeklyRent ? parseInt(weeklyRent).toLocaleString() : ""
+                    weeklyRent
+                      ? parseInt(
+                          weeklyRent.replace(/\D/g, "") || "0",
+                          10,
+                        ).toLocaleString()
+                      : ""
                   }
-                  onChange={(e) =>
-                    setWeeklyRent(e.target.value.replace(/\D/g, ""))
-                  }
-                  className="w-full p-3 border rounded-xl"
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, "");
+                    setWeeklyRent(value);
+                  }}
                   placeholder="0"
+                  className="flex-1 px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  required
                 />
+                <span className="text-gray-600 font-medium">VND</span>
               </div>
-              <div>
-                <label className="block text-sm font-bold mb-2">
-                  {getUIText('adults', currentLanguage)}
-                </label>
-                <div className="flex items-center justify-between p-2 border rounded-xl">
-                  <button
-                    type="button"
-                    onClick={() => setMaxAdults(Math.max(1, maxAdults - 1))}
-                  >
-                    <ChevronLeft />
-                  </button>
-                  <span>{maxAdults}</span>
-                  <button
-                    type="button"
-                    onClick={() => setMaxAdults(maxAdults + 1)}
-                  >
-                    <ChevronRight />
-                  </button>
+            </div>
+
+            {/* 방/화장실 수 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                {currentLanguage === "ko" ? "방/화장실 수" : 
+                 currentLanguage === "zh" ? "卧室/浴室数量" : 
+                 currentLanguage === "vi" ? "Số phòng/phòng tắm" :
+                 currentLanguage === "ja" ? "寝室/浴室数" : "Bedrooms/Bathrooms"}
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                {/* 침실 */}
+                <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg border-2 border-gray-200">
+                  <div className="flex items-center gap-2">
+                    <Bed className="w-4 h-4 text-gray-600" />
+                    <div>
+                      <div className="text-xs text-gray-500">
+                        {currentLanguage === "ko" ? "침실" : 
+                         currentLanguage === "zh" ? "卧室" : 
+                         currentLanguage === "vi" ? "Phòng ngủ" :
+                         currentLanguage === "ja" ? "寝室" : "Bedrooms"}
+                      </div>
+                      <div className="text-sm font-medium text-gray-900">
+                        {bedrooms}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setBedrooms(Math.max(0, bedrooms - 1))}
+                      className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                    >
+                      <ChevronLeft className="w-4 h-4 text-gray-600" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBedrooms(bedrooms + 1)}
+                      className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                    >
+                      <ChevronRight className="w-4 h-4 text-gray-600" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* 화장실 */}
+                <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg border-2 border-gray-200">
+                  <div className="flex items-center gap-2">
+                    <Bath className="w-4 h-4 text-gray-600" />
+                    <div>
+                      <div className="text-xs text-gray-500">
+                        {currentLanguage === "ko" ? "화장실" : 
+                         currentLanguage === "zh" ? "浴室" : 
+                         currentLanguage === "vi" ? "Phòng tắm" :
+                         currentLanguage === "ja" ? "浴室" : "Bathrooms"}
+                      </div>
+                      <div className="text-sm font-medium text-gray-900">
+                        {bathrooms}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setBathrooms(Math.max(0, bathrooms - 1))}
+                      className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                    >
+                      <ChevronLeft className="w-4 h-4 text-gray-600" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBathrooms(bathrooms + 1)}
+                      className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                    >
+                      <ChevronRight className="w-4 h-4 text-gray-600" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
