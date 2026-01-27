@@ -432,29 +432,47 @@ function BookingsContent() {
             return (
               <div
                 key={booking.id}
-                className="bg-white border rounded-xl p-4 shadow-sm"
                 onClick={() => setSelectedBookingForDetails(booking)}
+                className="border rounded-xl p-4 hover:border-blue-400 transition-all cursor-pointer"
               >
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex justify-between items-center mb-3">
                   <span
-                    className={`text-xs font-medium px-2 py-1 rounded-full ${statusColorClass}`}
+                    className={`text-[10px] px-2 py-1 rounded-full font-bold ${statusColorClass}`}
                   >
                     {statusLabel}
                   </span>
+                  <span className="text-[10px] text-gray-400">
+                    {booking.createdAt && formatDateTime(booking.createdAt)}
+                  </span>
                 </div>
-                <p className="font-semibold truncate">
-                  {booking.propertyAddress || booking.propertyTitle}
-                </p>
-                <p className="text-xs text-gray-500">
-                  {formatDate(booking.checkInDate)} -{" "}
-                  {formatDate(booking.checkOutDate)}
-                </p>
-                <div className="mt-4 flex gap-2">
-                  {/* 임차인 예약확정 UI 기준: 풀 컬러 버튼 + 텍스트 버튼 */}
+                <div className="flex gap-3">
+                  <div className="w-16 h-16 relative rounded-lg overflow-hidden flex-shrink-0">
+                    <Image
+                      src={booking.propertyImage || ""}
+                      alt=""
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold truncate">
+                      {booking.propertyAddress || booking.propertyTitle}
+                    </p>
+                    <p className="text-[10px] text-gray-500">
+                      {formatDate(booking.checkInDate)} -{" "}
+                      {formatDate(booking.checkOutDate)}
+                    </p>
+                    <p className="text-sm font-black text-blue-600 mt-1">
+                      {formatPrice(booking.totalPrice, booking.priceUnit)}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2 mt-4" onClick={(e) => e.stopPropagation()}>
+                  {/* 임차인 예약확정 UI 스타일 적용: 풀 컬러 버튼 + 텍스트 버튼 */}
                   
                   {booking.status === "pending" && (
                     <>
-                      {/* 승인대기중: 승인 버튼 (풀 컬러) + 취소 버튼 (텍스트) */}
+                      {/* 예약요청 상태: 승인 버튼 (풀 컬러) + 취소 버튼 (텍스트) */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -482,20 +500,24 @@ function BookingsContent() {
                       </button>
                     </>
                   )}
+                  
                   {booking.status === "confirmed" && (
                     <>
-                      {/* 활성예약: 승인 버튼 (풀 컬러) + 취소 버튼 (텍스트) */}
+                      {/* 확정됨 상태: 채팅 버튼 (풀 컬러) + 취소 버튼 (텍스트) */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleConfirm(booking.id!);
+                          handleChat(booking);
                         }}
-                        className="bg-green-600 text-white px-4 py-2 rounded-lg text-xs font-bold"
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1"
                       >
-                        {currentLanguage === "ko" ? "승인" : 
-                         currentLanguage === "vi" ? "Chấp nhận" :
-                         currentLanguage === "en" ? "Approve" :
-                         currentLanguage === "ja" ? "承認" : "批准"}
+                        <MessageCircle size={14} />
+                        {currentLanguage === "ko" ? "채팅" : 
+                         currentLanguage === "vi" ? "Trò chuyện" :
+                         currentLanguage === "en" ? "Chat" :
+                         currentLanguage === "ja" ? "チャット" : "聊天"}
+                        {booking.chatRoomId && unreadCounts[booking.chatRoomId] > 0 &&
+                          ` (${unreadCounts[booking.chatRoomId]})`}
                       </button>
                       <button
                         onClick={(e) => {
@@ -512,6 +534,7 @@ function BookingsContent() {
                       </button>
                     </>
                   )}
+                  
                   {booking.status === "completed" && (
                     <button
                       onClick={(e) => {
