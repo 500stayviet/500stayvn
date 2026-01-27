@@ -470,7 +470,7 @@ function BookingsContent() {
                   )}
                   {booking.status === "confirmed" && (
                     <>
-                      {/* 활성예약: 임차인 UI 스타일 적용 - 승인 버튼 + 취소 버튼 */}
+                      {/* 활성예약: 승인 버튼 (풀 컬러) + 취소 버튼 (텍스트 버튼) */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -489,7 +489,7 @@ function BookingsContent() {
                           setSelectedBookingForCancel(booking);
                           setShowCancelModal(true);
                         }}
-                        className="flex-1 py-2 bg-red-600 text-white rounded-lg text-xs font-bold"
+                        className="text-red-500 text-xs font-bold"
                       >
                         {currentLanguage === "ko" ? "취소" : 
                          currentLanguage === "vi" ? "Hủy" :
