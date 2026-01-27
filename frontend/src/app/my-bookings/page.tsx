@@ -322,11 +322,14 @@ function BookingListContent() {
                           if (booking.chatRoomId)
                             setActiveChatRoomId(booking.chatRoomId);
                         }}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1"
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1 relative"
                       >
-                        <MessageCircle size={14} /> {getUIText('chat', currentLanguage)}{" "}
-                        {unreadCounts[booking.chatRoomId!] > 0 &&
-                          `(${unreadCounts[booking.chatRoomId!]})`}
+                        <MessageCircle size={14} /> {getUIText('chat', currentLanguage)}
+                        {unreadCounts[booking.chatRoomId!] > 0 && (
+                          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full w-5 h-5 flex items-center justify-center">
+                            {unreadCounts[booking.chatRoomId!]}
+                          </span>
+                        )}
                       </button>
                       <button
                         onClick={(e) => {
@@ -348,11 +351,14 @@ function BookingListContent() {
                         if (booking.chatRoomId)
                           setActiveChatRoomId(booking.chatRoomId);
                       }}
-                      className="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1"
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1 relative"
                     >
-                      <MessageCircle size={14} /> {getUIText('chat', currentLanguage)}{" "}
-                      {unreadCounts[booking.chatRoomId!] > 0 &&
-                        `(${unreadCounts[booking.chatRoomId!]})`}
+                      <MessageCircle size={14} /> {getUIText('chat', currentLanguage)}
+                      {unreadCounts[booking.chatRoomId!] > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full w-5 h-5 flex items-center justify-center">
+                          {unreadCounts[booking.chatRoomId!]}
+                        </span>
+                      )}
                     </button>
                   )}
                   

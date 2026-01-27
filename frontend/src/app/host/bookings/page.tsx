@@ -509,15 +509,18 @@ function BookingsContent() {
                           e.stopPropagation();
                           handleChat(booking);
                         }}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1"
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1 relative"
                       >
                         <MessageCircle size={14} />
                         {currentLanguage === "ko" ? "채팅" : 
                          currentLanguage === "vi" ? "Trò chuyện" :
                          currentLanguage === "en" ? "Chat" :
                          currentLanguage === "ja" ? "チャット" : "聊天"}
-                        {booking.chatRoomId && unreadCounts[booking.chatRoomId] > 0 &&
-                          ` (${unreadCounts[booking.chatRoomId]})`}
+                        {booking.chatRoomId && unreadCounts[booking.chatRoomId] > 0 && (
+                          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full w-5 h-5 flex items-center justify-center">
+                            {unreadCounts[booking.chatRoomId]}
+                          </span>
+                        )}
                       </button>
                       <button
                         onClick={(e) => {
@@ -541,12 +544,18 @@ function BookingsContent() {
                         e.stopPropagation();
                         handleChat(booking);
                       }}
-                      className="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold"
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1 relative"
                     >
+                      <MessageCircle size={14} />
                       {currentLanguage === "ko" ? "대화하기" : 
                        currentLanguage === "vi" ? "Trò chuyện" :
                        currentLanguage === "en" ? "Chat" :
                        currentLanguage === "ja" ? "チャット" : "聊天"}
+                      {booking.chatRoomId && unreadCounts[booking.chatRoomId] > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full w-5 h-5 flex items-center justify-center">
+                          {unreadCounts[booking.chatRoomId]}
+                        </span>
+                      )}
                     </button>
                   )}
                 </div>
