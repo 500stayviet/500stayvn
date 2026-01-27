@@ -450,33 +450,17 @@ function BookingsContent() {
                   {formatDate(booking.checkOutDate)}
                 </p>
                 <div className="mt-4 flex gap-2">
+                  {/* 임차인 예약확정 UI 기준: 풀 컬러 버튼 + 텍스트 버튼 */}
+                  
                   {booking.status === "pending" && (
                     <>
-                      {/* 승인대기중: 취소 버튼만 표시 (승인 버튼 제거) */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedBookingForCancel(booking);
-                          setShowCancelModal(true);
-                        }}
-                        className="flex-1 py-2 bg-red-600 text-white rounded-lg text-xs font-bold"
-                      >
-                        {currentLanguage === "ko" ? "취소" : 
-                         currentLanguage === "vi" ? "Hủy" :
-                         currentLanguage === "en" ? "Cancel" :
-                         currentLanguage === "ja" ? "キャンセル" : "取消"}
-                      </button>
-                    </>
-                  )}
-                  {booking.status === "confirmed" && (
-                    <>
-                      {/* 활성예약: 승인 버튼 + 취소 버튼 (임차인 UI와 동일한 스타일) */}
+                      {/* 승인대기중: 승인 버튼 (풀 컬러) + 취소 버튼 (텍스트) */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleConfirm(booking.id!);
                         }}
-                        className="flex-1 py-2 bg-green-600 text-white rounded-lg text-xs font-bold"
+                        className="bg-green-600 text-white px-4 py-2 rounded-lg text-xs font-bold"
                       >
                         {currentLanguage === "ko" ? "승인" : 
                          currentLanguage === "vi" ? "Chấp nhận" :
@@ -489,7 +473,37 @@ function BookingsContent() {
                           setSelectedBookingForCancel(booking);
                           setShowCancelModal(true);
                         }}
-                        className="flex-1 py-2 bg-red-600 text-white rounded-lg text-xs font-bold"
+                        className="text-red-500 text-xs font-bold"
+                      >
+                        {currentLanguage === "ko" ? "취소" : 
+                         currentLanguage === "vi" ? "Hủy" :
+                         currentLanguage === "en" ? "Cancel" :
+                         currentLanguage === "ja" ? "キャンセル" : "取消"}
+                      </button>
+                    </>
+                  )}
+                  {booking.status === "confirmed" && (
+                    <>
+                      {/* 활성예약: 승인 버튼 (풀 컬러) + 취소 버튼 (텍스트) */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleConfirm(booking.id!);
+                        }}
+                        className="bg-green-600 text-white px-4 py-2 rounded-lg text-xs font-bold"
+                      >
+                        {currentLanguage === "ko" ? "승인" : 
+                         currentLanguage === "vi" ? "Chấp nhận" :
+                         currentLanguage === "en" ? "Approve" :
+                         currentLanguage === "ja" ? "承認" : "批准"}
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedBookingForCancel(booking);
+                          setShowCancelModal(true);
+                        }}
+                        className="text-red-500 text-xs font-bold"
                       >
                         {currentLanguage === "ko" ? "취소" : 
                          currentLanguage === "vi" ? "Hủy" :
@@ -504,7 +518,7 @@ function BookingsContent() {
                         e.stopPropagation();
                         handleChat(booking);
                       }}
-                      className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold"
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold"
                     >
                       {currentLanguage === "ko" ? "대화하기" : 
                        currentLanguage === "vi" ? "Trò chuyện" :
