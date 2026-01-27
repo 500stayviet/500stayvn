@@ -452,15 +452,7 @@ function BookingsContent() {
                 <div className="mt-4 flex gap-2">
                   {booking.status === "pending" && (
                     <>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleConfirm(booking.id!);
-                        }}
-                        className="flex-1 py-2 bg-green-600 text-white rounded-lg text-xs font-bold"
-                      >
-                        승인
-                      </button>
+                      {/* 승인대기중: 취소 버튼만 표시 (승인 버튼 제거) */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -469,12 +461,44 @@ function BookingsContent() {
                         }}
                         className="flex-1 py-2 bg-red-600 text-white rounded-lg text-xs font-bold"
                       >
-                        취소
+                        {currentLanguage === "ko" ? "취소" : 
+                         currentLanguage === "vi" ? "Hủy" :
+                         currentLanguage === "en" ? "Cancel" :
+                         currentLanguage === "ja" ? "キャンセル" : "取消"}
                       </button>
                     </>
                   )}
-                  {(booking.status === "confirmed" ||
-                    booking.status === "completed") && (
+                  {booking.status === "confirmed" && (
+                    <>
+                      {/* 활성예약: 승인 버튼 표시 (채팅 자리에) */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleConfirm(booking.id!);
+                        }}
+                        className="flex-1 py-2 bg-green-600 text-white rounded-lg text-xs font-bold"
+                      >
+                        {currentLanguage === "ko" ? "승인" : 
+                         currentLanguage === "vi" ? "Chấp nhận" :
+                         currentLanguage === "en" ? "Approve" :
+                         currentLanguage === "ja" ? "承認" : "批准"}
+                      </button>
+                      {/* 활성예약: 채팅 버튼도 함께 표시 */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleChat(booking);
+                        }}
+                        className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold"
+                      >
+                        {currentLanguage === "ko" ? "대화하기" : 
+                         currentLanguage === "vi" ? "Trò chuyện" :
+                         currentLanguage === "en" ? "Chat" :
+                         currentLanguage === "ja" ? "チャット" : "聊天"}
+                      </button>
+                    </>
+                  )}
+                  {booking.status === "completed" && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -482,7 +506,10 @@ function BookingsContent() {
                       }}
                       className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold"
                     >
-                      대화하기
+                      {currentLanguage === "ko" ? "대화하기" : 
+                       currentLanguage === "vi" ? "Trò chuyện" :
+                       currentLanguage === "en" ? "Chat" :
+                       currentLanguage === "ja" ? "チャット" : "聊天"}
                     </button>
                   )}
                 </div>
