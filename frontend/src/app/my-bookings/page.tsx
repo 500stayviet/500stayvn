@@ -298,7 +298,35 @@ function BookingListContent() {
                   className="flex justify-end gap-2 mt-4"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  {/* 승인대기중(pending)에는 채팅 버튼 표시하지 않음 */}
+                  {/* 승인대기중(pending): 승인 버튼 + 취소 버튼 (임대인 활성예약 UI 스타일 적용) */}
+                  {booking.status === "pending" && (
+                    <>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // 승인 버튼 클릭 시 상세보기 모달 열기
+                          setSelectedBookingForDetails(booking);
+                        }}
+                        className="flex-1 py-2 bg-green-600 text-white rounded-lg text-xs font-bold"
+                      >
+                        {currentLanguage === "ko" ? "승인" : 
+                         currentLanguage === "vi" ? "Chấp nhận" :
+                         currentLanguage === "en" ? "Approve" :
+                         currentLanguage === "ja" ? "承認" : "批准"}
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedBookingForCancel(booking);
+                          setShowCancelModal(true);
+                        }}
+                        className="flex-1 py-2 bg-red-600 text-white rounded-lg text-xs font-bold"
+                      >
+                        {getUIText('cancel', currentLanguage)}
+                      </button>
+                    </>
+                  )}
+                  {/* 승인확정(confirmed) 또는 완료됨(completed): 채팅 버튼 */}
                   {(booking.status === "confirmed" || booking.status === "completed") && (
                     <button
                       onClick={() => {
@@ -312,18 +340,7 @@ function BookingListContent() {
                         `(${unreadCounts[booking.chatRoomId!]})`}
                     </button>
                   )}
-                  {(booking.status === "pending" ||
-                    booking.status === "confirmed") && (
-                    <button
-                      onClick={() => {
-                        setSelectedBookingForCancel(booking);
-                        setShowCancelModal(true);
-                      }}
-                      className="text-red-500 text-xs font-bold"
-                    >
-                      {getUIText('cancel', currentLanguage)}
-                    </button>
-                  )}
+                  {/* 취소됨(cancelled): 삭제 버튼 */}
                   {booking.status === "cancelled" && (
                     <button
                       onClick={() => handleDelete(booking.id!)}
