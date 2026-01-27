@@ -11,11 +11,6 @@ import {
 } from "@/lib/api/properties";
 import { getPropertyBookings } from "@/lib/api/bookings";
 import {
-  searchPlaceIndexForSuggestions,
-  searchPlaceIndexForText,
-  getLocationServiceLanguage,
-} from "@/lib/api/aws-location";
-import {
   Camera,
   MapPin,
   Loader2,
@@ -28,9 +23,11 @@ import {
   ChevronRight,
   Bed,
   Bath,
+  Check,
 } from "lucide-react";
 import TopBar from "@/components/TopBar";
 import CalendarComponent from "@/components/CalendarComponent";
+import AddressVerificationModal from "@/components/AddressVerificationModal";
 import { AMENITY_OPTIONS } from "@/lib/constants/amenities";
 import { parseDate } from "@/lib/utils/dateUtils";
 import { getUIText } from "@/utils/i18n";
@@ -87,12 +84,10 @@ function EditPropertyContent() {
     Set<number>
   >(new Set());
   const [showImageSourceMenu, setShowImageSourceMenu] = useState(false);
+  const [showAddressModal, setShowAddressModal] = useState(false);
 
   const photoLibraryInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
-  const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // 데이터 로드 로직
   useEffect(() => {
@@ -135,22 +130,18 @@ function EditPropertyContent() {
     loadData();
   }, [propertyId, user, authLoading, propertyLoaded, router]);
 
-  // 주소 검색 핸들러
-  const handleAddressChange = async (
-    e: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const val = e.target.value;
-    setAddress(val);
-    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-    debounceTimerRef.current = setTimeout(async () => {
-      if (!val.trim()) return;
-      const res = await searchPlaceIndexForSuggestions(
-        val,
-        getLocationServiceLanguage(currentLanguage) as any,
-      );
-      setAddressSuggestions(res);
-      setShowSuggestions(true);
-    }, 300);
+  // 주소 확인 모달에서 주소 확정 시
+  const handleAddressConfirm = (data: {
+    address: string;
+    lat: number;
+    lng: number;
+  }) => {
+    setAddress(data.address);
+    setCoordinates({ lat: data.lat, lng: data.lng });
+    // 개발 환경에서만 디버그 로그 출력
+    if (process.env.NODE_ENV === 'development') {
+      console.debug("✅ 주소 확정:", data);
+    }
   };
 
   // 폼 제출 (Updates 에러 수정 및 Prisma 스키마 필드 매칭 완료)
@@ -322,41 +313,47 @@ function EditPropertyContent() {
               </div>
             </section>
 
-            {/* 주소 섹션 */}
-            <section className="relative">
+            {/* 주소 섹션 - 매물 등록 페이지와 동일한 UI */}
+            <section>
               <label className="block text-sm font-bold mb-2">
                 {getUIText('address', currentLanguage)}
               </label>
-              <input
-                type="text"
-                value={address}
-                onChange={handleAddressChange}
-                className="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
-              {showSuggestions && addressSuggestions.length > 0 && (
-                <div className="absolute z-10 w-full bg-white border shadow-lg rounded-xl mt-1 max-h-40 overflow-auto">
-                  {addressSuggestions.map((s, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => {
-                        setAddress(s.Text);
-                        setShowSuggestions(false);
-                        searchPlaceIndexForText(
-                          s.Text,
-                          getLocationServiceLanguage(currentLanguage) as any,
-                        ).then((res) => {
-                          const p = res[0]?.Place?.Geometry?.Point;
-                          if (p) setCoordinates({ lat: p[1], lng: p[0] });
-                        });
-                      }}
-                      className="w-full text-left p-3 text-sm hover:bg-gray-50 border-b"
-                    >
-                      {s.Text}
-                    </button>
-                  ))}
+              
+              {address ? (
+                // 주소가 있는 경우: 확정된 주소 영역 (클릭 시 주소 검색 모달 열림)
+                <div
+                  onClick={() => setShowAddressModal(true)}
+                  className="w-full p-3 border border-green-500 bg-green-50 rounded-xl cursor-pointer flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-2">
+                    <Check className="text-green-600" size={18} />
+                    <div>
+                      <p className="text-sm font-medium text-green-700">
+                        {currentLanguage === "ko" ? "확정된 주소" : 
+                         currentLanguage === "zh" ? "已确认地址" : 
+                         currentLanguage === "vi" ? "Địa chỉ đã xác nhận" :
+                         currentLanguage === "ja" ? "確定住所" : "Confirmed Address"}
+                      </p>
+                      <p className="text-xs text-gray-600 truncate">{address}</p>
+                    </div>
+                  </div>
+                  <MapPin className="text-gray-400" size={18} />
                 </div>
+              ) : (
+                // 주소가 없는 경우: 주소 찾기 버튼
+                <button
+                  type="button"
+                  onClick={() => setShowAddressModal(true)}
+                  className="w-full p-4 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center gap-2 text-gray-400 hover:border-blue-400 hover:text-blue-400 transition-colors"
+                >
+                  <MapPin size={24} />
+                  <span className="text-sm font-medium">
+                    {currentLanguage === "ko" ? "주소 찾기" : 
+                     currentLanguage === "zh" ? "查找地址" : 
+                     currentLanguage === "vi" ? "Tìm địa chỉ" :
+                     currentLanguage === "ja" ? "住所を検索" : "Find Address"}
+                  </span>
+                </button>
               )}
             </section>
 
@@ -586,6 +583,15 @@ function EditPropertyContent() {
             setImagePreviews((prev) => [...prev, URL.createObjectURL(file)]);
           }
         }}
+      />
+
+      {/* 주소 확인 모달 */}
+      <AddressVerificationModal
+        isOpen={showAddressModal}
+        onClose={() => setShowAddressModal(false)}
+        onConfirm={handleAddressConfirm}
+        currentLanguage={currentLanguage}
+        initialAddress={address}
       />
     </div>
   );
