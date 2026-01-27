@@ -326,8 +326,36 @@ function BookingListContent() {
                       </button>
                     </>
                   )}
-                  {/* 승인확정(confirmed) 또는 완료됨(completed): 채팅 버튼 */}
-                  {(booking.status === "confirmed" || booking.status === "completed") && (
+                  {/* 승인확정(confirmed): 확인 버튼 + 취소 버튼 (승인대기 UI와 동일) */}
+                  {booking.status === "confirmed" && (
+                    <>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // 확인 버튼 클릭 시 상세보기 모달 열기
+                          setSelectedBookingForDetails(booking);
+                        }}
+                        className="flex-1 py-2 bg-green-600 text-white rounded-lg text-xs font-bold"
+                      >
+                        {currentLanguage === "ko" ? "확인" : 
+                         currentLanguage === "vi" ? "Xác nhận" :
+                         currentLanguage === "en" ? "Confirm" :
+                         currentLanguage === "ja" ? "確認" : "确认"}
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedBookingForCancel(booking);
+                          setShowCancelModal(true);
+                        }}
+                        className="flex-1 py-2 bg-red-600 text-white rounded-lg text-xs font-bold"
+                      >
+                        {getUIText('cancel', currentLanguage)}
+                      </button>
+                    </>
+                  )}
+                  {/* 완료됨(completed): 채팅 버튼 */}
+                  {booking.status === "completed" && (
                     <button
                       onClick={() => {
                         if (booking.chatRoomId)
