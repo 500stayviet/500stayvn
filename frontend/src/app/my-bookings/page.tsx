@@ -30,6 +30,7 @@ import ChatModal from "@/components/ChatModal";
 import BookingDetailsModal from "@/components/BookingDetailsModal";
 import Image from "next/image";
 import { SupportedLanguage } from "@/lib/api/translation";
+import { getUIText } from "@/utils/i18n";
 
 const STATUS_COLORS = {
   pending: "bg-yellow-100 text-yellow-700",
@@ -227,15 +228,15 @@ function BookingListContent() {
             className="flex items-center gap-2 text-gray-600 mb-3"
           >
             <ArrowLeft size={20} />
-            <span>Back</span>
+            <span>{getUIText('back', currentLanguage)}</span>
           </button>
           <h1 className="text-xl font-bold">
-            {currentLanguage === "ko" ? "예약한 매물" : "My Bookings"}
+            {getUIText('myBookings', currentLanguage)}
           </h1>
           {totalUnreadChatCount > 0 && (
             <div className="text-blue-600 text-xs font-bold flex items-center gap-1 mt-2">
               <MessageCircle size={14} />
-              {totalUnreadChatCount} unread messages
+              {totalUnreadChatCount} {getUIText('unreadMessages', currentLanguage)}
             </div>
           )}
         </div>
@@ -247,8 +248,7 @@ function BookingListContent() {
               onClick={() => setFilter(t)}
               className={`px-4 py-2 rounded-full text-xs font-bold ${filter === t ? "bg-blue-600 text-white" : "bg-gray-100"}`}
             >
-              {t.toUpperCase()} ({bookings.filter((b) => b.status === t).length}
-              )
+              {getUIText(t === 'pending' ? 'pending' : t === 'confirmed' ? 'confirmed' : 'cancelled', currentLanguage)} ({bookings.filter((b) => b.status === t).length})
             </button>
           ))}
         </div>
@@ -298,7 +298,8 @@ function BookingListContent() {
                   className="flex justify-end gap-2 mt-4"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  {booking.status !== "cancelled" && (
+                  {/* 승인대기중(pending)에는 채팅 버튼 표시하지 않음 */}
+                  {(booking.status === "confirmed" || booking.status === "completed") && (
                     <button
                       onClick={() => {
                         if (booking.chatRoomId)
@@ -306,7 +307,7 @@ function BookingListContent() {
                       }}
                       className="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1"
                     >
-                      <MessageCircle size={14} /> Chat{" "}
+                      <MessageCircle size={14} /> {getUIText('chat', currentLanguage)}{" "}
                       {unreadCounts[booking.chatRoomId!] > 0 &&
                         `(${unreadCounts[booking.chatRoomId!]})`}
                     </button>
@@ -320,7 +321,7 @@ function BookingListContent() {
                       }}
                       className="text-red-500 text-xs font-bold"
                     >
-                      Cancel
+                      {getUIText('cancel', currentLanguage)}
                     </button>
                   )}
                   {booking.status === "cancelled" && (
@@ -340,7 +341,7 @@ function BookingListContent() {
           <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
               <h3 className="font-bold mb-4 flex items-center gap-2 text-red-600">
-                <AlertCircle /> Cancellation
+                <AlertCircle /> {getUIText('cancellation', currentLanguage)}
               </h3>
               <div className="bg-gray-50 p-4 rounded-xl mb-4">
                 <p className="text-sm font-bold">
@@ -360,7 +361,7 @@ function BookingListContent() {
                   onChange={(e) => setCancelCancelAgreed(e.target.checked)}
                 />
                 <span className="text-xs">
-                  I agree to the cancellation policy
+                  {getUIText('agreeCancellationPolicy', currentLanguage)}
                 </span>
               </label>
               <div className="flex gap-2">
@@ -368,14 +369,14 @@ function BookingListContent() {
                   onClick={() => setShowCancelModal(false)}
                   className="flex-1 py-3 bg-gray-100 rounded-xl text-xs font-bold"
                 >
-                  Back
+                  {getUIText('back', currentLanguage)}
                 </button>
                 <button
                   onClick={() => handleCancel(selectedBookingForCancel.id!)}
                   disabled={!cancelAgreed}
                   className="flex-1 py-3 bg-red-600 text-white rounded-xl text-xs font-bold disabled:opacity-50"
                 >
-                  Confirm
+                  {getUIText('confirm', currentLanguage)}
                 </button>
               </div>
             </div>
