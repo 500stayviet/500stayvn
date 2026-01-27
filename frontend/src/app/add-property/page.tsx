@@ -449,29 +449,25 @@ export default function AddPropertyPage() {
       // 주소와 설명에는 동호수 포함하지 않음 (비공개)
       const publicAddress = `${apartmentName ? `${apartmentName}, ` : ""}${address}`;
 
-      // 이미지 업로드 (S3 업로드 실패 시 더미 URL 사용 - 개발용)
+      // 이미지 업로드
       let imageUrls: string[];
       try {
         imageUrls = await Promise.all(
           images.map((image) => uploadToS3(image, "properties")),
         );
       } catch (error) {
-        // S3 업로드 실패 시 더미 이미지 URL 생성 (개발 환경용)
-        console.warn("S3 업로드 실패, 더미 URL 사용 (CORS 문제일 수 있음):", error);
-        imageUrls = images.map((_, index) => 
-          `https://dummyimage.com/600x400/cccccc/333333&text=테스트+이미지+${index+1}`
+        console.error("S3 업로드 실패:", error);
+        // 실제 에러 메시지를 사용자에게 표시
+        const errorMessage = error instanceof Error ? error.message : "S3 업로드 실패";
+        alert(
+          currentLanguage === "ko"
+            ? `사진 업로드 실패: ${errorMessage}`
+            : currentLanguage === "vi"
+              ? `Tải ảnh lên thất bại: ${errorMessage}`
+              : `Photo upload failed: ${errorMessage}`
         );
-        
-        // 사용자에게 알림 (개발 환경에서만)
-        if (process.env.NODE_ENV === 'development') {
-          alert(
-            currentLanguage === "ko"
-              ? "개발 환경: S3 업로드 실패로 더미 이미지 사용 (CORS 문제 해결 필요)"
-              : currentLanguage === "vi"
-                ? "Môi trường phát triển: Sử dụng ảnh giả do lỗi tải lên S3 (Cần giải quyết vấn đề CORS)"
-                : "Development: Using dummy images due to S3 upload failure (CORS issue needs fixing)"
-          );
-        }
+        setLoading(false);
+        return;
       }
 
       // 날짜를 Date 객체로 변환 (LocalStorage용)
