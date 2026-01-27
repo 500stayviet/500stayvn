@@ -470,7 +470,7 @@ function BookingsContent() {
                   )}
                   {booking.status === "confirmed" && (
                     <>
-                      {/* 활성예약: 승인 버튼 표시 (채팅 자리에) */}
+                      {/* 활성예약: 임차인 UI 스타일 적용 - 승인 버튼 + 취소 버튼 */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -483,18 +483,18 @@ function BookingsContent() {
                          currentLanguage === "en" ? "Approve" :
                          currentLanguage === "ja" ? "承認" : "批准"}
                       </button>
-                      {/* 활성예약: 채팅 버튼도 함께 표시 */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleChat(booking);
+                          setSelectedBookingForCancel(booking);
+                          setShowCancelModal(true);
                         }}
-                        className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold"
+                        className="flex-1 py-2 bg-red-600 text-white rounded-lg text-xs font-bold"
                       >
-                        {currentLanguage === "ko" ? "대화하기" : 
-                         currentLanguage === "vi" ? "Trò chuyện" :
-                         currentLanguage === "en" ? "Chat" :
-                         currentLanguage === "ja" ? "チャット" : "聊天"}
+                        {currentLanguage === "ko" ? "취소" : 
+                         currentLanguage === "vi" ? "Hủy" :
+                         currentLanguage === "en" ? "Cancel" :
+                         currentLanguage === "ja" ? "キャンセル" : "取消"}
                       </button>
                     </>
                   )}
