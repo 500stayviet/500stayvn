@@ -1,18 +1,18 @@
 "use client";
 
 import { useState, useRef, useEffect, Suspense } from "react"; // Suspense 추가
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useLanguage } from "@/contexts/LanguageContext";
 import TopBar from "@/components/TopBar";
 import GrabMapComponent from "@/components/GrabMapComponent";
 import { getProperty } from "@/lib/api/properties";
 import { PropertyData } from "@/types/property";
-import { useAuth } from "@/hooks/useAuth";
 import PropertyModal from "@/components/map/PropertyModal";
 import { formatPrice, getCityName } from "@/lib/utils/propertyUtils";
 import { isAvailableNow, formatDateForBadge } from "@/lib/utils/dateUtils";
 import Image from "next/image";
 import { getUIText } from "@/utils/i18n";
+import { ChevronLeft, ChevronRight, MapPin, Loader2 } from "lucide-react";
 
 interface Property {
   id: string;

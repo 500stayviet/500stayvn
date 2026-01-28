@@ -56,7 +56,7 @@ export default function KYCPage() {
     }
   }, [user, authLoading, router]);
 
-  // 완료된 단계 불러오기
+  // 완료된 단계 불러오기 (초기 로드 시에만 실행)
   useEffect(() => {
     if (!user) return;
 
@@ -75,12 +75,15 @@ export default function KYCPage() {
           setFaceData({} as FaceVerificationData);
         }
 
-        if (!kycSteps.step1) {
-          setCurrentStep(1);
-        } else if (!kycSteps.step2) {
-          setCurrentStep(2);
-        } else if (!kycSteps.step3) {
-          setCurrentStep(3);
+        // 현재 단계가 아직 설정되지 않았을 때만 설정
+        if (currentStep === 1) {
+          if (!kycSteps.step1) {
+            setCurrentStep(1);
+          } else if (!kycSteps.step2) {
+            setCurrentStep(2);
+          } else if (!kycSteps.step3) {
+            setCurrentStep(3);
+          }
         }
       } catch (error) {
         console.error("Error loading completed steps:", error);
@@ -88,9 +91,9 @@ export default function KYCPage() {
     };
 
     loadCompletedSteps();
-  }, [user]);
+  }, [user]); // user만 의존성으로 사용
 
-  // Step 1 완료: 전화번호 인증
+  // Step 1 완료: 전화번호 인증 (테스트 모드: API 실패해도 다음 단계로)
   const handlePhoneVerificationComplete = async (
     data: PhoneVerificationData,
   ) => {
@@ -99,23 +102,30 @@ export default function KYCPage() {
     setError("");
 
     try {
-      await savePhoneVerification(user.uid, data);
+      // 테스트 모드: API 호출 시도 (실패해도 계속 진행)
+      try {
+        await savePhoneVerification(user.uid, data);
+      } catch (apiError) {
+        console.log("Test mode: Phone verification API failed, continuing anyway:", apiError);
+        // 테스트 모드에서는 API 실패를 무시하고 진행
+      }
+      
       setPhoneData(data);
       setCurrentStep(2);
+      
+      // 테스트 모드 메시지 표시
+      console.log("Phone verification step completed (test mode)");
     } catch (err: any) {
       console.error("Phone verification error:", err);
-      setError(
-        err.message ||
-          (currentLanguage === "ko"
-            ? "전화번호 인증 실패"
-            : "Phone verification failed"),
-      );
+      // 에러가 발생해도 테스트 모드에서는 다음 단계로 이동
+      setPhoneData(data);
+      setCurrentStep(2);
     } finally {
       setLoading(false);
     }
   };
 
-  // Step 2 완료: 실제 신분증 업로드 및 저장
+  // Step 2 완료: 실제 신분증 업로드 및 저장 (테스트 데이터 저장 모드)
   const handleIdDocumentComplete = async (
     data: IdDocumentData,
     frontImageFile: File,
@@ -126,18 +136,25 @@ export default function KYCPage() {
     setError("");
 
     try {
-      // 1. S3 업로드
-      const frontImageUrl = await uploadToS3(frontImageFile, "kyc-id-cards");
-      let backImageUrl = "";
-      if (backImageFile) {
-        backImageUrl = await uploadToS3(backImageFile, "kyc-id-cards");
-      }
-
-      // 2. URL 전달 (문자열 형식)
-      await saveIdDocument(user.uid, data, frontImageUrl, backImageUrl);
+      // TODO: Production 환경에서 실제 인증 API 호출
+      // 현재는 테스트 모드로 파일 저장만 수행
+      await saveIdDocument(user.uid, data, frontImageFile, backImageFile);
 
       setIdDocumentData(data);
       setCurrentStep(3);
+      
+      // 테스트 모드 메시지 표시
+      alert(
+        currentLanguage === "ko" 
+          ? "인증 데이터가 안전하게 접수되었습니다. (테스트 모드: 자동 승인)"
+          : currentLanguage === "vi"
+          ? "Dữ liệu xác thực đã được tiếp nhận an toàn. (Chế độ thử nghiệm: Tự động phê duyệt)"
+          : currentLanguage === "ja"
+          ? "認証データが安全に受理されました。（テストモード：自動承認）"
+          : currentLanguage === "zh"
+          ? "认证数据已安全受理。（测试模式：自动批准）"
+          : "Verification data has been safely received. (Test mode: Auto approval)"
+      );
     } catch (err: any) {
       console.error("ID document upload error:", err);
       setError(
@@ -150,7 +167,7 @@ export default function KYCPage() {
     }
   };
 
-  // Step 2 테스트용: 더미 데이터 처리 (에러 수정됨)
+  // Step 2 테스트용: 더미 데이터 처리 (테스트 데이터 저장 모드)
   const handleIdDocumentNext = async () => {
     if (!user) return;
     setLoading(true);
@@ -164,16 +181,43 @@ export default function KYCPage() {
         dateOfBirth: "1990-01-01",
       };
 
-      // 더미 URL 전달 (파일 대신 문자열)
-      const dummyFrontUrl =
-        "https://via.placeholder.com/800x500.png?text=Test+ID+Front";
-      const dummyBackUrl =
-        "https://via.placeholder.com/800x500.png?text=Test+ID+Back";
+      // 더미 파일 생성 (테스트용)
+      const createDummyFile = (name: string, text: string): File => {
+        const canvas = document.createElement("canvas");
+        canvas.width = 800;
+        canvas.height = 500;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.fillStyle = "#f0f0f0";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.fillStyle = "#333";
+          ctx.font = "24px Arial";
+          ctx.fillText(text, 50, 250);
+        }
+        const blob = new Blob([""], { type: "image/jpeg" });
+        return new File([blob], name, { type: "image/jpeg" });
+      };
 
-      await saveIdDocument(user.uid, dummyIdData, dummyFrontUrl, dummyBackUrl);
+      const dummyFrontFile = createDummyFile("test-id-front.jpg", "Test ID Front");
+      const dummyBackFile = createDummyFile("test-id-back.jpg", "Test ID Back");
+
+      await saveIdDocument(user.uid, dummyIdData, dummyFrontFile, dummyBackFile);
 
       setIdDocumentData(dummyIdData);
       setCurrentStep(3);
+      
+      // 테스트 모드 메시지 표시
+      alert(
+        currentLanguage === "ko" 
+          ? "인증 데이터가 안전하게 접수되었습니다. (테스트 모드: 자동 승인)"
+          : currentLanguage === "vi"
+          ? "Dữ liệu xác thực đã được tiếp nhận an toàn. (Chế độ thử nghiệm: Tự động phê duyệt)"
+          : currentLanguage === "ja"
+          ? "認証データが安全に受理されました。（テストモード：自動承認）"
+          : currentLanguage === "zh"
+          ? "认证数据已安全受理。（测试模式：自动批准）"
+          : "Verification data has been safely received. (Test mode: Auto approval)"
+      );
     } catch (err: any) {
       console.error("ID document next error:", err);
       setError(
@@ -186,7 +230,7 @@ export default function KYCPage() {
     }
   };
 
-  // Step 3 완료: 얼굴 인증 (에러 수정됨)
+  // Step 3 완료: 얼굴 인증 (테스트 데이터 저장 모드)
   const handleFaceVerificationComplete = async (
     data: FaceVerificationData,
     images: { direction: string; file: File }[],
@@ -196,25 +240,19 @@ export default function KYCPage() {
     setError("");
 
     try {
-      // 1. 이미지들을 S3에 업로드하고 URL 리스트 생성
-      const faceUrls = await Promise.all(
-        images.map(async (img) => {
-          const imageUrl = await uploadToS3(img.file, "kyc-face-images");
-          return {
-            direction: img.direction,
-            imageUrl: imageUrl, // 문자열 URL
-          };
-        }),
-      );
-
-      // 2. URL 리스트 저장
-      await saveFaceVerification(user.uid, faceUrls);
+      // TODO: Production 환경에서 실제 인증 API 호출
+      // 현재는 테스트 모드로 파일 저장만 수행
+      await saveFaceVerification(user.uid, images);
       setFaceData(data);
 
+      // 임대인 권한 부여 (User 테이블 role 업데이트)
       await completeKYCVerification(user.uid);
+      
+      // 프로필 페이지로 리다이렉트 (임대인 전용 메뉴 활성화)
       router.push("/profile");
     } catch (err: any) {
       console.error("Face verification error:", err);
+      // 에러가 발생해도 프로필 페이지로 이동 (테스트 모드)
       router.push("/profile");
     } finally {
       setLoading(false);
@@ -318,7 +356,7 @@ export default function KYCPage() {
           )}
 
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
-            <AnimatePresence mode="wait">
+            <AnimatePresence mode="sync">
               {currentStep === 1 && (
                 <motion.div
                   key="step1"

@@ -1,17 +1,92 @@
 /**
- * KYC (Know Your Customer) 인증 API (AWS S3 & LocalStorage 버전)
+ * KYC (Know Your Customer) 인증 API (테스트 데이터 저장 모드)
  * * 임대인 인증을 위한 데이터 저장 로직
- * 이미지 파일은 프론트엔드에서 S3에 업로드 후 URL만 받아 저장합니다.
+ * 이미지 파일은 서버의 public/uploads/verification/[userId] 폴더에 저장됩니다.
  */
 
 import {
-  VerificationStatus,
   PhoneVerificationData,
   IdDocumentData,
   FaceVerificationData,
-  PrivateData,
 } from "@/types/kyc.types";
-import { getUsers, saveUsers } from "./auth";
+import { useAuth } from "@/hooks/useAuth";
+
+/**
+ * 파일 업로드 유틸리티 함수
+ */
+async function uploadFile(
+  userId: string,
+  fileType: string,
+  file: File
+): Promise<string> {
+  const formData = new FormData();
+  formData.append('userId', userId);
+  formData.append('fileType', fileType);
+  formData.append('file', file);
+
+  const response = await fetch('/api/kyc/upload', {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'File upload failed');
+  }
+
+  const data = await response.json();
+  return data.filePath;
+}
+
+/**
+ * KYC 단계 완료 처리
+ */
+async function completeKYCStep(
+  userId: string,
+  step: number,
+  idData?: any
+): Promise<{ success: boolean; testModeMessage: string }> {
+  const response = await fetch('/api/kyc/upload', {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ userId, step, idData }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'KYC step completion failed');
+  }
+
+  const result = await response.json();
+  
+  // LocalStorage에 kyc_steps 업데이트
+  try {
+    const { updateUserData } = await import('./auth');
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    const userIndex = users.findIndex((u: any) => u.uid === userId);
+    
+    if (userIndex !== -1) {
+      const user = users[userIndex];
+      const kyc_steps = user.kyc_steps || {};
+      
+      // 단계별 업데이트
+      if (step === 1) kyc_steps.step1 = true;
+      if (step === 2) kyc_steps.step2 = true;
+      if (step === 3) kyc_steps.step3 = true;
+      
+      user.kyc_steps = kyc_steps;
+      user.updatedAt = new Date().toISOString();
+      users[userIndex] = user;
+      localStorage.setItem('users', JSON.stringify(users));
+    }
+  } catch (error) {
+    console.log('LocalStorage update failed, continuing anyway:', error);
+  }
+  
+  return result;
+}
 
 /**
  * [Step 1] 전화번호 인증 완료 후 데이터 저장
@@ -21,24 +96,8 @@ export async function savePhoneVerification(
   data: PhoneVerificationData,
 ): Promise<void> {
   try {
-    const users = getUsers();
-    const userIndex = users.findIndex((u) => u.uid === uid);
-
-    if (userIndex === -1) {
-      throw new Error("User not found");
-    }
-
-    users[userIndex] = {
-      ...users[userIndex],
-      phoneNumber: data.phoneNumber,
-      kyc_steps: {
-        ...users[userIndex].kyc_steps,
-        step1: true,
-      },
-      updatedAt: new Date().toISOString(),
-    };
-
-    saveUsers(users);
+    const result = await completeKYCStep(uid, 1, data);
+    console.log('Phone verification completed:', result.testModeMessage);
   } catch (error) {
     console.error("Error saving phone verification:", error);
     throw error;
@@ -46,138 +105,133 @@ export async function savePhoneVerification(
 }
 
 /**
- * [Step 2] 신분증 정보 및 S3 URL 저장
+ * [Step 2] 신분증 정보 및 이미지 파일 저장
  */
 export async function saveIdDocument(
   uid: string,
   idData: IdDocumentData,
-  frontImageUrl: string, // S3 업로드 완료된 URL
-  backImageUrl?: string, // S3 업로드 완료된 URL (선택사항)
+  frontImageFile: File,
+  backImageFile?: File,
 ): Promise<void> {
   try {
-    const users = getUsers();
-    const userIndex = users.findIndex((u) => u.uid === uid);
+    // TODO: Production 환경에서 실제 인증 API 호출
+    // 현재는 테스트 모드로 파일 저장만 수행
 
-    if (userIndex === -1) {
-      throw new Error("User not found");
+    // 신분증 앞면 업로드
+    const frontImagePath = await uploadFile(uid, 'id_front', frontImageFile);
+    
+    // 신분증 뒷면 업로드 (있는 경우)
+    let backImagePath: string | undefined;
+    if (backImageFile) {
+      backImagePath = await uploadFile(uid, 'id_back', backImageFile);
     }
 
-    // 민감 정보를 private_data 필드에 S3 URL 주소로 저장
-    const privateData: PrivateData = {
-      fullName: idData.fullName,
-      idNumber: idData.idNumber,
-      dateOfBirth: idData.dateOfBirth,
-      phoneNumber: users[userIndex].phoneNumber || "",
-      idType: idData.type,
-      ...(idData.issueDate && { issueDate: idData.issueDate }),
-      ...(idData.expiryDate && { expiryDate: idData.expiryDate }),
-      idDocumentFrontImage: frontImageUrl, // S3 URL 저장
-      ...(backImageUrl && { idDocumentBackImage: backImageUrl }), // S3 URL 저장
-    };
+    // 여권인 경우 여권 이미지 업로드
+    if (idData.type === 'passport') {
+      await uploadFile(uid, 'passport', frontImageFile);
+    }
 
-    users[userIndex] = {
-      ...users[userIndex],
-      private_data: privateData,
-      kyc_steps: {
-        ...users[userIndex].kyc_steps,
-        step2: true,
-      },
-      updatedAt: new Date().toISOString(),
-    };
-
-    saveUsers(users);
+    // KYC 단계 2 완료 처리
+    const result = await completeKYCStep(uid, 2, idData);
+    console.log('ID document verification completed:', result.testModeMessage);
   } catch (error) {
-    console.error("Error saving ID document URL:", error);
+    console.error("Error saving ID document:", error);
     throw error;
   }
 }
 
 /**
- * [Step 3] 얼굴 인증 S3 URL 저장
+ * [Step 3] 얼굴 인증 이미지 파일 저장
  */
 export async function saveFaceVerification(
   uid: string,
-  faceImages: { direction: string; imageUrl: string }[], // S3 업로드 완료된 리스트
+  faceImages: { direction: string; file: File }[],
 ): Promise<void> {
   try {
-    const users = getUsers();
-    const userIndex = users.findIndex((u) => u.uid === uid);
+    // TODO: Production 환경에서 실제 인증 API 호출
+    // 현재는 테스트 모드로 파일 저장만 수행
 
-    if (userIndex === -1) {
-      throw new Error("User not found");
-    }
+    // 얼굴 이미지 업로드
+    const uploadPromises = faceImages.map(async (img) => {
+      let fileType = 'face_front';
+      
+      switch (img.direction) {
+        case 'front':
+          fileType = 'face_front';
+          break;
+        case 'up':
+          fileType = 'face_up';
+          break;
+        case 'down':
+          fileType = 'face_down';
+          break;
+        case 'left':
+          fileType = 'face_left';
+          break;
+        case 'right':
+          fileType = 'face_right';
+          break;
+        default:
+          fileType = 'face_front';
+      }
+      
+      return uploadFile(uid, fileType, img.file);
+    });
 
-    users[userIndex] = {
-      ...users[userIndex],
-      private_data: {
-        ...(users[userIndex].private_data as PrivateData),
-        faceImageUrl: faceImages[0]?.imageUrl || "", // 첫 번째 사진(정면)을 메인으로
-        faceImages: faceImages, // 모든 방향의 S3 URL 저장
-      },
-      kyc_steps: {
-        ...users[userIndex].kyc_steps,
-        step3: true,
-      },
-      updatedAt: new Date().toISOString(),
-    };
+    await Promise.all(uploadPromises);
 
-    saveUsers(users);
+    // KYC 단계 3 완료 처리
+    const result = await completeKYCStep(uid, 3);
+    console.log('Face verification completed:', result.testModeMessage);
   } catch (error) {
-    console.error("Error saving face verification URL:", error);
+    console.error("Error saving face verification:", error);
     throw error;
   }
 }
 
 /**
  * KYC 인증 프로세스 최종 완료 처리
+ * - User 테이블의 role을 'owner'로 업데이트
+ * - 임대인 권한 부여
  */
 export async function completeKYCVerification(uid: string): Promise<void> {
   try {
-    const users = getUsers();
-    const userIndex = users.findIndex((u) => u.uid === uid);
+    // User 테이블의 role을 'owner'로 업데이트
+    const response = await fetch('/api/auth/update-role', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ userId: uid, role: 'owner' }),
+    });
 
-    if (userIndex === -1) {
-      throw new Error("User not found");
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to update user role');
     }
 
-    const kycSteps = users[userIndex].kyc_steps || {};
-    const allStepsCompleted =
-      kycSteps.step1 && kycSteps.step2 && kycSteps.step3;
-
-    if (allStepsCompleted) {
-      users[userIndex] = {
-        ...users[userIndex],
-        verification_status: "verified" as VerificationStatus,
-        is_owner: true,
-        updatedAt: new Date().toISOString(),
-      };
-    } else {
-      users[userIndex] = {
-        ...users[userIndex],
-        verification_status: "pending" as VerificationStatus,
-        updatedAt: new Date().toISOString(),
-      };
-    }
-
-    saveUsers(users);
+    console.log('KYC verification process completed for user:', uid);
+    console.log('User role updated to "owner"');
   } catch (error) {
     console.error("Error completing KYC verification:", error);
-    throw error;
+    // 테스트 모드: 에러가 발생해도 계속 진행
+    console.log('Test mode: Continuing despite role update error');
   }
 }
 
 /**
  * 사용자의 인증 상태 가져오기
+ * 테스트 모드: 항상 'none' 반환 (실제 인증 상태는 userData?.role로 확인)
  */
 export async function getVerificationStatus(
   uid: string,
-): Promise<VerificationStatus> {
+): Promise<string> {
   try {
-    const users = getUsers();
-    const user = users.find((u) => u.uid === uid);
-    return (user?.verification_status as VerificationStatus) || "none";
+    // 테스트 모드: 항상 'none' 반환
+    // 실제 구현에서는 DB에서 verificationStatus 조회 필요
+    return 'none';
   } catch (error) {
     console.error("Error getting verification status:", error);
-    return "none";
+    return 'none';
   }
 }

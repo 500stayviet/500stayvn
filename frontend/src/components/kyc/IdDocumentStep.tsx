@@ -179,8 +179,8 @@ export default function IdDocumentStep({
 
   return (
     <div className="w-full">
-      <AnimatePresence mode="wait">
-        {/* Step 1: 신분증 유형 선택 (테스트용: 바로 다음 버튼) */}
+      <AnimatePresence mode="sync">
+        {/* Step 1: 신분증 유형 선택 (테스트 모드) */}
         {step === 'select' && (
           <motion.div
             key="select"
@@ -189,6 +189,37 @@ export default function IdDocumentStep({
             exit={{ opacity: 0, x: -20 }}
             className="space-y-6"
           >
+            {/* 테스트 모드 알림 */}
+            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-xl text-yellow-700 text-sm">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">⚠️</span>
+                <div>
+                  <p className="font-medium">
+                    {currentLanguage === 'ko' 
+                      ? '현재 테스트 모드입니다'
+                      : currentLanguage === 'vi'
+                      ? 'Đang ở chế độ thử nghiệm'
+                      : currentLanguage === 'ja'
+                      ? '現在テストモードです'
+                      : currentLanguage === 'zh'
+                      ? '当前为测试模式'
+                      : 'Currently in test mode'}
+                  </p>
+                  <p className="text-xs mt-1">
+                    {currentLanguage === 'ko' 
+                      ? '촬영 없이도 다음 단계 이동 가능'
+                      : currentLanguage === 'vi'
+                      ? 'Có thể chuyển bước tiếp theo mà không cần chụp ảnh'
+                      : currentLanguage === 'ja'
+                      ? '撮影なしで次のステップに移動可能'
+                      : currentLanguage === 'zh'
+                      ? '无需拍摄即可进入下一步'
+                      : 'Can proceed to next step without capture'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div className="text-center">
               <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
                 <FileText className="w-8 h-8 text-blue-600" />
@@ -202,61 +233,101 @@ export default function IdDocumentStep({
               </h2>
               <p className="text-sm text-gray-600">
                 {currentLanguage === 'ko' 
-                  ? '테스트용: 다음 버튼을 눌러 진행하세요'
+                  ? '신분증 유형을 선택하고 카메라로 촬영해주세요'
                   : currentLanguage === 'vi'
-                  ? 'Để kiểm tra: Nhấn nút Tiếp theo để tiếp tục'
+                  ? 'Chọn loại giấy tờ và chụp ảnh bằng camera'
                   : currentLanguage === 'ja'
-                  ? 'テスト用: 次へボタンを押して進んでください'
+                  ? '身分証明書の種類を選択し、カメラで撮影してください'
                   : currentLanguage === 'zh'
-                  ? '测试用: 请点击下一步继续'
-                  : 'For testing: Click Next to continue'}
+                  ? '选择证件类型并使用相机拍摄'
+                  : 'Select ID type and capture with camera'}
               </p>
             </div>
 
-            {/* 테스트용: 바로 다음 버튼 (3단계로만 이동) */}
-            <button
-              onClick={() => {
-                if (onNext) {
-                  // 테스트용: 다음 단계로만 이동 (완료 처리 X)
-                  onNext();
-                } else {
-                  // 기존 로직: 더미 데이터로 완료 처리
-                  const dummyData: IdDocumentData = {
-                    type: 'id_card',
-                    idNumber: 'TEST123456',
-                    fullName: 'Test User',
-                    dateOfBirth: '1990-01-01',
-                    issueDate: '',
-                    expiryDate: '',
-                  };
-                  const canvas = document.createElement('canvas');
-                  canvas.width = 800;
-                  canvas.height = 500;
-                  const ctx = canvas.getContext('2d');
-                  if (ctx) {
-                    ctx.fillStyle = '#f0f0f0';
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    ctx.fillStyle = '#333';
-                    ctx.font = '24px Arial';
-                    ctx.fillText('Test ID Document', 50, 250);
-                  }
-                  canvas.toBlob((blob) => {
-                    if (blob) {
-                      const dummyFile = new File([blob], 'test-id-front.jpg', { type: 'image/jpeg' });
-                      onComplete(dummyData, dummyFile);
+            {/* 카메라 켜기 버튼 */}
+            <div className="space-y-3">
+              <button
+                onClick={() => {
+                  setIdType('id_card');
+                  setStep('camera');
+                }}
+                className="w-full py-3.5 px-4 bg-blue-600 text-white rounded-xl font-semibold text-base hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
+              >
+                <Camera className="w-5 h-5" />
+                <span>
+                  {currentLanguage === 'ko' ? '카메라 켜기 (신분증)' : 
+                   currentLanguage === 'vi' ? 'Bật camera (CMND/CCCD)' : 
+                   currentLanguage === 'ja' ? 'カメラをオン (身分証明書)' : 
+                   currentLanguage === 'zh' ? '打开相机 (证件)' : 
+                   'Turn on Camera (ID Card)'}
+                </span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setIdType('passport');
+                  setStep('camera');
+                }}
+                className="w-full py-3.5 px-4 bg-blue-600 text-white rounded-xl font-semibold text-base hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
+              >
+                <Camera className="w-5 h-5" />
+                <span>
+                  {currentLanguage === 'ko' ? '카메라 켜기 (여권)' : 
+                   currentLanguage === 'vi' ? 'Bật camera (Hộ chiếu)' : 
+                   currentLanguage === 'ja' ? 'カメラをオン (パスポート)' : 
+                   currentLanguage === 'zh' ? '打开相机 (护照)' : 
+                   'Turn on Camera (Passport)'}
+                </span>
+              </button>
+            </div>
+
+            {/* 테스트용: 바로 다음 버튼 (촬영 없이 진행) */}
+            <div className="pt-4 border-t border-gray-200">
+              <button
+                onClick={() => {
+                  if (onNext) {
+                    // 테스트용: 다음 단계로만 이동 (완료 처리 X)
+                    onNext();
+                  } else {
+                    // 기존 로직: 더미 데이터로 완료 처리
+                    const dummyData: IdDocumentData = {
+                      type: 'id_card',
+                      idNumber: 'TEST123456',
+                      fullName: 'Test User',
+                      dateOfBirth: '1990-01-01',
+                      issueDate: '',
+                      expiryDate: '',
+                    };
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 800;
+                    canvas.height = 500;
+                    const ctx = canvas.getContext('2d');
+                    if (ctx) {
+                      ctx.fillStyle = '#f0f0f0';
+                      ctx.fillRect(0, 0, canvas.width, canvas.height);
+                      ctx.fillStyle = '#333';
+                      ctx.font = '24px Arial';
+                      ctx.fillText('Test ID Document', 50, 250);
                     }
-                  }, 'image/jpeg');
-                }
-              }}
-              className="w-full py-3.5 px-4 bg-blue-600 text-white rounded-xl font-semibold text-base hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
-            >
-              <span>{currentLanguage === 'ko' ? '다음' : 
-                     currentLanguage === 'vi' ? 'Tiếp theo' : 
-                     currentLanguage === 'ja' ? '次へ' : 
-                     currentLanguage === 'zh' ? '下一步' : 
-                     'Next'}</span>
-              <ArrowRight className="w-5 h-5" />
-            </button>
+                    canvas.toBlob((blob) => {
+                      if (blob) {
+                        const dummyFile = new File([blob], 'test-id-front.jpg', { type: 'image/jpeg' });
+                        onComplete(dummyData, dummyFile);
+                      }
+                    }, 'image/jpeg');
+                  }
+                }}
+                className="w-full py-3 px-4 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-all"
+              >
+                <span>
+                  {currentLanguage === 'ko' ? '다음 (테스트 모드)' : 
+                   currentLanguage === 'vi' ? 'Tiếp theo (Chế độ thử nghiệm)' : 
+                   currentLanguage === 'ja' ? '次へ（テストモード）' : 
+                   currentLanguage === 'zh' ? '下一步（测试模式）' : 
+                   'Next (Test Mode)'}
+                </span>
+              </button>
+            </div>
           </motion.div>
         )}
 

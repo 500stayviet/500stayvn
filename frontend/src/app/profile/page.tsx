@@ -61,6 +61,17 @@ export default function ProfilePage() {
   // 모달 표시 여부 추적 (컴포넌트 내부에서만 사용)
   const popupShownRef = useRef(false);
   
+  // kyc_steps 기본값 설정 함수
+  const getKycSteps = () => {
+    const steps = userData?.kyc_steps || {};
+    // 기본값 설정: 필드가 없으면 false
+    return {
+      step1: steps.step1 || false,
+      step2: steps.step2 || false,
+      step3: steps.step3 || false,
+    };
+  };
+  
   const [verificationData, setVerificationData] = useState<OwnerVerificationData>({
     fullName: '',
     phoneNumber: '',
@@ -99,9 +110,10 @@ export default function ProfilePage() {
           const kycSteps = data?.kyc_steps || {};
           const completed = (kycSteps.step1 && kycSteps.step2 && kycSteps.step3) || false;
           const status = await getVerificationStatus(user.uid);
-          setVerificationStatus(status);
+          setVerificationStatus(status as VerificationStatus);
           
-          if (status === 'verified' && completed && !popupShownRef.current) {
+          // KYC 완료 및 임대인 권한 부여 시 성공 팝업 표시
+          if (completed && ((userData?.role as string) === 'owner') && !popupShownRef.current) {
             const popupKey = `kyc_success_modal_${user.uid}`;
             const hasShown = localStorage.getItem(popupKey);
             if (!hasShown) {
@@ -134,7 +146,7 @@ export default function ProfilePage() {
         const data = await getCurrentUserData(user.uid);
         setUserData(data);
         const status = await getVerificationStatus(user.uid);
-        setVerificationStatus(status);
+        setVerificationStatus(status as VerificationStatus);
       } catch (error) {}
     };
     window.addEventListener('focus', handleFocus);
@@ -254,6 +266,11 @@ export default function ProfilePage() {
     }
   };
 
+  const handleLanguageChange = (langCode: SupportedLanguage) => {
+    setCurrentLanguage(langCode);
+    setIsLanguageMenuOpen(false);
+  };
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (languageMenuRef.current && !languageMenuRef.current.contains(event.target as Node)) {
@@ -274,40 +291,31 @@ export default function ProfilePage() {
 
   if (!user) return null;
 
-  const isOwner = userData?.is_owner || false;
-  const kycSteps = userData?.kyc_steps || {};
+  const isOwner = (userData?.role as string) === 'owner' || false; // role이 'owner'인지 확인
+  const kycSteps = getKycSteps();
   const allStepsCompleted = kycSteps.step1 && kycSteps.step2 && kycSteps.step3;
   
+  // 코인 3개면 임대인으로 간주 (사용자 요구사항: "코인3개가 되면 다 사용가능한거야")
+  const effectiveIsOwner = allStepsCompleted || isOwner;
+  
   const getButtonConfig = () => {
-    if (verificationStatus === 'verified' && isOwner && allStepsCompleted) {
-      return {
-        text: getUIText('registerPropertyDesc', currentLanguage),
-        disabled: false,
-        onClick: () => router.push('/add-property'),
-        className: 'w-full bg-gradient-to-r from-green-600 to-green-500 text-white py-4 px-6 rounded-2xl font-semibold text-base hover:from-green-700 hover:to-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center justify-center gap-3',
-      };
-    }
-    if (allStepsCompleted && verificationStatus === 'pending') {
-      return {
-        text: getUIText('verificationPending', currentLanguage),
-        disabled: true,
-        onClick: () => {},
-        className: 'w-full bg-gradient-to-r from-yellow-600 to-yellow-500 text-white py-4 px-6 rounded-2xl font-semibold text-base cursor-not-allowed opacity-75 flex items-center justify-center gap-3',
-      };
-    }
-    if (verificationStatus === 'rejected') {
-      return {
-        text: getUIText('retry', currentLanguage),
-        disabled: false,
-        onClick: () => router.push('/kyc'),
-        className: 'w-full bg-gradient-to-r from-orange-600 to-orange-500 text-white py-4 px-6 rounded-2xl font-semibold text-base hover:from-orange-700 hover:to-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center justify-center gap-3',
-      };
-    }
+    // 항상 매물등록 페이지로 이동
+    // KYC 완료 여부는 /add-property 페이지에서 처리
+    const handleClick = () => {
+      console.log('우리집 내놓기 버튼 클릭, /add-property로 직접 이동');
+      // router.push 대신 직접 URL 이동 (더 확실한 방법)
+      window.location.href = '/add-property';
+    };
+    
     return {
-      text: getUIText('listYourProperty', currentLanguage),
+      text: allStepsCompleted 
+        ? getUIText('registerPropertyDesc', currentLanguage)
+        : getUIText('listYourProperty', currentLanguage),
       disabled: false,
-      onClick: () => router.push('/kyc'),
-      className: 'w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white py-4 px-6 rounded-2xl font-semibold text-base hover:from-blue-700 hover:to-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center justify-center gap-3',
+      onClick: handleClick,
+      className: allStepsCompleted
+        ? 'w-full bg-gradient-to-r from-green-600 to-green-500 text-white py-4 px-6 rounded-2xl font-semibold text-base hover:from-green-700 hover:to-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center justify-center gap-3'
+        : 'w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white py-4 px-6 rounded-2xl font-semibold text-base hover:from-blue-700 hover:to-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center justify-center gap-3',
     };
   };
 
@@ -330,57 +338,93 @@ export default function ProfilePage() {
                 <Building2 className="w-5 h-5 text-purple-600" />
                 <h2 className="text-lg font-bold text-gray-900">{getUIText('hostMenu', currentLanguage)}</h2>
               </div>
-              {isOwner && allStepsCompleted && (
-                <div className="flex items-center gap-1 px-2 py-1 bg-green-50 border border-green-200 rounded-lg">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
-                  <span className="text-[10px] font-bold text-green-700 uppercase tracking-tight">{getUIText('verified', currentLanguage)}</span>
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                {/* 코인 표시 */}
+                {allStepsCompleted ? (
+                  <div className="flex items-center gap-1 px-2 py-1 bg-green-50 border border-green-200 rounded-lg">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
+                    <span className="text-[10px] font-bold text-green-700 uppercase tracking-tight">{getUIText('verified', currentLanguage)}</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1 px-2 py-1 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <span className="text-[10px] font-bold text-yellow-700 uppercase tracking-tight">
+                      {currentLanguage === 'ko' ? `코인 ${Object.values(kycSteps).filter(Boolean).length}/3` :
+                       currentLanguage === 'vi' ? `Coin ${Object.values(kycSteps).filter(Boolean).length}/3` :
+                       currentLanguage === 'ja' ? `コイン ${Object.values(kycSteps).filter(Boolean).length}/3` :
+                       currentLanguage === 'zh' ? `硬币 ${Object.values(kycSteps).filter(Boolean).length}/3` :
+                       `Coins ${Object.values(kycSteps).filter(Boolean).length}/3`}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
             
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
               <button onClick={buttonConfig.onClick} disabled={buttonConfig.disabled} className={`w-full py-4 px-5 flex items-center justify-between border-b border-gray-100 ${buttonConfig.disabled ? 'opacity-60 cursor-not-allowed' : 'hover:bg-gray-50'}`}>
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${verificationStatus === 'verified' && isOwner && allStepsCompleted ? 'bg-green-100' : verificationStatus === 'pending' ? 'bg-yellow-100' : 'bg-blue-100'}`}>
-                    <Home className={`w-5 h-5 ${verificationStatus === 'verified' && isOwner && allStepsCompleted ? 'text-green-600' : verificationStatus === 'pending' ? 'text-yellow-600' : 'text-blue-600'}`} />
+                  <div className={`p-2 rounded-lg ${verificationStatus === 'verified' && effectiveIsOwner ? 'bg-green-100' : verificationStatus === 'pending' ? 'bg-yellow-100' : 'bg-blue-100'}`}>
+                    <Home className={`w-5 h-5 ${verificationStatus === 'verified' && effectiveIsOwner ? 'text-green-600' : verificationStatus === 'pending' ? 'text-yellow-600' : 'text-blue-600'}`} />
                   </div>
                   <div className="text-left">
                     <p className="text-sm font-semibold text-gray-900">{getUIText('listYourProperty', currentLanguage)}</p>
                     <p className="text-xs text-gray-500">
-                      {verificationStatus === 'verified' && isOwner && allStepsCompleted ? getUIText('registerPropertyDesc', currentLanguage) : verificationStatus === 'pending' ? getUIText('verificationPending', currentLanguage) : getUIText('kycRequired', currentLanguage)}
+                      {allStepsCompleted ? getUIText('registerPropertyDesc', currentLanguage) : getUIText('kycRequired', currentLanguage)}
                     </p>
                   </div>
                 </div>
                 <ChevronRight className="w-5 h-5 text-gray-400" />
               </button>
 
-              {isOwner && allStepsCompleted && (
-                <>
-                  <button onClick={() => router.push('/profile/my-properties')} className="w-full py-4 px-5 flex items-center justify-between border-b border-gray-100 hover:bg-gray-50">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-purple-100 rounded-lg"><Building2 className="w-5 h-5 text-purple-600" /></div>
-                      <div className="text-left">
-                        <p className="text-sm font-semibold text-gray-900">{getUIText('manageMyProperties', currentLanguage)}</p>
-                        <p className="text-xs text-gray-500">{getUIText('manageMyPropertiesDesc', currentLanguage)}</p>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-gray-400" />
-                  </button>
-                  <button onClick={() => router.push('/host/bookings')} className="w-full py-4 px-5 flex items-center justify-between hover:bg-gray-50">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-orange-100 rounded-lg"><Calendar className="w-5 h-5 text-orange-600" /></div>
-                      <div className="text-left">
-                        <p className="text-sm font-semibold text-gray-900">{getUIText('bookingManagement', currentLanguage)}</p>
-                        <p className="text-xs text-gray-500">{getUIText('bookingManagementDesc', currentLanguage)}</p>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-gray-400" />
-                  </button>
-                </>
-              )}
-              {(!isOwner || !allStepsCompleted) && (
+              {/* 매물 관리하기 버튼 - 항상 활성화, KYC 미완료 시 KYC 페이지로 */}
+              <button 
+                onClick={() => {
+                  router.push('/profile/my-properties');
+                }}
+                className="w-full py-4 px-5 flex items-center justify-between border-b border-gray-100 hover:bg-gray-50"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-purple-100 rounded-lg"><Building2 className="w-5 h-5 text-purple-600" /></div>
+                  <div className="text-left">
+                    <p className="text-sm font-semibold text-gray-900">{getUIText('manageMyProperties', currentLanguage)}</p>
+                    <p className="text-xs text-gray-500">
+                      {getUIText('manageMyPropertiesDesc', currentLanguage)}
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-gray-400" />
+              </button>
+              
+              {/* 예약 관리 버튼 - 항상 활성화, KYC 미완료 시 KYC 페이지로 */}
+              <button 
+                onClick={() => {
+                  router.push('/host/bookings');
+                }}
+                className="w-full py-4 px-5 flex items-center justify-between hover:bg-gray-50"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-orange-100 rounded-lg"><Calendar className="w-5 h-5 text-orange-600" /></div>
+                  <div className="text-left">
+                    <p className="text-sm font-semibold text-gray-900">{getUIText('bookingManagement', currentLanguage)}</p>
+                    <p className="text-xs text-gray-500">
+                      {getUIText('bookingManagementDesc', currentLanguage)}
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-gray-400" />
+              </button>
+              {!allStepsCompleted && (
                 <div className="px-5 py-3 bg-gray-50">
-                  <p className="text-xs text-gray-500 text-center">{getUIText('hostFeaturesNotice', currentLanguage)}</p>
+                  <p className="text-xs text-gray-500 text-center">
+                    {currentLanguage === 'ko' 
+                      ? `KYC 인증을 완료하여 코인 3개를 모으세요! (현재 ${Object.values(kycSteps).filter(Boolean).length}/3)`
+                      : currentLanguage === 'vi'
+                      ? `Hoàn thành xác thực KYC để thu thập 3 coin! (Hiện tại ${Object.values(kycSteps).filter(Boolean).length}/3)`
+                      : currentLanguage === 'ja'
+                      ? `KYC認証を完了してコイン3枚を集めましょう！ (現在 ${Object.values(kycSteps).filter(Boolean).length}/3)`
+                      : currentLanguage === 'zh'
+                      ? `完成KYC认证收集3个硬币！ (当前 ${Object.values(kycSteps).filter(Boolean).length}/3)`
+                      : `Complete KYC verification to collect 3 coins! (Current ${Object.values(kycSteps).filter(Boolean).length}/3)`}
+                  </p>
                 </div>
               )}
             </div>
@@ -524,7 +568,13 @@ export default function ProfilePage() {
           </div>
 
           <div className="pt-4 border-t border-gray-200">
-            <button onClick={() => setShowDeleteConfirm(true)} className="w-full py-3 px-6 bg-red-50 text-red-600 rounded-xl font-medium text-sm hover:bg-red-100">{getUIText('deleteAccount', currentLanguage)}</button>
+            <button onClick={() => setShowDeleteConfirm(true)} className="w-full py-3 px-6 bg-red-50 text-red-600 rounded-xl font-medium text-sm hover:bg-red-100">
+              {currentLanguage === 'ko' ? '계정 삭제' : 
+               currentLanguage === 'vi' ? 'Xóa tài khoản' : 
+               currentLanguage === 'ja' ? 'アカウント削除' : 
+               currentLanguage === 'zh' ? '删除账户' : 
+               'Delete Account'}
+            </button>
           </div>
         </div>
       </div>
@@ -537,7 +587,19 @@ export default function ProfilePage() {
             <p className="text-sm text-gray-600 mb-4">{getUIText('deleteAccountDesc', currentLanguage)}</p>
             <div className="flex gap-3">
               <button onClick={() => setShowDeleteConfirm(false)} disabled={deleting} className="flex-1 py-2.5 px-4 bg-gray-100 text-gray-700 rounded-lg font-medium">{getUIText('cancel', currentLanguage)}</button>
-              <button onClick={async () => { if (!user) return; setDeleting(true); try { await deleteAccount(user.uid); setShowDeleteConfirm(false); setShowDeleteSuccess(true); } catch (error) { console.error(error); alert(getUIText('errorOccurred', currentLanguage)); setDeleting(false); } }} disabled={deleting} className="flex-1 py-2.5 px-4 bg-red-600 text-white rounded-lg font-medium">{deleting ? getUIText('processing', currentLanguage) : getUIText('deleteAccount', currentLanguage)}</button>
+              <button onClick={async () => { if (!user) return; setDeleting(true); try { await deleteAccount(user.uid); setShowDeleteConfirm(false); setShowDeleteSuccess(true); } catch (error) { console.error(error); alert(getUIText('errorOccurred', currentLanguage)); setDeleting(false); } }} disabled={deleting} className="flex-1 py-2.5 px-4 bg-red-600 text-white rounded-lg font-medium">
+                {deleting ? 
+                  (currentLanguage === 'ko' ? '처리 중...' : 
+                   currentLanguage === 'vi' ? 'Đang xử lý...' : 
+                   currentLanguage === 'ja' ? '処理中...' : 
+                   currentLanguage === 'zh' ? '处理中...' : 
+                   'Processing...') : 
+                  (currentLanguage === 'ko' ? '계정 삭제' : 
+                   currentLanguage === 'vi' ? 'Xóa tài khoản' : 
+                   currentLanguage === 'ja' ? 'アカウント削除' : 
+                   currentLanguage === 'zh' ? '删除账户' : 
+                   'Delete Account')}
+              </button>
             </div>
           </motion.div>
         </div>
@@ -554,7 +616,7 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {showSuccessPopup && verificationStatus === 'verified' && allStepsCompleted && (
+      {showSuccessPopup && effectiveIsOwner && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl text-center">
             <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4"><CheckCircle2 className="w-8 h-8 text-green-600" /></div>

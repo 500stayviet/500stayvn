@@ -1,16 +1,6 @@
-/**
- * useTranslation Hook
- * 
- * 언어 선택에 따라 실시간으로 번역을 가져오는 Hook
- * Firebase Functions의 translate API 사용
- */
-
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { translate, SupportedLanguage } from '@/lib/api/translation';
 
-/**
- * 번역 결과 타입
- */
 interface TranslationState {
   original: string;
   translated: string;
@@ -18,14 +8,6 @@ interface TranslationState {
   error: Error | null;
 }
 
-/**
- * 텍스트를 실시간으로 번역하는 Hook
- * 
- * @param text - 번역할 텍스트 (베트남어)
- * @param targetLanguage - 목표 언어
- * @param sourceLanguage - 출발 언어 (선택, 자동 감지)
- * @returns { translated, loading, error, retry }
- */
 export function useTranslation(
   text: string,
   targetLanguage: SupportedLanguage,
@@ -36,6 +18,13 @@ export function useTranslation(
     translated: '',
     loading: false,
     error: null,
+  });
+
+  // 이전 값 추적 (무한 루프 방지)
+  const prevValuesRef = useRef({
+    text: '',
+    targetLanguage: '' as SupportedLanguage,
+    sourceLanguage: undefined as SupportedLanguage | undefined,
   });
 
   // 번역 실행 함수
@@ -50,31 +39,53 @@ export function useTranslation(
       return;
     }
 
+    // 이미 로딩 중이면 중복 실행 방지
+    if (state.loading) {
+      return;
+    }
+
     setState((prev) => ({ ...prev, loading: true, error: null }));
 
     try {
       const result = await translate(text, targetLanguage, sourceLanguage);
       setState({
         original: result.originalText,
-        translated: result.translatedText || result.originalText, // 번역 실패 시 원문 사용
+        translated: result.translatedText || result.originalText,
         loading: false,
         error: null,
       });
     } catch (err) {
-      // 에러 발생 시에도 원문을 표시하여 앱이 중단되지 않도록 함
       setState({
         original: text,
-        translated: text, // 에러 시 원문 반환
+        translated: text,
         loading: false,
         error: err instanceof Error ? err : new Error('Translation failed'),
       });
     }
-  }, [text, targetLanguage, sourceLanguage]);
+  }, [text, targetLanguage, sourceLanguage, state.loading]);
 
-  // 텍스트나 언어가 변경되면 자동으로 번역
+  // 텍스트나 언어가 변경되면 자동으로 번역 (무한 루프 방지)
   useEffect(() => {
-    translateText();
-  }, [translateText]);
+    const prevValues = prevValuesRef.current;
+    
+    // 값이 변경되었을 때만 번역 실행
+    const hasChanged = 
+      prevValues.text !== text ||
+      prevValues.targetLanguage !== targetLanguage ||
+      prevValues.sourceLanguage !== sourceLanguage;
+
+    if (hasChanged && text.trim()) {
+      // 값 업데이트
+      prevValuesRef.current = { text, targetLanguage, sourceLanguage };
+      
+      // 약간의 지연 후 번역 실행 (빠른 연속 변경 방지)
+      const timer = setTimeout(() => {
+        translateText();
+      }, 300);
+
+      return () => clearTimeout(timer);
+    }
+  }, [text, targetLanguage, sourceLanguage, translateText]);
 
   return {
     translated: state.translated,

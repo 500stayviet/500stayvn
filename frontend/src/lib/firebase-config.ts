@@ -11,20 +11,3 @@ export const firebaseConfig = {
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '',
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '',
 };
-
-/**
- * Firebase Functions Base URL
- */
-export const FIREBASE_FUNCTIONS_BASE_URL = 
-  process.env.NEXT_PUBLIC_FIREBASE_FUNCTIONS_BASE_URL || 
-  'https://us-central1-stayviet-26ae4.cloudfunctions.net';
-
-/**
- * Firebase Functions Endpoints
- */
-export const FIREBASE_FUNCTIONS = {
-  translate: `${FIREBASE_FUNCTIONS_BASE_URL}/translate`,
-  translateBatch: `${FIREBASE_FUNCTIONS_BASE_URL}/translateBatch`,
-  detectLanguage: `${FIREBASE_FUNCTIONS_BASE_URL}/detectLanguage`,
-  getSupportedLanguages: `${FIREBASE_FUNCTIONS_BASE_URL}/getSupportedLanguages`,
-} as const;

@@ -78,6 +78,7 @@ export default function AddressVerificationModal({
       return; // 기존 지도 유지 - 재초기화 방지
     }
 
+    // AWS Location Service 스타일 사용 (Grab Maps 스타일)
     const region = process.env.NEXT_PUBLIC_AWS_REGION || 'ap-southeast-1';
     const mapName = process.env.NEXT_PUBLIC_AWS_MAP_NAME || 'MyGrabMap';
     const apiKey = process.env.NEXT_PUBLIC_AWS_API_KEY || '';
@@ -170,17 +171,76 @@ export default function AddressVerificationModal({
     window.onerror = mapErrorHandler;
 
     // 아이콘 오류 방어: 누락된 이미지 조용히 처리 (Grab Maps 최적화)
-    // Image "building_11" could not be loaded 같은 경고 무시 처리
-    // 스타일 에러 무시: 이미지 로드 에러가 콘솔을 어지럽히지 않게 삭제 처리
+    // Image "building_11" could not be loaded 같은 경고 완전 무시
+    // 콘솔 경고를 완전히 차단하는 강력한 처리
     map.on('styleimagemissing', (e: any) => {
-      // 이미지 로딩 경고 무시: e.preventDefault()로 경고 방지
+      // 이미지 로딩 경고 완전 무시
       if (e && typeof e.preventDefault === 'function') {
         e.preventDefault(); // 콘솔 경고 삭제 처리
       }
-      // 누락된 이미지는 빈 이미지로 처리하거나 무시 (콘솔 경고 방지)
-      // MapLibre GL이 자동으로 처리하므로 추가 작업 불필요
-      // 콘솔을 도배하지 않도록 조용히 무시
+      // 추가로 콘솔 오류를 완전히 차단하기 위한 처리
+      // 빈 이미지로 대체하여 MapLibre GL이 더 이상 요청하지 않도록
+      try {
+        // 1x1 투명 PNG 이미지 생성
+        const canvas = document.createElement('canvas');
+        canvas.width = 1;
+        canvas.height = 1;
+        const context = canvas.getContext('2d');
+        if (context) {
+          context.clearRect(0, 0, 1, 1);
+          const imageData = canvas.toDataURL();
+          
+          // 누락된 이미지를 빈 이미지로 대체
+          if (e && e.id) {
+            map.addImage(e.id, {
+              width: 1,
+              height: 1,
+              data: new Uint8Array([0, 0, 0, 0]) // 완전 투명 픽셀
+            });
+          }
+        }
+      } catch (error) {
+        // 이미지 추가 실패 시 조용히 무시
+      }
     });
+    
+    // 지도 로드 전에 콘솔 오류 필터링 설정
+    const originalConsoleWarn = console.warn;
+    const originalConsoleError = console.error;
+    
+    // MapLibre GL JS 관련 경고 필터링
+    const mapConsoleFilter = (args: any[]) => {
+      const message = args[0] || '';
+      if (typeof message === 'string') {
+        // MapLibre GL 이미지 로드 오류 메시지 필터링
+        if (message.includes('Image "') && message.includes('" could not be loaded')) {
+          return true; // 이 메시지는 표시하지 않음
+        }
+        if (message.includes('could not be loaded') && message.includes('map.addImage()')) {
+          return true; // 이 메시지는 표시하지 않음
+        }
+      }
+      return false;
+    };
+    
+    // 콘솔 오버라이드
+    console.warn = (...args: any[]) => {
+      if (!mapConsoleFilter(args)) {
+        originalConsoleWarn.apply(console, args);
+      }
+    };
+    
+    console.error = (...args: any[]) => {
+      if (!mapConsoleFilter(args)) {
+        originalConsoleError.apply(console, args);
+      }
+    };
+    
+    // 컴포넌트 언마운트 시 원래 콘솔 함수 복원
+    const restoreConsole = () => {
+      console.warn = originalConsoleWarn;
+      console.error = originalConsoleError;
+    };
 
     // 지도 스타일 로드 에러 처리 (null 값 에러 완전 무시)
     map.on('error', (e: any) => {

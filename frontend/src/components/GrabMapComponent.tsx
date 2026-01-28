@@ -175,20 +175,71 @@ export default function GrabMapComponent({
     return nearbyProperties.findIndex(p => p.id === selectedPropertyData.id);
   };
 
-  // PropertyData를 Property로 변환하는 함수
+  // PropertyData를 Property로 변환하는 함수 (좌표 정확도 개선)
   const convertPropertyDataToProperty = (propertyData: PropertyData): Property | null => {
     // 좌표가 유효한 경우만 변환
-    if (!propertyData.coordinates || !propertyData.coordinates.lat || !propertyData.coordinates.lng) {
-      console.warn('Property missing coordinates:', propertyData.id, propertyData.title);
+    if (!propertyData.coordinates) {
+      console.warn('Property missing coordinates object:', propertyData.id, propertyData.title);
       return null;
+    }
+    
+    // 좌표 추출 (다양한 형식 지원)
+    let lat: number | undefined;
+    let lng: number | undefined;
+    
+    // 좌표 객체 타입 확인
+    const coords = propertyData.coordinates as any;
+    
+    // 형식 1: coordinates.lat, coordinates.lng (기본 형식)
+    if (coords.lat !== undefined && coords.lng !== undefined) {
+      lat = Number(coords.lat);
+      lng = Number(coords.lng);
+    }
+    // 형식 2: coordinates.latitude, coordinates.longitude (대체 형식)
+    else if (coords.latitude !== undefined && coords.longitude !== undefined) {
+      lat = Number(coords.latitude);
+      lng = Number(coords.longitude);
+    }
+    // 형식 3: coordinates[0], coordinates[1] (배열 형식)
+    else if (Array.isArray(coords) && coords.length >= 2) {
+      lat = Number(coords[0]);
+      lng = Number(coords[1]);
+    }
+    // 형식 4: coordinates.x, coordinates.y (다른 가능한 형식)
+    else if (coords.x !== undefined && coords.y !== undefined) {
+      lat = Number(coords.x);
+      lng = Number(coords.y);
+    }
+    
+    // 좌표 유효성 검사
+    if (lat === undefined || lng === undefined || isNaN(lat) || isNaN(lng)) {
+      console.warn('Property has invalid coordinates:', propertyData.id, propertyData.title, propertyData.coordinates);
+      return null;
+    }
+    
+    // 좌표 범위 검사 (베트남 내부인지 확인)
+    if (!isInVietnam(lat, lng)) {
+      console.warn('Property coordinates outside Vietnam:', propertyData.id, lat, lng);
+      // 베트남 밖이어도 표시는 하지만 경고 로그 출력
+    }
+    
+    // 디버깅: 좌표 정보 출력 (첫 번째 매물만)
+    if (propertyData.id && (propertyData.id.includes('test') || Math.random() < 0.1)) {
+      console.log('Property coordinates converted:', {
+        id: propertyData.id,
+        title: propertyData.title,
+        original: propertyData.coordinates,
+        converted: { lat, lng },
+        inVietnam: isInVietnam(lat, lng)
+      });
     }
     
     return {
       id: propertyData.id || '',
       name: propertyData.title || '',
       price: propertyData.price || 0,
-      lat: propertyData.coordinates.lat,
-      lng: propertyData.coordinates.lng,
+      lat: lat,
+      lng: lng,
       image: propertyData.images && propertyData.images.length > 0 ? propertyData.images[0] : undefined,
       address: propertyData.address || '',
       priceUnit: propertyData.priceUnit,
@@ -562,7 +613,7 @@ export default function GrabMapComponent({
       });
 
       // 지도 에러 처리 (AWS 타일 데이터 null 에러 필터링)
-      map.current.on('error', (e) => {
+      map.current.on('error', (e: any) => {
         // AWS 타일 데이터의 null 관련 에러는 무시 (지도는 정상 작동)
         if (e.error && e.error.message) {
           const errorMessage = e.error.message;
@@ -576,13 +627,26 @@ export default function GrabMapComponent({
         // 다른 에러는 정상적으로 처리
         console.error('Map error:', e);
         setMapLoading(false);
+        
+        // 다양한 에러 형식 처리
+        let errorMessage = '지도를 로드하는 중 오류가 발생했습니다.';
+        
         if (e.error) {
-          const errorMessage = e.error.message || '지도를 로드하는 중 오류가 발생했습니다.';
-          setMapError(errorMessage);
-          console.error('Error details:', e.error.message);
-        } else {
-          setMapError('지도를 로드하는 중 오류가 발생했습니다.');
+          errorMessage = e.error.message || errorMessage;
+        } else if (e.message) {
+          errorMessage = e.message;
         }
+        
+        // AWS API 관련 에러 메시지 구체화
+        if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError')) {
+          errorMessage = '네트워크 연결 오류. AWS 서비스에 접근할 수 없습니다.';
+        } else if (errorMessage.includes('401') || errorMessage.includes('403')) {
+          errorMessage = 'AWS API 키가 유효하지 않습니다. 환경 변수를 확인해주세요.';
+        } else if (errorMessage.includes('404')) {
+          errorMessage = '지도 리소스를 찾을 수 없습니다. Map 이름을 확인해주세요.';
+        }
+        
+        setMapError(errorMessage);
       });
 
       // 스타일 로드 에러 처리
@@ -693,8 +757,8 @@ export default function GrabMapComponent({
     }
   }, [allProperties]);
 
-  // 근거리 매물 클러스터링 (약 50m 이내) - 그리드 기반 최적화
-  const clusterProperties = useCallback((properties: Property[], thresholdMeters: number = 0.05): Array<{ properties: Property[]; center: { lat: number; lng: number } }> => {
+  // 근거리 매물 클러스터링 (약 10m 이내) - 정확한 위치 표시를 위해 임계값 축소
+  const clusterProperties = useCallback((properties: Property[], thresholdMeters: number = 0.01): Array<{ properties: Property[]; center: { lat: number; lng: number } }> => {
     // 빈 배열이면 빈 클러스터 반환
     if (!properties || properties.length === 0) {
       return [];

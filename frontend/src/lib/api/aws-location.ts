@@ -42,6 +42,13 @@ export async function searchPlaceIndexForText(
     });
 
     if (!response.ok) {
+      // 403 에러 등 권한 문제 시 빈 배열 반환 (UI 깨짐 방지)
+      if (response.status === 403 || response.status === 401) {
+        // 콘솔 에러를 디버그 레벨로 변경하여 사용자에게 보이지 않도록
+        console.debug(`AWS Location Service 권한 오류 (${response.status}): 검색 기능이 일시적으로 제한됩니다.`);
+        return [];
+      }
+      
       const errorData = await response.json();
       throw new Error(`AWS Location Service API error: ${response.status} - ${errorData.error || errorData.details || 'Unknown error'}`);
     }
@@ -49,8 +56,9 @@ export async function searchPlaceIndexForText(
     const data = await response.json();
     return data.Results || [];
   } catch (error) {
-    console.error('Error searching place index:', error);
-    throw error;
+    // 네트워크 오류 등 예외 상황 시 빈 배열 반환
+    console.warn('AWS Location Service 연결 오류:', error instanceof Error ? error.message : String(error));
+    return []; // 빈 배열 반환하여 UI가 깨지지 않도록
   }
 }
 
@@ -93,6 +101,18 @@ export async function searchPlaceIndexForSuggestions(
     });
 
     if (!response.ok) {
+      // 500 에러 등 서버 오류 시 빈 배열 반환 (사용자 경험 개선)
+      if (response.status >= 500) {
+        console.debug(`AWS Location Service 서버 오류 (${response.status}): 일시적인 문제입니다. 잠시 후 다시 시도해주세요.`);
+        return []; // 빈 배열 반환하여 UI가 깨지지 않도록
+      }
+      
+      // 403/401 에러도 여기서 처리
+      if (response.status === 403 || response.status === 401) {
+        console.debug(`AWS Location Service 권한 오류 (${response.status}): 검색 기능이 일시적으로 제한됩니다.`);
+        return [];
+      }
+      
       const errorText = await response.text();
       let errorData;
       try {
@@ -119,8 +139,10 @@ export async function searchPlaceIndexForSuggestions(
       };
     });
   } catch (error) {
-    console.error('Error getting place suggestions:', error);
-    throw error;
+    // 네트워크 오류 등 예외 상황 시 빈 배열 반환
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.warn('AWS Location Service 연결 오류:', errorMessage);
+    return []; // 빈 배열 반환하여 UI가 깨지지 않도록
   }
 }
 

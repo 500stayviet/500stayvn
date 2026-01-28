@@ -678,12 +678,12 @@ export async function getPropertiesByOwner(ownerId: string, includeDeleted: bool
       return true;
     });
     
-    // 클라이언트 측에서 정렬 (createdAt이 있는 경우)
+    // 클라이언트 측에서 정렬 (updatedAt 우선, 없으면 createdAt 기준)
     filtered.sort((a, b) => {
-      if (!a.createdAt || !b.createdAt) return 0;
-      const aTime = toDate(a.createdAt)?.getTime() || 0;
-      const bTime = toDate(b.createdAt)?.getTime() || 0;
-      return bTime - aTime; // 내림차순 (최신순)
+      // updatedAt 기준으로 정렬 (재등록 시 최신순으로 정렬)
+      const aUpdatedTime = toDate(a.updatedAt)?.getTime() || toDate(a.createdAt)?.getTime() || 0;
+      const bUpdatedTime = toDate(b.updatedAt)?.getTime() || toDate(b.createdAt)?.getTime() || 0;
+      return bUpdatedTime - aUpdatedTime; // 내림차순 (최신순)
     });
     
     // 예약 정보 가져오기 및 bookedDateRanges 생성 (Gaps Logic: 물리적 매물 기준 통합)

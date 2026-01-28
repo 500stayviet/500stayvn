@@ -135,13 +135,17 @@ export default function PhoneVerificationStep({
   };
 
   const handleNext = () => {
-    if (isPhoneVerified && phoneNumber) {
-      onComplete({
-        phoneNumber,
-        verificationCode: 'verified',
-        verificationId: 'verified_id',
-      });
-    }
+    // 테스트 모드: 실제 인증 없이 다음 단계로 진행
+    // 전화번호 입력 여부와 관계없이 항상 진행
+    const testPhoneNumber = phoneNumber || '01012345678'; // 기본 테스트 번호
+    console.log('Phone verification step completed (test mode)');
+    
+    // 즉시 onComplete 호출 (부모 컴포넌트에서 setCurrentStep(2) 실행)
+    onComplete({
+      phoneNumber: testPhoneNumber,
+      verificationCode: 'test_mode',
+      verificationId: 'test_mode_id',
+    });
   };
 
   if (checkingUser) {
@@ -160,6 +164,37 @@ export default function PhoneVerificationStep({
 
   return (
     <div className="w-full space-y-6">
+      {/* 테스트 모드 알림 - 상단에 표시 */}
+      <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-xl text-yellow-700 text-sm">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">⚠️</span>
+          <div>
+            <p className="font-medium">
+              {currentLanguage === 'ko' 
+                ? '현재 테스트 모드입니다'
+                : currentLanguage === 'vi'
+                ? 'Đang ở chế độ thử nghiệm'
+                : currentLanguage === 'ja'
+                ? '現在テストモードです'
+                : currentLanguage === 'zh'
+                ? '当前为测试模式'
+                : 'Currently in test mode'}
+            </p>
+            <p className="text-xs mt-1">
+              {currentLanguage === 'ko' 
+                ? '촬영/인증 없이 다음 단계 이동 가능'
+                : currentLanguage === 'vi'
+                ? 'Có thể chuyển bước tiếp theo mà không cần chụp ảnh/xác thực'
+                : currentLanguage === 'ja'
+                ? '撮影/認証なしで次のステップに移動可能'
+                : currentLanguage === 'zh'
+                ? '无需拍摄/验证即可进入下一步'
+                : 'Can proceed to next step without capture/verification'}
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* 헤더 */}
       <div className="text-center">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">
@@ -212,11 +247,11 @@ export default function PhoneVerificationStep({
             className="w-full py-3.5 px-4 bg-blue-600 text-white rounded-xl font-semibold text-base hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all flex items-center justify-center gap-2"
           >
             <span>
-              {currentLanguage === 'ko' ? '다음' : 
-               currentLanguage === 'vi' ? 'Tiếp theo' : 
-               currentLanguage === 'ja' ? '次へ' : 
-               currentLanguage === 'zh' ? '下一步' : 
-               'Next'}
+              {currentLanguage === 'ko' ? '다음 (테스트 모드)' : 
+               currentLanguage === 'vi' ? 'Tiếp theo (Chế độ thử nghiệm)' : 
+               currentLanguage === 'ja' ? '次へ (テストモード)' : 
+               currentLanguage === 'zh' ? '下一步 (测试模式)' : 
+               'Next (Test Mode)'}
             </span>
             <ArrowRight className="w-5 h-5" />
           </button>
@@ -291,17 +326,17 @@ export default function PhoneVerificationStep({
             </div>
           )}
 
+
           <button
             onClick={handleNext}
-            disabled={!isPhoneVerified || !phoneNumber}
-            className="w-full py-3.5 px-4 bg-blue-600 text-white rounded-xl font-semibold text-base hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full py-3.5 px-4 bg-blue-600 text-white rounded-xl font-semibold text-base hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all flex items-center justify-center gap-2"
           >
             <span>
-              {currentLanguage === 'ko' ? '다음' : 
-               currentLanguage === 'vi' ? 'Tiếp theo' : 
-               currentLanguage === 'ja' ? '次へ' : 
-               currentLanguage === 'zh' ? '下一步' : 
-               'Next'}
+              {currentLanguage === 'ko' ? '다음 (테스트 모드)' : 
+               currentLanguage === 'vi' ? 'Tiếp theo (Chế độ thử nghiệm)' : 
+               currentLanguage === 'ja' ? '次へ (テストモード)' : 
+               currentLanguage === 'zh' ? '下一步 (测试模式)' : 
+               'Next (Test Mode)'}
             </span>
             <ArrowRight className="w-5 h-5" />
           </button>
