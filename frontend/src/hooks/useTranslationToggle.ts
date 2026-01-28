@@ -273,12 +273,24 @@ export const useTranslationToggle = (
     ? state.translatedText 
     : state.originalText;
   
-  // 번역 버튼 텍스트
+  // 번역 버튼 텍스트 (하드코딩)
   const buttonText = state.isLoading 
-    ? '번역 중...' 
+    ? (currentLanguage === 'ko' ? '번역 중...' : 
+       currentLanguage === 'vi' ? 'Đang dịch...' : 
+       currentLanguage === 'en' ? 'Translating...' : 
+       currentLanguage === 'ja' ? '翻訳中...' : 
+       '翻译中...') // zh
     : state.isTranslated 
-      ? '원문 보기' 
-      : '번역 보기';
+      ? (currentLanguage === 'ko' ? '원문 보기' : 
+         currentLanguage === 'vi' ? 'Xem bản gốc' : 
+         currentLanguage === 'en' ? 'View Original' : 
+         currentLanguage === 'ja' ? '原文を見る' : 
+         '查看原文') // zh
+      : (currentLanguage === 'ko' ? '번역하기' : 
+         currentLanguage === 'vi' ? 'Xem bản dịch' : 
+         currentLanguage === 'en' ? 'Translate' : 
+         currentLanguage === 'ja' ? '翻訳する' : 
+         '翻译'); // zh
   
   // 번역 가능 여부 (텍스트가 있고 소스/타겟 언어가 다를 때)
   const canTranslate = Boolean(

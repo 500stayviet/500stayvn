@@ -16,6 +16,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import Image from 'next/image';
 import { MapPin, Bed, Bath, Square, ArrowLeft, Wind, Sofa, UtensilsCrossed, WashingMachine, Refrigerator, Table, Shirt, Wifi, Calendar, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import TopBar from '@/components/TopBar';
+import { PropertyDescription } from '@/components/PropertyDescription';
 import { AMENITY_OPTIONS } from '@/lib/constants/amenities';
 import { useAuth } from '@/hooks/useAuth';
 import { 
@@ -27,6 +28,7 @@ import {
   formatDate, 
   formatDateForBadge 
 } from '@/lib/utils/dateUtils';
+import { SupportedLanguage } from '@/lib/api/translation';
 
 export default function PropertyDetailPage() {
   const router = useRouter();
@@ -247,6 +249,23 @@ export default function PropertyDetailPage() {
                  'Utilities/Management fees included'}
               </p>
             </div>
+
+            {/* 매물 설명 */}
+            {property.original_description && (
+              <div>
+                <p className="text-xs text-gray-500 mb-1">
+                  {currentLanguage === 'ko' ? '매물 설명' : 
+                   currentLanguage === 'vi' ? 'Mô tả bất động sản' : 
+                   'Property Description'}
+                </p>
+                <PropertyDescription
+                  description={property.original_description}
+                  sourceLanguage="vi"
+                  cacheKey={`property-detail-${property.id}`}
+                  className="mt-2"
+                />
+              </div>
+            )}
 
             {/* 임대 가능 날짜 */}
             {(property.checkInDate || property.checkOutDate) && (

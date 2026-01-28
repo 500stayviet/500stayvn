@@ -15,6 +15,7 @@ import { getProperty } from '@/lib/api/properties';
 import { PropertyData } from '@/types/property';
 import { ArrowLeft, Edit, MapPin, Square, Calendar, Users, ChevronLeft, ChevronRight, Bed, Bath } from 'lucide-react';
 import TopBar from '@/components/TopBar';
+import { PropertyDescription } from '@/components/PropertyDescription';
 import Image from 'next/image';
 import { AMENITY_OPTIONS } from '@/lib/constants/amenities';
 import { 
@@ -304,9 +305,12 @@ export default function PropertyDetailPage() {
                  currentLanguage === 'vi' ? 'Mô tả' : 
                  'Description'}
               </p>
-              <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
-                {currentLanguage === 'ko' ? property.translated_description || property.original_description : property.original_description}
-              </div>
+              <PropertyDescription
+                description={property.original_description}
+                sourceLanguage="vi"
+                cacheKey={`property-detail-owner-${property.id}`}
+                className="mt-2"
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4">

@@ -81,7 +81,7 @@ export const detectEnvironment = (): Environment => {
   
   // React Native WebView 감지 (일반적인 패턴)
   const isReactNativeWebView = /react-native/.test(userAgent) || 
-                              (typeof window !== 'undefined' && window.ReactNativeWebView !== undefined);
+                              (typeof window !== 'undefined' && (window as any).ReactNativeWebView !== undefined);
   
   // 네이티브 브릿지 확인 (사용자 정의 브릿지)
   const hasNativeBridge = typeof window.callNativeTranslation === 'function';
@@ -160,7 +160,7 @@ const callNativeTranslation = async (
   }
   
   // React Native WebView 통신
-  if (window.ReactNativeWebView) {
+  if ((window as any).ReactNativeWebView) {
     return new Promise((resolve, reject) => {
       const requestId = Date.now().toString();
       
@@ -198,7 +198,7 @@ const callNativeTranslation = async (
       window.addEventListener('message', handleResponse);
       
       // 네이티브로 메시지 전송
-      window.ReactNativeWebView.postMessage(JSON.stringify(request));
+      (window as any).ReactNativeWebView.postMessage(JSON.stringify(request));
       
       // 타임아웃 설정 (10초)
       setTimeout(() => {

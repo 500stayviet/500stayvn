@@ -6,17 +6,21 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { BookingData } from '@/lib/api/bookings';
+import { getProperty } from '@/lib/api/properties';
+import { PropertyData } from '@/types/property';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { SupportedLanguage } from '@/lib/api/translation';
 import { 
   X, Calendar, Clock, User, Phone, Home, 
   CreditCard, Copy, Check, Hash, Info, 
-  ChevronRight, ArrowRight
+  ChevronRight, ArrowRight, ExternalLink
 } from 'lucide-react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
+import PropertyModal from './map/PropertyModal';
 
 interface BookingDetailsModalProps {
   booking: BookingData;
@@ -24,18 +28,65 @@ interface BookingDetailsModalProps {
 }
 
 export default function BookingDetailsModal({ booking, onClose }: BookingDetailsModalProps) {
+  const router = useRouter();
   const { currentLanguage } = useLanguage();
   const [copiedId, setCopiedId] = useState(false);
   const [copiedAddress, setCopiedAddress] = useState(false);
+  const [propertyData, setPropertyData] = useState<PropertyData | null>(null);
+  const [showPropertyModal, setShowPropertyModal] = useState(false);
+  const [loadingProperty, setLoadingProperty] = useState(false);
 
-  // 날짜 포맷 (DD/MM/YYYY)
-  const formatDate = (dateStr: string) => {
+  // propertyId가 있으면 propertyData 가져오기
+  useEffect(() => {
+    const fetchPropertyData = async () => {
+      if (!booking.propertyId || propertyData || loadingProperty) return;
+      
+      try {
+        setLoadingProperty(true);
+        const data = await getProperty(booking.propertyId);
+        setPropertyData(data);
+      } catch (error) {
+        console.error('Failed to fetch property data:', error);
+      } finally {
+        setLoadingProperty(false);
+      }
+    };
+
+    fetchPropertyData();
+  }, [booking.propertyId, propertyData, loadingProperty]);
+
+  // 날짜 포맷 (YYYY년 MM월 DD일)
+  const formatDateFull = (dateStr: string) => {
     const date = new Date(dateStr);
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    
+    if (currentLanguage === 'ko') {
+      return `${year}년 ${month}월 ${day}일`;
+    } else if (currentLanguage === 'vi') {
+      return `Ngày ${day} tháng ${month} năm ${year}`;
+    } else if (currentLanguage === 'ja') {
+      return `${year}年${month}月${day}日`;
+    } else if (currentLanguage === 'zh') {
+      return `${year}年${month}月${day}日`;
+    } else {
+      // English
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return `${monthNames[date.getMonth()]} ${day}, ${year}`;
+    }
   };
+
+  // 숙박 일수 계산
+  const calculateNights = (checkIn: string, checkOut: string) => {
+    const checkInDate = new Date(checkIn);
+    const checkOutDate = new Date(checkOut);
+    const diffTime = Math.abs(checkOutDate.getTime() - checkInDate.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
+  const nights = calculateNights(booking.checkInDate, booking.checkOutDate);
 
   // 가격 포맷
   const formatPrice = (price: number, unit: string) => {
@@ -146,7 +197,7 @@ export default function BookingDetailsModal({ booking, onClose }: BookingDetails
                 }
               </span>
               <p className="text-[10px] text-gray-400 mt-1">
-                {booking.createdAt && formatDate(booking.createdAt)}
+                {booking.createdAt && formatDateFull(booking.createdAt)}
               </p>
             </div>
           </div>
@@ -158,22 +209,50 @@ export default function BookingDetailsModal({ booking, onClose }: BookingDetails
             </h3>
             <div className="flex gap-4 items-start">
               {booking.propertyImage && (
-                <div className="w-16 h-16 relative rounded-xl overflow-hidden flex-shrink-0 border border-gray-100">
+                <button 
+                  onClick={() => {
+                    if (booking.propertyId && propertyData) {
+                      setShowPropertyModal(true);
+                    }
+                  }}
+                  disabled={!propertyData}
+                  className="w-16 h-16 relative rounded-xl overflow-hidden flex-shrink-0 border border-gray-100 hover:border-blue-400 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   <Image src={booking.propertyImage} alt="" fill className="object-cover" />
-                </div>
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all flex items-center justify-center">
+                    <ExternalLink className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                  {loadingProperty && (
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                  )}
+                </button>
               )}
               <div className="flex-1 min-w-0">
                 <button 
-                  onClick={() => copyAddressToClipboard(booking.propertyAddress || booking.propertyTitle || '')}
-                  className="text-left group w-full"
+                  onClick={() => {
+                    if (booking.propertyId && propertyData) {
+                      setShowPropertyModal(true);
+                    } else {
+                      copyAddressToClipboard(booking.propertyAddress || booking.propertyTitle || '');
+                    }
+                  }}
+                  disabled={!propertyData}
+                  className="text-left group w-full flex items-start justify-between disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <p className={`text-[14px] font-bold leading-tight mb-1 transition-colors ${copiedAddress ? 'text-blue-600' : 'text-gray-900 group-hover:text-blue-600'}`}>
-                    {booking.propertyAddress || booking.propertyTitle}
-                  </p>
+                  <div className="flex-1">
+                    <p className={`text-[14px] font-bold leading-tight mb-1 transition-colors ${copiedAddress ? 'text-blue-600' : 'text-gray-900 group-hover:text-blue-600'}`}>
+                      {booking.propertyAddress || booking.propertyTitle}
+                    </p>
+                    <div className="text-[12px] text-gray-500 font-medium">
+                      {formatDateFull(booking.checkInDate)} ~ {formatDateFull(booking.checkOutDate)} ({nights}일간)
+                    </div>
+                  </div>
+                  {booking.propertyId && propertyData && (
+                    <ExternalLink className="w-3.5 h-3.5 text-gray-300 group-hover:text-blue-600 mt-1 flex-shrink-0" />
+                  )}
                 </button>
-                <div className="text-[12px] text-gray-500 font-medium">
-                  {formatDate(booking.checkInDate)} - {formatDate(booking.checkOutDate)}
-                </div>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -193,14 +272,14 @@ export default function BookingDetailsModal({ booking, onClose }: BookingDetails
             <h3 className="text-[12px] font-bold text-gray-400 uppercase tracking-wider">
               {currentLanguage === 'ko' ? '예약자 정보' : currentLanguage === 'vi' ? 'Thông tin người đặt' : currentLanguage === 'ja' ? '予約者情報' : currentLanguage === 'zh' ? '预订人信息' : 'Guest'}
             </h3>
-            <div className="grid grid-cols-2 gap-4 p-4 border border-gray-100 rounded-2xl">
+            <div className="space-y-4 p-4 border border-gray-100 rounded-2xl">
               <div>
                 <p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">
                   {currentLanguage === 'ko' ? '성명' : currentLanguage === 'vi' ? 'Họ tên' : currentLanguage === 'ja' ? '氏名' : currentLanguage === 'zh' ? '姓名' : 'Name'}
                 </p>
                 <p className="text-[13px] font-bold text-gray-900">{booking.guestName}</p>
               </div>
-              <div className="text-right">
+              <div>
                 <p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">
                   {currentLanguage === 'ko' ? '연락처' : currentLanguage === 'vi' ? 'Số điện thoại' : currentLanguage === 'ja' ? '連絡先' : currentLanguage === 'zh' ? '联系方式' : 'Phone'}
                 </p>
@@ -211,19 +290,23 @@ export default function BookingDetailsModal({ booking, onClose }: BookingDetails
                   {currentLanguage === 'ko' ? '인원' : currentLanguage === 'vi' ? 'Số người' : currentLanguage === 'ja' ? '人数' : currentLanguage === 'zh' ? '人数' : 'Guests'}
                 </p>
                 <p className="text-[13px] font-bold text-gray-900">
-                  {currentLanguage === 'ko' ? `성인 ${booking.adults}, 아동 ${booking.children}` : 
+                  {currentLanguage === 'ko' ? `성인 ${booking.adults}명, 아동 ${booking.children}명` : 
                    currentLanguage === 'vi' ? `${booking.adults} người lớn, ${booking.children} trẻ em` :
-                   currentLanguage === 'ja' ? `大人 ${booking.adults}, 子供 ${booking.children}` :
-                   currentLanguage === 'zh' ? `成人 ${booking.adults}, 儿童 ${booking.children}` :
-                   `${booking.adults} Ad, ${booking.children} Ch`}
+                   currentLanguage === 'ja' ? `大人 ${booking.adults}名, 子供 ${booking.children}名` :
+                   currentLanguage === 'zh' ? `成人 ${booking.adults}名, 儿童 ${booking.children}名` :
+                   `${booking.adults} Adults, ${booking.children} Children`}
                 </p>
               </div>
-              <div className="text-right">
+              <div>
                 <p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">
                   {currentLanguage === 'ko' ? '기간' : currentLanguage === 'vi' ? 'Thời gian' : currentLanguage === 'ja' ? '期間' : currentLanguage === 'zh' ? '租期' : 'Duration'}
                 </p>
                 <p className="text-[13px] font-bold text-gray-900">
-                  {booking.nights}{currentLanguage === 'ko' ? '박' : currentLanguage === 'vi' ? ' đêm' : currentLanguage === 'ja' ? '泊' : currentLanguage === 'zh' ? '晚' : 'N'} ({weeks}W)
+                  {currentLanguage === 'ko' ? `${nights}일간 (${weeks}주)` : 
+                   currentLanguage === 'vi' ? `${nights} đêm (${weeks} tuần)` :
+                   currentLanguage === 'ja' ? `${nights}泊 (${weeks}週)` :
+                   currentLanguage === 'zh' ? `${nights}晚 (${weeks}周)` :
+                   `${nights} nights (${weeks} weeks)`}
                 </p>
               </div>
             </div>
@@ -276,6 +359,15 @@ export default function BookingDetailsModal({ booking, onClose }: BookingDetails
           </button>
         </div>
       </motion.div>
+
+      {/* PropertyModal 렌더링 */}
+      {showPropertyModal && propertyData && (
+        <PropertyModal
+          propertyData={propertyData}
+          currentLanguage={currentLanguage}
+          onClose={() => setShowPropertyModal(false)}
+        />
+      )}
     </div>
   );
 }

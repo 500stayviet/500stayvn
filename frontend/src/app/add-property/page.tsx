@@ -53,6 +53,7 @@ export default function AddPropertyPage() {
   const [maxChildren, setMaxChildren] = useState(0);
   const [bedrooms, setBedrooms] = useState(1);
   const [bathrooms, setBathrooms] = useState(1);
+  const [propertyDescription, setPropertyDescription] = useState("");
 
   // 임대 희망 날짜
   const [showCalendar, setShowCalendar] = useState(false);
@@ -128,7 +129,7 @@ export default function AddPropertyPage() {
     setAddress(data.address);
     setCoordinates({ lat: data.lat, lng: data.lng });
     // 개발 환경에서만 디버그 로그 출력
-    if (process.env.NODE_ENV === 'development') {
+    if (process.env.NODE_ENV === "development") {
       console.debug("✅ 주소 확정:", data);
     }
   };
@@ -458,13 +459,14 @@ export default function AddPropertyPage() {
       } catch (error) {
         console.error("S3 업로드 실패:", error);
         // 실제 에러 메시지를 사용자에게 표시
-        const errorMessage = error instanceof Error ? error.message : "S3 업로드 실패";
+        const errorMessage =
+          error instanceof Error ? error.message : "S3 업로드 실패";
         alert(
           currentLanguage === "ko"
             ? `사진 업로드 실패: ${errorMessage}`
             : currentLanguage === "vi"
               ? `Tải ảnh lên thất bại: ${errorMessage}`
-              : `Photo upload failed: ${errorMessage}`
+              : `Photo upload failed: ${errorMessage}`,
         );
         setLoading(false);
         return;
@@ -476,7 +478,7 @@ export default function AddPropertyPage() {
 
       await addProperty({
         title: apartmentName || address,
-        original_description: publicAddress, // 동호수 제외
+        original_description: propertyDescription || publicAddress, // 매물 설명 또는 주소
         translated_description: "", // 나중에 번역 서비스로 채움
         price: parseInt(weeklyRent.replace(/\D/g, "")),
         priceUnit: "vnd",
@@ -1395,6 +1397,39 @@ export default function AddPropertyPage() {
                   );
                 })}
               </div>
+            </div>
+
+            {/* 매물 설명 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {currentLanguage === "ko"
+                  ? "매물 설명"
+                  : currentLanguage === "vi"
+                    ? "Mô tả bất động sản"
+                    : "Property Description"}
+                <span className="text-red-500 text-xs ml-1">*</span>
+              </label>
+              <textarea
+                value={propertyDescription}
+                onChange={(e) => setPropertyDescription(e.target.value)}
+                placeholder={
+                  currentLanguage === "ko"
+                    ? "매물에 대한 상세 설명을 입력해주세요. 예: 새로 지어진 스튜디오 아파트로, 퀴언 1 중심부에 위치해 있습니다. 33m² 면적에 에어컨, 냉장고, 세탁기, 인덕션 레인지 등 모든 편의시설이 구비되어 있습니다. 벤탄 시장, 9월 23일 공원, 쇼핑몰과 가깝습니다. 관광객이나 단기 출장자에게 적합합니다."
+                    : currentLanguage === "vi"
+                      ? "Nhập mô tả chi tiết về bất động sản. Ví dụ: Căn hộ studio mới xây, nằm ở trung tâm Quận 1. Diện tích 33m2, đầy đủ tiện nghi: máy lạnh, tủ lạnh, máy giặt, bếp từ. Gần chợ Bến Thành, công viên 23/9, các trung tâm thương mại. Phù hợp cho khách du lịch, người đi công tác ngắn hạn."
+                      : "Enter detailed description of the property. Example: Newly built studio apartment located in the center of District 1. 33m² area with all amenities: air conditioning, refrigerator, washing machine, induction stove. Close to Ben Thanh Market, 23/9 Park, shopping malls. Suitable for tourists or short-term business travelers."
+                }
+                rows={4}
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
+                required
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                {currentLanguage === "ko"
+                  ? "베트남어로 입력해주세요. 자동 번역 기능이 제공됩니다."
+                  : currentLanguage === "vi"
+                    ? "Vui lòng nhập bằng tiếng Việt. Tính năng dịch tự động sẽ được cung cấp."
+                    : "Please enter in Vietnamese. Automatic translation feature will be provided."}
+              </p>
             </div>
 
             {/* 등록 버튼 */}

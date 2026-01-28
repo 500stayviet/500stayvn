@@ -15,6 +15,7 @@ import {
 import { PropertyData } from '@/types/property';
 import { getPropertyBookings, toISODateString } from '@/lib/api/bookings';
 import CalendarComponent from '@/components/CalendarComponent';
+import { PropertyDescription } from '@/components/PropertyDescription';
 import { useAuth } from '@/hooks/useAuth';
 import { AMENITY_OPTIONS } from '@/lib/constants/amenities';
 import { 
@@ -27,6 +28,7 @@ import {
 } from '@/lib/utils/dateUtils';
 
 import { getUIText } from '@/utils/i18n';
+import { SupportedLanguage } from '@/lib/api/translation';
 
 interface PropertyModalProps {
   propertyData: PropertyData;
@@ -331,6 +333,21 @@ export default function PropertyModal({
               </p>
             )}
           </div>
+
+          {/* 매물 설명 - 날짜 선택 위에 표시 */}
+          {propertyData.original_description && (
+            <div>
+              <p className="text-xs text-gray-500 mb-1">
+                {getUIText('description', currentLanguage)}
+              </p>
+              <PropertyDescription
+                description={propertyData.original_description}
+                sourceLanguage="vi"
+                cacheKey={`property-modal-${propertyData.id}`}
+                className="mt-2"
+              />
+            </div>
+          )}
 
           {/* 날짜 선택 */}
           <div className="pt-2 border-t border-gray-100">

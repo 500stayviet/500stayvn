@@ -125,17 +125,25 @@ export const PropertyDescription: React.FC<PropertyDescriptionProps> = ({
     toggleTranslation();
   };
   
+  // 설명이 비어있으면 아무것도 렌더링하지 않음
+  if (!description || description.trim() === '') {
+    return null;
+  }
+
+  // 디버깅 정보 (개발 환경에서만 표시)
+  const isDevelopment = process.env.NODE_ENV === 'development';
+
   return (
     <div className={`relative ${className}`}>
-      {/* 설명 텍스트 */}
-      <div className="mb-4">
-        <p className="text-gray-700 whitespace-pre-line">
+      {/* 설명 텍스트 컨테이너 - 글자 수에 맞게 조절 */}
+      <div className="mb-2">
+        <div className="text-gray-700 whitespace-pre-line break-words">
           {displayText}
-        </p>
+        </div>
         
         {/* 번역 안내 문구 */}
         {isTranslated && (
-          <div className="mt-2">
+          <div className="mt-1">
             <p className="text-xs text-gray-500 italic">
               {environment === 'web' 
                 ? 'Gemini AI를 사용한 자동 번역 결과입니다.' 
@@ -146,21 +154,36 @@ export const PropertyDescription: React.FC<PropertyDescriptionProps> = ({
         
         {/* 에러 메시지 */}
         {error && (
-          <div className="mt-2 flex items-center gap-2 text-red-600 text-sm">
+          <div className="mt-1 flex items-center gap-2 text-red-600 text-sm">
             <AlertCircle className="w-4 h-4" />
             <span>번역 중 오류가 발생했습니다.</span>
           </div>
         )}
+
+        {/* 디버깅 정보 (개발 환경에서만) */}
+        {isDevelopment && (
+          <div className="mt-2 p-2 bg-gray-100 rounded text-xs text-gray-600">
+            <p>디버깅 정보:</p>
+            <p>• canTranslate: {canTranslate ? 'true' : 'false'}</p>
+            <p>• sourceLanguage: {sourceLanguage}</p>
+            <p>• environment: {environment}</p>
+            <p>• engine: {engine}</p>
+            <p>• hasConsent: {hasConsent ? 'true' : 'false'}</p>
+            <p>• hasLanguagePackConsent: {hasLanguagePackConsent ? 'true' : 'false'}</p>
+            <p>• isTranslated: {isTranslated ? 'true' : 'false'}</p>
+            <p>• isLoading: {isLoading ? 'true' : 'false'}</p>
+          </div>
+        )}
       </div>
       
-      {/* 번역 버튼 */}
+      {/* 번역 버튼 - 우측 하단에 위치 */}
       {canTranslate && (
-        <div className="flex justify-end">
+        <div className="flex justify-end mt-2">
           <button
             onClick={handleTranslationClick}
             disabled={isLoading}
             className={`
-              inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium
+              inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium
               transition-all duration-200
               ${isLoading 
                 ? 'bg-gray-100 text-gray-500 cursor-not-allowed' 
@@ -172,12 +195,12 @@ export const PropertyDescription: React.FC<PropertyDescriptionProps> = ({
           >
             {isLoading ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>번역 중...</span>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>{buttonText}</span>
               </>
             ) : (
               <>
-                <Languages className="w-4 h-4" />
+                <Languages className="w-3.5 h-3.5" />
                 <span>{buttonText}</span>
               </>
             )}
