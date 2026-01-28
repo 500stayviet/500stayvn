@@ -201,16 +201,10 @@ export const useTranslationToggle = (
       return;
     }
     
-    // 동의 체크
-    if (!state.hasConsent) {
-      // 동의 모달을 표시해야 함 (컴포넌트에서 처리)
-      return;
-    }
-    
-    // 네이티브 환경에서 언어 팩 동의 체크
-    if (translationContext.environment !== 'web' && !state.hasLanguagePackConsent) {
-      // 언어 팩 다운로드 동의 모달 표시 (컴포넌트에서 처리)
-      return;
+    // 웹(Gemini)은 동의 없이 번역 가능 / 네이티브만 동의·언어팩 체크
+    if (translationContext.environment !== 'web') {
+      if (!state.hasConsent) return;
+      if (!state.hasLanguagePackConsent) return;
     }
     
     // 번역 실행

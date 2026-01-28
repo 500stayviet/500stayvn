@@ -10,8 +10,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { getProperty } from '@/lib/api/properties';
+import { getProperty, getBookedRangesForProperty } from '@/lib/api/properties';
 import { PropertyData } from '@/types/property';
+import { getBookableDateSegments } from '@/lib/utils/propertyUtils';
 import { useLanguage } from '@/contexts/LanguageContext';
 import Image from 'next/image';
 import { MapPin, Bed, Bath, Square, ArrowLeft, Wind, Sofa, UtensilsCrossed, WashingMachine, Refrigerator, Table, Shirt, Wifi, Calendar, Users, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -39,6 +40,7 @@ export default function PropertyDetailPage() {
   const [property, setProperty] = useState<PropertyData | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [availableSegments, setAvailableSegments] = useState<{ start: string; end: string }[]>([]);
 
   useEffect(() => {
     const fetchProperty = async () => {
@@ -56,6 +58,44 @@ export default function PropertyDetailPage() {
       fetchProperty();
     }
   }, [propertyId]);
+
+  useEffect(() => {
+    if (!property || !propertyId || !property.checkInDate || !property.checkOutDate) {
+      setAvailableSegments([]);
+      return;
+    }
+    const loadSegments = async () => {
+      try {
+        let bookedRanges = await getBookedRangesForProperty(propertyId);
+        if (property.icalUrl && property.icalUrl.trim()) {
+          const icalRes = await fetch('/api/ical/parse', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: property.icalUrl.trim() }),
+          });
+          if (icalRes.ok) {
+            const { events } = await icalRes.json();
+            const icalRanges = (events || []).map(
+              (e: { start: string; end: string }) => ({
+                checkIn: new Date(e.start),
+                checkOut: new Date(e.end),
+              })
+            );
+            bookedRanges = [...bookedRanges, ...icalRanges];
+          }
+        }
+        const segments = getBookableDateSegments(
+          property.checkInDate,
+          property.checkOutDate,
+          bookedRanges
+        );
+        setAvailableSegments(segments);
+      } catch {
+        setAvailableSegments([]);
+      }
+    };
+    loadSegments();
+  }, [property, propertyId]);
 
   const handlePreviousImage = () => {
     if (!property?.images) return;
@@ -261,13 +301,14 @@ export default function PropertyDetailPage() {
                 <PropertyDescription
                   description={property.original_description}
                   sourceLanguage="vi"
+                  targetLanguage={currentLanguage}
                   cacheKey={`property-detail-${property.id}`}
                   className="mt-2"
                 />
               </div>
             )}
 
-            {/* 임대 가능 날짜 */}
+            {/* 임대 가능 날짜: 달력과 동일하게 예약 제외 후 실제 예약 가능 구간만 표시 */}
             {(property.checkInDate || property.checkOutDate) && (
               <div>
                 <p className="text-xs text-gray-500 mb-1">
@@ -275,14 +316,35 @@ export default function PropertyDetailPage() {
                    currentLanguage === 'vi' ? 'Ngày cho thuê' : 
                    'Available Dates'}
                 </p>
-                <div className="flex items-center gap-2 text-sm text-gray-900">
-                  <Calendar className="w-4 h-4 text-gray-600" />
-                  <span className="font-medium">
-                    {property.checkInDate && formatDate(property.checkInDate, currentLanguage)}
-                    {property.checkInDate && property.checkOutDate && ' ~ '}
-                    {property.checkOutDate && formatDate(property.checkOutDate, currentLanguage)}
-                  </span>
-                </div>
+                {availableSegments.length > 0 ? (
+                  <div className="flex items-start gap-2 text-sm text-gray-900">
+                    <Calendar className="w-4 h-4 text-gray-600 shrink-0 mt-0.5" />
+                    <div className="min-w-0">
+                      {availableSegments.length === 1 ? (
+                        <span className="font-medium">
+                          {formatDate(availableSegments[0].start, currentLanguage)} ~ {formatDate(availableSegments[0].end, currentLanguage)}
+                        </span>
+                      ) : (
+                        <ul className="space-y-1.5 text-gray-700">
+                          {availableSegments.map((seg, i) => (
+                            <li key={i} className="font-medium">
+                              {formatDate(seg.start, currentLanguage)} ~ {formatDate(seg.end, currentLanguage)}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <Calendar className="w-4 h-4 text-gray-400 shrink-0" />
+                    <span>
+                      {currentLanguage === 'ko' ? '예약 가능한 구간 없음' : 
+                       currentLanguage === 'vi' ? 'Không còn khoảng trống' : 
+                       'No available periods'}
+                    </span>
+                  </div>
+                )}
               </div>
             )}
 

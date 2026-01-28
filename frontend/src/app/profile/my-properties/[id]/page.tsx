@@ -308,6 +308,7 @@ export default function PropertyDetailPage() {
               <PropertyDescription
                 description={property.original_description}
                 sourceLanguage="vi"
+                targetLanguage={currentLanguage}
                 cacheKey={`property-detail-owner-${property.id}`}
                 className="mt-2"
               />

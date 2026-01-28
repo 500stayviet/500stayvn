@@ -9,13 +9,14 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { 
   getChatRoom, 
-  getChatMessages, 
   sendMessage, 
   markMessagesAsRead,
   subscribeToChatMessages,
   ChatRoom, 
-  ChatMessage 
+  ChatMessage as ChatMessageType 
 } from '@/lib/api/chat';
+import { ChatMessage } from '@/components/ChatMessage';
+import { detectMessageLanguage } from '@/lib/utils/languageDetection';
 import { X, Send, Loader2, Home, MessageSquare, AlertCircle } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -31,7 +32,7 @@ export default function ChatModal({ roomId, onClose }: ChatModalProps) {
   const { currentLanguage } = useLanguage();
 
   const [chatRoom, setChatRoom] = useState<ChatRoom | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -309,6 +310,7 @@ export default function ChatModal({ roomId, onClose }: ChatModalProps) {
             messages.map((message, index) => {
               const isMe = message.senderId === user?.uid;
               const showDateSeparator = shouldShowDateSeparator(index);
+              const senderName = isMe ? (user?.displayName || user?.email || '') : otherParty.name;
 
               return (
                 <div key={message.id}>
@@ -320,31 +322,26 @@ export default function ChatModal({ roomId, onClose }: ChatModalProps) {
                     </div>
                   )}
 
-                  <div className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[80%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                      <div
-                        className={`px-4 py-2.5 rounded-2xl text-sm shadow-sm ${
-                          isMe
-                            ? 'bg-blue-600 text-white rounded-tr-none'
-                            : 'bg-white text-gray-900 rounded-tl-none border border-gray-100'
-                        }`}
-                      >
-                        <p className="whitespace-pre-wrap break-words leading-relaxed">
-                          {message.content}
-                        </p>
-                      </div>
-                      <div className={`flex items-center gap-1.5 mt-1 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
-                        <span className="text-[10px] text-gray-400 font-medium">
-                          {formatTime(message.createdAt)}
-                        </span>
-                        {isMe && message.isRead && (
-                          <span className="text-[10px] text-blue-500 font-bold">
-                            {currentLanguage === 'ko' ? '읽음' : 'Đã xem'}
-                          </span>
-                        )}
-                      </div>
+                  <ChatMessage
+                    message={message.content}
+                    sender={{
+                      id: message.senderId,
+                      name: senderName,
+                      isCurrentUser: isMe,
+                    }}
+                    timestamp={formatTime(message.createdAt)}
+                    sourceLanguage={isMe ? currentLanguage : detectMessageLanguage(message.content)}
+                    targetLanguage={currentLanguage}
+                    cacheKey={`chat-modal-${message.id}`}
+                    className="mb-1"
+                  />
+                  {isMe && message.isRead && (
+                    <div className={`flex ${isMe ? 'justify-end' : 'justify-start'} mt-0.5 mr-1`}>
+                      <span className="text-[10px] text-blue-500 font-bold">
+                        {currentLanguage === 'ko' ? '읽음' : 'Đã xem'}
+                      </span>
                     </div>
-                  </div>
+                  )}
                 </div>
               );
             })

@@ -375,43 +375,39 @@ export default function ProfilePage() {
                 <ChevronRight className="w-5 h-5 text-gray-400" />
               </button>
 
-              {/* 매물 관리하기 버튼 - 항상 활성화, KYC 미완료 시 KYC 페이지로 */}
-              <button 
-                onClick={() => {
-                  router.push('/profile/my-properties');
-                }}
-                className="w-full py-4 px-5 flex items-center justify-between border-b border-gray-100 hover:bg-gray-50"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-purple-100 rounded-lg"><Building2 className="w-5 h-5 text-purple-600" /></div>
-                  <div className="text-left">
-                    <p className="text-sm font-semibold text-gray-900">{getUIText('manageMyProperties', currentLanguage)}</p>
-                    <p className="text-xs text-gray-500">
-                      {getUIText('manageMyPropertiesDesc', currentLanguage)}
-                    </p>
+              {/* 매물 관리하기 - 코인 3개(1~3단계 완료) 시에만 표시 */}
+              {allStepsCompleted && (
+                <button 
+                  onClick={() => router.push('/profile/my-properties')}
+                  className="w-full py-4 px-5 flex items-center justify-between border-b border-gray-100 hover:bg-gray-50"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-purple-100 rounded-lg"><Building2 className="w-5 h-5 text-purple-600" /></div>
+                    <div className="text-left">
+                      <p className="text-sm font-semibold text-gray-900">{getUIText('manageMyProperties', currentLanguage)}</p>
+                      <p className="text-xs text-gray-500">{getUIText('manageMyPropertiesDesc', currentLanguage)}</p>
+                    </div>
                   </div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-gray-400" />
-              </button>
+                  <ChevronRight className="w-5 h-5 text-gray-400" />
+                </button>
+              )}
               
-              {/* 예약 관리 버튼 - 항상 활성화, KYC 미완료 시 KYC 페이지로 */}
-              <button 
-                onClick={() => {
-                  router.push('/host/bookings');
-                }}
-                className="w-full py-4 px-5 flex items-center justify-between hover:bg-gray-50"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-orange-100 rounded-lg"><Calendar className="w-5 h-5 text-orange-600" /></div>
-                  <div className="text-left">
-                    <p className="text-sm font-semibold text-gray-900">{getUIText('bookingManagement', currentLanguage)}</p>
-                    <p className="text-xs text-gray-500">
-                      {getUIText('bookingManagementDesc', currentLanguage)}
-                    </p>
+              {/* 예약 관리 - 코인 3개(1~3단계 완료) 시에만 표시 */}
+              {allStepsCompleted && (
+                <button 
+                  onClick={() => router.push('/host/bookings')}
+                  className="w-full py-4 px-5 flex items-center justify-between hover:bg-gray-50"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-orange-100 rounded-lg"><Calendar className="w-5 h-5 text-orange-600" /></div>
+                    <div className="text-left">
+                      <p className="text-sm font-semibold text-gray-900">{getUIText('bookingManagement', currentLanguage)}</p>
+                      <p className="text-xs text-gray-500">{getUIText('bookingManagementDesc', currentLanguage)}</p>
+                    </div>
                   </div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-gray-400" />
-              </button>
+                  <ChevronRight className="w-5 h-5 text-gray-400" />
+                </button>
+              )}
               {!allStepsCompleted && (
                 <div className="px-5 py-3 bg-gray-50">
                   <p className="text-xs text-gray-500 text-center">

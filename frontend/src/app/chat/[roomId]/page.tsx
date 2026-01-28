@@ -10,13 +10,14 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { 
   getChatRoom, 
-  getChatMessages, 
   sendMessage, 
   markMessagesAsRead,
   subscribeToChatMessages,
   ChatRoom, 
-  ChatMessage 
+  ChatMessage as ChatMessageType 
 } from '@/lib/api/chat';
+import { ChatMessage } from '@/components/ChatMessage';
+import { detectMessageLanguage } from '@/lib/utils/languageDetection';
 import { ArrowLeft, Send, Loader2, Home } from 'lucide-react';
 import Image from 'next/image';
 
@@ -29,7 +30,7 @@ export default function ChatRoomPage() {
   const { currentLanguage, setCurrentLanguage } = useLanguage();
 
   const [chatRoom, setChatRoom] = useState<ChatRoom | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -258,10 +259,10 @@ export default function ChatRoomPage() {
             messages.map((message, index) => {
               const isMe = message.senderId === user?.uid;
               const showDateSeparator = shouldShowDateSeparator(index);
+              const senderName = isMe ? (user?.displayName || user?.email || '') : otherParty.name;
 
               return (
                 <div key={message.id}>
-                  {/* 날짜 구분선 */}
                   {showDateSeparator && (
                     <div className="flex items-center justify-center my-4">
                       <span className="bg-gray-200 text-gray-500 text-xs px-3 py-1 rounded-full">
@@ -270,32 +271,26 @@ export default function ChatRoomPage() {
                     </div>
                   )}
 
-                  {/* 메시지 */}
-                  <div className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[75%] ${isMe ? 'order-2' : 'order-1'}`}>
-                      <div
-                        className={`px-4 py-2 rounded-2xl ${
-                          isMe
-                            ? 'bg-blue-500 text-white rounded-br-md'
-                            : 'bg-gray-100 text-gray-900 rounded-bl-md'
-                        }`}
-                      >
-                        <p className="text-sm whitespace-pre-wrap break-words">
-                          {message.content}
-                        </p>
-                      </div>
-                      <div className={`flex items-center gap-1 mt-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
-                        <span className="text-xs text-gray-400">
-                          {formatTime(message.createdAt)}
-                        </span>
-                        {isMe && message.isRead && (
-                          <span className="text-xs text-blue-500">
-                            {currentLanguage === 'ko' ? '읽음' : 'Đã xem'}
-                          </span>
-                        )}
-                      </div>
+                  <ChatMessage
+                    message={message.content}
+                    sender={{
+                      id: message.senderId,
+                      name: senderName,
+                      isCurrentUser: isMe,
+                    }}
+                    timestamp={formatTime(message.createdAt)}
+                    sourceLanguage={isMe ? currentLanguage : detectMessageLanguage(message.content)}
+                    targetLanguage={currentLanguage}
+                    cacheKey={`chat-${message.id}`}
+                    className="mb-1"
+                  />
+                  {isMe && message.isRead && (
+                    <div className="flex justify-end mt-0.5 mr-1">
+                      <span className="text-xs text-blue-500">
+                        {currentLanguage === 'ko' ? '읽음' : 'Đã xem'}
+                      </span>
                     </div>
-                  </div>
+                  )}
                 </div>
               );
             })

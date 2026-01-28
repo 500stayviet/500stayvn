@@ -75,15 +75,13 @@ export default function KYCPage() {
           setFaceData({} as FaceVerificationData);
         }
 
-        // 현재 단계가 아직 설정되지 않았을 때만 설정
-        if (currentStep === 1) {
-          if (!kycSteps.step1) {
-            setCurrentStep(1);
-          } else if (!kycSteps.step2) {
-            setCurrentStep(2);
-          } else if (!kycSteps.step3) {
-            setCurrentStep(3);
-          }
+        // 완료된 단계에 따라 첫 미완료 단계로 이동 (1→2→3)
+        if (!kycSteps.step1) {
+          setCurrentStep(1);
+        } else if (!kycSteps.step2) {
+          setCurrentStep(2);
+        } else if (!kycSteps.step3) {
+          setCurrentStep(3);
         }
       } catch (error) {
         console.error("Error loading completed steps:", error);

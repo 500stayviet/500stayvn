@@ -37,6 +37,11 @@ export interface PropertyData {
     timestamp: string;
     details: string;
   }[]; // 변경 이력
+
+  /** 외부 캘린더(iCal) 연동 */
+  icalPlatform?: string; // 플랫폼 (airbnb, agoda, booking_com, other)
+  icalCalendarName?: string; // 캘린더 이름
+  icalUrl?: string; // iCal URL (.ics)
 }
 
 export interface PropertyFilter {

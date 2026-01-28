@@ -20,8 +20,11 @@ interface ChatMessageProps {
   // 메시지 시간
   timestamp: string;
   
-  // 소스 언어 (기본값: 'vi' - 베트남어)
+  // 소스 언어 (메시지 원문 언어, 기본값: 'vi')
   sourceLanguage?: 'vi' | 'ko' | 'en' | 'ja' | 'zh';
+  
+  // 타겟 언어 (선택된 UI 언어와 동일할 때 번역 버튼 숨김)
+  targetLanguage?: 'vi' | 'ko' | 'en' | 'ja' | 'zh';
   
   // 캐시 키 (선택사항)
   cacheKey?: string;
@@ -35,6 +38,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   sender,
   timestamp,
   sourceLanguage = 'vi',
+  targetLanguage: targetLanguageProp,
   cacheKey,
   className = '',
 }) => {
@@ -63,6 +67,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   } = useTranslationToggle({
     text: message,
     sourceLanguage,
+    targetLanguage: targetLanguageProp,
     cacheKey: cacheKey || `chat-msg-${sender.id}-${timestamp}`,
   }, {
     onConsentGiven: () => {
@@ -110,32 +115,26 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     toggleTranslation();
   };
   
-  // 번역 버튼 클릭 핸들러
+  // 번역 버튼 클릭 핸들러 (웹은 Gemini 사용으로 동의 없이 번역)
   const handleTranslationClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    
-    // 번역 불가능하면 무시
     if (!canTranslate) return;
-    
-    // 이미 번역된 상태면 토글
     if (isTranslated) {
       toggleTranslation();
       return;
     }
-    
-    // 동의 체크
+    if (environment === 'web') {
+      toggleTranslation();
+      return;
+    }
     if (!hasConsent) {
       requestConsent(() => toggleTranslation(), false);
       return;
     }
-    
-    // 네이티브 환경에서 언어 팩 동의 체크
-    if (environment !== 'web' && !hasLanguagePackConsent) {
+    if (!hasLanguagePackConsent) {
       requestConsent(() => toggleTranslation(), true);
       return;
     }
-    
-    // 모든 조건 충족 시 번역 실행
     toggleTranslation();
   };
   

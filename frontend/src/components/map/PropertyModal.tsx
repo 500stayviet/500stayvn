@@ -13,18 +13,21 @@ import {
   Bath, 
 } from 'lucide-react';
 import { PropertyData } from '@/types/property';
-import { getPropertyBookings, toISODateString } from '@/lib/api/bookings';
+import { getBookedRangesForProperty } from '@/lib/api/properties';
+import { toISODateString } from '@/lib/api/bookings';
 import CalendarComponent from '@/components/CalendarComponent';
 import { PropertyDescription } from '@/components/PropertyDescription';
 import { useAuth } from '@/hooks/useAuth';
 import { AMENITY_OPTIONS } from '@/lib/constants/amenities';
 import { 
   formatFullPrice, 
+  getBookableDateSegments 
 } from '@/lib/utils/propertyUtils';
 import { 
   parseDate, 
   isAvailableNow, 
-  formatDateForBadge 
+  formatDateForBadge, 
+  formatDate 
 } from '@/lib/utils/dateUtils';
 
 import { getUIText } from '@/utils/i18n';
@@ -63,19 +66,39 @@ export default function PropertyModal({
   const [modalCalendarMode, setModalCalendarMode] = useState<'checkin' | 'checkout'>('checkin');
   const [bookedRanges, setBookedRanges] = useState<{ checkIn: Date; checkOut: Date }[]>([]);
 
+  // 상세페이지와 동일: getBookedRangesForProperty + iCal 병합 → 달력 가용 구간과 동일하게 표시
   useEffect(() => {
-    const fetchBookings = async () => {
-      if (propertyData?.id) {
-        const bookings = await getPropertyBookings(propertyData.id);
-        const ranges = bookings.map(b => ({
-          checkIn: new Date(b.checkInDate),
-          checkOut: new Date(b.checkOutDate)
-        }));
+    const loadBookedRanges = async () => {
+      if (!propertyData?.id) {
+        setBookedRanges([]);
+        return;
+      }
+      try {
+        let ranges = await getBookedRangesForProperty(propertyData.id);
+        if (propertyData.icalUrl && propertyData.icalUrl.trim()) {
+          const res = await fetch('/api/ical/parse', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: propertyData.icalUrl.trim() }),
+          });
+          if (res.ok) {
+            const { events } = await res.json();
+            const icalRanges = (events || []).map(
+              (e: { start: string; end: string }) => ({
+                checkIn: new Date(e.start),
+                checkOut: new Date(e.end),
+              })
+            );
+            ranges = [...ranges, ...icalRanges];
+          }
+        }
         setBookedRanges(ranges);
+      } catch {
+        setBookedRanges([]);
       }
     };
-    fetchBookings();
-  }, [propertyData?.id]);
+    loadBookedRanges();
+  }, [propertyData?.id, propertyData?.icalUrl]);
 
   if (!propertyData) {
     return null;
@@ -247,36 +270,46 @@ export default function PropertyModal({
             )}
           </div>
 
-          {/* 임대 가능 날짜 */}
-          {(propertyData.checkInDate || propertyData.checkOutDate) && (
-            <div>
-              <p className="text-xs text-gray-500 mb-1">
-                {getUIText('availableDates', currentLanguage)}
-              </p>
-              <div className="flex items-center gap-2 text-sm text-gray-900">
-                <Calendar className="w-4 h-4 text-gray-600" />
-                <span className="font-medium">
-                  {propertyData.checkInDate && (() => {
-                    const date = parseDate(propertyData.checkInDate);
-                    if (!date) return '';
-                    return date.toLocaleDateString(
-                      currentLanguage === 'ko' ? 'ko-KR' : currentLanguage === 'vi' ? 'vi-VN' : currentLanguage === 'ja' ? 'ja-JP' : currentLanguage === 'zh' ? 'zh-CN' : 'en-US',
-                      { year: 'numeric', month: 'short', day: 'numeric' }
-                    );
-                  })()}
-                  {propertyData.checkInDate && propertyData.checkOutDate && ' ~ '}
-                  {propertyData.checkOutDate && (() => {
-                    const date = parseDate(propertyData.checkOutDate);
-                    if (!date) return '';
-                    return date.toLocaleDateString(
-                      currentLanguage === 'ko' ? 'ko-KR' : currentLanguage === 'vi' ? 'vi-VN' : currentLanguage === 'ja' ? 'ja-JP' : currentLanguage === 'zh' ? 'zh-CN' : 'en-US',
-                      { year: 'numeric', month: 'short', day: 'numeric' }
-                    );
-                  })()}
-                </span>
+          {/* 임대 가능 날짜: 달력과 동일하게 예약 제외 후 실제 예약 가능 구간만 표시 */}
+          {(propertyData.checkInDate || propertyData.checkOutDate) && (() => {
+            const segments = propertyData.checkInDate && propertyData.checkOutDate
+              ? getBookableDateSegments(propertyData.checkInDate, propertyData.checkOutDate, bookedRanges)
+              : [];
+            return (
+              <div>
+                <p className="text-xs text-gray-500 mb-1">
+                  {getUIText('availableDates', currentLanguage)}
+                </p>
+                {segments.length > 0 ? (
+                  <div className="flex items-start gap-2 text-sm text-gray-900">
+                    <Calendar className="w-4 h-4 text-gray-600 shrink-0 mt-0.5" />
+                    <div className="min-w-0">
+                      {segments.length === 1 ? (
+                        <span className="font-medium">
+                          {formatDate(segments[0].start, currentLanguage)} ~ {formatDate(segments[0].end, currentLanguage)}
+                        </span>
+                      ) : (
+                        <ul className="space-y-1.5 text-gray-700">
+                          {segments.map((seg, i) => (
+                            <li key={i} className="font-medium">
+                              {formatDate(seg.start, currentLanguage)} ~ {formatDate(seg.end, currentLanguage)}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <Calendar className="w-4 h-4 text-gray-400 shrink-0" />
+                    <span>
+                      {currentLanguage === 'ko' ? '예약 가능한 구간 없음' : currentLanguage === 'vi' ? 'Không còn khoảng trống' : 'No available periods'}
+                    </span>
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* 최대 인원 수 */}
           {(propertyData.maxAdults || propertyData.maxChildren) && (
@@ -343,6 +376,7 @@ export default function PropertyModal({
               <PropertyDescription
                 description={propertyData.original_description}
                 sourceLanguage="vi"
+                targetLanguage={currentLanguage}
                 cacheKey={`property-modal-${propertyData.id}`}
                 className="mt-2"
               />

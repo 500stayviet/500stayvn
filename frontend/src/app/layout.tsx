@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import { TranslationProvider } from "@/contexts/TranslationProvider";
 import NextAuthProvider from "@/components/providers/NextAuthProvider";
 
 const geistSans = Geist({
@@ -31,7 +32,9 @@ export default function RootLayout({
       >
         <NextAuthProvider>
           <LanguageProvider>
-            {children}
+            <TranslationProvider>
+              {children}
+            </TranslationProvider>
           </LanguageProvider>
         </NextAuthProvider>
       </body>

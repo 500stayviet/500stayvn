@@ -108,6 +108,25 @@ export default function BookingDetailsModal({ booking, onClose }: BookingDetails
     setTimeout(() => setCopiedAddress(false), 2000);
   };
 
+  /** 사진 또는 주소 클릭 시 해당 매물의 PropertyModal 오픈 (데이터 없으면 로드 후 오픈) */
+  const handleOpenPropertyModal = async () => {
+    if (!booking.propertyId) return;
+    if (propertyData) {
+      setShowPropertyModal(true);
+      return;
+    }
+    setLoadingProperty(true);
+    try {
+      const data = await getProperty(booking.propertyId);
+      setPropertyData(data ?? null);
+      if (data) setShowPropertyModal(true);
+    } catch (error) {
+      console.error('Failed to fetch property for modal:', error);
+    } finally {
+      setLoadingProperty(false);
+    }
+  };
+
   // 결제 상세 계산
   const weeks = Math.ceil(booking.nights / 7);
   const pricePerWeek = booking.totalPrice / weeks;
@@ -210,12 +229,8 @@ export default function BookingDetailsModal({ booking, onClose }: BookingDetails
             <div className="flex gap-4 items-start">
               {booking.propertyImage && (
                 <button 
-                  onClick={() => {
-                    if (booking.propertyId && propertyData) {
-                      setShowPropertyModal(true);
-                    }
-                  }}
-                  disabled={!propertyData}
+                  onClick={handleOpenPropertyModal}
+                  disabled={!booking.propertyId}
                   className="w-16 h-16 relative rounded-xl overflow-hidden flex-shrink-0 border border-gray-100 hover:border-blue-400 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Image src={booking.propertyImage} alt="" fill className="object-cover" />
@@ -232,13 +247,13 @@ export default function BookingDetailsModal({ booking, onClose }: BookingDetails
               <div className="flex-1 min-w-0">
                 <button 
                   onClick={() => {
-                    if (booking.propertyId && propertyData) {
-                      setShowPropertyModal(true);
+                    if (booking.propertyId) {
+                      handleOpenPropertyModal();
                     } else {
                       copyAddressToClipboard(booking.propertyAddress || booking.propertyTitle || '');
                     }
                   }}
-                  disabled={!propertyData}
+                  disabled={!booking.propertyId && !(booking.propertyAddress || booking.propertyTitle)}
                   className="text-left group w-full flex items-start justify-between disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <div className="flex-1">
@@ -249,7 +264,7 @@ export default function BookingDetailsModal({ booking, onClose }: BookingDetails
                       {formatDateFull(booking.checkInDate)} ~ {formatDateFull(booking.checkOutDate)} ({nights}일간)
                     </div>
                   </div>
-                  {booking.propertyId && propertyData && (
+                  {booking.propertyId && (
                     <ExternalLink className="w-3.5 h-3.5 text-gray-300 group-hover:text-blue-600 mt-1 flex-shrink-0" />
                   )}
                 </button>

@@ -21,6 +21,8 @@ import {
   Users,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Bed,
   Bath,
   Check,
@@ -75,6 +77,11 @@ function EditPropertyContent() {
     { checkIn: Date; checkOut: Date }[]
   >([]);
 
+  const [icalPlatform, setIcalPlatform] = useState("");
+  const [icalCalendarName, setIcalCalendarName] = useState("");
+  const [icalUrl, setIcalUrl] = useState("");
+  const [showIcalDropdown, setShowIcalDropdown] = useState(false);
+
   const [showPhotoLibrary, setShowPhotoLibrary] = useState(false);
   const [photoLibraryFiles, setPhotoLibraryFiles] = useState<File[]>([]);
   const [photoLibraryPreviews, setPhotoLibraryPreviews] = useState<string[]>(
@@ -112,6 +119,9 @@ function EditPropertyContent() {
         setBathrooms(p.bathrooms || 1);
         setCheckInDate(parseDate(p.checkInDate));
         setCheckOutDate(parseDate(p.checkOutDate));
+        setIcalPlatform(p.icalPlatform || "");
+        setIcalCalendarName(p.icalCalendarName || "");
+        setIcalUrl(p.icalUrl || "");
 
         const b = await getPropertyBookings(propertyId);
         setBookedRanges(
@@ -206,6 +216,9 @@ function EditPropertyContent() {
         // 날짜 데이터 (Date 객체로 전달)
         checkInDate: checkInDate ? new Date(checkInDate) : null,
         checkOutDate: checkOutDate ? new Date(checkOutDate) : null,
+        ...(icalPlatform !== undefined && { icalPlatform: icalPlatform || undefined }),
+        ...(icalCalendarName !== undefined && { icalCalendarName: icalCalendarName.trim() || undefined }),
+        ...(icalUrl !== undefined && { icalUrl: icalUrl.trim() || undefined }),
       };
 
       console.log("Sending updates to DB:", updates);
@@ -828,6 +841,49 @@ function EditPropertyContent() {
                   {checkOutDate ? checkOutDate.toLocaleDateString() : getUIText('selectDate', currentLanguage)}
                 </p>
               </button>
+            </div>
+
+            {/* 외부 캘린더 가져오기 (드롭다운) - 재등록/수정 버튼 바로 위 */}
+            <div className="rounded-xl border-2 border-gray-200 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setShowIcalDropdown(!showIcalDropdown)}
+                className="w-full py-3.5 px-4 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+              >
+                <span className="text-sm font-medium text-gray-700">
+                  {currentLanguage === "ko" ? "외부 캘린더 가져오기" : currentLanguage === "vi" ? "Đồng bộ lịch ngoài" : "Import External Calendar"}
+                </span>
+                {showIcalDropdown ? (
+                  <ChevronUp className="w-5 h-5 text-gray-500" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-gray-500" />
+                )}
+              </button>
+              {showIcalDropdown && (
+                <div className="p-4 pt-2 border-t border-gray-200 bg-white space-y-3">
+                  <p className="text-xs text-gray-500">
+                    {currentLanguage === "ko" ? "에어비앤비·아고다 등 예약을 500stay와 동기화합니다. iCal URL(.ics)을 입력하세요." : currentLanguage === "vi" ? "Đồng bộ đặt phòng từ Airbnb, Agoda,... với 500stay. Nhập URL iCal (.ics)." : "Sync bookings from Airbnb, Agoda, etc. with 500stay. Enter iCal URL (.ics)."}
+                  </p>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">{currentLanguage === "ko" ? "플랫폼" : "Platform"}</label>
+                    <select value={icalPlatform} onChange={(e) => setIcalPlatform(e.target.value)} className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                      <option value="">{currentLanguage === "ko" ? "선택 안 함" : "None"}</option>
+                      <option value="airbnb">Airbnb</option>
+                      <option value="agoda">Agoda</option>
+                      <option value="booking_com">Booking.com</option>
+                      <option value="other">{currentLanguage === "ko" ? "기타" : "Other"}</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">{currentLanguage === "ko" ? "캘린더 이름" : "Calendar name"}</label>
+                    <input type="text" value={icalCalendarName} onChange={(e) => setIcalCalendarName(e.target.value)} placeholder={currentLanguage === "ko" ? "예: 에어비앤비 예약" : "e.g. Airbnb Bookings"} className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">iCal URL (.ics)</label>
+                    <input type="url" value={icalUrl} onChange={(e) => setIcalUrl(e.target.value)} placeholder="https://..." className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  </div>
+                </div>
+              )}
             </div>
 
             <button

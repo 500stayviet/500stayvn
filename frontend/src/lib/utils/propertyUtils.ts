@@ -119,3 +119,71 @@ export const isAdvertisingProperty = (property: PropertyData) => {
   const normalizedStatus = property.status ?? 'active';
   return normalizedStatus === 'active';
 };
+
+/**
+ * 전체 임대 기간에서 이미 예약된 기간을 제외한 "실제 예약 가능한 구간" 배열 계산
+ * Stay-over: 예약 구간의 체크아웃일 당일은 비어있음(다음 예약 가능 시작일).
+ *
+ * @param rentalStart - 임대 희망 시작일 (ISO 문자열)
+ * @param rentalEnd - 임대 희망 종료일 (ISO 문자열)
+ * @param bookedRanges - 이미 예약된 기간 배열 (checkIn/checkOut은 Date 또는 ISO 문자열)
+ * @returns 예약 가능한 구간 배열 [{ start, end }, ...] (ISO 문자열)
+ */
+export function getAvailableDateSegments(
+  rentalStart: string | Date | undefined,
+  rentalEnd: string | Date | undefined,
+  bookedRanges: PropertyDateRange[]
+): { start: string; end: string }[] {
+  const startStr = toISODateString(rentalStart);
+  const endStr = toISODateString(rentalEnd);
+  if (!startStr || !endStr || startStr >= endStr) return [];
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayStr = toISODateString(today);
+  const effectiveStart = startStr > todayStr ? startStr : todayStr;
+  if (effectiveStart >= endStr) return [];
+
+  const sortedBooked = [...bookedRanges]
+    .map((r) => ({
+      checkIn: toISODateString(r.checkIn),
+      checkOut: toISODateString(r.checkOut),
+    }))
+    .filter((r): r is { checkIn: string; checkOut: string } => !!(r.checkIn && r.checkOut))
+    .sort((a, b) => a.checkIn.localeCompare(b.checkIn));
+
+  const segments: { start: string; end: string }[] = [];
+  let cursor = effectiveStart;
+
+  for (const range of sortedBooked) {
+    const rIn = range.checkIn;
+    const rOut = range.checkOut;
+    if (rOut <= cursor || rIn >= endStr) continue;
+    if (rIn > cursor) {
+      const segmentEnd = rIn < endStr ? rIn : endStr;
+      segments.push({ start: cursor, end: segmentEnd });
+    }
+    if (rOut > cursor) cursor = rOut;
+  }
+
+  if (cursor < endStr) {
+    segments.push({ start: cursor, end: endStr });
+  }
+
+  return segments.filter((s) => s.start < s.end);
+}
+
+/** 최소 7일 이상인 구간만 반환 (임차인에게 표시용: 실제 예약 가능한 구간만) */
+export function getBookableDateSegments(
+  rentalStart: string | Date | undefined,
+  rentalEnd: string | Date | undefined,
+  bookedRanges: PropertyDateRange[]
+): { start: string; end: string }[] {
+  const segments = getAvailableDateSegments(rentalStart, rentalEnd, bookedRanges);
+  const minDays = 7;
+  return segments.filter((seg) => {
+    const ms = new Date(seg.end).getTime() - new Date(seg.start).getTime();
+    const days = ms / (1000 * 60 * 60 * 24);
+    return days >= minDays;
+  });
+}

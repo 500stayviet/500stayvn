@@ -566,6 +566,49 @@ export function subscribeToProperties(
 }
 
 /**
+ * 특정 매물에 대한 예약된 날짜 구간 조회 (상세페이지 가용 구간 계산용)
+ *
+ * @param propertyId - 매물 ID
+ * @returns 예약된 구간 배열 (checkIn/checkOut은 Date)
+ */
+export async function getBookedRangesForProperty(
+  propertyId: string
+): Promise<PropertyDateRange[]> {
+  const property = await getProperty(propertyId);
+  if (!property || !property.ownerId) return [];
+
+  const allReservations = await getReservationsByOwner(property.ownerId, 'all');
+  const allStored = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
+  const allProps: PropertyData[] = allStored ? JSON.parse(allStored) : [];
+  const normalize = (s: string | undefined) => (s || '').trim().replace(/\s+/g, ' ').toLowerCase();
+  const targetAddress = normalize(property.address);
+  const targetTitle = normalize(property.title);
+  const targetUnit = normalize(property.unitNumber);
+
+  const related = allReservations.filter((r) => {
+    if (r.status !== 'pending' && r.status !== 'confirmed') return false;
+    if (r.propertyId === propertyId) return true;
+    const reservedProp = allProps.find((p) => p.id === r.propertyId);
+    if (!reservedProp) return false;
+    const bookedAddress = normalize(reservedProp.address);
+    const bookedTitle = normalize(reservedProp.title);
+    const bookedUnit = normalize(reservedProp.unitNumber);
+    return (
+      (targetAddress && bookedAddress && targetAddress === bookedAddress) ||
+      (targetTitle && bookedTitle && targetTitle === bookedTitle)
+    ) && targetUnit === bookedUnit;
+  });
+
+  return related
+    .map((r) => {
+      const checkIn = parseDate(r.checkInDate);
+      const checkOut = parseDate(r.checkOutDate);
+      return checkIn && checkOut ? { checkIn, checkOut } : null;
+    })
+    .filter((r): r is PropertyDateRange => r != null);
+}
+
+/**
  * 단일 매물 조회 (삭제된 매물 포함)
  * 
  * @param id - 매물 ID

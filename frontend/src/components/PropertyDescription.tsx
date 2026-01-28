@@ -103,30 +103,26 @@ export const PropertyDescription: React.FC<PropertyDescriptionProps> = ({
     toggleTranslation();
   };
   
-  // 번역 버튼 클릭 핸들러
+  // 번역 버튼 클릭 핸들러 (웹은 Gemini 사용으로 동의 없이 번역)
   const handleTranslationClick = () => {
-    // 번역 불가능하면 무시
     if (!canTranslate) return;
-    
-    // 이미 번역된 상태면 토글
     if (isTranslated) {
       toggleTranslation();
       return;
     }
-    
-    // 동의 체크
+    // 웹: 동의 없이 바로 번역
+    if (environment === 'web') {
+      toggleTranslation();
+      return;
+    }
     if (!hasConsent) {
       requestConsent(() => toggleTranslation(), false);
       return;
     }
-    
-    // 네이티브 환경에서 언어 팩 동의 체크
-    if (environment !== 'web' && !hasLanguagePackConsent) {
+    if (!hasLanguagePackConsent) {
       requestConsent(() => toggleTranslation(), true);
       return;
     }
-    
-    // 모든 조건 충족 시 번역 실행
     toggleTranslation();
   };
   
@@ -135,14 +131,11 @@ export const PropertyDescription: React.FC<PropertyDescriptionProps> = ({
     return null;
   }
 
-  // 디버깅 정보 (개발 환경에서만 표시)
-  const isDevelopment = process.env.NODE_ENV === 'development';
-
   return (
     <div className={`relative ${className}`}>
-      {/* 설명 텍스트 컨테이너 - 글자 수에 맞게 조절 */}
+      {/* 설명 텍스트 컨테이너 - 글자/줄바꿈 최적화 */}
       <div className="mb-2">
-        <div className="text-gray-700 whitespace-pre-line break-words">
+        <div className="text-gray-700 whitespace-pre-line break-words text-sm leading-relaxed">
           {displayText}
         </div>
         
@@ -162,28 +155,6 @@ export const PropertyDescription: React.FC<PropertyDescriptionProps> = ({
           <div className="mt-1 flex items-center gap-2 text-red-600 text-sm">
             <AlertCircle className="w-4 h-4" />
             <span>번역 중 오류가 발생했습니다.</span>
-          </div>
-        )}
-
-        {/* 디버깅 정보 (개발 환경에서만) */}
-        {isDevelopment && (
-          <div className="mt-2 p-2 bg-gray-100 rounded text-xs text-gray-600">
-            <p>디버깅 정보:</p>
-            <p>• canTranslate: {canTranslate ? 'true' : 'false'}</p>
-            <p>• sourceLanguage: {sourceLanguage}</p>
-            <p>• targetLanguage: {targetLanguage}</p>
-            <p>• environment: {environment}</p>
-            <p>• engine: {engine}</p>
-            <p>• hasConsent: {hasConsent ? 'true' : 'false'}</p>
-            <p>• hasLanguagePackConsent: {hasLanguagePackConsent ? 'true' : 'false'}</p>
-            <p>• isTranslated: {isTranslated ? 'true' : 'false'}</p>
-            <p>• isLoading: {isLoading ? 'true' : 'false'}</p>
-            <p>• text length: {description.length}</p>
-            <p>• text trimmed: {description.trim().length > 0 ? 'true' : 'false'}</p>
-            <p>• translationContext.isInitialized: {translationContext.isInitialized ? 'true' : 'false'}</p>
-            <p>• sourceLanguage: {sourceLanguage}</p>
-            <p>• targetLanguage: {targetLanguage}</p>
-            <p>• languages different: {sourceLanguage !== targetLanguage ? 'true' : 'false'}</p>
           </div>
         )}
       </div>

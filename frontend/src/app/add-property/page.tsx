@@ -18,6 +18,8 @@ import {
   Users,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Bed,
   Bath,
 } from "lucide-react";
@@ -62,6 +64,12 @@ export default function AddPropertyPage() {
   );
   const [checkInDate, setCheckInDate] = useState<Date | null>(null);
   const [checkOutDate, setCheckOutDate] = useState<Date | null>(null);
+
+  // 외부 캘린더(iCal) 가져오기
+  const [icalPlatform, setIcalPlatform] = useState<string>("");
+  const [icalCalendarName, setIcalCalendarName] = useState("");
+  const [icalUrl, setIcalUrl] = useState("");
+  const [showIcalDropdown, setShowIcalDropdown] = useState(false);
 
   // 사진첩 모달 상태
   const [showPhotoLibrary, setShowPhotoLibrary] = useState(false);
@@ -108,10 +116,11 @@ export default function AddPropertyPage() {
         if (allStepsCompleted || userData?.is_owner === true) {
           setHasAccess(true);
         } else {
-          router.push("/profile");
+          // KYC 미완료 시 1~3단계 인증 페이지로 이동
+          router.push("/kyc");
         }
       } catch (error) {
-        router.push("/profile");
+        router.push("/kyc");
       } finally {
         setCheckingAccess(false);
       }
@@ -496,6 +505,9 @@ export default function AddPropertyPage() {
         maxAdults: maxAdults,
         maxChildren: maxChildren,
         status: "active",
+        ...(icalPlatform && { icalPlatform }),
+        ...(icalCalendarName.trim() && { icalCalendarName: icalCalendarName.trim() }),
+        ...(icalUrl.trim() && { icalUrl: icalUrl.trim() }),
       });
 
       alert(
@@ -1430,6 +1442,77 @@ export default function AddPropertyPage() {
                     ? "Vui lòng nhập bằng tiếng Việt. Tính năng dịch tự động sẽ được cung cấp."
                     : "Please enter in Vietnamese. Automatic translation feature will be provided."}
               </p>
+            </div>
+
+            {/* 외부 캘린더 가져오기 (드롭다운) - 등록 버튼 바로 위 */}
+            <div className="rounded-xl border-2 border-gray-200 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setShowIcalDropdown(!showIcalDropdown)}
+                className="w-full py-3.5 px-4 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+              >
+                <span className="text-sm font-medium text-gray-700">
+                  {currentLanguage === "ko"
+                    ? "외부 캘린더 가져오기"
+                    : currentLanguage === "vi"
+                      ? "Đồng bộ lịch ngoài"
+                      : "Import External Calendar"}
+                </span>
+                {showIcalDropdown ? (
+                  <ChevronUp className="w-5 h-5 text-gray-500" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-gray-500" />
+                )}
+              </button>
+              {showIcalDropdown && (
+                <div className="p-4 pt-2 border-t border-gray-200 bg-white space-y-3">
+                  <p className="text-xs text-gray-500">
+                    {currentLanguage === "ko"
+                      ? "에어비앤비·아고다 등 예약을 500stay와 동기화합니다. iCal URL(.ics)을 입력하세요."
+                      : currentLanguage === "vi"
+                        ? "Đồng bộ đặt phòng từ Airbnb, Agoda,... với 500stay. Nhập URL iCal (.ics)."
+                        : "Sync bookings from Airbnb, Agoda, etc. with 500stay. Enter iCal URL (.ics)."}
+                  </p>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">
+                      {currentLanguage === "ko" ? "플랫폼" : currentLanguage === "vi" ? "Nền tảng" : "Platform"}
+                    </label>
+                    <select
+                      value={icalPlatform}
+                      onChange={(e) => setIcalPlatform(e.target.value)}
+                      className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">{currentLanguage === "ko" ? "선택 안 함" : currentLanguage === "vi" ? "Không chọn" : "None"}</option>
+                      <option value="airbnb">Airbnb</option>
+                      <option value="agoda">Agoda</option>
+                      <option value="booking_com">Booking.com</option>
+                      <option value="other">{currentLanguage === "ko" ? "기타" : currentLanguage === "vi" ? "Khác" : "Other"}</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">
+                      {currentLanguage === "ko" ? "캘린더 이름" : currentLanguage === "vi" ? "Tên lịch" : "Calendar name"}
+                    </label>
+                    <input
+                      type="text"
+                      value={icalCalendarName}
+                      onChange={(e) => setIcalCalendarName(e.target.value)}
+                      placeholder={currentLanguage === "ko" ? "예: 에어비앤비 예약" : currentLanguage === "vi" ? "VD: Đặt phòng Airbnb" : "e.g. Airbnb Bookings"}
+                      className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">iCal URL <span className="text-gray-400">(.ics)</span></label>
+                    <input
+                      type="url"
+                      value={icalUrl}
+                      onChange={(e) => setIcalUrl(e.target.value)}
+                      placeholder="https://..."
+                      className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* 등록 버튼 */}
