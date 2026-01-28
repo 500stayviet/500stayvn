@@ -13,6 +13,9 @@ interface PropertyDescriptionProps {
   // 소스 언어 (기본값: 'vi' - 베트남어)
   sourceLanguage?: 'vi' | 'ko' | 'en' | 'ja' | 'zh';
   
+  // 타겟 언어 (기본값: 'ko' - 한국어)
+  targetLanguage?: 'vi' | 'ko' | 'en' | 'ja' | 'zh';
+  
   // 캐시 키 (선택사항)
   cacheKey?: string;
   
@@ -23,6 +26,7 @@ interface PropertyDescriptionProps {
 export const PropertyDescription: React.FC<PropertyDescriptionProps> = ({
   description,
   sourceLanguage = 'vi',
+  targetLanguage = 'ko',
   cacheKey,
   className = '',
 }) => {
@@ -51,6 +55,7 @@ export const PropertyDescription: React.FC<PropertyDescriptionProps> = ({
   } = useTranslationToggle({
     text: description,
     sourceLanguage,
+    targetLanguage,
     cacheKey: cacheKey || `property-desc-${description.substring(0, 50)}`,
   }, {
     onConsentGiven: () => {
@@ -166,12 +171,19 @@ export const PropertyDescription: React.FC<PropertyDescriptionProps> = ({
             <p>디버깅 정보:</p>
             <p>• canTranslate: {canTranslate ? 'true' : 'false'}</p>
             <p>• sourceLanguage: {sourceLanguage}</p>
+            <p>• targetLanguage: {targetLanguage}</p>
             <p>• environment: {environment}</p>
             <p>• engine: {engine}</p>
             <p>• hasConsent: {hasConsent ? 'true' : 'false'}</p>
             <p>• hasLanguagePackConsent: {hasLanguagePackConsent ? 'true' : 'false'}</p>
             <p>• isTranslated: {isTranslated ? 'true' : 'false'}</p>
             <p>• isLoading: {isLoading ? 'true' : 'false'}</p>
+            <p>• text length: {description.length}</p>
+            <p>• text trimmed: {description.trim().length > 0 ? 'true' : 'false'}</p>
+            <p>• translationContext.isInitialized: {translationContext.isInitialized ? 'true' : 'false'}</p>
+            <p>• sourceLanguage: {sourceLanguage}</p>
+            <p>• targetLanguage: {targetLanguage}</p>
+            <p>• languages different: {sourceLanguage !== targetLanguage ? 'true' : 'false'}</p>
           </div>
         )}
       </div>
