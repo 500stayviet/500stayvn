@@ -609,6 +609,20 @@ export async function getBookedRangesForProperty(
 }
 
 /**
+ * 자식 매물인 경우 부모 매물 ID 반환 (예약 상세에서 동일한 상세 페이지로 열기 위해)
+ */
+export async function getParentPropertyId(propertyId: string): Promise<string> {
+  const property = await getProperty(propertyId);
+  if (!property?.id || !String(property.id).startsWith('prop_child_') || !property.history?.length) {
+    return propertyId;
+  }
+  const entry = property.history.find((h) => h.action === 'CHILD_CREATED_RENTED' && h.details?.includes('Created from parent '));
+  if (!entry?.details) return propertyId;
+  const match = entry.details.match(/Created from parent ([^\s]+) for/);
+  return match?.[1] ?? propertyId;
+}
+
+/**
  * 단일 매물 조회 (삭제된 매물 포함)
  * 
  * @param id - 매물 ID

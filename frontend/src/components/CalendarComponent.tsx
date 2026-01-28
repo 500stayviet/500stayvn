@@ -175,20 +175,25 @@ export default function CalendarComponent({
     return totalDays >= 7;
   };
 
-  // 날짜가 허용 범위 내인지 확인
+  // 날짜가 허용 범위 내인지 확인 (임대인 모드: 과거만 불가, 미래는 모두 허용)
   const isWithinAllowedRange = (date: Date): boolean => {
     const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    
+    const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+    if (isOwnerMode) {
+      return dateOnly >= todayOnly;
+    }
+
     if (minDate) {
       const minDateOnly = new Date(minDate.getFullYear(), minDate.getMonth(), minDate.getDate());
       if (dateOnly < minDateOnly) return false;
     }
-    
+
     if (maxDate) {
       const maxDateOnly = new Date(maxDate.getFullYear(), maxDate.getMonth(), maxDate.getDate());
       if (dateOnly > maxDateOnly) return false;
     }
-    
+
     return true;
   };
 
@@ -247,10 +252,10 @@ export default function CalendarComponent({
   const handleDateClick = (date: Date) => {
     const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    
+
     // 과거 날짜는 선택 불가
     if (dateOnly < todayOnly) return;
-    
+
     // 허용 범위 밖 날짜는 선택 불가
     if (!isWithinAllowedRange(date)) return;
 
@@ -449,6 +454,11 @@ export default function CalendarComponent({
         return 'text-gray-700 hover:bg-blue-100 rounded-full cursor-pointer bg-white';
       }
 
+      // 체크아웃 단계에서 앞날(체크인 이전): 새 체크인으로 선택 가능, 선택 불가 표시 안 함
+      if (dateOnly < checkIn) {
+        return 'text-gray-700 hover:bg-blue-100 rounded-full cursor-pointer bg-white';
+      }
+
       return 'text-gray-400 cursor-not-allowed';
     }
   };
@@ -602,14 +612,21 @@ export default function CalendarComponent({
             </button>
           );
 
-          // 비활성화 조건: 
-          // 1. 이미 예약된 날짜 (체크아웃 당일 제외)
-          // 2. 가용 블록이 아닌 날짜
+          // 비활성화 조건: 예약됨 또는 7일 미만 블록
           let isDisabled = isBooked || isInvalidBlock;
-          
+
           // 체크아웃 당일 특수 처리: 체크인 선택 중일 때 '가용 블록'인 경우에만 활성화
           if (isCheckoutDay && selectingCheckIn && !isInvalidBlock) {
             isDisabled = false;
+          }
+
+          // 체크아웃 단계에서 앞날(체크인 이전 날짜): 선택 불가 표시 안 함, 클릭 시 체크인 변경 가능
+          if (!selectingCheckIn) {
+            const checkIn = getCheckInDateAsDate();
+            if (checkIn) {
+              const checkInOnly = new Date(checkIn.getFullYear(), checkIn.getMonth(), checkIn.getDate());
+              if (dateOnly < checkInOnly) isDisabled = false;
+            }
           }
 
           return (

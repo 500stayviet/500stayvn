@@ -1571,6 +1571,11 @@ export default function AddPropertyPage() {
                 setCheckOutDate(date);
                 setShowCalendar(false);
               }}
+              onCheckInReset={() => {
+                setCheckInDate(null);
+                setCheckOutDate(null);
+                setCalendarMode("checkin");
+              }}
               currentLanguage={currentLanguage}
               onClose={() => setShowCalendar(false)}
               mode={calendarMode}

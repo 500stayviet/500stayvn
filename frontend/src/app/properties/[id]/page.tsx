@@ -18,8 +18,10 @@ import Image from 'next/image';
 import { MapPin, Bed, Bath, Square, ArrowLeft, Wind, Sofa, UtensilsCrossed, WashingMachine, Refrigerator, Table, Shirt, Wifi, Calendar, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import TopBar from '@/components/TopBar';
 import { PropertyDescription } from '@/components/PropertyDescription';
+import CalendarComponent from '@/components/CalendarComponent';
 import { AMENITY_OPTIONS } from '@/lib/constants/amenities';
 import { useAuth } from '@/hooks/useAuth';
+import { toISODateString } from '@/lib/api/bookings';
 import { 
   formatFullPrice, 
 } from '@/lib/utils/propertyUtils';
@@ -41,6 +43,11 @@ export default function PropertyDetailPage() {
   const [loading, setLoading] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [availableSegments, setAvailableSegments] = useState<{ start: string; end: string }[]>([]);
+  const [bookedRanges, setBookedRanges] = useState<{ checkIn: Date; checkOut: Date }[]>([]);
+  const [pageCheckInDate, setPageCheckInDate] = useState<Date | null>(null);
+  const [pageCheckOutDate, setPageCheckOutDate] = useState<Date | null>(null);
+  const [showPageCalendar, setShowPageCalendar] = useState(false);
+  const [pageCalendarMode, setPageCalendarMode] = useState<'checkin' | 'checkout'>('checkin');
 
   useEffect(() => {
     const fetchProperty = async () => {
@@ -62,11 +69,12 @@ export default function PropertyDetailPage() {
   useEffect(() => {
     if (!property || !propertyId || !property.checkInDate || !property.checkOutDate) {
       setAvailableSegments([]);
+      setBookedRanges([]);
       return;
     }
     const loadSegments = async () => {
       try {
-        let bookedRanges = await getBookedRangesForProperty(propertyId);
+        let ranges = await getBookedRangesForProperty(propertyId);
         if (property.icalUrl && property.icalUrl.trim()) {
           const icalRes = await fetch('/api/ical/parse', {
             method: 'POST',
@@ -81,17 +89,19 @@ export default function PropertyDetailPage() {
                 checkOut: new Date(e.end),
               })
             );
-            bookedRanges = [...bookedRanges, ...icalRanges];
+            ranges = [...ranges, ...icalRanges];
           }
         }
+        setBookedRanges(ranges);
         const segments = getBookableDateSegments(
           property.checkInDate,
           property.checkOutDate,
-          bookedRanges
+          ranges
         );
         setAvailableSegments(segments);
       } catch {
         setAvailableSegments([]);
+        setBookedRanges([]);
       }
     };
     loadSegments();
@@ -290,24 +300,6 @@ export default function PropertyDetailPage() {
               </p>
             </div>
 
-            {/* 매물 설명 */}
-            {property.original_description && (
-              <div>
-                <p className="text-xs text-gray-500 mb-1">
-                  {currentLanguage === 'ko' ? '매물 설명' : 
-                   currentLanguage === 'vi' ? 'Mô tả bất động sản' : 
-                   'Property Description'}
-                </p>
-                <PropertyDescription
-                  description={property.original_description}
-                  sourceLanguage="vi"
-                  targetLanguage={currentLanguage}
-                  cacheKey={`property-detail-${property.id}`}
-                  className="mt-2"
-                />
-              </div>
-            )}
-
             {/* 임대 가능 날짜: 달력과 동일하게 예약 제외 후 실제 예약 가능 구간만 표시 */}
             {(property.checkInDate || property.checkOutDate) && (
               <div>
@@ -414,19 +406,96 @@ export default function PropertyDetailPage() {
               )}
             </div>
 
+            {/* 매물 설명 - 달력 선택창 바로 위에 표시 */}
+            {property.original_description && (
+              <div className="pt-2 border-t border-gray-100">
+                <p className="text-xs text-gray-500 mb-1">
+                  {currentLanguage === 'ko' ? '매물 설명' : 
+                   currentLanguage === 'vi' ? 'Mô tả bất động sản' : 
+                   'Property Description'}
+                </p>
+                <PropertyDescription
+                  description={property.original_description}
+                  sourceLanguage="vi"
+                  targetLanguage={currentLanguage}
+                  cacheKey={`property-detail-${property.id}`}
+                  className="mt-2"
+                />
+              </div>
+            )}
+
+            {/* 날짜 선택 (달력) */}
+            {(property.checkInDate || property.checkOutDate) && (
+              <div className="pt-4 border-t border-gray-100">
+                <p className="text-xs text-gray-500 mb-3">
+                  {currentLanguage === 'ko' ? '날짜 선택' : 
+                   currentLanguage === 'vi' ? 'Chọn ngày' : 
+                   'Select Dates'}
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => {
+                      setPageCalendarMode('checkin');
+                      setShowPageCalendar(true);
+                    }}
+                    className={`flex flex-col items-center px-3 py-2.5 rounded-xl border-2 transition-all ${
+                      pageCheckInDate 
+                        ? 'border-blue-500 bg-blue-50' 
+                        : 'border-gray-200 bg-gray-50 hover:border-blue-300'
+                    }`}
+                  >
+                    <span className="text-[10px] text-gray-500 mb-1">
+                      {currentLanguage === 'ko' ? '체크인' : currentLanguage === 'vi' ? 'Nhận phòng' : 'Check-in'}
+                    </span>
+                    <span className={`text-sm font-semibold ${pageCheckInDate ? 'text-blue-600' : 'text-gray-400'}`}>
+                      {pageCheckInDate 
+                        ? pageCheckInDate.toLocaleDateString(
+                            currentLanguage === 'ko' ? 'ko-KR' : currentLanguage === 'vi' ? 'vi-VN' : 'en-US',
+                            { month: 'short', day: 'numeric' }
+                          )
+                        : (currentLanguage === 'ko' ? '날짜 선택' : currentLanguage === 'vi' ? 'Chọn ngày' : 'Select')}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setPageCalendarMode('checkout');
+                      setShowPageCalendar(true);
+                    }}
+                    className={`flex flex-col items-center px-3 py-2.5 rounded-xl border-2 transition-all ${
+                      pageCheckOutDate 
+                        ? 'border-blue-500 bg-blue-50' 
+                        : 'border-gray-200 bg-gray-50 hover:border-blue-300'
+                    }`}
+                  >
+                    <span className="text-[10px] text-gray-500 mb-1">
+                      {currentLanguage === 'ko' ? '체크아웃' : currentLanguage === 'vi' ? 'Trả phòng' : 'Check-out'}
+                    </span>
+                    <span className={`text-sm font-semibold ${pageCheckOutDate ? 'text-blue-600' : 'text-gray-400'}`}>
+                      {pageCheckOutDate 
+                        ? pageCheckOutDate.toLocaleDateString(
+                            currentLanguage === 'ko' ? 'ko-KR' : currentLanguage === 'vi' ? 'vi-VN' : 'en-US',
+                            { month: 'short', day: 'numeric' }
+                          )
+                        : (currentLanguage === 'ko' ? '날짜 선택' : currentLanguage === 'vi' ? 'Chọn ngày' : 'Select')}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* 예약하기 버튼 */}
             <div className="pt-4">
               <button
                 onClick={() => {
-                  // 예약 페이지로 이동 (날짜는 기본값으로 설정)
                   if (!propertyId) return;
-                  
-                  const today = new Date();
-                  const checkIn = parseDate(property.checkInDate) || today;
-                  const checkOut = new Date(checkIn);
-                  checkOut.setDate(checkOut.getDate() + 7);
+                  const checkIn = pageCheckInDate || parseDate(property.checkInDate) || new Date();
+                  const checkOut = pageCheckOutDate || (() => {
+                    const c = new Date(checkIn);
+                    c.setDate(c.getDate() + 7);
+                    return c;
+                  })();
 
-                  const returnUrl = `/booking?propertyId=${propertyId}&checkIn=${checkIn.toISOString()}&checkOut=${checkOut.toISOString()}`;
+                  const returnUrl = `/booking?propertyId=${propertyId}&checkIn=${toISODateString(checkIn)}&checkOut=${toISODateString(checkOut)}`;
                   
                   if (!user) {
                     router.push(`/login?returnUrl=${encodeURIComponent(returnUrl)}`);
@@ -444,6 +513,41 @@ export default function PropertyDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* 달력 모달 */}
+      {showPageCalendar && property && (
+        <div 
+          className="fixed inset-0 z-[70] bg-black/50 flex items-center justify-center p-4"
+          onClick={() => setShowPageCalendar(false)}
+        >
+          <div onClick={(e) => e.stopPropagation()}>
+            <CalendarComponent
+              checkInDate={pageCheckInDate}
+              checkOutDate={pageCheckOutDate}
+              onCheckInSelect={(date) => {
+                setPageCheckInDate(date);
+                setPageCheckOutDate(null);
+                setPageCalendarMode('checkout');
+              }}
+              onCheckOutSelect={(date) => {
+                setPageCheckOutDate(date);
+                setShowPageCalendar(false);
+              }}
+              onCheckInReset={() => {
+                setPageCheckInDate(null);
+                setPageCheckOutDate(null);
+                setPageCalendarMode('checkin');
+              }}
+              currentLanguage={currentLanguage}
+              onClose={() => setShowPageCalendar(false)}
+              mode={pageCalendarMode}
+              minDate={parseDate(property.checkInDate) || undefined}
+              maxDate={parseDate(property.checkOutDate) || undefined}
+              bookedRanges={bookedRanges}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

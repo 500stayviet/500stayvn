@@ -6,21 +6,17 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { BookingData } from '@/lib/api/bookings';
-import { getProperty } from '@/lib/api/properties';
-import { PropertyData } from '@/types/property';
+import { getParentPropertyId } from '@/lib/api/properties';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { SupportedLanguage } from '@/lib/api/translation';
 import { 
-  X, Calendar, Clock, User, Phone, Home, 
-  CreditCard, Copy, Check, Hash, Info, 
-  ChevronRight, ArrowRight, ExternalLink
+  X, Copy, Check, ExternalLink
 } from 'lucide-react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import PropertyModal from './map/PropertyModal';
 
 interface BookingDetailsModalProps {
   booking: BookingData;
@@ -32,28 +28,6 @@ export default function BookingDetailsModal({ booking, onClose }: BookingDetails
   const { currentLanguage } = useLanguage();
   const [copiedId, setCopiedId] = useState(false);
   const [copiedAddress, setCopiedAddress] = useState(false);
-  const [propertyData, setPropertyData] = useState<PropertyData | null>(null);
-  const [showPropertyModal, setShowPropertyModal] = useState(false);
-  const [loadingProperty, setLoadingProperty] = useState(false);
-
-  // propertyId가 있으면 propertyData 가져오기
-  useEffect(() => {
-    const fetchPropertyData = async () => {
-      if (!booking.propertyId || propertyData || loadingProperty) return;
-      
-      try {
-        setLoadingProperty(true);
-        const data = await getProperty(booking.propertyId);
-        setPropertyData(data);
-      } catch (error) {
-        console.error('Failed to fetch property data:', error);
-      } finally {
-        setLoadingProperty(false);
-      }
-    };
-
-    fetchPropertyData();
-  }, [booking.propertyId, propertyData, loadingProperty]);
 
   // 날짜 포맷 (YYYY년 MM월 DD일)
   const formatDateFull = (dateStr: string) => {
@@ -108,23 +82,12 @@ export default function BookingDetailsModal({ booking, onClose }: BookingDetails
     setTimeout(() => setCopiedAddress(false), 2000);
   };
 
-  /** 사진 또는 주소 클릭 시 해당 매물의 PropertyModal 오픈 (데이터 없으면 로드 후 오픈) */
-  const handleOpenPropertyModal = async () => {
+  /** 사진 또는 주소 클릭 시 부모 매물 상세 페이지로 이동 (자식이면 부모 ID 사용 → 동일한 페이지·데이터로 임대 가능 날짜 등 일치) */
+  const handleOpenPropertyPage = async () => {
     if (!booking.propertyId) return;
-    if (propertyData) {
-      setShowPropertyModal(true);
-      return;
-    }
-    setLoadingProperty(true);
-    try {
-      const data = await getProperty(booking.propertyId);
-      setPropertyData(data ?? null);
-      if (data) setShowPropertyModal(true);
-    } catch (error) {
-      console.error('Failed to fetch property for modal:', error);
-    } finally {
-      setLoadingProperty(false);
-    }
+    onClose();
+    const displayId = await getParentPropertyId(booking.propertyId);
+    router.push(`/properties/${displayId}`);
   };
 
   // 결제 상세 계산
@@ -229,7 +192,7 @@ export default function BookingDetailsModal({ booking, onClose }: BookingDetails
             <div className="flex gap-4 items-start">
               {booking.propertyImage && (
                 <button 
-                  onClick={handleOpenPropertyModal}
+                  onClick={handleOpenPropertyPage}
                   disabled={!booking.propertyId}
                   className="w-16 h-16 relative rounded-xl overflow-hidden flex-shrink-0 border border-gray-100 hover:border-blue-400 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -237,18 +200,13 @@ export default function BookingDetailsModal({ booking, onClose }: BookingDetails
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all flex items-center justify-center">
                     <ExternalLink className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
-                  {loadingProperty && (
-                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    </div>
-                  )}
                 </button>
               )}
               <div className="flex-1 min-w-0">
                 <button 
                   onClick={() => {
                     if (booking.propertyId) {
-                      handleOpenPropertyModal();
+                      handleOpenPropertyPage();
                     } else {
                       copyAddressToClipboard(booking.propertyAddress || booking.propertyTitle || '');
                     }
@@ -374,15 +332,6 @@ export default function BookingDetailsModal({ booking, onClose }: BookingDetails
           </button>
         </div>
       </motion.div>
-
-      {/* PropertyModal 렌더링 */}
-      {showPropertyModal && propertyData && (
-        <PropertyModal
-          propertyData={propertyData}
-          currentLanguage={currentLanguage}
-          onClose={() => setShowPropertyModal(false)}
-        />
-      )}
     </div>
   );
 }

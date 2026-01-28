@@ -928,6 +928,11 @@ function EditPropertyContent() {
                 setCheckOutDate(d);
                 setShowCalendar(false);
               }}
+              onCheckInReset={() => {
+                setCheckInDate(null);
+                setCheckOutDate(null);
+                setCalendarMode("checkin");
+              }}
               mode={calendarMode}
               bookedRanges={bookedRanges}
               isOwnerMode={true}
