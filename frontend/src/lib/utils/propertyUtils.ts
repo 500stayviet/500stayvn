@@ -1,5 +1,7 @@
 import { PropertyData } from '@/types/property';
 import { toISODateString, parseDate } from './dateUtils';
+import { getDistrictIdForCoord } from '@/lib/data/vietnam-regions';
+import { ALL_REGIONS, VIETNAM_CITIES } from '@/lib/data/vietnam-regions';
 
 /**
  * 매물 예약 날짜 범위 인터페이스
@@ -186,4 +188,48 @@ export function getBookableDateSegments(
     const days = ms / (1000 * 60 * 60 * 24);
     return days >= minDays;
   });
+}
+
+/** 매물 종류 라벨 (ko/vi/en/ja/zh) */
+const PROPERTY_TYPE_LABELS: Record<string, Record<string, string>> = {
+  studio: { ko: '스튜디오', vi: 'Studio', en: 'Studio', ja: 'スタジオ', zh: '一室' },
+  one_room: { ko: '원룸', vi: '1 phòng', en: '1 Room', ja: 'ワンルーム', zh: '一室' },
+  two_room: { ko: '2룸', vi: '2 phòng', en: '2 Rooms', ja: '2ルーム', zh: '两室' },
+  three_plus: { ko: '3+룸', vi: '3+ phòng', en: '3+ Rooms', ja: '3+ルーム', zh: '三室以上' },
+  detached: { ko: '독채', vi: 'Nhà riêng', en: 'Detached', ja: '戸建て', zh: '独栋' },
+};
+
+export function getPropertyTypeLabel(
+  propertyType: string | undefined,
+  lang: string
+): string {
+  if (!propertyType) return '';
+  const labels = PROPERTY_TYPE_LABELS[propertyType];
+  if (!labels) return propertyType;
+  return labels[lang] || labels.en || propertyType;
+}
+
+/** 좌표로 도시·구 표시 이름 반환 (vietnam-regions 기반) */
+export function getCityDistrictFromCoords(
+  lat: number | undefined,
+  lng: number | undefined,
+  lang: string
+): { cityName: string; districtName: string } {
+  if (lat == null || lng == null) return { cityName: '', districtName: '' };
+  try {
+    const districtId = getDistrictIdForCoord(lat, lng);
+    if (!districtId) return { cityName: '', districtName: '' };
+    const district = ALL_REGIONS.find((r) => r.id === districtId);
+    if (!district) return { cityName: '', districtName: '' };
+    const langMap = (r: { nameKo?: string; nameVi?: string; name?: string; nameJa?: string; nameZh?: string }) =>
+      ({ ko: r.nameKo, vi: r.nameVi, en: r.name, ja: r.nameJa ?? r.name, zh: r.nameZh ?? r.name })[lang] ?? district.name;
+    const districtName = langMap(district);
+    const cityId = (district as { parentCity?: string }).parentCity;
+    if (!cityId) return { cityName: '', districtName: districtName || '' };
+    const city = VIETNAM_CITIES.find((c) => c.id === cityId);
+    const cityName = city ? langMap(city) : '';
+    return { cityName, districtName };
+  } catch {
+    return { cityName: '', districtName: '' };
+  }
 }
