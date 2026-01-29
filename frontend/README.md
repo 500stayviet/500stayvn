@@ -4,12 +4,15 @@
 
 ## 기술 스택
 
-- **Framework**: Next.js 16 (App Router)
+- **Framework**: Next.js 15 (App Router)
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS
 - **Icons**: Lucide React
 - **HTTP Client**: Axios
-- **Maps**: Google Maps JavaScript API (@react-google-maps/api)
+- **Maps**: MapLibre GL (오픈소스 맵 라이브러리)
+- **Database**: Prisma + PostgreSQL
+- **Authentication**: NextAuth.js
+- **Storage**: AWS S3
 
 ## 시작하기
 
@@ -24,16 +27,22 @@ npm install
 `.env.local` 파일을 생성하고 다음 내용을 추가하세요:
 
 ```env
-# Google Maps API Keys
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key_here
-NEXT_PUBLIC_GOOGLE_GEOCODING_API_KEY=your_geocoding_api_key_here
-NEXT_PUBLIC_GOOGLE_PLACES_API_KEY=your_places_api_key_here
+# 데이터베이스 연결
+DATABASE_URL="postgresql://..."
 
-# Firebase Functions URLs
-NEXT_PUBLIC_FIREBASE_FUNCTIONS_BASE_URL=https://us-central1-stayviet-26ae4.cloudfunctions.net
+# NextAuth 설정
+NEXTAUTH_SECRET="your-secret-key"
+NEXTAUTH_URL="http://localhost:3000"
+
+# AWS 설정
+AWS_ACCESS_KEY_ID="your-access-key"
+AWS_SECRET_ACCESS_KEY="your-secret-key"
+AWS_REGION="ap-northeast-2"
+AWS_S3_BUCKET="your-bucket-name"
+
+# Gemini API (AI 번역)
+NEXT_PUBLIC_GEMINI_API_KEY="your-gemini-api-key"
 ```
-
-구글 맵 API 키 발급 방법은 `GOOGLE_MAPS_API_SETUP.md` 파일을 참고하세요.
 
 ### 3. 개발 서버 실행
 
@@ -46,15 +55,25 @@ npm run dev
 ## 주요 기능
 
 ### 1. 메인 화면 (`/`)
-- **Split View 레이아웃**: 왼쪽 매물 리스트 + 오른쪽 구글 맵
+- **Split View 레이아웃**: 왼쪽 매물 리스트 + 오른쪽 지도
 - 매물 클릭 시 지도에서 해당 위치로 이동
 - 매물 정보 표시 (가격, 면적, 방 개수 등)
 - 에어비앤비 스타일의 깔끔한 UI
 
-### 2. 관리자 페이지 (`/admin`)
-- Firebase Functions 번역 API 테스트
-- 단일 번역, 배치 번역, 언어 감지 기능
-- 실시간 번역 결과 확인
+### 2. 매물 등록 (`/add-property`)
+- 다국어 지원 매물 등록 폼
+- 이미지 업로드 (AWS S3)
+- 위치 선택 (지도 기반)
+
+### 3. 사용자 프로필 (`/profile`)
+- 개인 정보 관리
+- 등록한 매물 관리
+- 예약 내역 확인
+
+### 4. KYC 인증 (`/kyc`)
+- 신분증 업로드
+- 얼굴 인증
+- 전화번호 인증
 
 ## 프로젝트 구조
 
@@ -63,41 +82,51 @@ frontend/
 ├── src/
 │   ├── app/              # Next.js App Router 페이지
 │   │   ├── page.tsx      # 메인 화면
-│   │   ├── admin/        # 관리자 페이지
+│   │   ├── add-property/ # 매물 등록 페이지
+│   │   ├── profile/      # 사용자 프로필
+│   │   ├── kyc/          # KYC 인증
 │   │   └── layout.tsx    # 레이아웃
+│   ├── components/       # 재사용 컴포넌트
 │   ├── lib/              # 유틸리티 및 설정
-│   │   ├── firebase-config.ts  # Firebase 설정
-│   │   └── api/          # API 서비스
-│   │       └── translation.ts  # 번역 API
+│   │   ├── api/          # API 서비스
+│   │   ├── prisma.ts     # 데이터베이스 연결
+│   │   └── s3-client.ts  # AWS S3 클라이언트
+│   ├── contexts/         # React 컨텍스트
+│   ├── hooks/            # 커스텀 훅
 │   └── types/            # TypeScript 타입 정의
-│       └── property.ts   # 부동산 타입
+├── prisma/               # Prisma 스키마
 ├── .env.local            # 환경 변수 (gitignore)
-├── GOOGLE_MAPS_API_SETUP.md  # 구글 맵 API 설정 가이드
 └── package.json
 ```
 
 ## API 엔드포인트
 
-### Firebase Functions
-- `translate`: 단일 텍스트 번역
-- `translateBatch`: 여러 텍스트 동시 번역
-- `detectLanguage`: 언어 자동 감지
-- `getSupportedLanguages`: 지원 언어 목록 조회
+### 내부 API
+- `/api/auth/*`: 인증 관련 API
+- `/api/kyc/*`: KYC 인증 API
+- `/api/aws-location/*`: 위치 검색 API
+
+### 외부 서비스
+- **Gemini API**: AI 기반 번역 서비스
+- **AWS Location Service**: 지도 및 위치 서비스
+- **AWS S3**: 이미지 저장소
 
 ## 디자인 시스템
 
-- **색상**: 화이트와 블루 톤
+- **색상**: 브랜드 컬러 (brand-deep, brand-emerald)
+- **폰트**: Be Vietnam Pro, Noto Sans
 - **아이콘**: Lucide React
 - **레이아웃**: 반응형 디자인 (모바일/태블릿/데스크톱)
 
 ## 배포
 
-### Vercel 배포 (권장)
+### AWS Amplify 배포
 
-1. GitHub에 프로젝트 푸시
-2. [Vercel](https://vercel.com)에서 프로젝트 import
-3. 환경 변수 설정
-4. 배포 완료!
+1. AWS Amplify 콘솔에서 프로젝트 연결
+2. GitHub 리포지토리 선택
+3. 빌드 설정 자동 감지
+4. 환경 변수 설정
+5. 배포 완료!
 
 ### 수동 빌드
 
@@ -108,15 +137,17 @@ npm start
 
 ## 문제 해결
 
-### 구글 맵이 표시되지 않을 때
-- `.env.local` 파일에 `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`가 올바르게 설정되었는지 확인
-- Google Cloud Console에서 Maps JavaScript API가 활성화되었는지 확인
-- API 키 제한 설정 확인 (HTTP 리퍼러 제한)
+### 지도가 표시되지 않을 때
+- AWS Location Service 설정 확인
+- 지도 스타일 URL 확인
 
-### 번역 API가 작동하지 않을 때
-- Firebase Functions가 정상적으로 배포되었는지 확인
-- CORS 설정 확인
-- 브라우저 콘솔에서 에러 메시지 확인
+### 이미지 업로드 실패 시
+- AWS S3 버킷 권한 확인
+- AWS 자격 증명 확인
+
+### 데이터베이스 연결 실패 시
+- DATABASE_URL 환경 변수 확인
+- Prisma 마이그레이션 실행
 
 ## 라이선스
 

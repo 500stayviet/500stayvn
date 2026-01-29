@@ -19,7 +19,6 @@ import PropertyCard from '@/components/PropertyCard';
 import { Home, User, Calendar, Users, ChevronLeft, ChevronRight, MapPin, Search, X } from 'lucide-react';
 import CalendarComponent from '@/components/CalendarComponent';
 import Image from 'next/image';
-import { AMENITY_OPTIONS } from '@/lib/constants/amenities';
 import PropertyModal from '@/components/map/PropertyModal';
 import { 
   formatPrice, 

@@ -18,7 +18,7 @@ import { toISODateString } from '@/lib/api/bookings';
 import CalendarComponent from '@/components/CalendarComponent';
 import { PropertyDescription } from '@/components/PropertyDescription';
 import { useAuth } from '@/hooks/useAuth';
-import { AMENITY_OPTIONS } from '@/lib/constants/amenities';
+import { FACILITY_OPTIONS } from '@/lib/constants/facilities';
 import { 
   formatFullPrice, 
   getBookableDateSegments 
@@ -345,7 +345,7 @@ export default function PropertyModal({
             </p>
             {propertyData.amenities && propertyData.amenities.length > 0 ? (
               <div className="grid grid-cols-3 gap-2">
-                {AMENITY_OPTIONS.filter(amenity => propertyData.amenities?.includes(amenity.id)).map((amenity) => {
+                {FACILITY_OPTIONS.filter(opt => propertyData.amenities?.includes(opt.id)).map((amenity) => {
                   const Icon = amenity.icon;
                   const label = (amenity.label as any)[currentLanguage] || amenity.label.en;
                   

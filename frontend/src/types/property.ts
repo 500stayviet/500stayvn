@@ -42,6 +42,15 @@ export interface PropertyData {
   icalPlatform?: string; // 플랫폼 (airbnb, agoda, booking_com, other)
   icalCalendarName?: string; // 캘린더 이름
   icalUrl?: string; // iCal URL (.ics)
+
+  /** 매물 종류: studio | one_room | two_room | three_plus | detached */
+  propertyType?: string;
+  /** 주당 청소 횟수 (1~7) */
+  cleaningPerWeek?: number;
+  /** 애완동물 가능 여부 */
+  petAllowed?: boolean;
+  /** 애완동물 추가 요금 (VND) */
+  petFee?: number;
 }
 
 export interface PropertyFilter {

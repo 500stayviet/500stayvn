@@ -17,7 +17,7 @@ import { ArrowLeft, Edit, MapPin, Square, Calendar, Users, ChevronLeft, ChevronR
 import TopBar from '@/components/TopBar';
 import { PropertyDescription } from '@/components/PropertyDescription';
 import Image from 'next/image';
-import { AMENITY_OPTIONS } from '@/lib/constants/amenities';
+import { FACILITY_OPTIONS } from '@/lib/constants/facilities';
 import { 
   formatFullPrice, 
 } from '@/lib/utils/propertyUtils';
@@ -390,7 +390,7 @@ export default function PropertyDetailPage() {
               </p>
               {property.amenities && property.amenities.length > 0 ? (
                 <div className="grid grid-cols-3 gap-3">
-                  {AMENITY_OPTIONS.filter(amenity => property.amenities?.includes(amenity.id)).map((amenity) => {
+                  {FACILITY_OPTIONS.filter(opt => property.amenities?.includes(opt.id)).map((amenity) => {
                     const Icon = amenity.icon;
                     const label = (amenity.label as any)[currentLanguage] || amenity.label.en;
                     

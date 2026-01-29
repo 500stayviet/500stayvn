@@ -21,21 +21,38 @@ import {
   cleanSubAddress,
   LocationSuggestion 
 } from '@/hooks/useLocationSearch';
+import { ALL_REGIONS, VIETNAM_CITIES, getDistrictsByCityId } from '@/lib/data/vietnam-regions';
+import type { VietnamRegion } from '@/lib/data/vietnam-regions';
 
 interface HeroSectionProps {
   currentLanguage: SupportedLanguage;
+}
+
+// 5개국어에 따른 지역 표시명
+function getRegionDisplayName(region: VietnamRegion, lang: SupportedLanguage): string {
+  if (lang === 'ko') return region.nameKo;
+  if (lang === 'vi') return region.nameVi;
+  if (lang === 'ja') return region.nameJa;
+  if (lang === 'zh') return region.nameZh;
+  return region.name;
 }
 
 export default function HeroSection({ currentLanguage }: HeroSectionProps) {
   const router = useRouter();
   const [searchValue, setSearchValue] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedCityId, setSelectedCityId] = useState<string | null>(null);
+  const [selectedDistrictId, setSelectedDistrictId] = useState<string | null>(null);
   const [showLocationPermissionModal, setShowLocationPermissionModal] = useState(false);
   const [requestingLocation, setRequestingLocation] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
-  // 공통 검색 훅 사용 (행정구역 + 대표 명소)
+  const selectedCity = selectedCityId ? VIETNAM_CITIES.find(c => c.id === selectedCityId) ?? ALL_REGIONS.find(r => r.id === selectedCityId) : null;
+  const districts = selectedCityId ? getDistrictsByCityId(selectedCityId) : [];
+  const selectedDistrict = selectedDistrictId ? districts.find(d => d.id === selectedDistrictId) : null;
+
+  // 공통 검색 훅: 베트남 도시·구만 검색 (하드코딩 데이터)
   const { suggestions, isSearching, search, clearSuggestions } = useLocationSearch(currentLanguage);
 
   // 검색창 외부 클릭 시 드롭다운 닫기
@@ -75,30 +92,38 @@ export default function HeroSection({ currentLanguage }: HeroSectionProps) {
     setShowSuggestions(true);
   };
 
-  // 추천 선택 → 해당 지역으로 매물 검색 페이지 이동
+  // 추천 선택 → 도시/구 칸에 반영 (도시 선택 시 해당 도시 구 목록 표시)
   const handleSelectSuggestion = (suggestion: LocationSuggestion) => {
     const text = suggestion.Text || '';
     setSearchValue(text);
     setShowSuggestions(false);
-    
-    // 검색 페이지로 이동 (매물 검색)
-    router.push(`/search?q=${encodeURIComponent(text)}`);
+
+    const regionId = (suggestion.PlaceId || '').replace(/^region-/, '');
+    const region = ALL_REGIONS.find(r => r.id === regionId);
+    if (!region) return;
+
+    if (region.type === 'city') {
+      setSelectedCityId(region.id);
+      setSelectedDistrictId(null);
+    } else {
+      setSelectedCityId(region.parentCity ?? null);
+      setSelectedDistrictId(region.id);
+    }
   };
 
-  // 엔터 키로 검색 실행
+  // 엔터 키로 검색 실행 (선택된 도시·구 또는 검색어로 이동)
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setShowSuggestions(false);
-    
-    if (searchValue.trim()) {
-      // 추천 결과가 있으면 첫 번째 결과로 이동
-      if (suggestions.length > 0) {
-        const firstSuggestion = suggestions[0];
-        const text = firstSuggestion.Text || searchValue;
-        router.push(`/search?q=${encodeURIComponent(text)}`);
-      } else {
-        router.push(`/search?q=${encodeURIComponent(searchValue)}`);
-      }
+
+    let q = searchValue.trim();
+    if (!q && selectedCity) {
+      const cityName = getRegionDisplayName(selectedCity, currentLanguage);
+      const districtName = selectedDistrict ? getRegionDisplayName(selectedDistrict, currentLanguage) : '';
+      q = districtName ? `${districtName}, ${cityName}` : cityName;
+    }
+    if (q) {
+      router.push(`/search?q=${encodeURIComponent(q)}`);
     }
   };
 
@@ -294,11 +319,11 @@ export default function HeroSection({ currentLanguage }: HeroSectionProps) {
                   setShowSuggestions(true);
                 }
               }}
-              placeholder={getUIText('searchPlaceholder', currentLanguage)}
+              placeholder={getUIText('searchPlaceholderCityDistrict', currentLanguage)}
               className="w-full pl-12 pr-4 py-3.5 text-base rounded-full bg-white border-0 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-xl transition-all"
             />
             
-            {/* 추천 결과 드롭다운 (도시/구/명소) */}
+            {/* 추천 결과 드롭다운 (도시·구만, 같은 구명은 "구, 도시"로 구별) */}
             {showSuggestions && suggestions.length > 0 && (
               <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-lg max-h-72 overflow-y-auto">
                 {suggestions.map((suggestion, index) => {
@@ -357,6 +382,40 @@ export default function HeroSection({ currentLanguage }: HeroSectionProps) {
                 </div>
               </div>
             )}
+          </div>
+
+          {/* 주소 검색 아래: 도시·구 (선택 시 하드코딩 데이터로 채움) */}
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-white/90 mb-1">
+                {getUIText('labelCity', currentLanguage)}
+              </label>
+              <div className="rounded-lg bg-white/95 px-3 py-2.5 text-sm text-gray-800 min-h-[42px] flex items-center">
+                {selectedCity ? getRegionDisplayName(selectedCity, currentLanguage) : (
+                  <span className="text-gray-400">—</span>
+                )}
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-white/90 mb-1">
+                {getUIText('labelDistrict', currentLanguage)}
+              </label>
+              <select
+                value={selectedDistrictId ?? ''}
+                onChange={(e) => setSelectedDistrictId(e.target.value || null)}
+                disabled={!selectedCityId || districts.length === 0}
+                className="w-full rounded-lg bg-white/95 border-0 px-3 py-2.5 text-sm text-gray-800 min-h-[42px] focus:ring-2 focus:ring-blue-500 disabled:opacity-70 disabled:cursor-not-allowed"
+              >
+                <option value="">
+                  {getUIText('selectDistrictPlaceholder', currentLanguage)}
+                </option>
+                {districts.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {getRegionDisplayName(d, currentLanguage)}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </form>
 

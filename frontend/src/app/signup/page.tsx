@@ -219,12 +219,12 @@ function SignupContent() {
   };
 
   // 가입 버튼 활성화 로직: 로딩 중이 아니고, 필수 필드(이메일, 비밀번호, 이름)가 입력되었으며, (전화번호를 입력한 경우에만 인증 완료 필요)
-  const isSignupDisabled = loading || 
+  const isSignupDisabled = Boolean(loading || 
     !formData.email || 
     !formData.password || 
     !formData.fullName || 
     (formData.phoneNumber && !formData.isPhoneComplete) || 
-    (formData.phoneNumber && requirePhoneVerification && !isPhoneVerified);
+    (formData.phoneNumber && requirePhoneVerification && !isPhoneVerified));
 
   return (
     <div className="min-h-screen bg-gray-100 flex justify-center">

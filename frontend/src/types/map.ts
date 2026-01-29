@@ -1,4 +1,5 @@
 import { RegionType } from '@/lib/data/vietnam-regions';
+import type { LandmarkCategory } from '@/lib/data/vietnam-landmarks';
 
 export interface Suggestion {
   PlaceId: string;
@@ -12,12 +13,14 @@ export interface Suggestion {
     Region?: string;
     Country?: string;
   };
-  // 행정 구역 데이터 확장 필드
   isRegion?: boolean;
   regionType?: RegionType;
   zoom?: number;
-  // 명소 태그 (landmark만 허용)
   isLandmark?: boolean;
+  /** 명소 소속 구 ID (지도 필터·FlyTo 연동) */
+  districtId?: string;
+  /** 명소 카테고리 (핀 색상/모양) */
+  landmarkCategory?: LandmarkCategory;
 }
 
 export type ResultType = 'region' | 'poi' | 'address';

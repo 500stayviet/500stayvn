@@ -4,15 +4,11 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { MapPin } from 'lucide-react';
-import { searchPlaceIndexForText } from '@/lib/api/aws-location';
 import { getAvailableProperties, subscribeToProperties, getProperty } from '@/lib/api/properties';
 import { PropertyData } from '@/types/property';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { searchRegions, regionToSuggestion } from '@/lib/data/vietnam-regions';
-import { 
-  getLandmarkPriority, 
-  getSearchMatchScore,
-} from '@/hooks/useLocationSearch';
+import { searchRegions, regionToSuggestion, getDistrictIdForCoord } from '@/lib/data/vietnam-regions';
+import { searchLandmarksScored, landmarkToSuggestion, ALL_LANDMARKS } from '@/lib/data/vietnam-landmarks';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import PropertyModal from '@/components/map/PropertyModal';
@@ -93,7 +89,10 @@ export default function GrabMapComponent({
   const [showLocationConsentModal, setShowLocationConsentModal] = useState(false);
   const [showPropertyModal, setShowPropertyModal] = useState(false);
   const [selectedPropertyData, setSelectedPropertyData] = useState<PropertyData | null>(null);
-  
+  /** 명소/구 선택 시 해당 구 매물만 필터 (districtId) */
+  const [selectedDistrictIdFilter, setSelectedDistrictIdFilter] = useState<string | null>(null);
+  const landmarkMarkersRef = useRef<maplibregl.Marker[]>([]);
+
   const { currentLanguage } = useLanguage();
   const router = useRouter();
   const { user } = useAuth();
@@ -587,6 +586,32 @@ export default function GrabMapComponent({
         // 지도 이동/확대 시 현재 화면 내 매물 필터링
         if (updateVisiblePropertiesRef.current) {
           updateVisiblePropertiesRef.current();
+        }
+
+        // 명소 핀 추가 (카테고리별 색상: 랜드마크=빨강, 쇼핑=파랑, 거주=초록, 관광=보라)
+        const categoryColor: Record<string, string> = {
+          landmark: '#dc2626',
+          shopping: '#2563eb',
+          residential: '#16a34a',
+          tourism: '#9333ea',
+        };
+        landmarkMarkersRef.current.forEach(m => m.remove());
+        landmarkMarkersRef.current = [];
+        for (const lm of ALL_LANDMARKS) {
+          const el = document.createElement('div');
+          el.className = 'landmark-marker';
+          el.style.width = '12px';
+          el.style.height = '12px';
+          el.style.borderRadius = '50%';
+          el.style.backgroundColor = categoryColor[lm.category] || '#6b7280';
+          el.style.border = '2px solid white';
+          el.style.boxShadow = '0 1px 3px rgba(0,0,0,0.3)';
+          el.style.cursor = 'pointer';
+          const m = new maplibregl.Marker({ element: el })
+            .setLngLat([lm.lng, lm.lat])
+            .setPopup(new maplibregl.Popup({ offset: 15 }).setText(lm.name))
+            .addTo(map.current!);
+          landmarkMarkersRef.current.push(m);
         }
       });
 
@@ -1168,12 +1193,17 @@ export default function GrabMapComponent({
     });
   }, [calculateDistance, clusterProperties]);
 
-  // 현재 지도 화면에 보이는 매물 필터링 및 정렬 (최적화)
+  // 현재 지도 화면에 보이는 매물 필터링 및 정렬 (구 필터·bounds 적용)
   const updateVisibleProperties = useCallback(() => {
     if (!map.current || !map.current.loaded()) return;
 
-    // ref에서 최신 allProperties 가져오기 (무한 루프 방지)
-    const currentProperties = allPropertiesRef.current;
+    let currentProperties = allPropertiesRef.current;
+    // 명소/구 선택 시 해당 구 매물만 표시
+    if (selectedDistrictIdFilter) {
+      currentProperties = currentProperties.filter(
+        p => p?.lat != null && p?.lng != null && getDistrictIdForCoord(Number(p.lat), Number(p.lng)) === selectedDistrictIdFilter
+      );
+    }
 
     // 지도의 현재 경계(bounds) 가져오기
     const bounds = map.current.getBounds();
@@ -1225,7 +1255,7 @@ export default function GrabMapComponent({
     
     // 지도에 마커 표시 (보이는 매물만)
     displayPropertyMarkers(sortedProperties);
-  }, [onPropertiesChange, calculateDistance, displayPropertyMarkers]); // allProperties 의존성 제거
+  }, [onPropertiesChange, calculateDistance, displayPropertyMarkers, selectedDistrictIdFilter]);
 
   // updateVisibleProperties ref 업데이트
   useEffect(() => {
@@ -1417,107 +1447,29 @@ export default function GrabMapComponent({
       return;
     }
 
-    // 디바운싱: 250ms 후 검색
-    debounceTimerRef.current = setTimeout(async () => {
+    // 디바운싱: 250ms 후 검색 (도시·구·명소 하드코딩, 5개국어·키워드·toLowerCase·1글자 자동완성)
+    debounceTimerRef.current = setTimeout(() => {
       try {
         setIsSearching(true);
-        
-        // ============================================================
-        // 1순위: 도시명 (City) - Ho Chi Minh, Hanoi, Da Nang 등
-        // 2순위: 구/군 (District) - District 1, Binh Thanh 등
-        // → 행정구역 데이터를 API보다 무조건 상단 배치
-        // ============================================================
+
         const regionResults = searchRegions(value);
-        const regionSuggestions: Suggestion[] = regionResults.map(region => 
+        const regionSuggestions: Suggestion[] = regionResults.map(region =>
           regionToSuggestion(region, currentLanguage) as Suggestion
         );
-        
-        // 도시와 구/군 분리 (1순위: 도시 > 2순위: 구/군)
         const cityResults = regionSuggestions.filter(r => r.regionType === 'city');
         const districtResults = regionSuggestions.filter(r => r.regionType === 'district');
-        
-        // ============================================================
-        // 3순위: 대표 관광지/랜드마크만 (화이트리스트 기반)
-        // Ben Thanh Market, Landmark 81, Hoan Kiem Lake 등
-        // 아파트, 호텔, 상점 등 모든 POI 제외
-        // ============================================================
-        let landmarkResults: Suggestion[] = [];
-        
-        try {
-          // 언어 코드 매핑: ko -> en (GrabMaps는 한국어 미지원)
-          const apiLanguage = currentLanguage === 'vi' ? 'vi' : 'en';
-          const textResults = await searchPlaceIndexForText(value, apiLanguage);
-          
-          const apiSuggestions = textResults.map((result: any) => ({
-            PlaceId: result.Place?.PlaceId || result.PlaceId || '',
-            Text: result.Place?.Label || result.Text || value,
-            Place: result.Place,
-          }));
-          
-          // 행정구역 이름 Set (중복 제거용)
-          const regionNames = new Set(
-            regionResults.flatMap(r => [
-              r.name.toLowerCase(),
-              r.nameVi.toLowerCase(),
-              r.nameKo.toLowerCase(),
-              ...r.keywords.map(k => k.toLowerCase()),
-            ])
-          );
-          
-          // ============================================================
-          // 대표 명소만 필터링 (화이트리스트 체크)
-          // ============================================================
-          landmarkResults = apiSuggestions
-            .map(suggestion => {
-              const text = suggestion.Text || '';
-              const textLower = text.toLowerCase();
-              
-              // 1. 화이트리스트에 있는 대표 명소만 허용
-              const landmarkPriority = getLandmarkPriority(text);
-              if (landmarkPriority === 0) {
-                return null; // 대표 명소가 아니면 제외
-              }
-              
-              // 2. 행정구역 중복 제거
-              for (const name of regionNames) {
-                if (textLower === name || textLower.startsWith(name + ',')) {
-                  return null;
-                }
-              }
-              
-              // 3. 검색어 일치도 점수
-              const searchMatchScore = getSearchMatchScore(text, value);
-              const finalScore = searchMatchScore + landmarkPriority;
-              
-              return {
-                suggestion: {
-                  ...suggestion,
-                  isLandmark: true,
-                } as Suggestion,
-                score: finalScore,
-              };
-            })
-            .filter((item): item is NonNullable<typeof item> => item !== null && item.score > 0)
-            .sort((a, b) => b.score - a.score)
-            .slice(0, 5) // 대표 명소는 최대 5개
-            .map(item => item.suggestion);
-          
-        } catch (apiError) {
-          console.warn('AWS API 검색 실패:', apiError);
-        }
-        
-        // ============================================================
-        // 최종 결과 병합 (3단계 우선순위)
-        // 1순위: 도시 (무조건 최상단)
-        // 2순위: 구/군 (도시 다음)
-        // 3순위: 대표 관광지/랜드마크
-        // ============================================================
+
+        const landmarkScored = searchLandmarksScored(value);
+        const landmarkResults: Suggestion[] = landmarkScored
+          .slice(0, 5)
+          .map(({ landmark }) => ({ ...landmarkToSuggestion(landmark, currentLanguage), zoom: 16 } as Suggestion));
+
         const combinedResults = [
-          ...cityResults,          // 1순위: 도시
-          ...districtResults,      // 2순위: 구/군
-          ...landmarkResults,      // 3순위: 대표 명소
-        ].slice(0, 10); // 최대 10개 표시
-        
+          ...cityResults,
+          ...districtResults,
+          ...landmarkResults,
+        ].slice(0, 10);
+
         setSuggestions(combinedResults);
         setShowSuggestions(combinedResults.length > 0);
       } catch (error) {
@@ -1534,147 +1486,72 @@ export default function GrabMapComponent({
   // 검색 결과 선택 및 지도 이동
   // 줌 레벨: 도시/구는 z=13 (넓게), 명소/아파트는 z=16 (건물 단위)
   // ============================================================================
-  const handleSelectSuggestion = async (suggestion: Suggestion) => {
+  const handleSelectSuggestion = (suggestion: Suggestion) => {
     if (!map.current) return;
 
-    console.log('📍 선택된 제안:', suggestion);
-    
     const displayText = suggestion.Text || '';
     setSearchValue(displayText);
     setShowSuggestions(false);
     setIsSearching(true);
 
-    try {
-      // ============================================================
-      // 1순위/2순위: 도시/구 선택 → 넓은 줌 (z=13)
-      // ============================================================
-      if (suggestion.isRegion && suggestion.Place?.Geometry?.Point) {
-        const [longitude, latitude] = suggestion.Place.Geometry.Point;
-        const safeLat = Number(latitude);
-        const safeLng = Number(longitude);
-        
-        if (!isNaN(safeLat) && !isNaN(safeLng)) {
-          // 도시/구는 z=13으로 넓게 (건물이 아닌 지역 전체 조망)
-          const zoomLevel = 13;
-          
-          map.current.flyTo({
-            center: [safeLng, safeLat],
-            zoom: zoomLevel,
-            duration: 1200,
-            essential: true,
-          });
+    // 도시 선택 → 구 필터 해제
+    if (suggestion.isRegion && suggestion.regionType === 'city') {
+      setSelectedDistrictIdFilter(null);
+    }
+    // 구 선택 → 해당 구 필터 활성화
+    if (suggestion.isRegion && suggestion.regionType === 'district' && suggestion.PlaceId) {
+      const districtId = suggestion.PlaceId.replace(/^region-/, '');
+      setSelectedDistrictIdFilter(districtId);
+    }
+    // 명소 선택 → 해당 명소 구 필터 활성화 + FlyTo
+    if (suggestion.isLandmark && suggestion.districtId) {
+      setSelectedDistrictIdFilter(suggestion.districtId);
+    }
 
-          // 행정 구역 선택 시 마커는 표시하지 않음 (지역 전체 조망)
-          if (marker.current) {
-            marker.current.remove();
-            marker.current = null;
-          }
+    const point = suggestion.Place?.Geometry?.Point;
+    if (point && point.length >= 2) {
+      const [longitude, latitude] = point;
+      const safeLat = Number(latitude);
+      const safeLng = Number(longitude);
+      if (!isNaN(safeLat) && !isNaN(safeLng)) {
+        const zoomLevel = suggestion.isRegion ? (suggestion.zoom ?? 13) : 16;
+        map.current.flyTo({
+          center: [safeLng, safeLat],
+          zoom: zoomLevel,
+          duration: 1200,
+          essential: true,
+        });
 
-          map.current.once('moveend', () => {
-            if (updateVisiblePropertiesRef.current) {
-              updateVisiblePropertiesRef.current();
-            }
-          });
-          
-          setIsSearching(false);
-          return;
-        }
-      }
-      
-      // ============================================================
-      // 3순위: 명소/아파트/호텔 선택 → 건물 단위 줌 (z=16)
-      // ============================================================
-      if (suggestion.Place?.Geometry?.Point) {
-        const [longitude, latitude] = suggestion.Place.Geometry.Point;
-        const safeLat = Number(latitude);
-        const safeLng = Number(longitude);
-        
-        if (!isNaN(safeLat) && !isNaN(safeLng)) {
-          // 명소/아파트는 z=16으로 건물 단위 확대
-          const zoomLevel = 16;
-          
-          map.current.flyTo({
-            center: [safeLng, safeLat],
-            zoom: zoomLevel,
-            duration: 1200,
-            essential: true,
-          });
-
-          // 마커 표시 (건물 위치 표시)
-          if (marker.current) {
-            marker.current.remove();
-          }
+        if (marker.current) marker.current.remove();
+        if (!suggestion.isRegion) {
           marker.current = new maplibregl.Marker({
-            color: '#FF6B35',
+            color: suggestion.isLandmark && suggestion.landmarkCategory === 'landmark' ? '#dc2626'
+              : suggestion.isLandmark && suggestion.landmarkCategory === 'shopping' ? '#2563eb'
+              : suggestion.isLandmark && suggestion.landmarkCategory === 'residential' ? '#16a34a'
+              : suggestion.isLandmark && suggestion.landmarkCategory === 'tourism' ? '#9333ea'
+              : '#FF6B35',
             scale: 1.2,
           })
             .setLngLat([safeLng, safeLat])
             .addTo(map.current);
-
-          map.current.once('moveend', () => {
-            if (updateVisiblePropertiesRef.current) {
-              updateVisiblePropertiesRef.current();
-            }
-          });
-          
-          setIsSearching(false);
-          return;
+        } else {
+          marker.current = null;
         }
-      }
-      
-      // ============================================================
-      // 좌표가 없는 경우: API로 재검색
-      // ============================================================
-      try {
-        const results = await searchPlaceIndexForText(displayText, 'vi');
-        
-        if (results.length > 0 && results[0].Place?.Geometry?.Point) {
-          const [longitude, latitude] = results[0].Place.Geometry.Point;
-          const safeLat = Number(latitude);
-          const safeLng = Number(longitude);
-          
-          if (!isNaN(safeLat) && !isNaN(safeLng)) {
-            const zoomLevel = 16; // 기본값: 건물 단위
-            
-            map.current.flyTo({
-              center: [safeLng, safeLat],
-              zoom: zoomLevel,
-              duration: 1200,
-              essential: true,
-            });
 
-            if (marker.current) {
-              marker.current.remove();
-            }
-            marker.current = new maplibregl.Marker({
-              color: '#FF6B35',
-              scale: 1.2,
-            })
-              .setLngLat([safeLng, safeLat])
-              .addTo(map.current);
-
-            map.current.once('moveend', () => {
-              if (updateVisiblePropertiesRef.current) {
-                updateVisiblePropertiesRef.current();
-              }
-            });
-          }
-        }
-      } catch (apiError) {
-        console.warn('API 재검색 실패:', apiError);
+        map.current.once('moveend', () => {
+          if (updateVisiblePropertiesRef.current) updateVisiblePropertiesRef.current();
+        });
       }
-    } catch (error) {
-      console.error('Error getting place details:', error);
-    } finally {
-      setIsSearching(false);
     }
+    setIsSearching(false);
   };
 
-  // 검색창 초기화
+  // 검색창 초기화 (구 필터도 해제)
   const handleClearSearch = () => {
     setSearchValue('');
     setSuggestions([]);
     setShowSuggestions(false);
+    setSelectedDistrictIdFilter(null);
   };
 
   // 엔터 키로 검색 (첫 번째 결과로 이동)

@@ -10,7 +10,7 @@ import { SupportedLanguage } from '../api/translation';
  * 중요: .toISOString()은 UTC로 변환하여 날짜가 하루 전으로 보일 수 있으므로 사용하지 않음.
  * 대신 로컬 시간(한국/베트남) 기준의 연, 월, 일을 직접 추출하여 YYYY-MM-DD 생성.
  */
-export function toISODateString(date: Date | string): string {
+export function toISODateString(date: Date | string | undefined): string {
   if (!date) return '';
   
   // 1. 이미 YYYY-MM-DD 형식이면 그대로 반환

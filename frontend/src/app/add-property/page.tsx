@@ -29,7 +29,7 @@ import CalendarComponent from "@/components/CalendarComponent";
 import AddressVerificationModal from "@/components/AddressVerificationModal";
 // 기존 import들 사이에 추가
 import { uploadToS3 } from "@/lib/s3-client";
-import { AMENITY_OPTIONS } from "@/lib/constants/amenities";
+import { FACILITY_OPTIONS, FACILITY_CATEGORIES } from "@/lib/constants/facilities";
 
 export default function AddPropertyPage() {
   const router = useRouter();
@@ -46,16 +46,43 @@ export default function AddPropertyPage() {
   const [buildingNumber, setBuildingNumber] = useState(""); // 동
   const [roomNumber, setRoomNumber] = useState(""); // 호실
   const [weeklyRent, setWeeklyRent] = useState("");
-  const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
+  const [selectedFacilities, setSelectedFacilities] = useState<string[]>([]);
+  const [propertyType, setPropertyType] = useState<
+    "" | "studio" | "one_room" | "two_room" | "three_plus" | "detached"
+  >("");
+  const [cleaningPerWeek, setCleaningPerWeek] = useState(1);
+  const [petFeeAmount, setPetFeeAmount] = useState("");
   const [coordinates, setCoordinates] = useState<{
     lat: number;
     lng: number;
   } | null>(null);
   const [maxAdults, setMaxAdults] = useState(1);
   const [maxChildren, setMaxChildren] = useState(0);
-  const [bedrooms, setBedrooms] = useState(1);
-  const [bathrooms, setBathrooms] = useState(1);
+  const [bedrooms, setBedrooms] = useState(0);
+  const [bathrooms, setBathrooms] = useState(0);
   const [propertyDescription, setPropertyDescription] = useState("");
+
+  // 매물종류에 따라 방/화장실 제한 적용
+  useEffect(() => {
+    if (!propertyType) {
+      setBedrooms(0);
+      setBathrooms(0);
+      return;
+    }
+    if (propertyType === "studio" || propertyType === "one_room") {
+      setBedrooms(1);
+      setBathrooms((b) => (b < 1 || b > 2 ? 1 : b));
+    } else if (propertyType === "two_room") {
+      setBedrooms(2);
+      setBathrooms((b) => (b < 1 || b > 3 ? 1 : b));
+    } else if (propertyType === "three_plus") {
+      setBedrooms((prev) => (prev >= 2 && prev <= 5 ? prev : 2));
+      setBathrooms((b) => (b < 1 || b > 6 ? 1 : b));
+    } else if (propertyType === "detached") {
+      setBedrooms((b) => Math.min(10, Math.max(1, b || 1)));
+      setBathrooms((b) => Math.min(10, Math.max(1, b || 1)));
+    }
+  }, [propertyType]);
 
   // 임대 희망 날짜
   const [showCalendar, setShowCalendar] = useState(false);
@@ -298,14 +325,36 @@ export default function AddPropertyPage() {
     setImagePreviews(newPreviews);
   };
 
-  // 편의시설 선택/해제
-  const toggleAmenity = (amenityId: string) => {
-    setSelectedAmenities((prev) =>
-      prev.includes(amenityId)
-        ? prev.filter((id) => id !== amenityId)
-        : [...prev, amenityId],
+  // 숙소시설 및 정책 선택/해제
+  const toggleFacility = (facilityId: string) => {
+    setSelectedFacilities((prev) =>
+      prev.includes(facilityId)
+        ? prev.filter((id) => id !== facilityId)
+        : [...prev, facilityId],
     );
   };
+
+  const petAllowed = selectedFacilities.includes("pet");
+
+  // 방 개수 옵션 (매물종류별)
+  const bedroomOptions = (() => {
+    if (!propertyType) return [];
+    if (propertyType === "studio" || propertyType === "one_room") return [1];
+    if (propertyType === "two_room") return [2];
+    if (propertyType === "three_plus") return [2, 3, 4, 5]; // 5 = 5+
+    if (propertyType === "detached") return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    return [];
+  })();
+
+  // 화장실 개수 옵션 (매물종류별)
+  const bathroomOptions = (() => {
+    if (!propertyType) return [];
+    if (propertyType === "studio" || propertyType === "one_room") return [1, 2];
+    if (propertyType === "two_room") return [1, 2, 3];
+    if (propertyType === "three_plus") return [1, 2, 3, 4, 5, 6]; // 6 = 5+
+    if (propertyType === "detached") return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    return [];
+  })();
 
   // 폼 제출
   const handleSubmit = async (e: React.FormEvent) => {
@@ -365,6 +414,17 @@ export default function AddPropertyPage() {
           : currentLanguage === "vi"
             ? "Vui lòng nhập giá thuê hợp lệ."
             : "Please enter a valid rent amount.",
+      );
+      return;
+    }
+
+    if (!propertyType) {
+      alert(
+        currentLanguage === "ko"
+          ? "매물 종류를 선택해주세요."
+          : currentLanguage === "vi"
+            ? "Vui lòng chọn loại bất động sản."
+            : "Please select property type.",
       );
       return;
     }
@@ -497,8 +557,12 @@ export default function AddPropertyPage() {
         coordinates: coordinates, // 좌표는 필수 (위에서 검증됨)
         address: publicAddress, // 동호수 제외
         images: imageUrls,
-        amenities: selectedAmenities,
+        amenities: selectedFacilities,
         unitNumber: unitNumber, // 동호수 (예약 완료 후에만 표시, 비공개)
+        propertyType,
+        cleaningPerWeek,
+        petAllowed,
+        ...(petAllowed && petFeeAmount.trim() && { petFee: parseInt(petFeeAmount.replace(/\D/g, ""), 10) || undefined }),
         ownerId: user.uid, // 임대인 사용자 ID 저장
         checkInDate: checkInDateObj,
         checkOutDate: checkOutDateObj,
@@ -931,6 +995,104 @@ export default function AddPropertyPage() {
               )}
             </div>
 
+            {/* 매물 종류 / 방 개수 / 화장실 수 */}
+            <div className="space-y-4">
+              <label className="block text-sm font-medium text-gray-700">
+                {currentLanguage === "ko"
+                  ? "매물 종류"
+                  : currentLanguage === "vi"
+                    ? "Loại bất động sản"
+                    : "Property Type"}
+                <span className="text-red-500 text-xs ml-1">*</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {(
+                  [
+                    { value: "studio", ko: "스튜디오", vi: "Studio", en: "Studio" },
+                    { value: "one_room", ko: "원룸(방·거실 분리)", vi: "1 phòng", en: "1 Room" },
+                    { value: "two_room", ko: "2룸", vi: "2 phòng", en: "2 Rooms" },
+                    { value: "three_plus", ko: "3+룸", vi: "3+ phòng", en: "3+ Rooms" },
+                    { value: "detached", ko: "독채", vi: "Nhà riêng", en: "Detached" },
+                  ] as const
+                ).map(({ value, ko, vi, en }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setPropertyType(value)}
+                    className={`px-4 py-2.5 rounded-xl border-2 text-sm font-medium transition-all ${
+                      propertyType === value
+                        ? "border-blue-500 bg-blue-50 text-blue-700"
+                        : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
+                    }`}
+                  >
+                    {currentLanguage === "ko" ? ko : currentLanguage === "vi" ? vi : en}
+                  </button>
+                ))}
+              </div>
+
+              {propertyType && (
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                      {currentLanguage === "ko" ? "방 개수" : currentLanguage === "vi" ? "Số phòng" : "Bedrooms"}
+                    </label>
+                    <select
+                      value={bedrooms}
+                      onChange={(e) => setBedrooms(Number(e.target.value))}
+                      className="w-full px-4 py-2.5 bg-gray-50 border-2 border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      {bedroomOptions.map((n) => (
+                        <option key={n} value={n}>
+                          {n === 5 && (propertyType === "three_plus" || propertyType === "detached")
+                            ? "5+"
+                            : n}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                      {currentLanguage === "ko" ? "화장실 수" : currentLanguage === "vi" ? "Số phòng tắm" : "Bathrooms"}
+                    </label>
+                    <select
+                      value={bathrooms}
+                      onChange={(e) => setBathrooms(Number(e.target.value))}
+                      className="w-full px-4 py-2.5 bg-gray-50 border-2 border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      {bathroomOptions.map((n) => (
+                        <option key={n} value={n}>
+                          {n === 6 && propertyType === "three_plus" ? "5+" : n}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 주당 청소 횟수 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {currentLanguage === "ko"
+                  ? "주당 청소 횟수"
+                  : currentLanguage === "vi"
+                    ? "Số lần dọn dẹp mỗi tuần"
+                    : "Cleaning per week"}
+              </label>
+              <select
+                value={cleaningPerWeek}
+                onChange={(e) => setCleaningPerWeek(Number(e.target.value))}
+                className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                {[1, 2, 3, 4, 5, 6, 7].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                    {currentLanguage === "ko" ? "회" : currentLanguage === "vi" ? " lần" : "x"}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* 구분선 */}
             <div className="border-t border-gray-200 my-4"></div>
 
@@ -1289,126 +1451,69 @@ export default function AddPropertyPage() {
               </div>
             </div>
 
-            {/* 방/화장실 수 */}
+            {/* 숙소시설 및 정책 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-3">
                 {currentLanguage === "ko"
-                  ? "방/화장실 수"
+                  ? "숙소시설 및 정책"
                   : currentLanguage === "vi"
-                    ? "Số phòng/phòng tắm"
-                    : "Bedrooms/Bathrooms"}
+                    ? "Tiện ích và chính sách"
+                    : "Facilities & Policy"}
               </label>
-              <div className="grid grid-cols-2 gap-3">
-                {/* 침실 */}
-                <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg border-2 border-gray-200">
-                  <div className="flex items-center gap-2">
-                    <Bed className="w-4 h-4 text-gray-600" />
-                    <div>
-                      <div className="text-xs text-gray-500">
-                        {currentLanguage === "ko"
-                          ? "침실"
-                          : currentLanguage === "vi"
-                            ? "Phòng ngủ"
-                            : "Bedrooms"}
-                      </div>
-                      <div className="text-sm font-medium text-gray-900">
-                        {bedrooms}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setBedrooms(Math.max(0, bedrooms - 1))}
-                      className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-                    >
-                      <ChevronLeft className="w-4 h-4 text-gray-600" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setBedrooms(bedrooms + 1)}
-                      className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-                    >
-                      <ChevronRight className="w-4 h-4 text-gray-600" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* 화장실 */}
-                <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg border-2 border-gray-200">
-                  <div className="flex items-center gap-2">
-                    <Bath className="w-4 h-4 text-gray-600" />
-                    <div>
-                      <div className="text-xs text-gray-500">
-                        {currentLanguage === "ko"
-                          ? "화장실"
-                          : currentLanguage === "vi"
-                            ? "Phòng tắm"
-                            : "Bathrooms"}
-                      </div>
-                      <div className="text-sm font-medium text-gray-900">
-                        {bathrooms}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setBathrooms(Math.max(0, bathrooms - 1))}
-                      className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-                    >
-                      <ChevronLeft className="w-4 h-4 text-gray-600" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setBathrooms(bathrooms + 1)}
-                      className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-                    >
-                      <ChevronRight className="w-4 h-4 text-gray-600" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* 편의시설 옵션 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                {currentLanguage === "ko"
-                  ? "편의시설"
-                  : currentLanguage === "vi"
-                    ? "Tiện ích"
-                    : "Amenities"}
-              </label>
-              <div className="grid grid-cols-3 gap-3">
-                {AMENITY_OPTIONS.map((amenity) => {
-                  const Icon = amenity.icon;
-                  const isSelected = selectedAmenities.includes(amenity.id);
-                  const langKey = currentLanguage;
-                  const label =
-                    (amenity.label as any)[currentLanguage] || amenity.label.en;
-
+              <div className="space-y-4">
+                {FACILITY_CATEGORIES.map((cat) => {
+                  const options = FACILITY_OPTIONS.filter((o) => o.category === cat.id);
+                  const catLabel = (cat.label as any)[currentLanguage] || cat.label.en;
                   return (
-                    <button
-                      key={amenity.id}
-                      type="button"
-                      onClick={() => toggleAmenity(amenity.id)}
-                      className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all ${
-                        isSelected
-                          ? "border-blue-500 bg-blue-50 text-blue-700"
-                          : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
-                      }`}
-                    >
-                      <Icon
-                        className={`w-6 h-6 ${isSelected ? "text-blue-600" : "text-gray-400"}`}
-                      />
-                      <span className="text-xs font-medium text-center">
-                        {label}
-                      </span>
-                    </button>
+                    <div key={cat.id}>
+                      <p className="text-xs font-medium text-gray-500 mb-2">{catLabel}</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {options.map((opt) => {
+                          const Icon = opt.icon;
+                          const isSelected = selectedFacilities.includes(opt.id);
+                          const label = (opt.label as any)[currentLanguage] || opt.label.en;
+                          return (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() => toggleFacility(opt.id)}
+                              className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border-2 transition-all ${
+                                isSelected
+                                  ? "border-blue-500 bg-blue-50 text-blue-700"
+                                  : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
+                              }`}
+                            >
+                              <Icon className={`w-5 h-5 ${isSelected ? "text-blue-600" : "text-gray-400"}`} />
+                              <span className="text-[10px] font-medium text-center leading-tight">{label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   );
                 })}
               </div>
+              {petAllowed && (
+                <div className="mt-3 p-3 bg-gray-50 rounded-xl border border-gray-200">
+                  <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                    {currentLanguage === "ko"
+                      ? "애완동물 추가 요금 (선택)"
+                      : currentLanguage === "vi"
+                        ? "Phí thú cưng thêm (tùy chọn)"
+                        : "Pet fee (optional)"}
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={petFeeAmount ? parseInt(petFeeAmount.replace(/\D/g, ""), 10).toLocaleString() : ""}
+                      onChange={(e) => setPetFeeAmount(e.target.value.replace(/\D/g, ""))}
+                      placeholder="0"
+                      className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    <span className="text-sm font-medium text-gray-600">VND</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* 매물 설명 */}
@@ -1522,7 +1627,10 @@ export default function AddPropertyPage() {
                 loading ||
                 imagePreviews.length === 0 ||
                 !weeklyRent ||
-                weeklyRent.replace(/\D/g, "") === ""
+                weeklyRent.replace(/\D/g, "") === "" ||
+                !propertyType ||
+                bedrooms === 0 ||
+                bathrooms === 0
               }
               className="w-full py-4 px-6 bg-blue-600 text-white rounded-xl font-semibold text-base hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center justify-center gap-2"
             >

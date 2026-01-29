@@ -30,7 +30,7 @@ import {
 import TopBar from "@/components/TopBar";
 import CalendarComponent from "@/components/CalendarComponent";
 import AddressVerificationModal from "@/components/AddressVerificationModal";
-import { AMENITY_OPTIONS } from "@/lib/constants/amenities";
+import { FACILITY_OPTIONS, FACILITY_CATEGORIES } from "@/lib/constants/facilities";
 import { parseDate } from "@/lib/utils/dateUtils";
 import { getUIText } from "@/utils/i18n";
 
@@ -783,29 +783,43 @@ function EditPropertyContent() {
               </div>
             </div>
 
-            {/* 편의시설 */}
+            {/* 숙소시설 및 정책 */}
             <section>
               <label className="block text-sm font-bold mb-3">
-                {getUIText('amenities', currentLanguage)}
+                {currentLanguage === "ko" ? "숙소시설 및 정책" : currentLanguage === "vi" ? "Tiện ích và chính sách" : "Facilities & Policy"}
               </label>
-              <div className="grid grid-cols-3 gap-2">
-                {AMENITY_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() =>
-                      setSelectedAmenities((prev) =>
-                        prev.includes(opt.id)
-                          ? prev.filter((x) => x !== opt.id)
-                          : [...prev, opt.id],
-                      )
-                    }
-                    className={`p-3 rounded-xl border text-[10px] flex flex-col items-center gap-1 transition-all ${selectedAmenities.includes(opt.id) ? "border-blue-500 bg-blue-50 text-blue-600" : "text-gray-400"}`}
-                  >
-                    <opt.icon size={18} />
-                    {opt.label[currentLanguage as "ko"] || opt.label.en}
-                  </button>
-                ))}
+              <div className="space-y-3">
+                {FACILITY_CATEGORIES.map((cat) => {
+                  const options = FACILITY_OPTIONS.filter((o) => o.category === cat.id);
+                  const catLabel = (cat.label as any)[currentLanguage] || cat.label.en;
+                  return (
+                    <div key={cat.id}>
+                      <p className="text-xs font-medium text-gray-500 mb-1.5">{catLabel}</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {options.map((opt) => {
+                          const Icon = opt.icon;
+                          const isSelected = selectedAmenities.includes(opt.id);
+                          const label = (opt.label as any)[currentLanguage] || opt.label.en;
+                          return (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() =>
+                                setSelectedAmenities((prev) =>
+                                  prev.includes(opt.id) ? prev.filter((x) => x !== opt.id) : [...prev, opt.id],
+                                )
+                              }
+                              className={`p-3 rounded-xl border text-[10px] flex flex-col items-center gap-1 transition-all ${isSelected ? "border-blue-500 bg-blue-50 text-blue-600" : "text-gray-400"}`}
+                            >
+                              <Icon size={18} />
+                              {label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </section>
 

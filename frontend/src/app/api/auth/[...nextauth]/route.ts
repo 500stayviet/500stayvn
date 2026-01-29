@@ -2,6 +2,21 @@ import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import FacebookProvider from "next-auth/providers/facebook";
 
+// NextAuth 타입 확장
+declare module "next-auth" {
+  interface User {
+    id?: string;
+  }
+  interface Session {
+    user: {
+      id?: string;
+      name?: string | null;
+      email?: string | null;
+      image?: string | null;
+    };
+  }
+}
+
 const handler = NextAuth({
   providers: [
     GoogleProvider({
@@ -15,7 +30,7 @@ const handler = NextAuth({
   ],
   callbacks: {
     async session({ session, token }) {
-      if (session.user) {
+      if (session.user && token.sub) {
         session.user.id = token.sub;
       }
       return session;

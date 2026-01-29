@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { translate, translateBatch, detectLanguage, getSupportedLanguages } from '@/lib/api/translation';
-import { SupportedLanguage } from '@/lib/api/translation';
+import { translate, SupportedLanguage } from '@/lib/api/translation';
 import { Loader2, CheckCircle2, XCircle, Languages } from 'lucide-react';
 
 export default function AdminPage() {
@@ -23,12 +22,13 @@ export default function AdminPage() {
     zh: '中文',
   };
 
-  // 지원 언어 목록 조회
+  // 지원 언어 목록 조회 (하드코딩된 목록 반환)
   const handleGetSupportedLanguages = async () => {
     setLoading(true);
     setError(null);
     try {
-      const langs = await getSupportedLanguages();
+      // Gemini API에서 지원하는 언어 목록 (현재 구현된 언어)
+      const langs: SupportedLanguage[] = ['en', 'ko', 'vi', 'ja', 'zh'];
       setSupportedLangs(langs);
       setResult({ languages: langs });
     } catch (err) {
@@ -38,7 +38,7 @@ export default function AdminPage() {
     }
   };
 
-  // 언어 감지
+  // 언어 감지 (단순히 Gemini API를 통해 번역 시도)
   const handleDetectLanguage = async () => {
     if (!text.trim()) {
       setError('텍스트를 입력해주세요.');
@@ -47,8 +47,12 @@ export default function AdminPage() {
     setLoading(true);
     setError(null);
     try {
-      const detected = await detectLanguage(text);
-      setResult({ detectedLanguage: detected });
+      // Gemini API는 언어 감지 기능이 없으므로, 영어로 번역 시도하여 결과 확인
+      const translation = await translate(text, 'en');
+      setResult({ 
+        detectedLanguage: translation.sourceLanguage,
+        confidence: translation.confidence || 0.9 
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
@@ -78,7 +82,7 @@ export default function AdminPage() {
     }
   };
 
-  // 배치 번역
+  // 배치 번역 (여러 줄을 개별적으로 번역)
   const handleTranslateBatch = async () => {
     const texts = text.split('\n').filter(t => t.trim());
     if (texts.length === 0) {
@@ -88,12 +92,17 @@ export default function AdminPage() {
     setLoading(true);
     setError(null);
     try {
-      const batchResult = await translateBatch(
-        texts,
-        targetLang,
-        sourceLang || undefined
+      const batchResult = await Promise.all(
+        texts.map(async (text) => {
+          const translation = await translate(
+            text,
+            targetLang,
+            sourceLang || undefined
+          );
+          return translation;
+        })
       );
-      setResult(batchResult);
+      setResult({ translations: batchResult });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {

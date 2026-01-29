@@ -328,7 +328,7 @@ function BookingContent() {
                   onPhoneChange={(normalized, isComplete) => {
                     setPhoneNumber(normalized);
                   }}
-                  initialValue={user?.phoneNumber || ''}
+                  initialValue={''}
                 />
               </div>
               <label className="flex items-start gap-3 text-xs text-gray-600 cursor-pointer">

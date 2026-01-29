@@ -161,7 +161,11 @@ export type UITextKey =
   | 'bookingRequest'
   | 'bookingConfirmed'
   | 'requestCancelled'
-  | 'bookingCancelled';
+  | 'bookingCancelled'
+  | 'searchPlaceholderCityDistrict'
+  | 'labelCity'
+  | 'labelDistrict'
+  | 'selectDistrictPlaceholder';
 
 /**
  * 언어별 UI 텍스트 사전
@@ -319,6 +323,10 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     bookingConfirmed: '예약 확정',
     requestCancelled: '요청 취소',
     bookingCancelled: '예약 취소',
+    searchPlaceholderCityDistrict: '여행할 도시와 구를 검색하세요',
+    labelCity: '도시',
+    labelDistrict: '구',
+    selectDistrictPlaceholder: '구 선택',
   },
   vi: {
     login: 'Đăng nhập',
@@ -472,6 +480,10 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     bookingConfirmed: 'Đặt phòng đã xác nhận',
     requestCancelled: 'Yêu cầu đã hủy',
     bookingCancelled: 'Đặt phòng đã hủy',
+    searchPlaceholderCityDistrict: 'Tìm kiếm thành phố và quận bạn muốn đến',
+    labelCity: 'Thành phố',
+    labelDistrict: 'Quận',
+    selectDistrictPlaceholder: 'Chọn quận',
   },
   en: {
     login: 'Login',
@@ -625,6 +637,10 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     bookingConfirmed: 'Booking Confirmed',
     requestCancelled: 'Request Cancelled',
     bookingCancelled: 'Booking Cancelled',
+    searchPlaceholderCityDistrict: 'Search for the city and district you want to visit',
+    labelCity: 'City',
+    labelDistrict: 'District',
+    selectDistrictPlaceholder: 'Select district',
   },
   ja: {
     login: 'ログイン',
@@ -778,6 +794,10 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     bookingConfirmed: '予約確定',
     requestCancelled: 'リクエストキャンセル',
     bookingCancelled: '予約キャンセル',
+    searchPlaceholderCityDistrict: '旅行したい都市と区を検索',
+    labelCity: '都市',
+    labelDistrict: '区',
+    selectDistrictPlaceholder: '区を選択',
   },
   zh: {
     login: '登录',
@@ -931,6 +951,10 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     bookingConfirmed: '预订确认',
     requestCancelled: '请求取消',
     bookingCancelled: '预订取消',
+    searchPlaceholderCityDistrict: '搜索您要去的城市和区',
+    labelCity: '城市',
+    labelDistrict: '区',
+    selectDistrictPlaceholder: '选择区',
   },
 };
 
