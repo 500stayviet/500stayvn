@@ -165,7 +165,11 @@ export type UITextKey =
   | 'searchPlaceholderCityDistrict'
   | 'labelCity'
   | 'labelDistrict'
-  | 'selectDistrictPlaceholder';
+  | 'selectDistrictPlaceholder'
+  | 'selectDatesAndGuests'
+  | 'guestSelect'
+  | 'maxSuffix'
+  | 'guestOverMaxNotice';
 
 /**
  * 언어별 UI 텍스트 사전
@@ -327,6 +331,10 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     labelCity: '도시',
     labelDistrict: '구',
     selectDistrictPlaceholder: '구 선택',
+    selectDatesAndGuests: '예약날짜 및 인원 선택',
+    guestSelect: '인원 선택',
+    maxSuffix: '(최대)',
+    guestOverMaxNotice: '최대인원을 초과할시 인원추가료가 발생할 수 있습니다.',
   },
   vi: {
     login: 'Đăng nhập',
@@ -484,6 +492,10 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     labelCity: 'Thành phố',
     labelDistrict: 'Quận',
     selectDistrictPlaceholder: 'Chọn quận',
+    selectDatesAndGuests: 'Chọn ngày đặt phòng và số người',
+    guestSelect: 'Số người',
+    maxSuffix: '(tối đa)',
+    guestOverMaxNotice: 'Vượt quá số người tối đa có thể phát sinh phí bổ sung.',
   },
   en: {
     login: 'Login',
@@ -641,6 +653,10 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     labelCity: 'City',
     labelDistrict: 'District',
     selectDistrictPlaceholder: 'Select district',
+    selectDatesAndGuests: 'Select dates & guests',
+    guestSelect: 'Guests',
+    maxSuffix: '(max)',
+    guestOverMaxNotice: 'Additional charges may apply if you exceed the maximum number of guests.',
   },
   ja: {
     login: 'ログイン',
@@ -798,6 +814,10 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     labelCity: '都市',
     labelDistrict: '区',
     selectDistrictPlaceholder: '区を選択',
+    selectDatesAndGuests: '予約日・人数選択',
+    guestSelect: '人数選択',
+    maxSuffix: '(最大)',
+    guestOverMaxNotice: '最大人数を超えると追加料金が発生する場合があります。',
   },
   zh: {
     login: '登录',
@@ -955,6 +975,10 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     labelCity: '城市',
     labelDistrict: '区',
     selectDistrictPlaceholder: '选择区',
+    selectDatesAndGuests: '选择预订日期及人数',
+    guestSelect: '人数选择',
+    maxSuffix: '(最多)',
+    guestOverMaxNotice: '超过最大人数时可能产生额外费用。',
   },
 };
 

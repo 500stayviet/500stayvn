@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { 
   X, 
   ChevronLeft, 
   ChevronRight, 
+  ChevronDown,
   Calendar, 
   Users, 
   Bed, 
@@ -65,6 +66,26 @@ export default function PropertyModal({
   const [showModalCalendar, setShowModalCalendar] = useState(false);
   const [modalCalendarMode, setModalCalendarMode] = useState<'checkin' | 'checkout'>('checkin');
   const [bookedRanges, setBookedRanges] = useState<{ checkIn: Date; checkOut: Date }[]>([]);
+  const [selectedGuests, setSelectedGuests] = useState(1);
+  const [showGuestDropdown, setShowGuestDropdown] = useState(false);
+  const guestDropdownRef = useRef<HTMLDivElement>(null);
+
+  const maxGuests = Math.max(1, (propertyData?.maxAdults ?? 0) + (propertyData?.maxChildren ?? 0));
+
+  useEffect(() => {
+    const max = Math.max(1, (propertyData?.maxAdults ?? 0) + (propertyData?.maxChildren ?? 0));
+    setSelectedGuests((prev) => (prev > max ? max : prev));
+  }, [propertyData?.maxAdults, propertyData?.maxChildren]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (guestDropdownRef.current && !guestDropdownRef.current.contains(e.target as Node)) {
+        setShowGuestDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // 상세페이지와 동일: getBookedRangesForProperty + iCal 병합 → 달력 가용 구간과 동일하게 표시
   useEffect(() => {
@@ -383,19 +404,20 @@ export default function PropertyModal({
             </div>
           )}
 
-          {/* 날짜 선택 */}
+          {/* 예약날짜 및 인원 선택 (5개국어: i18n) */}
           <div className="pt-2 border-t border-gray-100">
             <p className="text-xs text-gray-500 mb-3">
-              {getUIText('selectBookingDates', currentLanguage)}
+              {getUIText('selectDatesAndGuests', currentLanguage)}
             </p>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {/* 체크인 선택 */}
               <button
                 onClick={() => {
                   setModalCalendarMode('checkin');
                   setShowModalCalendar(true);
+                  setShowGuestDropdown(false);
                 }}
-                className={`flex flex-col items-center px-3 py-2.5 rounded-xl border-2 transition-all ${
+                className={`flex flex-col items-center px-2 py-2.5 rounded-xl border-2 transition-all ${
                   modalCheckInDate 
                     ? 'border-blue-500 bg-blue-50' 
                     : 'border-gray-200 bg-gray-50 hover:border-blue-300'
@@ -404,7 +426,7 @@ export default function PropertyModal({
                 <span className="text-[10px] text-gray-500 mb-1">
                   {getUIText('checkIn', currentLanguage)}
                 </span>
-                <span className={`text-sm font-semibold ${modalCheckInDate ? 'text-blue-600' : 'text-gray-400'}`}>
+                <span className={`text-xs font-semibold ${modalCheckInDate ? 'text-blue-600' : 'text-gray-400'}`}>
                   {modalCheckInDate 
                     ? modalCheckInDate.toLocaleDateString(
                         currentLanguage === 'ko' ? 'ko-KR' : currentLanguage === 'vi' ? 'vi-VN' : 'en-US',
@@ -420,8 +442,9 @@ export default function PropertyModal({
                 onClick={() => {
                   setModalCalendarMode('checkout');
                   setShowModalCalendar(true);
+                  setShowGuestDropdown(false);
                 }}
-                className={`flex flex-col items-center px-3 py-2.5 rounded-xl border-2 transition-all ${
+                className={`flex flex-col items-center px-2 py-2.5 rounded-xl border-2 transition-all ${
                   modalCheckOutDate 
                     ? 'border-blue-500 bg-blue-50' 
                     : 'border-gray-200 bg-gray-50 hover:border-blue-300'
@@ -430,7 +453,7 @@ export default function PropertyModal({
                 <span className="text-[10px] text-gray-500 mb-1">
                   {getUIText('checkOut', currentLanguage)}
                 </span>
-                <span className={`text-sm font-semibold ${modalCheckOutDate ? 'text-blue-600' : 'text-gray-400'}`}>
+                <span className={`text-xs font-semibold ${modalCheckOutDate ? 'text-blue-600' : 'text-gray-400'}`}>
                   {modalCheckOutDate 
                     ? modalCheckOutDate.toLocaleDateString(
                         currentLanguage === 'ko' ? 'ko-KR' : currentLanguage === 'vi' ? 'vi-VN' : 'en-US',
@@ -440,7 +463,58 @@ export default function PropertyModal({
                   }
                 </span>
               </button>
+
+              {/* 인원 선택 (체크아웃 우측) */}
+              <div className="relative" ref={guestDropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowGuestDropdown(!showGuestDropdown);
+                    setShowModalCalendar(false);
+                  }}
+                  className={`w-full h-full min-h-[52px] flex flex-col items-center justify-center px-2 py-2.5 rounded-xl border-2 transition-all ${
+                    showGuestDropdown ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-gray-50 hover:border-blue-300'
+                  }`}
+                >
+                  <span className="text-[10px] text-gray-500 mb-1">
+                    {getUIText('guestSelect', currentLanguage)}
+                  </span>
+                  <span className="text-xs font-semibold text-gray-900 flex items-center gap-0.5">
+                    {selectedGuests}
+                    <ChevronDown className={`w-3.5 h-3.5 text-gray-500 transition-transform ${showGuestDropdown ? 'rotate-180' : ''}`} />
+                  </span>
+                </button>
+                {showGuestDropdown && (
+                  <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg py-1 max-h-40 overflow-y-auto">
+                    {Array.from({ length: maxGuests }, (_, i) => i + 1).map((n) => (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => {
+                          setSelectedGuests(n);
+                          setShowGuestDropdown(false);
+                        }}
+                        className={`w-full text-left px-3 py-2 text-sm ${selectedGuests === n ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700 hover:bg-gray-50'}`}
+                      >
+                        {n} {currentLanguage === 'ko' ? '명' : currentLanguage === 'vi' ? 'người' : currentLanguage === 'ja' ? '名' : currentLanguage === 'zh' ? '人' : ''}
+                        {n === maxGuests && (
+                          <span className="text-gray-500 font-normal">
+                            {' '}{getUIText('maxSuffix', currentLanguage)}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
+
+            {/* 임대인 최대인원 선택 시에만 경고 — 인원 선택 아래, 예약하기 버튼 위 (빨간색, 글자 축소, 5개국어) */}
+            {maxGuests > 0 && selectedGuests === maxGuests && (
+              <p className="mt-3 text-xs text-red-600 font-medium">
+                {getUIText('guestOverMaxNotice', currentLanguage)}
+              </p>
+            )}
           </div>
 
           {/* 예약하기 버튼 */}
@@ -449,15 +523,17 @@ export default function PropertyModal({
               onClick={() => {
                 if (!modalCheckInDate || !modalCheckOutDate || !propertyData.id) return;
                 
+                const query = `propertyId=${propertyData.id}&checkIn=${toISODateString(modalCheckInDate)}&checkOut=${toISODateString(modalCheckOutDate)}&guests=${selectedGuests}`;
+                
                 // 비회원이면 로그인 페이지로 이동 (현재 매물 정보를 returnUrl에 포함)
                 if (!user) {
-                  const returnUrl = `/booking?propertyId=${propertyData.id}&checkIn=${toISODateString(modalCheckInDate)}&checkOut=${toISODateString(modalCheckOutDate)}`;
+                  const returnUrl = `/booking?${query}`;
                   router.push(`/login?returnUrl=${encodeURIComponent(returnUrl)}`);
                   return;
                 }
                 
                 // 로그인된 사용자는 예약 페이지로 이동
-                router.push(`/booking?propertyId=${propertyData.id}&checkIn=${toISODateString(modalCheckInDate)}&checkOut=${toISODateString(modalCheckOutDate)}`);
+                router.push(`/booking?${query}`);
               }}
               disabled={!modalCheckInDate || !modalCheckOutDate}
               className={`w-full py-3.5 rounded-xl font-bold text-base transition-all shadow-lg ${

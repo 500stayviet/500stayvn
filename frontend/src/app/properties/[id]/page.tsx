@@ -8,14 +8,14 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { getProperty, getBookedRangesForProperty } from '@/lib/api/properties';
 import { PropertyData } from '@/types/property';
 import { getBookableDateSegments } from '@/lib/utils/propertyUtils';
 import { useLanguage } from '@/contexts/LanguageContext';
 import Image from 'next/image';
-import { MapPin, Bed, Bath, Square, ArrowLeft, Wind, Sofa, UtensilsCrossed, WashingMachine, Refrigerator, Table, Shirt, Wifi, Calendar, Users, ChevronLeft, ChevronRight } from 'lucide-react';
+import { MapPin, Bed, Bath, Square, ArrowLeft, Wind, Sofa, UtensilsCrossed, WashingMachine, Refrigerator, Table, Shirt, Wifi, Calendar, Users, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import TopBar from '@/components/TopBar';
 import { PropertyDescription } from '@/components/PropertyDescription';
 import CalendarComponent from '@/components/CalendarComponent';
@@ -32,6 +32,7 @@ import {
   formatDateForBadge 
 } from '@/lib/utils/dateUtils';
 import { SupportedLanguage } from '@/lib/api/translation';
+import { getUIText } from '@/utils/i18n';
 
 export default function PropertyDetailPage() {
   const router = useRouter();
@@ -48,6 +49,27 @@ export default function PropertyDetailPage() {
   const [pageCheckOutDate, setPageCheckOutDate] = useState<Date | null>(null);
   const [showPageCalendar, setShowPageCalendar] = useState(false);
   const [pageCalendarMode, setPageCalendarMode] = useState<'checkin' | 'checkout'>('checkin');
+  const [selectedGuests, setSelectedGuests] = useState<number>(1);
+  const [showGuestDropdown, setShowGuestDropdown] = useState(false);
+  const guestDropdownRef = useRef<HTMLDivElement>(null);
+
+  const maxGuests = Math.max(1, (property?.maxAdults ?? 0) + (property?.maxChildren ?? 0));
+
+  useEffect(() => {
+    if (!property) return;
+    const max = Math.max(1, (property.maxAdults ?? 0) + (property.maxChildren ?? 0));
+    setSelectedGuests((prev) => (prev > max ? max : prev));
+  }, [property?.maxAdults, property?.maxChildren]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (guestDropdownRef.current && !guestDropdownRef.current.contains(e.target as Node)) {
+        setShowGuestDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     const fetchProperty = async () => {
@@ -424,21 +446,20 @@ export default function PropertyDetailPage() {
               </div>
             )}
 
-            {/* 날짜 선택 (달력) */}
+            {/* 예약날짜 및 인원 선택 (5개국어: i18n) */}
             {(property.checkInDate || property.checkOutDate) && (
               <div className="pt-4 border-t border-gray-100">
                 <p className="text-xs text-gray-500 mb-3">
-                  {currentLanguage === 'ko' ? '날짜 선택' : 
-                   currentLanguage === 'vi' ? 'Chọn ngày' : 
-                   'Select Dates'}
+                  {getUIText('selectDatesAndGuests', currentLanguage)}
                 </p>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   <button
                     onClick={() => {
                       setPageCalendarMode('checkin');
                       setShowPageCalendar(true);
+                      setShowGuestDropdown(false);
                     }}
-                    className={`flex flex-col items-center px-3 py-2.5 rounded-xl border-2 transition-all ${
+                    className={`flex flex-col items-center px-2 py-2.5 rounded-xl border-2 transition-all ${
                       pageCheckInDate 
                         ? 'border-blue-500 bg-blue-50' 
                         : 'border-gray-200 bg-gray-50 hover:border-blue-300'
@@ -447,21 +468,22 @@ export default function PropertyDetailPage() {
                     <span className="text-[10px] text-gray-500 mb-1">
                       {currentLanguage === 'ko' ? '체크인' : currentLanguage === 'vi' ? 'Nhận phòng' : 'Check-in'}
                     </span>
-                    <span className={`text-sm font-semibold ${pageCheckInDate ? 'text-blue-600' : 'text-gray-400'}`}>
+                    <span className={`text-xs font-semibold ${pageCheckInDate ? 'text-blue-600' : 'text-gray-400'}`}>
                       {pageCheckInDate 
                         ? pageCheckInDate.toLocaleDateString(
                             currentLanguage === 'ko' ? 'ko-KR' : currentLanguage === 'vi' ? 'vi-VN' : 'en-US',
                             { month: 'short', day: 'numeric' }
                           )
-                        : (currentLanguage === 'ko' ? '날짜 선택' : currentLanguage === 'vi' ? 'Chọn ngày' : 'Select')}
+                        : (currentLanguage === 'ko' ? '날짜를 선택하세요' : currentLanguage === 'vi' ? 'Chọn ngày' : 'Select date')}
                     </span>
                   </button>
                   <button
                     onClick={() => {
                       setPageCalendarMode('checkout');
                       setShowPageCalendar(true);
+                      setShowGuestDropdown(false);
                     }}
-                    className={`flex flex-col items-center px-3 py-2.5 rounded-xl border-2 transition-all ${
+                    className={`flex flex-col items-center px-2 py-2.5 rounded-xl border-2 transition-all ${
                       pageCheckOutDate 
                         ? 'border-blue-500 bg-blue-50' 
                         : 'border-gray-200 bg-gray-50 hover:border-blue-300'
@@ -470,16 +492,64 @@ export default function PropertyDetailPage() {
                     <span className="text-[10px] text-gray-500 mb-1">
                       {currentLanguage === 'ko' ? '체크아웃' : currentLanguage === 'vi' ? 'Trả phòng' : 'Check-out'}
                     </span>
-                    <span className={`text-sm font-semibold ${pageCheckOutDate ? 'text-blue-600' : 'text-gray-400'}`}>
+                    <span className={`text-xs font-semibold ${pageCheckOutDate ? 'text-blue-600' : 'text-gray-400'}`}>
                       {pageCheckOutDate 
                         ? pageCheckOutDate.toLocaleDateString(
                             currentLanguage === 'ko' ? 'ko-KR' : currentLanguage === 'vi' ? 'vi-VN' : 'en-US',
                             { month: 'short', day: 'numeric' }
                           )
-                        : (currentLanguage === 'ko' ? '날짜 선택' : currentLanguage === 'vi' ? 'Chọn ngày' : 'Select')}
+                        : (currentLanguage === 'ko' ? '날짜를 선택하세요' : currentLanguage === 'vi' ? 'Chọn ngày' : 'Select date')}
                     </span>
                   </button>
+                  <div className="relative" ref={guestDropdownRef}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowGuestDropdown(!showGuestDropdown);
+                        setShowPageCalendar(false);
+                      }}
+                      className={`w-full h-full min-h-[52px] flex flex-col items-center justify-center px-2 py-2.5 rounded-xl border-2 transition-all ${
+                        showGuestDropdown ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-gray-50 hover:border-blue-300'
+                      }`}
+                    >
+                      <span className="text-[10px] text-gray-500 mb-1">
+                        {getUIText('guestSelect', currentLanguage)}
+                      </span>
+                      <span className="text-xs font-semibold text-gray-900 flex items-center gap-0.5">
+                        {selectedGuests}
+                        <ChevronDown className={`w-3.5 h-3.5 text-gray-500 transition-transform ${showGuestDropdown ? 'rotate-180' : ''}`} />
+                      </span>
+                    </button>
+                    {showGuestDropdown && (
+                      <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg py-1 max-h-48 overflow-y-auto">
+                        {Array.from({ length: maxGuests }, (_, i) => i + 1).map((n) => (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => {
+                              setSelectedGuests(n);
+                              setShowGuestDropdown(false);
+                            }}
+                            className={`w-full text-left px-3 py-2.5 text-sm ${selectedGuests === n ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700 hover:bg-gray-50'}`}
+                          >
+                            {n} {currentLanguage === 'ko' ? '명' : currentLanguage === 'vi' ? 'người' : currentLanguage === 'ja' ? '名' : currentLanguage === 'zh' ? '人' : ''}
+                            {n === maxGuests && (
+                              <span className="text-gray-500 font-normal">
+                                {' '}{getUIText('maxSuffix', currentLanguage)}
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
+                {/* 임대인 최대인원 선택 시에만 경고 — 인원 선택 아래, 예약하기 버튼 위 (빨간색, 글자 축소, 5개국어) */}
+                {maxGuests > 0 && selectedGuests === maxGuests && (
+                  <p className="mt-3 text-xs text-red-600 font-medium">
+                    {getUIText('guestOverMaxNotice', currentLanguage)}
+                  </p>
+                )}
               </div>
             )}
 
@@ -495,7 +565,7 @@ export default function PropertyDetailPage() {
                     return c;
                   })();
 
-                  const returnUrl = `/booking?propertyId=${propertyId}&checkIn=${toISODateString(checkIn)}&checkOut=${toISODateString(checkOut)}`;
+                  const returnUrl = `/booking?propertyId=${propertyId}&checkIn=${toISODateString(checkIn)}&checkOut=${toISODateString(checkOut)}&guests=${selectedGuests}`;
                   
                   if (!user) {
                     router.push(`/login?returnUrl=${encodeURIComponent(returnUrl)}`);
