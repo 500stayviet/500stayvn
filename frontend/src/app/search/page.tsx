@@ -5,46 +5,58 @@
  * - 주소 기반 매물 필터링
  */
 
-'use client';
+"use client";
 
-import { useState, useEffect, useRef, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { getAvailableProperties } from '@/lib/api/properties';
-import { PropertyData } from '@/types/property';
-import { geocodeAddress } from '@/lib/api/geocoding';
-import { getUIText } from '@/utils/i18n';
-import PropertyCard from '@/components/PropertyCard';
-import { Home, User, Calendar, Users, ChevronLeft, ChevronRight, MapPin, Search, X } from 'lucide-react';
-import CalendarComponent from '@/components/CalendarComponent';
-import Image from 'next/image';
-import PropertyModal from '@/components/map/PropertyModal';
-import { 
-  formatPrice, 
-  formatFullPrice, 
-} from '@/lib/utils/propertyUtils';
-import { 
-  parseDate, 
+import { useState, useEffect, useRef, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { getAvailableProperties } from "@/lib/api/properties";
+import { PropertyData } from "@/types/property";
+import { geocodeAddress } from "@/lib/api/geocoding";
+import { getUIText } from "@/utils/i18n";
+import PropertyCard from "@/components/PropertyCard";
+import {
+  Home,
+  User,
+  Calendar,
+  Users,
+  ChevronLeft,
+  ChevronRight,
+  MapPin,
+  Search,
+  X,
+} from "lucide-react";
+import CalendarComponent from "@/components/CalendarComponent";
+import Image from "next/image";
+import PropertyModal from "@/components/map/PropertyModal";
+import { formatPrice, formatFullPrice } from "@/lib/utils/propertyUtils";
+import {
+  parseDate,
   isAvailableNow,
-  formatDateForBadge
-} from '@/lib/utils/dateUtils';
-import { VIETNAM_CITIES, getDistrictsByCityId, ALL_REGIONS, searchRegions } from '@/lib/data/vietnam-regions';
-import type { VietnamRegion } from '@/lib/data/vietnam-regions';
-import { 
-  useLocationSearch, 
-  getSuggestionBadge, 
-  cleanDisplayName, 
+  formatDateForBadge,
+} from "@/lib/utils/dateUtils";
+import {
+  VIETNAM_CITIES,
+  getDistrictsByCityId,
+  ALL_REGIONS,
+  searchRegions,
+} from "@/lib/data/vietnam-regions";
+import type { VietnamRegion } from "@/lib/data/vietnam-regions";
+import {
+  useLocationSearch,
+  getSuggestionBadge,
+  cleanDisplayName,
   cleanSubAddress,
-  type LocationSuggestion 
-} from '@/hooks/useLocationSearch';
+  type LocationSuggestion,
+} from "@/hooks/useLocationSearch";
 
 // 두 좌표 간 거리 계산 (Haversine 공식)
 function calculateDistance(
   lat1: number,
   lng1: number,
   lat2: number,
-  lng2: number
+  lng2: number,
 ): number {
   const R = 6371; // 지구 반지름 (km)
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -60,76 +72,97 @@ function calculateDistance(
 }
 
 function getRegionDisplayName(region: VietnamRegion, lang: string): string {
-  if (lang === 'ko') return region.nameKo ?? region.name ?? '';
-  if (lang === 'vi') return region.nameVi ?? region.name ?? '';
-  if (lang === 'ja') return region.nameJa ?? region.name ?? '';
-  if (lang === 'zh') return region.nameZh ?? region.name ?? '';
-  return region.name ?? '';
+  if (lang === "ko") return region.nameKo ?? region.name ?? "";
+  if (lang === "vi") return region.nameVi ?? region.name ?? "";
+  if (lang === "ja") return region.nameJa ?? region.name ?? "";
+  if (lang === "zh") return region.nameZh ?? region.name ?? "";
+  return region.name ?? "";
 }
 
 // 2. 실제 로직이 담긴 컴포넌트로 분리
 function SearchContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const query = searchParams.get('q') || '';
-  const cityIdParam = searchParams.get('cityId') || '';
-  const districtIdParam = searchParams.get('districtId') || '';
+  const query = searchParams.get("q") || "";
+  const cityIdParam = searchParams.get("cityId") || "";
+  const districtIdParam = searchParams.get("districtId") || "";
   const { user } = useAuth();
   const { currentLanguage, setCurrentLanguage } = useLanguage();
-  
+
   const [searchQuery, setSearchQuery] = useState(query);
-  const [selectedCityId, setSelectedCityId] = useState<string | null>(cityIdParam || null);
-  const [selectedDistrictId, setSelectedDistrictId] = useState<string | null>(districtIdParam || null);
+  const [selectedCityId, setSelectedCityId] = useState<string | null>(
+    cityIdParam || null,
+  );
+  const [selectedDistrictId, setSelectedDistrictId] = useState<string | null>(
+    districtIdParam || null,
+  );
   const [properties, setProperties] = useState<PropertyData[]>([]);
-  const [filteredProperties, setFilteredProperties] = useState<PropertyData[]>([]);
+  const [filteredProperties, setFilteredProperties] = useState<PropertyData[]>(
+    [],
+  );
   const [loading, setLoading] = useState(true);
-  const [searchLocation, setSearchLocation] = useState<{ lat: number; lng: number } | null>(null);
-  
+  const [searchLocation, setSearchLocation] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
+
   // 날짜 필터
   const [showCalendar, setShowCalendar] = useState(false);
-  const [calendarMode, setCalendarMode] = useState<'checkin' | 'checkout'>('checkin');
+  const [calendarMode, setCalendarMode] = useState<"checkin" | "checkout">(
+    "checkin",
+  );
   const [checkInDate, setCheckInDate] = useState<Date | null>(null);
   const [checkOutDate, setCheckOutDate] = useState<Date | null>(null);
-  
+
   // 인원수 필터
   const [showGuestSelector, setShowGuestSelector] = useState(false);
   const [adults, setAdults] = useState(1);
   const [children, setChildren] = useState(0);
-  
+
   // 고급 설정
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [minPrice, setMinPrice] = useState(0);
   const [maxPrice, setMaxPrice] = useState(50000000); // 최대 50M VND (기본값)
-  
+
   // 필터 적용 상태 (검색 버튼을 눌러야 필터 적용)
   const [filtersApplied, setFiltersApplied] = useState(false);
-  
+
   // 매물 상세 모달
   const [showPropertyModal, setShowPropertyModal] = useState(false);
-  const [selectedProperty, setSelectedProperty] = useState<PropertyData | null>(null);
+  const [selectedProperty, setSelectedProperty] = useState<PropertyData | null>(
+    null,
+  );
 
   // 필터 탭: 주소 눌림 표시용 (주소 | 날짜 | 인원)
-  const [activeFilter, setActiveFilter] = useState<'address' | 'date' | 'guest'>('address');
+  const [activeFilter, setActiveFilter] = useState<
+    "address" | "date" | "guest"
+  >("address");
   // 주소 검색 보기 (홈과 동일 로직)
-  const { suggestions, isSearching, search, clearSuggestions } = useLocationSearch(currentLanguage);
+  const { suggestions, isSearching, search, clearSuggestions } =
+    useLocationSearch(currentLanguage);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+      if (
+        searchContainerRef.current &&
+        !searchContainerRef.current.contains(event.target as Node)
+      ) {
         setShowSuggestions(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   useEffect(() => {
     if (suggestions.length > 0 && searchQuery.trim()) setShowSuggestions(true);
   }, [suggestions, searchQuery]);
 
-  const handleAddressInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAddressInputChange = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const value = e.target.value;
     setSearchQuery(value);
     if (!value.trim()) {
@@ -142,13 +175,13 @@ function SearchContent() {
   };
 
   const handleSelectSuggestion = (suggestion: LocationSuggestion) => {
-    const text = suggestion.Text || '';
+    const text = suggestion.Text || "";
     setSearchQuery(text);
     setShowSuggestions(false);
-    const regionId = (suggestion.PlaceId || '').replace(/^region-/, '');
-    const region = ALL_REGIONS.find(r => r.id === regionId);
+    const regionId = (suggestion.PlaceId || "").replace(/^region-/, "");
+    const region = ALL_REGIONS.find((r) => r.id === regionId);
     if (region) {
-      if (region.type === 'city') {
+      if (region.type === "city") {
         setSelectedCityId(region.id);
         setSelectedDistrictId(null);
         setSearchLocation({ lat: region.center[1], lng: region.center[0] });
@@ -169,28 +202,39 @@ function SearchContent() {
   // 이전 매물로 이동
   const handlePrevProperty = () => {
     if (!selectedProperty || filteredProperties.length <= 1) return;
-    const currentIndex = filteredProperties.findIndex(p => p.id === selectedProperty.id);
-    const prevIndex = currentIndex <= 0 ? filteredProperties.length - 1 : currentIndex - 1;
+    const currentIndex = filteredProperties.findIndex(
+      (p) => p.id === selectedProperty.id,
+    );
+    const prevIndex =
+      currentIndex <= 0 ? filteredProperties.length - 1 : currentIndex - 1;
     setSelectedProperty(filteredProperties[prevIndex]);
   };
 
   // 다음 매물로 이동
   const handleNextProperty = () => {
     if (!selectedProperty || filteredProperties.length <= 1) return;
-    const currentIndex = filteredProperties.findIndex(p => p.id === selectedProperty.id);
-    const nextIndex = currentIndex >= filteredProperties.length - 1 ? 0 : currentIndex + 1;
+    const currentIndex = filteredProperties.findIndex(
+      (p) => p.id === selectedProperty.id,
+    );
+    const nextIndex =
+      currentIndex >= filteredProperties.length - 1 ? 0 : currentIndex + 1;
     setSelectedProperty(filteredProperties[nextIndex]);
   };
 
   // 현재 매물 인덱스
   const getCurrentPropertyIndex = () => {
     if (!selectedProperty) return 0;
-    return filteredProperties.findIndex(p => p.id === selectedProperty.id);
+    return filteredProperties.findIndex((p) => p.id === selectedProperty.id);
   };
 
-  const selectedCity = selectedCityId ? VIETNAM_CITIES.find(c => c.id === selectedCityId) ?? ALL_REGIONS.find(r => r.id === selectedCityId) : null;
+  const selectedCity = selectedCityId
+    ? (VIETNAM_CITIES.find((c) => c.id === selectedCityId) ??
+      ALL_REGIONS.find((r) => r.id === selectedCityId))
+    : null;
   const districts = selectedCityId ? getDistrictsByCityId(selectedCityId) : [];
-  const selectedDistrict = selectedDistrictId ? districts.find(d => d.id === selectedDistrictId) : null;
+  const selectedDistrict = selectedDistrictId
+    ? districts.find((d) => d.id === selectedDistrictId)
+    : null;
 
   // URL 파라미터와 동기화: q, cityId, districtId
   useEffect(() => {
@@ -203,10 +247,10 @@ function SearchContent() {
 
   // 홈에서 도시/구 검색으로 들어온 경우: q만 있고 cityId/districtId 없으면 검색어로 지역 매칭
   useEffect(() => {
-    if (!query.trim() || (cityIdParam || districtIdParam)) return;
+    if (!query.trim() || cityIdParam || districtIdParam) return;
     const matches = searchRegions(query);
-    const districtMatch = matches.find(r => r.type === 'district');
-    const cityMatch = matches.find(r => r.type === 'city');
+    const districtMatch = matches.find((r) => r.type === "district");
+    const cityMatch = matches.find((r) => r.type === "city");
     if (districtMatch) {
       setSelectedCityId(districtMatch.parentCity ?? null);
       setSelectedDistrictId(districtMatch.id);
@@ -222,9 +266,11 @@ function SearchContent() {
       try {
         const allProperties = await getAvailableProperties();
         setProperties(allProperties);
-        
+
         if (allProperties.length > 0) {
-          const maxPropertyPrice = Math.max(...allProperties.map(p => p.price || 0));
+          const maxPropertyPrice = Math.max(
+            ...allProperties.map((p) => p.price || 0),
+          );
           if (maxPropertyPrice > 0) {
             setMaxPrice(Math.ceil(maxPropertyPrice * 1.1));
           }
@@ -235,7 +281,7 @@ function SearchContent() {
         setLoading(false);
       }
     };
-    
+
     loadProperties();
   }, []);
 
@@ -259,17 +305,16 @@ function SearchContent() {
     let filtered = properties;
 
     if (searchLocation) {
-      filtered = filtered
-        .filter((property) => {
-          if (!property.coordinates) return false;
-          const distance = calculateDistance(
-            searchLocation.lat,
-            searchLocation.lng,
-            property.coordinates.lat,
-            property.coordinates.lng
-          );
-          return distance <= 50;
-        });
+      filtered = filtered.filter((property) => {
+        if (!property.coordinates) return false;
+        const distance = calculateDistance(
+          searchLocation.lat,
+          searchLocation.lng,
+          property.coordinates.lat,
+          property.coordinates.lng,
+        );
+        return distance <= 50;
+      });
     }
 
     if (checkInDate && checkOutDate) {
@@ -278,12 +323,15 @@ function SearchContent() {
         const propCheckInDate = parseDate(property.checkInDate);
         const propCheckOutDate = parseDate(property.checkOutDate);
         if (!propCheckInDate || !propCheckOutDate) return false;
-        return checkInDate <= propCheckOutDate && checkOutDate >= propCheckInDate;
+        return (
+          checkInDate <= propCheckOutDate && checkOutDate >= propCheckInDate
+        );
       });
     }
 
     filtered = filtered.filter((property) => {
-      const maxTotalGuests = (property.maxAdults || 0) + (property.maxChildren || 0);
+      const maxTotalGuests =
+        (property.maxAdults || 0) + (property.maxChildren || 0);
       const requiredGuests = adults + children;
       return maxTotalGuests >= requiredGuests;
     });
@@ -296,8 +344,18 @@ function SearchContent() {
     if (searchLocation) {
       filtered = filtered.sort((a, b) => {
         if (!a.coordinates || !b.coordinates) return 0;
-        const distA = calculateDistance(searchLocation.lat, searchLocation.lng, a.coordinates.lat, a.coordinates.lng);
-        const distB = calculateDistance(searchLocation.lat, searchLocation.lng, b.coordinates.lat, b.coordinates.lng);
+        const distA = calculateDistance(
+          searchLocation.lat,
+          searchLocation.lng,
+          a.coordinates.lat,
+          a.coordinates.lng,
+        );
+        const distB = calculateDistance(
+          searchLocation.lat,
+          searchLocation.lng,
+          b.coordinates.lat,
+          b.coordinates.lng,
+        );
         return distA - distB;
       });
     }
@@ -315,7 +373,7 @@ function SearchContent() {
   const handleCheckInSelect = (date: Date) => {
     setCheckInDate(date);
     setCheckOutDate(null);
-    setCalendarMode('checkout');
+    setCalendarMode("checkout");
     setShowCalendar(true);
   };
 
@@ -325,7 +383,7 @@ function SearchContent() {
     setShowGuestSelector(false);
   };
 
-  const openCalendar = (mode: 'checkin' | 'checkout') => {
+  const openCalendar = (mode: "checkin" | "checkout") => {
     setCalendarMode(mode);
     setShowCalendar(true);
     setShowGuestSelector(false);
@@ -336,11 +394,18 @@ function SearchContent() {
   };
 
   const formatDate = (date: Date | null): string => {
-    if (!date) return '';
-    return date.toLocaleDateString(currentLanguage === 'ko' ? 'ko-KR' : currentLanguage === 'vi' ? 'vi-VN' : 'en-US', {
-      month: 'short',
-      day: 'numeric',
-    });
+    if (!date) return "";
+    return date.toLocaleDateString(
+      currentLanguage === "ko"
+        ? "ko-KR"
+        : currentLanguage === "vi"
+          ? "vi-VN"
+          : "en-US",
+      {
+        month: "short",
+        day: "numeric",
+      },
+    );
   };
 
   const adjustAdults = (delta: number) => {
@@ -356,50 +421,80 @@ function SearchContent() {
       <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative">
         <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
           <div className="flex items-center justify-between px-4 py-3">
-            <button onClick={() => router.push('/')} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+            <button
+              onClick={() => router.push("/")}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            >
               <Home className="w-5 h-5 text-gray-700" />
             </button>
-            <button onClick={() => router.push(user ? '/profile' : '/login')} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+            <button
+              onClick={() => router.push(user ? "/profile" : "/login")}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            >
               <User className="w-5 h-5 text-gray-700" />
             </button>
           </div>
-          {/* 검색어 입력창 — 홈과 동일 보기(드롭다운) 로직 */}
+          {/* 검색어 입력창 — 지도 페이지와 동일한 로직 (드롭다운 포함) */}
           <div className="px-4 pb-3">
             <div className="relative" ref={searchContainerRef}>
               <div className="flex items-center gap-2 rounded-xl bg-gray-50 border border-gray-200 px-3 py-2.5">
-                <MapPin className="w-4 h-4 text-gray-500 shrink-0" />
+                <Search className="w-4 h-4 text-gray-500 shrink-0" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={handleAddressInputChange}
-                  onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
-                  placeholder={getUIText('searchPlaceholderCityDistrict', currentLanguage)}
+                  onFocus={() => {
+                    if (suggestions.length > 0) setShowSuggestions(true);
+                  }}
+                  placeholder={getUIText(
+                    "searchPlaceholderCityDistrict",
+                    currentLanguage,
+                  )}
                   className="flex-1 bg-transparent text-sm text-gray-900 placeholder-gray-400 focus:outline-none"
                 />
               </div>
               {showSuggestions && suggestions.length > 0 && (
                 <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-lg max-h-72 overflow-y-auto">
                   {suggestions.map((suggestion, index) => {
-                    const badge = getSuggestionBadge(suggestion, currentLanguage);
-                    const displayText = suggestion.Text || '';
-                    const parts = displayText.split(',');
-                    const mainName = cleanDisplayName(parts[0]?.trim() || displayText);
-                    const subAddress = cleanSubAddress(parts.slice(1).join(',').trim());
+                    const badge = getSuggestionBadge(
+                      suggestion,
+                      currentLanguage,
+                    );
+                    const displayText = suggestion.Text || "";
+                    const parts = displayText.split(",");
+                    const mainName = cleanDisplayName(
+                      parts[0]?.trim() || displayText,
+                    );
+                    const subAddress = cleanSubAddress(
+                      parts.slice(1).join(",").trim(),
+                    );
                     return (
                       <button
                         key={suggestion.PlaceId || index}
                         type="button"
                         onClick={() => handleSelectSuggestion(suggestion)}
-                        className={`w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0 ${suggestion.isRegion ? 'bg-blue-50/30' : ''}`}
+                        className={`w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0 ${suggestion.isRegion ? "bg-blue-50/30" : ""}`}
                       >
                         <div className="flex items-start gap-3">
-                          <span className="text-lg flex-shrink-0 mt-0.5">{badge.icon}</span>
+                          <span className="text-lg flex-shrink-0 mt-0.5">
+                            {badge.icon}
+                          </span>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className={`text-xs px-2 py-0.5 rounded-full ${badge.color} text-white font-medium flex-shrink-0`}>{badge.text}</span>
-                              <p className="text-sm font-semibold text-gray-900 truncate">{mainName}</p>
+                              <span
+                                className={`text-xs px-2 py-0.5 rounded-full ${badge.color} text-white font-medium flex-shrink-0`}
+                              >
+                                {badge.text}
+                              </span>
+                              <p className="text-sm font-semibold text-gray-900 truncate">
+                                {mainName}
+                              </p>
                             </div>
-                            {subAddress && <p className="text-xs text-gray-400 mt-1 truncate">{subAddress}</p>}
+                            {subAddress && (
+                              <p className="text-xs text-gray-400 mt-1 truncate">
+                                {subAddress}
+                              </p>
+                            )}
                           </div>
                         </div>
                       </button>
@@ -411,7 +506,9 @@ function SearchContent() {
                 <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-lg p-4">
                   <div className="flex items-center justify-center gap-2 text-gray-500">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500" />
-                    <span className="text-sm">{getUIText('searching', currentLanguage)}</span>
+                    <span className="text-sm">
+                      {getUIText("searching", currentLanguage)}
+                    </span>
                   </div>
                 </div>
               )}
@@ -420,24 +517,38 @@ function SearchContent() {
             <div className="mt-3 grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">
-                  {getUIText('labelCity', currentLanguage)}
+                  {getUIText("labelCity", currentLanguage)}
                 </label>
                 <select
-                  value={selectedCityId ?? ''}
+                  value={selectedCityId ?? ""}
                   onChange={(e) => {
                     const id = e.target.value || null;
                     setSelectedCityId(id);
                     setSelectedDistrictId(null);
                     if (id) {
-                      const city = VIETNAM_CITIES.find((c) => c.id === id) ?? ALL_REGIONS.find((r) => r.id === id);
-                      if (city) setSearchLocation({ lat: city.center[1], lng: city.center[0] });
+                      const city =
+                        VIETNAM_CITIES.find((c) => c.id === id) ??
+                        ALL_REGIONS.find((r) => r.id === id);
+                      if (city)
+                        setSearchLocation({
+                          lat: city.center[1],
+                          lng: city.center[0],
+                        });
                     } else setSearchLocation(null);
                   }}
                   className={`w-full rounded-lg border px-3 py-2.5 text-sm min-h-[42px] focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
-                    selectedCityId ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium' : 'bg-gray-50 border-gray-200 text-gray-800'
+                    selectedCityId
+                      ? "border-blue-500 bg-blue-50 text-blue-700 font-medium"
+                      : "bg-gray-50 border-gray-200 text-gray-800"
                   }`}
                 >
-                  <option value="">{currentLanguage === 'ko' ? '도시 선택' : currentLanguage === 'vi' ? 'Chọn thành phố' : 'Select city'}</option>
+                  <option value="">
+                    {currentLanguage === "ko"
+                      ? "도시 선택"
+                      : currentLanguage === "vi"
+                        ? "Chọn thành phố"
+                        : "Select city"}
+                  </option>
                   {VIETNAM_CITIES.map((c) => (
                     <option key={c.id} value={c.id}>
                       {getRegionDisplayName(c, currentLanguage)}
@@ -447,27 +558,41 @@ function SearchContent() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">
-                  {getUIText('labelDistrict', currentLanguage)}
+                  {getUIText("labelDistrict", currentLanguage)}
                 </label>
                 <select
-                  value={selectedDistrictId ?? ''}
+                  value={selectedDistrictId ?? ""}
                   onChange={(e) => {
                     const id = e.target.value || null;
                     setSelectedDistrictId(id);
                     if (id) {
                       const district = districts.find((d) => d.id === id);
-                      if (district) setSearchLocation({ lat: district.center[1], lng: district.center[0] });
+                      if (district)
+                        setSearchLocation({
+                          lat: district.center[1],
+                          lng: district.center[0],
+                        });
                     } else if (selectedCityId) {
-                      const city = VIETNAM_CITIES.find((c) => c.id === selectedCityId) ?? ALL_REGIONS.find((r) => r.id === selectedCityId);
-                      if (city) setSearchLocation({ lat: city.center[1], lng: city.center[0] });
+                      const city =
+                        VIETNAM_CITIES.find((c) => c.id === selectedCityId) ??
+                        ALL_REGIONS.find((r) => r.id === selectedCityId);
+                      if (city)
+                        setSearchLocation({
+                          lat: city.center[1],
+                          lng: city.center[0],
+                        });
                     } else setSearchLocation(null);
                   }}
                   disabled={!selectedCityId || districts.length === 0}
                   className={`w-full rounded-lg border px-3 py-2.5 text-sm min-h-[42px] focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-70 disabled:cursor-not-allowed transition-colors ${
-                    selectedDistrictId ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium' : 'bg-gray-50 border-gray-200 text-gray-800'
+                    selectedDistrictId
+                      ? "border-blue-500 bg-blue-50 text-blue-700 font-medium"
+                      : "bg-gray-50 border-gray-200 text-gray-800"
                   }`}
                 >
-                  <option value="">{getUIText('selectDistrictPlaceholder', currentLanguage)}</option>
+                  <option value="">
+                    {getUIText("selectDistrictPlaceholder", currentLanguage)}
+                  </option>
                   {districts.map((d) => (
                     <option key={d.id} value={d.id}>
                       {getRegionDisplayName(d, currentLanguage)}
@@ -484,59 +609,117 @@ function SearchContent() {
           <div className="flex gap-2 mb-3">
             <button
               type="button"
-              onClick={() => { setActiveFilter('address'); setShowCalendar(false); setShowGuestSelector(false); }}
+              onClick={() => {
+                setActiveFilter("address");
+                setShowCalendar(false);
+                setShowGuestSelector(false);
+              }}
               className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${
-                activeFilter === 'address' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                activeFilter === "address"
+                  ? "bg-blue-600 text-white shadow-md"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
               }`}
             >
-              {currentLanguage === 'ko' ? '주소' : currentLanguage === 'vi' ? 'Địa chỉ' : 'Address'}
+              {currentLanguage === "ko"
+                ? "주소"
+                : currentLanguage === "vi"
+                  ? "Địa chỉ"
+                  : "Address"}
             </button>
             <button
               type="button"
-              onClick={() => { setActiveFilter('date'); openCalendar('checkin'); setShowGuestSelector(false); }}
+              onClick={() => {
+                setActiveFilter("date");
+                openCalendar("checkin");
+                setShowGuestSelector(false);
+              }}
               className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${
-                activeFilter === 'date' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                activeFilter === "date"
+                  ? "bg-blue-600 text-white shadow-md"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
               }`}
             >
-              {currentLanguage === 'ko' ? '날짜' : currentLanguage === 'vi' ? 'Ngày' : 'Date'}
+              {currentLanguage === "ko"
+                ? "날짜"
+                : currentLanguage === "vi"
+                  ? "Ngày"
+                  : "Date"}
             </button>
             <button
               type="button"
-              onClick={() => { setActiveFilter('guest'); setShowGuestSelector(!showGuestSelector); setShowCalendar(false); }}
+              onClick={() => {
+                setActiveFilter("guest");
+                setShowGuestSelector(!showGuestSelector);
+                setShowCalendar(false);
+              }}
               className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${
-                activeFilter === 'guest' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                activeFilter === "guest"
+                  ? "bg-blue-600 text-white shadow-md"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
               }`}
             >
-              {currentLanguage === 'ko' ? '인원' : currentLanguage === 'vi' ? 'Số người' : 'Guests'}
+              {currentLanguage === "ko"
+                ? "인원"
+                : currentLanguage === "vi"
+                  ? "Số người"
+                  : "Guests"}
             </button>
           </div>
           <div className="flex gap-3">
-            <button onClick={() => { setActiveFilter('date'); openCalendar('checkin'); }} className="flex-1 flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+            <button
+              onClick={() => {
+                setActiveFilter("date");
+                openCalendar("checkin");
+              }}
+              className="flex-1 flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+            >
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-gray-600" />
                 <div className="text-left">
-                  <div className="text-xs text-gray-500">{currentLanguage === 'ko' ? '체크인' : 'Check-in'}</div>
-                  <div className="text-sm font-medium text-gray-900">{checkInDate ? formatDate(checkInDate) : 'Select date'}</div>
+                  <div className="text-xs text-gray-500">
+                    {currentLanguage === "ko" ? "체크인" : "Check-in"}
+                  </div>
+                  <div className="text-sm font-medium text-gray-900">
+                    {checkInDate ? formatDate(checkInDate) : "Select date"}
+                  </div>
                 </div>
               </div>
             </button>
 
-            <button onClick={() => openCalendar('checkout')} className="flex-1 flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+            <button
+              onClick={() => openCalendar("checkout")}
+              className="flex-1 flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+            >
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-gray-600" />
                 <div className="text-left">
-                  <div className="text-xs text-gray-500">{currentLanguage === 'ko' ? '체크아웃' : 'Check-out'}</div>
-                  <div className="text-sm font-medium text-gray-900">{checkOutDate ? formatDate(checkOutDate) : 'Select date'}</div>
+                  <div className="text-xs text-gray-500">
+                    {currentLanguage === "ko" ? "체크아웃" : "Check-out"}
+                  </div>
+                  <div className="text-sm font-medium text-gray-900">
+                    {checkOutDate ? formatDate(checkOutDate) : "Select date"}
+                  </div>
                 </div>
               </div>
             </button>
 
-            <button onClick={() => { setActiveFilter('guest'); setShowGuestSelector(!showGuestSelector); setShowCalendar(false); }} className="flex-1 flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+            <button
+              onClick={() => {
+                setActiveFilter("guest");
+                setShowGuestSelector(!showGuestSelector);
+                setShowCalendar(false);
+              }}
+              className="flex-1 flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+            >
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4 text-gray-600" />
                 <div className="text-left">
-                  <div className="text-xs text-gray-500">{currentLanguage === 'ko' ? '인원' : 'Guests'}</div>
-                  <div className="text-sm font-medium text-gray-900">{adults + children} 명</div>
+                  <div className="text-xs text-gray-500">
+                    {currentLanguage === "ko" ? "인원" : "Guests"}
+                  </div>
+                  <div className="text-sm font-medium text-gray-900">
+                    {adults + children} 명
+                  </div>
                 </div>
               </div>
             </button>
@@ -546,60 +729,149 @@ function SearchContent() {
             <div className="mt-3 grid grid-cols-2 gap-3">
               <div className="flex items-center justify-between px-4 py-2 bg-white border border-gray-200 rounded-lg">
                 <div>
-                  <div className="text-xs text-gray-500">{currentLanguage === 'ko' ? '성인' : 'Adults'}</div>
+                  <div className="text-xs text-gray-500">
+                    {currentLanguage === "ko" ? "성인" : "Adults"}
+                  </div>
                   <div className="text-sm font-medium">{adults}</div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => adjustAdults(-1)} className="p-1 hover:bg-gray-100 rounded-full transition-colors"><ChevronLeft className="w-4 h-4 text-gray-600" /></button>
-                  <button onClick={() => adjustAdults(1)} className="p-1 hover:bg-gray-100 rounded-full transition-colors"><ChevronRight className="w-4 h-4 text-gray-600" /></button>
+                  <button
+                    onClick={() => adjustAdults(-1)}
+                    className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                  >
+                    <ChevronLeft className="w-4 h-4 text-gray-600" />
+                  </button>
+                  <button
+                    onClick={() => adjustAdults(1)}
+                    className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                  >
+                    <ChevronRight className="w-4 h-4 text-gray-600" />
+                  </button>
                 </div>
               </div>
               <div className="flex items-center justify-between px-4 py-2 bg-white border border-gray-200 rounded-lg">
                 <div>
-                  <div className="text-xs text-gray-500">{currentLanguage === 'ko' ? '어린이' : 'Children'}</div>
+                  <div className="text-xs text-gray-500">
+                    {currentLanguage === "ko" ? "어린이" : "Children"}
+                  </div>
                   <div className="text-sm font-medium">{children}</div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => adjustChildren(-1)} className="p-1 hover:bg-gray-100 rounded-full transition-colors"><ChevronLeft className="w-4 h-4 text-gray-600" /></button>
-                  <button onClick={() => adjustChildren(1)} className="p-1 hover:bg-gray-100 rounded-full transition-colors"><ChevronRight className="w-4 h-4 text-gray-600" /></button>
+                  <button
+                    onClick={() => adjustChildren(-1)}
+                    className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                  >
+                    <ChevronLeft className="w-4 h-4 text-gray-600" />
+                  </button>
+                  <button
+                    onClick={() => adjustChildren(1)}
+                    className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                  >
+                    <ChevronRight className="w-4 h-4 text-gray-600" />
+                  </button>
                 </div>
               </div>
             </div>
           )}
 
           <div className="mt-3 flex justify-center">
-            <button onClick={() => { setShowAdvancedSettings(!showAdvancedSettings); setShowCalendar(false); setShowGuestSelector(false); }} className="text-xs text-gray-500 hover:text-gray-700 transition-colors flex items-center gap-1">
-              <span>{currentLanguage === 'ko' ? '고급설정' : 'Advanced Settings'}</span>
-              <ChevronRight className={`w-3 h-3 transition-transform ${showAdvancedSettings ? 'rotate-90' : ''}`} />
+            <button
+              onClick={() => {
+                setShowAdvancedSettings(!showAdvancedSettings);
+                setShowCalendar(false);
+                setShowGuestSelector(false);
+              }}
+              className="text-xs text-gray-500 hover:text-gray-700 transition-colors flex items-center gap-1"
+            >
+              <span>
+                {currentLanguage === "ko" ? "고급설정" : "Advanced Settings"}
+              </span>
+              <ChevronRight
+                className={`w-3 h-3 transition-transform ${showAdvancedSettings ? "rotate-90" : ""}`}
+              />
             </button>
           </div>
 
           {showAdvancedSettings && (
             <div className="mt-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
               <div className="mb-3">
-                <label className="block text-xs font-medium text-gray-700 mb-2">{currentLanguage === 'ko' ? '가격 범위' : 'Price Range'}</label>
+                <label className="block text-xs font-medium text-gray-700 mb-2">
+                  {currentLanguage === "ko" ? "가격 범위" : "Price Range"}
+                </label>
                 <div className="space-y-3">
-                  <input type="range" min="0" max={maxPrice} value={minPrice} onChange={(e) => setMinPrice(Math.min(Number(e.target.value), maxPrice))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" />
-                  <input type="range" min="0" max={maxPrice} value={maxPrice} onChange={(e) => setMaxPrice(Math.max(Number(e.target.value), minPrice))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" />
+                  <input
+                    type="range"
+                    min="0"
+                    max={maxPrice}
+                    value={minPrice}
+                    onChange={(e) =>
+                      setMinPrice(Math.min(Number(e.target.value), maxPrice))
+                    }
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                  />
+                  <input
+                    type="range"
+                    min="0"
+                    max={maxPrice}
+                    value={maxPrice}
+                    onChange={(e) =>
+                      setMaxPrice(Math.max(Number(e.target.value), minPrice))
+                    }
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                  />
                   <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2"><span className="text-gray-600">Min</span><span className="font-medium text-gray-900">{minPrice.toLocaleString()} VND</span></div>
-                    <div className="flex items-center gap-2"><span className="text-gray-600">Max</span><span className="font-medium text-gray-900">{maxPrice.toLocaleString()} VND</span></div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-600">Min</span>
+                      <span className="font-medium text-gray-900">
+                        {minPrice.toLocaleString()} VND
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-600">Max</span>
+                      <span className="font-medium text-gray-900">
+                        {maxPrice.toLocaleString()} VND
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           )}
 
-          <button onClick={async () => { setShowCalendar(false); setShowGuestSelector(false); await geocodeSearchQuery(); applyFilters(); }} className="w-full mt-4 py-3.5 px-6 bg-blue-600 text-white rounded-lg font-semibold text-base hover:bg-blue-700 transition-all shadow-lg flex items-center justify-center gap-2">
+          <button
+            onClick={async () => {
+              setShowCalendar(false);
+              setShowGuestSelector(false);
+              await geocodeSearchQuery();
+              applyFilters();
+            }}
+            className="w-full mt-4 py-3.5 px-6 bg-blue-600 text-white rounded-lg font-semibold text-base hover:bg-blue-700 transition-all shadow-lg flex items-center justify-center gap-2"
+          >
             <Search className="w-5 h-5" />
-            <span>{currentLanguage === 'ko' ? '검색하기' : 'Search'}</span>
+            <span>{currentLanguage === "ko" ? "검색하기" : "Search"}</span>
           </button>
         </div>
 
         {showCalendar && (
-          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={closeCalendar}>
+          <div
+            className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+            onClick={closeCalendar}
+          >
             <div onClick={(e) => e.stopPropagation()}>
-              <CalendarComponent checkInDate={checkInDate} checkOutDate={checkOutDate} onCheckInSelect={handleCheckInSelect} onCheckOutSelect={handleCheckOutSelect} currentLanguage={currentLanguage} onClose={closeCalendar} mode={calendarMode} onCheckInReset={() => { setCheckInDate(null); setCheckOutDate(null); setCalendarMode('checkin'); }} />
+              <CalendarComponent
+                checkInDate={checkInDate}
+                checkOutDate={checkOutDate}
+                onCheckInSelect={handleCheckInSelect}
+                onCheckOutSelect={handleCheckOutSelect}
+                currentLanguage={currentLanguage}
+                onClose={closeCalendar}
+                mode={calendarMode}
+                onCheckInReset={() => {
+                  setCheckInDate(null);
+                  setCheckOutDate(null);
+                  setCalendarMode("checkin");
+                }}
+              />
             </div>
           </div>
         )}
@@ -608,12 +880,22 @@ function SearchContent() {
           {loading ? (
             <div className="text-center py-12 text-gray-500">Searching...</div>
           ) : filteredProperties.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">No results found.</div>
+            <div className="text-center py-12 text-gray-500">
+              No results found.
+            </div>
           ) : (
             <div className="space-y-4">
-              <div className="text-sm text-gray-600 mb-4">{filteredProperties.length} 개의 매물을 찾았습니다.</div>
+              <div className="text-sm text-gray-600 mb-4">
+                {filteredProperties.length} 개의 매물을 찾았습니다.
+              </div>
               {filteredProperties.map((property) => (
-                <PropertyCard key={property.id} property={property} isSelected={false} onClick={() => handlePropertyClick(property)} currentLanguage={currentLanguage} />
+                <PropertyCard
+                  key={property.id}
+                  property={property}
+                  isSelected={false}
+                  onClick={() => handlePropertyClick(property)}
+                  currentLanguage={currentLanguage}
+                />
               ))}
             </div>
           )}
@@ -621,7 +903,17 @@ function SearchContent() {
       </div>
 
       {showPropertyModal && selectedProperty && (
-        <PropertyModal propertyData={selectedProperty} currentLanguage={currentLanguage} onClose={() => setShowPropertyModal(false)} onPrev={handlePrevProperty} onNext={handleNextProperty} hasPrev={filteredProperties.length > 1} hasNext={filteredProperties.length > 1} currentIndex={getCurrentPropertyIndex()} totalProperties={filteredProperties.length} />
+        <PropertyModal
+          propertyData={selectedProperty}
+          currentLanguage={currentLanguage}
+          onClose={() => setShowPropertyModal(false)}
+          onPrev={handlePrevProperty}
+          onNext={handleNextProperty}
+          hasPrev={filteredProperties.length > 1}
+          hasNext={filteredProperties.length > 1}
+          currentIndex={getCurrentPropertyIndex()}
+          totalProperties={filteredProperties.length}
+        />
       )}
     </div>
   );
@@ -630,11 +922,13 @@ function SearchContent() {
 // 3. 빌드 에러 해결을 위한 외부 래퍼
 export default function SearchPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-gray-500">로딩 중...</div>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-white flex items-center justify-center">
+          <div className="text-gray-500">로딩 중...</div>
+        </div>
+      }
+    >
       <SearchContent />
     </Suspense>
   );
