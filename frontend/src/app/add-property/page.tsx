@@ -15,13 +15,8 @@ import {
   ArrowLeft,
   Check,
   Calendar,
-  Users,
-  ChevronLeft,
-  ChevronRight,
   ChevronDown,
   ChevronUp,
-  Bed,
-  Bath,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import TopBar from "@/components/TopBar";
@@ -30,6 +25,13 @@ import AddressVerificationModal from "@/components/AddressVerificationModal";
 // 기존 import들 사이에 추가
 import { uploadToS3 } from "@/lib/s3-client";
 import { FACILITY_OPTIONS, FACILITY_CATEGORIES } from "@/lib/constants/facilities";
+import {
+  getDistrictIdForCoord,
+  getDistrictsByCityId,
+  searchRegions,
+  VIETNAM_CITIES,
+  ALL_REGIONS,
+} from "@/lib/data/vietnam-regions";
 
 export default function AddPropertyPage() {
   const router = useRouter();
@@ -56,6 +58,8 @@ export default function AddPropertyPage() {
     lat: number;
     lng: number;
   } | null>(null);
+  const [selectedCityId, setSelectedCityId] = useState("");
+  const [selectedDistrictId, setSelectedDistrictId] = useState("");
   const [maxAdults, setMaxAdults] = useState(1);
   const [maxChildren, setMaxChildren] = useState(0);
   const [bedrooms, setBedrooms] = useState(0);
@@ -83,6 +87,14 @@ export default function AddPropertyPage() {
       setBathrooms((b) => Math.min(10, Math.max(1, b || 1)));
     }
   }, [propertyType]);
+
+  useEffect(() => {
+    if (!selectedCityId || !selectedDistrictId) return;
+    const districts = getDistrictsByCityId(selectedCityId);
+    if (!districts.some((d) => d.id === selectedDistrictId)) {
+      setSelectedDistrictId("");
+    }
+  }, [selectedCityId]);
 
   // 임대 희망 날짜
   const [showCalendar, setShowCalendar] = useState(false);
@@ -156,7 +168,7 @@ export default function AddPropertyPage() {
     checkAccess();
   }, [user, authLoading, router]);
 
-  // 주소 확인 모달에서 주소 확정 시
+  // 주소 확인 모달에서 주소 확정 시 (도시·구 자동 설정)
   const handleAddressConfirm = (data: {
     address: string;
     lat: number;
@@ -164,9 +176,27 @@ export default function AddPropertyPage() {
   }) => {
     setAddress(data.address);
     setCoordinates({ lat: data.lat, lng: data.lng });
-    // 개발 환경에서만 디버그 로그 출력
-    if (process.env.NODE_ENV === "development") {
-      console.debug("✅ 주소 확정:", data);
+    const districtId = getDistrictIdForCoord(data.lat, data.lng);
+    if (districtId) {
+      const district = ALL_REGIONS.find((r) => r.id === districtId);
+      if (district?.parentCity) {
+        setSelectedDistrictId(districtId);
+        setSelectedCityId(district.parentCity);
+        return;
+      }
+    }
+    const matches = searchRegions(data.address);
+    const districtMatch = matches.find((r) => r.type === "district");
+    const cityMatch = matches.find((r) => r.type === "city");
+    if (districtMatch) {
+      setSelectedDistrictId(districtMatch.id);
+      setSelectedCityId(districtMatch.parentCity ?? "");
+    } else if (cityMatch) {
+      setSelectedCityId(cityMatch.id);
+      setSelectedDistrictId("");
+    } else {
+      setSelectedCityId("");
+      setSelectedDistrictId("");
     }
   };
 
@@ -911,90 +941,6 @@ export default function AddPropertyPage() {
               )}
             </div>
 
-            {/* 주소 찾기 버튼 (위치 확정 전에만 표시) */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {currentLanguage === "ko"
-                  ? "주소"
-                  : currentLanguage === "vi"
-                    ? "Địa chỉ"
-                    : "Address"}
-                <span className="text-red-500 text-xs ml-1">*</span>
-              </label>
-              {/* 위치가 확정되지 않았을 때만 주소 찾기 버튼 표시 */}
-              {(!address || !coordinates) && (
-                <button
-                  type="button"
-                  onClick={() => setShowAddressModal(true)}
-                  className="w-full px-4 py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 font-medium bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700 shadow-md hover:shadow-lg active:scale-[0.98]"
-                >
-                  <MapPin className="w-5 h-5" />
-                  <span>
-                    {currentLanguage === "ko"
-                      ? "주소 찾기"
-                      : currentLanguage === "vi"
-                        ? "Tìm địa chỉ"
-                        : "Find Address"}
-                  </span>
-                </button>
-              )}
-
-              {/* 확정된 주소 표시 (클릭 시 수정 가능) */}
-              {address && coordinates && (
-                <div
-                  className="mt-3 p-4 bg-green-50 border-2 border-green-200 rounded-xl cursor-pointer hover:bg-green-100 transition-colors"
-                  onClick={() => setShowAddressModal(true)}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 bg-green-100 rounded-lg flex-shrink-0">
-                      <Check className="w-5 h-5 text-green-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-medium text-green-700">
-                          {currentLanguage === "ko"
-                            ? "확정된 주소"
-                            : currentLanguage === "vi"
-                              ? "Địa chỉ đã xác nhận"
-                              : "Confirmed Address"}
-                        </span>
-                        <span className="text-xs text-gray-500">
-                          (
-                          {currentLanguage === "ko"
-                            ? "클릭하여 수정"
-                            : currentLanguage === "vi"
-                              ? "Nhấn để chỉnh sửa"
-                              : "Click to edit"}
-                          )
-                        </span>
-                      </div>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {address}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation(); // 클릭 이벤트 전파 방지
-                        setAddress("");
-                        setCoordinates(null);
-                      }}
-                      className="p-1.5 hover:bg-green-200 rounded-full transition-colors flex-shrink-0"
-                      aria-label={
-                        currentLanguage === "ko"
-                          ? "주소 삭제"
-                          : currentLanguage === "vi"
-                            ? "Xóa địa chỉ"
-                            : "Remove address"
-                      }
-                    >
-                      <X className="w-4 h-4 text-gray-500" />
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
             {/* 매물 종류 / 방 개수 / 화장실 수 */}
             <div className="space-y-4">
               <label className="block text-sm font-medium text-gray-700">
@@ -1031,7 +977,7 @@ export default function AddPropertyPage() {
               </div>
 
               {propertyType && (
-                <div className="grid grid-cols-2 gap-3 pt-2">
+                <div className="grid grid-cols-3 gap-3 pt-2">
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1.5">
                       {currentLanguage === "ko" ? "방 개수" : currentLanguage === "vi" ? "Số phòng" : "Bedrooms"}
@@ -1039,7 +985,12 @@ export default function AddPropertyPage() {
                     <select
                       value={bedrooms}
                       onChange={(e) => setBedrooms(Number(e.target.value))}
-                      className="w-full px-4 py-2.5 bg-gray-50 border-2 border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      disabled={propertyType === "studio" || propertyType === "one_room" || propertyType === "two_room"}
+                      className={`w-full px-4 py-2.5 border-2 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 ${
+                        propertyType === "studio" || propertyType === "one_room" || propertyType === "two_room"
+                          ? "bg-gray-200 border-gray-300 text-gray-500 cursor-not-allowed"
+                          : "bg-gray-50 border-gray-200"
+                      }`}
                     >
                       {bedroomOptions.map((n) => (
                         <option key={n} value={n}>
@@ -1066,35 +1017,141 @@ export default function AddPropertyPage() {
                       ))}
                     </select>
                   </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                      {currentLanguage === "ko" ? "최대 인원" : currentLanguage === "vi" ? "Số người tối đa" : "Max Guests"}
+                    </label>
+                    <select
+                      value={maxAdults}
+                      onChange={(e) => {
+                        const v = Number(e.target.value);
+                        setMaxAdults(v);
+                        setMaxChildren(0);
+                      }}
+                      className="w-full px-4 py-2.5 bg-gray-50 border-2 border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      {Array.from({ length: 20 }, (_, i) => i + 1).map((n) => (
+                        <option key={n} value={n}>
+                          {n}{currentLanguage === "ko" ? "명" : currentLanguage === "vi" ? " người" : " guests"}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* 주당 청소 횟수 */}
+            {/* 주소 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 {currentLanguage === "ko"
-                  ? "주당 청소 횟수"
+                  ? "주소"
                   : currentLanguage === "vi"
-                    ? "Số lần dọn dẹp mỗi tuần"
-                    : "Cleaning per week"}
+                    ? "Địa chỉ"
+                    : "Address"}
+                <span className="text-red-500 text-xs ml-1">*</span>
               </label>
-              <select
-                value={cleaningPerWeek}
-                onChange={(e) => setCleaningPerWeek(Number(e.target.value))}
-                className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                {[1, 2, 3, 4, 5, 6, 7].map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                    {currentLanguage === "ko" ? "회" : currentLanguage === "vi" ? " lần" : "x"}
-                  </option>
-                ))}
-              </select>
+              {(!address || !coordinates) && (
+                <button
+                  type="button"
+                  onClick={() => setShowAddressModal(true)}
+                  className="w-full px-4 py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 font-medium bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700 shadow-md hover:shadow-lg active:scale-[0.98]"
+                >
+                  <MapPin className="w-5 h-5" />
+                  <span>
+                    {currentLanguage === "ko"
+                      ? "주소 찾기"
+                      : currentLanguage === "vi"
+                        ? "Tìm địa chỉ"
+                        : "Find Address"}
+                  </span>
+                </button>
+              )}
+              {address && coordinates && (
+                <div
+                  className="mt-3 p-4 bg-green-50 border-2 border-green-200 rounded-xl cursor-pointer hover:bg-green-100 transition-colors"
+                  onClick={() => setShowAddressModal(true)}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-green-100 rounded-lg flex-shrink-0">
+                      <Check className="w-5 h-5 text-green-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-medium text-green-700">
+                          {currentLanguage === "ko"
+                            ? "확정된 주소 (클릭하여 수정)"
+                            : currentLanguage === "vi"
+                              ? "Địa chỉ đã xác nhận"
+                              : "Confirmed Address"}
+                        </span>
+                      </div>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {address}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setAddress("");
+                        setCoordinates(null);
+                        setSelectedCityId("");
+                        setSelectedDistrictId("");
+                      }}
+                      className="p-1.5 hover:bg-green-200 rounded-full transition-colors flex-shrink-0"
+                      aria-label={
+                        currentLanguage === "ko"
+                          ? "주소 삭제"
+                          : currentLanguage === "vi"
+                            ? "Xóa địa chỉ"
+                            : "Remove address"
+                      }
+                    >
+                      <X className="w-4 h-4 text-gray-500" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* 구분선 */}
-            <div className="border-t border-gray-200 my-4"></div>
+            {/* 도시·구 */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                  {currentLanguage === "ko" ? "도시" : currentLanguage === "vi" ? "Thành phố" : "City"}
+                </label>
+                <div className={`w-full px-4 py-2.5 border-2 rounded-xl text-sm ${address && coordinates ? "bg-gray-100 border-gray-200 text-gray-700" : "bg-gray-100 border-gray-200 text-gray-400"}`}>
+                  {address && coordinates && selectedCityId
+                    ? (() => {
+                        const city = VIETNAM_CITIES.find((c) => c.id === selectedCityId);
+                        if (!city) return "—";
+                        const langMap: Record<string, string> = { ko: city.nameKo, vi: city.nameVi, en: city.name, ja: city.nameJa ?? city.name, zh: city.nameZh ?? city.name };
+                        return langMap[currentLanguage] ?? city.name;
+                      })()
+                    : (currentLanguage === "ko" ? "주소 입력 후 자동" : currentLanguage === "vi" ? "Tự động sau địa chỉ" : "Auto after address")}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                  {currentLanguage === "ko" ? "구" : currentLanguage === "vi" ? "Quận" : "District"}
+                </label>
+                <select
+                  value={selectedDistrictId}
+                  onChange={(e) => setSelectedDistrictId(e.target.value)}
+                  disabled={!address || !coordinates}
+                  className={`w-full px-4 py-2.5 border-2 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 ${
+                    address && coordinates ? "bg-gray-50 border-gray-200" : "bg-gray-200 border-gray-300 text-gray-500 cursor-not-allowed"
+                  }`}
+                >
+                  <option value="">{currentLanguage === "ko" ? "선택" : currentLanguage === "vi" ? "Chọn" : "Select"}</option>
+                  {getDistrictsByCityId(selectedCityId).map((d) => {
+                    const langMap: Record<string, string> = { ko: d.nameKo, vi: d.nameVi, en: d.name, ja: d.nameJa ?? d.name, zh: d.nameZh ?? d.name };
+                    return <option key={d.id} value={d.id}>{langMap[currentLanguage] ?? d.name}</option>;
+                  })}
+                </select>
+              </div>
+            </div>
 
             {/* 동호수 입력 (동, 호실 분리) */}
             <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
@@ -1322,90 +1379,6 @@ export default function AddPropertyPage() {
                     </div>
                   </div>
                 </button>
-              </div>
-            </div>
-
-            {/* 최대 인원 수 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                {currentLanguage === "ko"
-                  ? "최대 인원 수"
-                  : currentLanguage === "vi"
-                    ? "Số người tối đa"
-                    : "Maximum Guests"}
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                {/* 성인 */}
-                <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg border-2 border-gray-200">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-gray-600" />
-                    <div>
-                      <div className="text-xs text-gray-500">
-                        {currentLanguage === "ko"
-                          ? "성인"
-                          : currentLanguage === "vi"
-                            ? "Người lớn"
-                            : "Adults"}
-                      </div>
-                      <div className="text-sm font-medium text-gray-900">
-                        {maxAdults}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setMaxAdults(Math.max(1, maxAdults - 1))}
-                      className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-                    >
-                      <ChevronLeft className="w-4 h-4 text-gray-600" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMaxAdults(maxAdults + 1)}
-                      className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-                    >
-                      <ChevronRight className="w-4 h-4 text-gray-600" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* 어린이 */}
-                <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg border-2 border-gray-200">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-gray-600" />
-                    <div>
-                      <div className="text-xs text-gray-500">
-                        {currentLanguage === "ko"
-                          ? "어린이"
-                          : currentLanguage === "vi"
-                            ? "Trẻ em"
-                            : "Children"}
-                      </div>
-                      <div className="text-sm font-medium text-gray-900">
-                        {maxChildren}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setMaxChildren(Math.max(0, maxChildren - 1))
-                      }
-                      className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-                    >
-                      <ChevronLeft className="w-4 h-4 text-gray-600" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMaxChildren(maxChildren + 1)}
-                      className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-                    >
-                      <ChevronRight className="w-4 h-4 text-gray-600" />
-                    </button>
-                  </div>
-                </div>
               </div>
             </div>
 

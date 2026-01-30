@@ -447,7 +447,7 @@ function EditPropertyContent() {
                 ))}
               </div>
               {propertyType && (
-                <div className="grid grid-cols-2 gap-3 pt-2">
+                <div className="grid grid-cols-3 gap-3 pt-2">
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1.5">
                       {currentLanguage === "ko" ? "방 개수" : currentLanguage === "vi" ? "Số phòng" : "Bedrooms"}
@@ -491,6 +491,26 @@ function EditPropertyContent() {
                           <option key={n} value={n}>{n === 6 && propertyType === "three_plus" ? "5+" : n}</option>
                         ));
                       })()}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                      {currentLanguage === "ko" ? "최대 인원" : currentLanguage === "vi" ? "Số người tối đa" : "Max Guests"}
+                    </label>
+                    <select
+                      value={maxAdults}
+                      onChange={(e) => {
+                        const v = Number(e.target.value);
+                        setMaxAdults(v);
+                        setMaxChildren(0);
+                      }}
+                      className="w-full px-4 py-2.5 bg-gray-50 border-2 border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500"
+                    >
+                      {Array.from({ length: 20 }, (_, i) => i + 1).map((n) => (
+                        <option key={n} value={n}>
+                          {n}{currentLanguage === "ko" ? "명" : currentLanguage === "vi" ? " người" : " guests"}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -793,28 +813,6 @@ function EditPropertyContent() {
                   </div>
                 </button>
               </div>
-            </div>
-
-            {/* 최대 인원 수 — 드롭다운 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {currentLanguage === "ko" ? "최대 인원 수" : currentLanguage === "vi" ? "Số người tối đa" : "Maximum Guests"}
-              </label>
-              <select
-                value={maxAdults}
-                onChange={(e) => {
-                  const v = Number(e.target.value);
-                  setMaxAdults(v);
-                  setMaxChildren(0);
-                }}
-                className="w-full px-4 py-2.5 bg-gray-50 border-2 border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500"
-              >
-                {Array.from({ length: 20 }, (_, i) => i + 1).map((n) => (
-                  <option key={n} value={n}>
-                    {n}{currentLanguage === "ko" ? "명" : currentLanguage === "vi" ? " người" : " guests"}
-                  </option>
-                ))}
-              </select>
             </div>
 
             {/* 1주일 임대료 */}

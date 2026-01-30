@@ -280,6 +280,43 @@ export default function PropertyDetailPage() {
                   {currentLanguage === 'ko' ? '매물 종류' : currentLanguage === 'vi' ? 'Loại bất động sản' : 'Property Type'}
                 </p>
                 <p className="text-sm font-semibold text-gray-900">{getPropertyTypeLabel(property.propertyType, currentLanguage)}</p>
+                {(property.bedrooms !== undefined || property.bathrooms !== undefined || property.maxAdults != null) && (
+                  <div className="grid grid-cols-3 gap-3 mt-3">
+                    {property.bedrooms !== undefined && (
+                      <div>
+                        <p className="text-xs text-gray-500 mb-0.5">{currentLanguage === 'ko' ? '방 개수' : currentLanguage === 'vi' ? 'Số phòng' : 'Bedrooms'}</p>
+                        <div className="flex items-center gap-1.5 text-sm font-medium text-gray-900">
+                          <Bed className="w-4 h-4 text-gray-600 shrink-0" />
+                          <span>{property.bedrooms}</span>
+                        </div>
+                      </div>
+                    )}
+                    {property.bathrooms !== undefined && (
+                      <div>
+                        <p className="text-xs text-gray-500 mb-0.5">{currentLanguage === 'ko' ? '화장실 수' : currentLanguage === 'vi' ? 'Số phòng tắm' : 'Bathrooms'}</p>
+                        <div className="flex items-center gap-1.5 text-sm font-medium text-gray-900">
+                          <Bath className="w-4 h-4 text-gray-600 shrink-0" />
+                          <span>{property.bathrooms}</span>
+                        </div>
+                      </div>
+                    )}
+                    {property.maxAdults != null && (
+                      <div>
+                        <p className="text-xs text-gray-500 mb-0.5">{currentLanguage === 'ko' ? '최대 인원' : currentLanguage === 'vi' ? 'Số người tối đa' : 'Max Guests'}</p>
+                        <div className="flex items-center gap-1.5 text-sm font-medium text-gray-900">
+                          <Users className="w-4 h-4 text-gray-600 shrink-0" />
+                          <span>
+                            {property.maxAdults}
+                            {currentLanguage === 'ko' ? '명' : currentLanguage === 'vi' ? ' người' : ' guests'}
+                            {(property.maxChildren ?? 0) > 0 && (
+                              <> (+ {property.maxChildren} {currentLanguage === 'ko' ? '어린이' : currentLanguage === 'vi' ? 'trẻ em' : 'children'})</>
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -337,24 +374,6 @@ export default function PropertyDetailPage() {
                 {currentLanguage === 'ko' ? '공과금/관리비 포함' : currentLanguage === 'vi' ? 'Bao gồm tiện ích/phí quản lý' : 'Utilities/Management fees included'}
               </p>
             </div>
-
-            {(property.maxAdults != null || property.maxChildren != null) && (
-              <div>
-                <p className="text-xs text-gray-500 mb-0.5">
-                  {currentLanguage === 'ko' ? '최대 인원 수' : currentLanguage === 'vi' ? 'Số người tối đa' : 'Maximum Guests'}
-                </p>
-                <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
-                  <Users className="w-4 h-4 text-gray-600 shrink-0" />
-                  <span>
-                    {property.maxAdults ?? 0}
-                    {currentLanguage === 'ko' ? '명' : currentLanguage === 'vi' ? ' người' : ' guests'}
-                    {(property.maxChildren ?? 0) > 0 && (
-                      <> (+ {(property.maxChildren ?? 0)} {currentLanguage === 'ko' ? '어린이' : currentLanguage === 'vi' ? 'trẻ em' : 'children'})</>
-                    )}
-                  </span>
-                </div>
-              </div>
-            )}
 
             <div>
               <p className="text-xs text-gray-500 mb-3">
