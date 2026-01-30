@@ -9,6 +9,7 @@ import { PropertyData } from '@/types/property';
 import { getReservationsByOwner, ReservationData } from './reservations';
 import { parseDate, toISODateString } from '@/lib/utils/dateUtils';
 import { isDateRangeBooked, getAllBookings, BookingData } from './bookings';
+import { hasAvailableBookingPeriod, isAdvertisingProperty } from '@/lib/utils/propertyUtils';
 
 /**
  * 사용자의 동적 광고 한도 조회 (유료화 대비)
@@ -201,7 +202,6 @@ export async function handleCancellationRelist(propertyId: string, ownerId: stri
   }
 
   // 3. 병합 불가 시 단독 재등록 검토
-  const { hasAvailableBookingPeriod } = await import('@/lib/utils/propertyUtils');
   const reservations = await getReservationsByOwner(ownerId, 'all');
   
   const normalize = (s: string | undefined) => (s || '').trim().replace(/\s+/g, ' ').toLowerCase();
@@ -452,8 +452,6 @@ export async function getAvailableProperties(): Promise<PropertyData[]> {
     if (typeof window === 'undefined' || typeof localStorage === 'undefined') return [];
     const allStored = localStorage.getItem(STORAGE_KEY);
     const allProps: PropertyData[] = allStored ? JSON.parse(allStored) : [];
-    const { hasAvailableBookingPeriod } = await import('@/lib/utils/propertyUtils');
-    
     const availableProperties: PropertyData[] = [];
     
     // 1. 광고 후보(부모 매물) 필터링: 자식(_child_)은 제외
@@ -661,7 +659,6 @@ export async function getProperty(id: string): Promise<PropertyData | null> {
  */
 export async function getPropertyCountByOwner(ownerId: string): Promise<number> {
   // PropertyData, PropertyDateRange를 가져와야 함
-  const { hasAvailableBookingPeriod, isAdvertisingProperty } = await import('@/lib/utils/propertyUtils');
   try {
     const { properties, bookedDateRanges } = await getPropertiesByOwner(ownerId, false); // 삭제되지 않은 매물만 가져옴
     console.log('[getPropertyCountByOwner] properties:', properties);

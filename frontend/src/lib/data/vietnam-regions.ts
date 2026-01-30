@@ -487,14 +487,14 @@ export function searchRegions(query: string): VietnamRegion[] {
   const scored = ALL_REGIONS.map(region => {
     let score = 0;
     
-    // 모든 검색 대상 텍스트 (5개국어 이름 + 키워드, toLowerCase)
+    // 모든 검색 대상 텍스트 (5개국어 이름 + 키워드, toLowerCase) — undefined 방지
     const searchTargets = [
-      region.name.toLowerCase(),
-      region.nameVi.toLowerCase(),
-      region.nameKo.toLowerCase(),
-      region.nameJa.toLowerCase(),
-      region.nameZh.toLowerCase(),
-      ...region.keywords.map(k => k.toLowerCase()),
+      (region.name ?? "").toLowerCase(),
+      (region.nameVi ?? "").toLowerCase(),
+      (region.nameKo ?? "").toLowerCase(),
+      (region.nameJa ?? region.name ?? "").toLowerCase(),
+      (region.nameZh ?? region.name ?? "").toLowerCase(),
+      ...(region.keywords ?? []).map(k => (k ?? "").toLowerCase()),
     ];
     
     for (const target of searchTargets) {

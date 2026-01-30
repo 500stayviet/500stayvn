@@ -29,6 +29,8 @@ import {
   isAvailableNow,
   formatDateForBadge
 } from '@/lib/utils/dateUtils';
+import { VIETNAM_CITIES, getDistrictsByCityId, ALL_REGIONS, searchRegions } from '@/lib/data/vietnam-regions';
+import type { VietnamRegion } from '@/lib/data/vietnam-regions';
 
 // 두 좌표 간 거리 계산 (Haversine 공식)
 function calculateDistance(
@@ -50,15 +52,27 @@ function calculateDistance(
   return R * c; // km 단위
 }
 
+function getRegionDisplayName(region: VietnamRegion, lang: string): string {
+  if (lang === 'ko') return region.nameKo ?? region.name ?? '';
+  if (lang === 'vi') return region.nameVi ?? region.name ?? '';
+  if (lang === 'ja') return region.nameJa ?? region.name ?? '';
+  if (lang === 'zh') return region.nameZh ?? region.name ?? '';
+  return region.name ?? '';
+}
+
 // 2. 실제 로직이 담긴 컴포넌트로 분리
 function SearchContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const query = searchParams.get('q') || '';
+  const cityIdParam = searchParams.get('cityId') || '';
+  const districtIdParam = searchParams.get('districtId') || '';
   const { user } = useAuth();
   const { currentLanguage, setCurrentLanguage } = useLanguage();
   
   const [searchQuery, setSearchQuery] = useState(query);
+  const [selectedCityId, setSelectedCityId] = useState<string | null>(cityIdParam || null);
+  const [selectedDistrictId, setSelectedDistrictId] = useState<string | null>(districtIdParam || null);
   const [properties, setProperties] = useState<PropertyData[]>([]);
   const [filteredProperties, setFilteredProperties] = useState<PropertyData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -114,6 +128,34 @@ function SearchContent() {
     if (!selectedProperty) return 0;
     return filteredProperties.findIndex(p => p.id === selectedProperty.id);
   };
+
+  const selectedCity = selectedCityId ? VIETNAM_CITIES.find(c => c.id === selectedCityId) ?? ALL_REGIONS.find(r => r.id === selectedCityId) : null;
+  const districts = selectedCityId ? getDistrictsByCityId(selectedCityId) : [];
+  const selectedDistrict = selectedDistrictId ? districts.find(d => d.id === selectedDistrictId) : null;
+
+  // URL 파라미터와 동기화: q, cityId, districtId
+  useEffect(() => {
+    setSearchQuery(query);
+    if (cityIdParam) setSelectedCityId(cityIdParam);
+    else setSelectedCityId(null);
+    if (districtIdParam) setSelectedDistrictId(districtIdParam);
+    else setSelectedDistrictId(null);
+  }, [query, cityIdParam, districtIdParam]);
+
+  // 홈에서 도시/구 검색으로 들어온 경우: q만 있고 cityId/districtId 없으면 검색어로 지역 매칭
+  useEffect(() => {
+    if (!query.trim() || (cityIdParam || districtIdParam)) return;
+    const matches = searchRegions(query);
+    const districtMatch = matches.find(r => r.type === 'district');
+    const cityMatch = matches.find(r => r.type === 'city');
+    if (districtMatch) {
+      setSelectedCityId(districtMatch.parentCity ?? null);
+      setSelectedDistrictId(districtMatch.id);
+    } else if (cityMatch) {
+      setSelectedCityId(cityMatch.id);
+      setSelectedDistrictId(null);
+    }
+  }, [query]);
 
   // 매물 데이터 로드
   useEffect(() => {
@@ -262,14 +304,52 @@ function SearchContent() {
               <User className="w-5 h-5 text-gray-700" />
             </button>
           </div>
-          {searchQuery && (
-            <div className="px-4 pb-3">
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <MapPin className="w-4 h-4" />
-                <span className="font-medium">{searchQuery}</span>
+          {/* 검색어 입력창 */}
+          <div className="px-4 pb-3">
+            <div className="flex items-center gap-2 rounded-xl bg-gray-50 border border-gray-200 px-3 py-2.5">
+              <MapPin className="w-4 h-4 text-gray-500 shrink-0" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={getUIText('searchPlaceholderCityDistrict', currentLanguage)}
+                className="flex-1 bg-transparent text-sm text-gray-900 placeholder-gray-400 focus:outline-none"
+              />
+            </div>
+            {/* 검색어창 하단: 도시·구 (홈에서 도시/구 검색 후 보기 시 여기 값 채워짐) */}
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">
+                  {getUIText('labelCity', currentLanguage)}
+                </label>
+                <div className="rounded-lg bg-gray-50 border border-gray-200 px-3 py-2.5 text-sm text-gray-800 min-h-[42px] flex items-center">
+                  {selectedCity ? getRegionDisplayName(selectedCity, currentLanguage) : (
+                    <span className="text-gray-400">—</span>
+                  )}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">
+                  {getUIText('labelDistrict', currentLanguage)}
+                </label>
+                <select
+                  value={selectedDistrictId ?? ''}
+                  onChange={(e) => setSelectedDistrictId(e.target.value || null)}
+                  disabled={!selectedCityId || districts.length === 0}
+                  className="w-full rounded-lg bg-gray-50 border border-gray-200 px-3 py-2.5 text-sm text-gray-800 min-h-[42px] focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                  <option value="">
+                    {getUIText('selectDistrictPlaceholder', currentLanguage)}
+                  </option>
+                  {districts.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {getRegionDisplayName(d, currentLanguage)}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
-          )}
+          </div>
         </div>
 
         <div className="px-4 py-3 border-b border-gray-200 bg-white">

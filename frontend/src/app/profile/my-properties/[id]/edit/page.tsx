@@ -15,16 +15,10 @@ import {
   MapPin,
   Loader2,
   X,
-  Maximize2,
   ArrowLeft,
   Calendar,
-  Users,
-  ChevronLeft,
-  ChevronRight,
   ChevronDown,
   ChevronUp,
-  Bed,
-  Bath,
   Check,
 } from "lucide-react";
 import TopBar from "@/components/TopBar";
@@ -33,6 +27,14 @@ import AddressVerificationModal from "@/components/AddressVerificationModal";
 import { FACILITY_OPTIONS, FACILITY_CATEGORIES } from "@/lib/constants/facilities";
 import { parseDate } from "@/lib/utils/dateUtils";
 import { getUIText } from "@/utils/i18n";
+import {
+  getDistrictIdForCoord,
+  getDistrictsByCityId,
+  searchRegions,
+  VIETNAM_CITIES,
+  ALL_REGIONS,
+} from "@/lib/data/vietnam-regions";
+import { uploadToS3 } from "@/lib/s3-client";
 
 // 1. 모든 비즈니스 로직을 담은 내부 컴포넌트
 function EditPropertyContent() {
@@ -77,6 +79,14 @@ function EditPropertyContent() {
     { checkIn: Date; checkOut: Date }[]
   >([]);
 
+  const [selectedCityId, setSelectedCityId] = useState("");
+  const [selectedDistrictId, setSelectedDistrictId] = useState("");
+  const [propertyType, setPropertyType] = useState<
+    "" | "studio" | "one_room" | "two_room" | "three_plus" | "detached"
+  >("");
+  const [cleaningPerWeek, setCleaningPerWeek] = useState(1);
+  const [petFeeAmount, setPetFeeAmount] = useState("");
+  const [propertyDescription, setPropertyDescription] = useState("");
   const [icalPlatform, setIcalPlatform] = useState("");
   const [icalCalendarName, setIcalCalendarName] = useState("");
   const [icalUrl, setIcalUrl] = useState("");
@@ -96,7 +106,41 @@ function EditPropertyContent() {
   const photoLibraryInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  // 데이터 로드 로직
+  const parseUnitNumber = (unitNumber: string | undefined) => {
+    if (!unitNumber || !unitNumber.trim()) return { building: "", room: "" };
+    const match = unitNumber.match(/^(.+?)동\s*(.+?)호$/);
+    if (match) {
+      const room = match[2].replace(/^0+/, "") || match[2];
+      return { building: match[1].trim(), room };
+    }
+    return { building: "", room: "" };
+  };
+
+  useEffect(() => {
+    if (!selectedCityId || !selectedDistrictId) return;
+    const districts = getDistrictsByCityId(selectedCityId);
+    if (!districts.some((d) => d.id === selectedDistrictId)) {
+      setSelectedDistrictId("");
+    }
+  }, [selectedCityId]);
+
+  useEffect(() => {
+    if (!propertyType) return;
+    if (propertyType === "studio" || propertyType === "one_room") {
+      setBedrooms(1);
+      setBathrooms((b) => (b < 1 || b > 2 ? 1 : b));
+    } else if (propertyType === "two_room") {
+      setBedrooms(2);
+      setBathrooms((b) => (b < 1 || b > 3 ? 1 : b));
+    } else if (propertyType === "three_plus") {
+      setBedrooms((prev) => (prev >= 2 && prev <= 5 ? prev : 2));
+      setBathrooms((b) => (b < 1 || b > 6 ? 1 : b));
+    } else if (propertyType === "detached") {
+      setBedrooms((b) => Math.min(10, Math.max(1, b || 1)));
+      setBathrooms((b) => Math.min(10, Math.max(1, b || 1)));
+    }
+  }, [propertyType]);
+
   useEffect(() => {
     if (propertyLoaded || authLoading || !user || !propertyId) return;
     const loadData = async () => {
@@ -107,21 +151,54 @@ function EditPropertyContent() {
           return;
         }
 
-        setIsDeleted(p.deleted || p.status !== "active");
+        setIsDeleted(!!p.deleted || p.status !== "active");
         setAddress(p.address || "");
         setWeeklyRent(p.price?.toString() || "");
         setSelectedAmenities(p.amenities || []);
-        setCoordinates(p.coordinates);
+        setCoordinates(p.coordinates || null);
         setImagePreviews(p.images || []);
-        setMaxAdults(p.maxAdults || 1);
-        setMaxChildren(p.maxChildren || 0);
-        setBedrooms(p.bedrooms || 1);
-        setBathrooms(p.bathrooms || 1);
+        setMaxAdults(p.maxAdults ?? 1);
+        setMaxChildren(p.maxChildren ?? 0);
+        setBedrooms(p.bedrooms ?? 1);
+        setBathrooms(p.bathrooms ?? 1);
         setCheckInDate(parseDate(p.checkInDate));
         setCheckOutDate(parseDate(p.checkOutDate));
+        const pt = (p as { propertyType?: string }).propertyType || "";
+        setPropertyType(pt as "" | "studio" | "one_room" | "two_room" | "three_plus" | "detached");
+        const cleaning = (p as { cleaningPerWeek?: number }).cleaningPerWeek ?? 0;
+        setCleaningPerWeek(cleaning > 0 ? cleaning : 1);
+        const fee = (p as { petFee?: number }).petFee;
+        setPetFeeAmount(fee != null ? fee.toString() : "");
+        setPropertyDescription((p as { original_description?: string }).original_description || "");
         setIcalPlatform(p.icalPlatform || "");
         setIcalCalendarName(p.icalCalendarName || "");
         setIcalUrl(p.icalUrl || "");
+
+        const { building, room } = parseUnitNumber(p.unitNumber);
+        setBuildingNumber(building);
+        setRoomNumber(room);
+
+        if (p.coordinates) {
+          const districtId = getDistrictIdForCoord(p.coordinates.lat, p.coordinates.lng);
+          if (districtId) {
+            const district = ALL_REGIONS.find((r) => r.id === districtId);
+            if (district?.parentCity) {
+              setSelectedDistrictId(districtId);
+              setSelectedCityId(district.parentCity);
+            }
+          } else {
+            const matches = searchRegions(p.address || "");
+            const districtMatch = matches.find((r) => r.type === "district");
+            const cityMatch = matches.find((r) => r.type === "city");
+            if (districtMatch) {
+              setSelectedDistrictId(districtMatch.id);
+              setSelectedCityId(districtMatch.parentCity ?? "");
+            } else if (cityMatch) {
+              setSelectedCityId(cityMatch.id);
+              setSelectedDistrictId("");
+            }
+          }
+        }
 
         const b = await getPropertyBookings(propertyId);
         setBookedRanges(
@@ -140,7 +217,6 @@ function EditPropertyContent() {
     loadData();
   }, [propertyId, user, authLoading, propertyLoaded, router]);
 
-  // 주소 확인 모달에서 주소 확정 시
   const handleAddressConfirm = (data: {
     address: string;
     lat: number;
@@ -148,13 +224,37 @@ function EditPropertyContent() {
   }) => {
     setAddress(data.address);
     setCoordinates({ lat: data.lat, lng: data.lng });
-    // 개발 환경에서만 디버그 로그 출력
-    if (process.env.NODE_ENV === 'development') {
-      console.debug("✅ 주소 확정:", data);
+
+    const districtId = getDistrictIdForCoord(data.lat, data.lng);
+    if (districtId) {
+      const district = ALL_REGIONS.find((r) => r.id === districtId);
+      if (district?.parentCity) {
+        setSelectedDistrictId(districtId);
+        setSelectedCityId(district.parentCity);
+        return;
+      }
+    }
+    const matches = searchRegions(data.address);
+    const districtMatch = matches.find((r) => r.type === "district");
+    const cityMatch = matches.find((r) => r.type === "city");
+    if (districtMatch) {
+      setSelectedDistrictId(districtMatch.id);
+      setSelectedCityId(districtMatch.parentCity ?? "");
+    } else if (cityMatch) {
+      setSelectedCityId(cityMatch.id);
+      setSelectedDistrictId("");
+    } else {
+      setSelectedCityId("");
+      setSelectedDistrictId("");
     }
   };
 
-  // 폼 제출 (Updates 에러 수정 및 Prisma 스키마 필드 매칭 완료)
+  const formatRoomNumber = (room: string) => {
+    const num = parseInt(room.replace(/\D/g, ""), 10);
+    if (isNaN(num)) return room;
+    return num.toString().padStart(4, "0");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!coordinates || !user) {
@@ -170,58 +270,55 @@ function EditPropertyContent() {
     setLoading(true);
 
     try {
-      // 1. 새 이미지를 Base64로 변환
-      const newImages = await Promise.all(
-        images.map(
-          (file) =>
-            new Promise<string>((res) => {
-              const r = new FileReader();
-              r.onload = () => res(r.result as string);
-              r.readAsDataURL(file);
-            }),
-        ),
+      const existingUrls = imagePreviews.filter(
+        (url) => typeof url === "string" && (url.startsWith("http") || url.startsWith("/"))
       );
+      let newUrls: string[] = [];
+      if (images.length > 0) {
+        newUrls = await Promise.all(
+          images.map((file) => uploadToS3(file, "properties"))
+        );
+      }
+      const imageUrls = [...existingUrls, ...newUrls];
 
-      // 2. 최종 이미지 리스트 생성 (기존 URL + 새 Base64)
-      // 여기서 imageUrls 변수가 확실하게 정의됩니다.
-      const imageUrls = [
-        ...imagePreviews.filter((url) => !url.startsWith("blob:")),
-        ...newImages,
-      ];
+      const unitNumber =
+        buildingNumber && roomNumber
+          ? `${buildingNumber}동 ${formatRoomNumber(roomNumber)}호`
+          : buildingNumber
+            ? `${buildingNumber}동`
+            : roomNumber
+              ? `${formatRoomNumber(roomNumber)}호`
+              : undefined;
 
-      // 3. Updates 객체 구성 (Prisma 스키마의 lat, lng 필드와 100% 일치)
-      const updates: any = {
+      const publicAddress = `${apartmentName ? `${apartmentName}, ` : ""}${address}`;
+
+      const updates: Partial<import("@/types/property").PropertyData> = {
         title: apartmentName || address,
-        original_description: address, // 스키마 필드명 일치
-        price: parseFloat(weeklyRent.replace(/\D/g, "") || "0"), // 숫자로 변환
+        original_description: propertyDescription || publicAddress,
+        price: parseInt(weeklyRent.replace(/\D/g, "") || "0", 10),
         priceUnit: "vnd",
-        area: 0, // 스키마 필수값 대비 (기본값)
+        area: 0,
         bedrooms: Number(bedrooms),
         bathrooms: Number(bathrooms),
-
-        // [핵심] coordinates 객체 대신 스키마 필드명 lat, lng로 각각 할당
-        lat: coordinates?.lat ? parseFloat(coordinates.lat.toString()) : null,
-        lng: coordinates?.lng ? parseFloat(coordinates.lng.toString()) : null,
-
-        address: address,
-        unitNumber:
-          buildingNumber && roomNumber
-            ? `${buildingNumber}동 ${roomNumber}호`
-            : null,
-        images: imageUrls, // 위에서 정의한 imageUrls 사용 (빨간줄 해결)
+        coordinates: { lat: coordinates.lat, lng: coordinates.lng },
+        address: publicAddress,
+        unitNumber: unitNumber || undefined,
+        images: imageUrls,
         amenities: selectedAmenities,
+        propertyType: propertyType || undefined,
+        cleaningPerWeek: selectedAmenities.includes("cleaning") ? cleaningPerWeek : 0,
+        petAllowed: selectedAmenities.includes("pet"),
+        petFee: selectedAmenities.includes("pet") && petFeeAmount.trim()
+          ? parseInt(petFeeAmount.replace(/\D/g, ""), 10) || undefined
+          : undefined,
         maxAdults: Number(maxAdults),
         maxChildren: Number(maxChildren),
-
-        // 날짜 데이터 (Date 객체로 전달)
-        checkInDate: checkInDate ? new Date(checkInDate) : null,
-        checkOutDate: checkOutDate ? new Date(checkOutDate) : null,
-        ...(icalPlatform !== undefined && { icalPlatform: icalPlatform || undefined }),
-        ...(icalCalendarName !== undefined && { icalCalendarName: icalCalendarName.trim() || undefined }),
-        ...(icalUrl !== undefined && { icalUrl: icalUrl.trim() || undefined }),
+        checkInDate: checkInDate ? new Date(checkInDate) : undefined,
+        checkOutDate: checkOutDate ? new Date(checkOutDate) : undefined,
+        ...(icalPlatform && { icalPlatform }),
+        ...(icalCalendarName.trim() && { icalCalendarName: icalCalendarName.trim() }),
+        ...(icalUrl.trim() && { icalUrl: icalUrl.trim() }),
       };
-
-      console.log("Sending updates to DB:", updates);
 
       if (isDeleted) await restoreProperty(propertyId);
       await updateProperty(propertyId, updates);
@@ -233,8 +330,7 @@ function EditPropertyContent() {
         currentLanguage === "ja" ? "編集完了！" :
         "Updated!"
       );
-      // 매물 수정 완료 후 내매물관리페이지의 등록매물 탭으로 이동
-      router.push('/profile/my-properties');
+      router.push("/profile/my-properties");
     } catch (err) {
       console.error("Update failed:", err);
       const errorMessage = (err as any).message || String(err);
@@ -279,32 +375,33 @@ function EditPropertyContent() {
           </h1>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* 사진 섹션 */}
-            <section>
-              <label className="block text-sm font-bold mb-2">
-                {currentLanguage === "ko" ? "사진" : 
-                 currentLanguage === "zh" ? "照片" :
-                 currentLanguage === "vi" ? "Ảnh" :
-                 currentLanguage === "ja" ? "写真" : "Photos"} ({imagePreviews.length}/5)
+            {/* 사진 등록 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {currentLanguage === "ko" ? "사진 등록" : currentLanguage === "vi" ? "Đăng ảnh" : "Upload Photos"}
+                <span className="text-red-500 text-xs ml-1">*</span>
+                <span className="text-gray-500 text-xs ml-2">({imagePreviews.length}/5)</span>
               </label>
-              <div className="grid grid-cols-3 gap-2">
-                {imagePreviews.map((p, i) => (
+              <div className="grid grid-cols-3 gap-3">
+                {imagePreviews.map((preview, index) => (
                   <div
-                    key={i}
-                    className="relative aspect-square rounded-xl overflow-hidden border"
+                    key={index}
+                    className="relative aspect-square rounded-xl overflow-hidden border-2 border-gray-200"
                   >
-                    <img src={p} className="w-full h-full object-cover" />
+                    <img src={preview} alt="" className="w-full h-full object-cover" />
                     <button
                       type="button"
                       onClick={() => {
-                        setImagePreviews((prev) =>
-                          prev.filter((_, idx) => idx !== i),
-                        );
-                        setImages((prev) => prev.filter((_, idx) => idx !== i));
+                        const removed = imagePreviews[index];
+                        setImagePreviews((prev) => prev.filter((_, i) => i !== index));
+                        if (removed?.startsWith("blob:")) {
+                          const newIndex = imagePreviews.slice(0, index).filter((u) => u.startsWith("blob:")).length;
+                          setImages((prev) => prev.filter((_, i) => i !== newIndex));
+                        }
                       }}
-                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
+                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
                     >
-                      <X size={12} />
+                      <X className="w-4 h-4" />
                     </button>
                   </div>
                 ))}
@@ -312,66 +409,181 @@ function EditPropertyContent() {
                   <button
                     type="button"
                     onClick={() => setShowImageSourceMenu(true)}
-                    className="aspect-square border-2 border-dashed rounded-xl flex flex-col items-center justify-center text-gray-400"
+                    className="aspect-square rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors"
                   >
-                    <Camera size={24} />
-                    <span className="text-[10px] mt-1">
-                      {currentLanguage === "ko" ? "추가" : 
-                       currentLanguage === "zh" ? "添加" :
-                       currentLanguage === "vi" ? "Thêm" :
-                       currentLanguage === "ja" ? "追加" : "Add"}
-                    </span>
+                    <Camera className="w-8 h-8 text-gray-400 mb-1" />
+                    <span className="text-xs text-gray-500">{currentLanguage === "ko" ? "추가" : currentLanguage === "vi" ? "Thêm" : "Add"}</span>
                   </button>
                 )}
               </div>
-            </section>
+            </div>
 
-            {/* 주소 섹션 - 매물 등록 페이지와 동일한 UI */}
-            <section>
-              <label className="block text-sm font-bold mb-2">
-                {getUIText('address', currentLanguage)}
+            {/* 매물 종류 */}
+            <div className="space-y-4">
+              <label className="block text-sm font-medium text-gray-700">
+                {currentLanguage === "ko" ? "매물 종류" : currentLanguage === "vi" ? "Loại bất động sản" : "Property Type"}
+                <span className="text-red-500 text-xs ml-1">*</span>
               </label>
-              
-              {address ? (
-                // 주소가 있는 경우: 확정된 주소 영역 (클릭 시 주소 검색 모달 열림)
-                <div
-                  onClick={() => setShowAddressModal(true)}
-                  className="w-full p-3 border border-green-500 bg-green-50 rounded-xl cursor-pointer flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-2">
-                    <Check className="text-green-600" size={18} />
-                    <div>
-                      <p className="text-sm font-medium text-green-700">
-                        {currentLanguage === "ko" ? "확정된 주소" : 
-                         currentLanguage === "zh" ? "已确认地址" : 
-                         currentLanguage === "vi" ? "Địa chỉ đã xác nhận" :
-                         currentLanguage === "ja" ? "確定住所" : "Confirmed Address"}
-                      </p>
-                      <p className="text-xs text-gray-600 truncate">{address}</p>
-                    </div>
+              <div className="grid grid-cols-2 gap-2">
+                {(
+                  [
+                    { value: "studio", ko: "스튜디오", vi: "Studio", en: "Studio" },
+                    { value: "one_room", ko: "원룸(방·거실 분리)", vi: "1 phòng", en: "1 Room" },
+                    { value: "two_room", ko: "2룸", vi: "2 phòng", en: "2 Rooms" },
+                    { value: "three_plus", ko: "3+룸", vi: "3+ phòng", en: "3+ Rooms" },
+                    { value: "detached", ko: "독채", vi: "Nhà riêng", en: "Detached" },
+                  ] as const
+                ).map(({ value, ko, vi, en }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setPropertyType(value)}
+                    className={`px-4 py-2.5 rounded-xl border-2 text-sm font-medium transition-all ${
+                      propertyType === value ? "border-blue-500 bg-blue-50 text-blue-700" : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
+                    }`}
+                  >
+                    {currentLanguage === "ko" ? ko : currentLanguage === "vi" ? vi : en}
+                  </button>
+                ))}
+              </div>
+              {propertyType && (
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                      {currentLanguage === "ko" ? "방 개수" : currentLanguage === "vi" ? "Số phòng" : "Bedrooms"}
+                    </label>
+                    <select
+                      value={bedrooms}
+                      onChange={(e) => setBedrooms(Number(e.target.value))}
+                      disabled={propertyType === "studio" || propertyType === "one_room" || propertyType === "two_room"}
+                      className={`w-full px-4 py-2.5 border-2 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 ${
+                        propertyType === "studio" || propertyType === "one_room" || propertyType === "two_room"
+                          ? "bg-gray-200 border-gray-300 text-gray-500 cursor-not-allowed"
+                          : "bg-gray-50 border-gray-200"
+                      }`}
+                    >
+                      {(() => {
+                        const opts = propertyType === "studio" || propertyType === "one_room" ? [1]
+                          : propertyType === "two_room" ? [2]
+                          : propertyType === "three_plus" ? [2, 3, 4, 5]
+                          : propertyType === "detached" ? [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] : [];
+                        return opts.map((n) => (
+                          <option key={n} value={n}>{n === 5 && propertyType === "three_plus" ? "5+" : n}</option>
+                        ));
+                      })()}
+                    </select>
                   </div>
-                  <MapPin className="text-gray-400" size={18} />
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                      {currentLanguage === "ko" ? "화장실 수" : currentLanguage === "vi" ? "Số phòng tắm" : "Bathrooms"}
+                    </label>
+                    <select
+                      value={bathrooms}
+                      onChange={(e) => setBathrooms(Number(e.target.value))}
+                      className="w-full px-4 py-2.5 bg-gray-50 border-2 border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500"
+                    >
+                      {(() => {
+                        const opts = propertyType === "studio" || propertyType === "one_room" ? [1, 2]
+                          : propertyType === "two_room" ? [1, 2, 3]
+                          : propertyType === "three_plus" ? [1, 2, 3, 4, 5, 6]
+                          : propertyType === "detached" ? [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] : [];
+                        return opts.map((n) => (
+                          <option key={n} value={n}>{n === 6 && propertyType === "three_plus" ? "5+" : n}</option>
+                        ));
+                      })()}
+                    </select>
+                  </div>
                 </div>
-              ) : (
-                // 주소가 없는 경우: 주소 찾기 버튼
+              )}
+            </div>
+
+            {/* 주소 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {currentLanguage === "ko" ? "주소" : currentLanguage === "vi" ? "Địa chỉ" : "Address"}
+                <span className="text-red-500 text-xs ml-1">*</span>
+              </label>
+              {(!address || !coordinates) && (
                 <button
                   type="button"
                   onClick={() => setShowAddressModal(true)}
-                  className="w-full p-4 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center gap-2 text-gray-400 hover:border-blue-400 hover:text-blue-400 transition-colors"
+                  className="w-full px-4 py-3.5 rounded-xl flex items-center justify-center gap-2 font-medium bg-blue-500 text-white hover:bg-blue-600"
                 >
-                  <MapPin size={24} />
-                  <span className="text-sm font-medium">
-                    {currentLanguage === "ko" ? "주소 찾기" : 
-                     currentLanguage === "zh" ? "查找地址" : 
-                     currentLanguage === "vi" ? "Tìm địa chỉ" :
-                     currentLanguage === "ja" ? "住所を検索" : "Find Address"}
-                  </span>
+                  <MapPin className="w-5 h-5" />
+                  <span>{currentLanguage === "ko" ? "주소 찾기" : currentLanguage === "vi" ? "Tìm địa chỉ" : "Find Address"}</span>
                 </button>
               )}
-            </section>
+              {address && coordinates && (
+                <div
+                  className="mt-3 p-4 bg-green-50 border-2 border-green-200 rounded-xl cursor-pointer hover:bg-green-100"
+                  onClick={() => setShowAddressModal(true)}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-green-100 rounded-lg flex-shrink-0">
+                      <Check className="w-5 h-5 text-green-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-green-700 mb-1">
+                        {currentLanguage === "ko" ? "확정된 주소 (클릭하여 수정)" : currentLanguage === "vi" ? "Địa chỉ đã xác nhận" : "Confirmed Address"}
+                      </p>
+                      <p className="text-sm font-semibold text-gray-900">{address}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setAddress("");
+                        setCoordinates(null);
+                        setSelectedCityId("");
+                        setSelectedDistrictId("");
+                      }}
+                      className="p-1.5 hover:bg-green-200 rounded-full"
+                      aria-label={currentLanguage === "ko" ? "주소 삭제" : "Remove address"}
+                    >
+                      <X className="w-4 h-4 text-gray-500" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
 
-            {/* 구분선 */}
-            <div className="border-t border-gray-200 my-4"></div>
+            {/* 도시·구 */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                  {currentLanguage === "ko" ? "도시" : currentLanguage === "vi" ? "Thành phố" : "City"}
+                </label>
+                <div className={`w-full px-4 py-2.5 border-2 rounded-xl text-sm ${address && coordinates ? "bg-gray-100 border-gray-200 text-gray-700" : "bg-gray-100 border-gray-200 text-gray-400"}`}>
+                  {address && coordinates && selectedCityId
+                    ? (() => {
+                        const city = VIETNAM_CITIES.find((c) => c.id === selectedCityId);
+                        if (!city) return "—";
+                        const langMap: Record<string, string> = { ko: city.nameKo, vi: city.nameVi, en: city.name, ja: city.nameJa ?? city.name, zh: city.nameZh ?? city.name };
+                        return langMap[currentLanguage] ?? city.name;
+                      })()
+                    : (currentLanguage === "ko" ? "주소 입력 후 자동" : currentLanguage === "vi" ? "Tự động sau địa chỉ" : "Auto after address")}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                  {currentLanguage === "ko" ? "구" : currentLanguage === "vi" ? "Quận" : "District"}
+                </label>
+                <select
+                  value={selectedDistrictId}
+                  onChange={(e) => setSelectedDistrictId(e.target.value)}
+                  disabled={!address || !coordinates}
+                  className={`w-full px-4 py-2.5 border-2 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 ${
+                    address && coordinates ? "bg-gray-50 border-gray-200" : "bg-gray-200 border-gray-300 text-gray-500 cursor-not-allowed"
+                  }`}
+                >
+                  <option value="">{currentLanguage === "ko" ? "선택" : currentLanguage === "vi" ? "Chọn" : "Select"}</option>
+                  {getDistrictsByCityId(selectedCityId).map((d) => {
+                    const langMap: Record<string, string> = { ko: d.nameKo, vi: d.nameVi, en: d.name, ja: d.nameJa ?? d.name, zh: d.nameZh ?? d.name };
+                    return <option key={d.id} value={d.id}>{langMap[currentLanguage] ?? d.name}</option>;
+                  })}
+                </select>
+              </div>
+            </div>
 
             {/* 동호수 입력 (동, 호실 분리) */}
             <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
@@ -583,85 +795,26 @@ function EditPropertyContent() {
               </div>
             </div>
 
-            {/* 최대 인원 수 */}
+            {/* 최대 인원 수 — 드롭다운 */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                {currentLanguage === "ko" ? "최대 인원 수" : 
-                 currentLanguage === "zh" ? "最大入住人数" : 
-                 currentLanguage === "vi" ? "Số người tối đa" :
-                 currentLanguage === "ja" ? "最大人数" : "Maximum Guests"}
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {currentLanguage === "ko" ? "최대 인원 수" : currentLanguage === "vi" ? "Số người tối đa" : "Maximum Guests"}
               </label>
-              <div className="grid grid-cols-2 gap-3">
-                {/* 성인 */}
-                <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg border-2 border-gray-200">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-gray-600" />
-                    <div>
-                      <div className="text-xs text-gray-500">
-                        {currentLanguage === "ko" ? "성인" : 
-                         currentLanguage === "zh" ? "成人" : 
-                         currentLanguage === "vi" ? "Người lớn" :
-                         currentLanguage === "ja" ? "大人" : "Adults"}
-                      </div>
-                      <div className="text-sm font-medium text-gray-900">
-                        {maxAdults}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setMaxAdults(Math.max(1, maxAdults - 1))}
-                      className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-                    >
-                      <ChevronLeft className="w-4 h-4 text-gray-600" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMaxAdults(maxAdults + 1)}
-                      className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-                    >
-                      <ChevronRight className="w-4 h-4 text-gray-600" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* 어린이 */}
-                <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg border-2 border-gray-200">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-gray-600" />
-                    <div>
-                      <div className="text-xs text-gray-500">
-                        {currentLanguage === "ko" ? "어린이" : 
-                         currentLanguage === "zh" ? "儿童" : 
-                         currentLanguage === "vi" ? "Trẻ em" :
-                         currentLanguage === "ja" ? "子供" : "Children"}
-                      </div>
-                      <div className="text-sm font-medium text-gray-900">
-                        {maxChildren}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setMaxChildren(Math.max(0, maxChildren - 1))
-                      }
-                      className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-                    >
-                      <ChevronLeft className="w-4 h-4 text-gray-600" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMaxChildren(maxChildren + 1)}
-                      className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-                    >
-                      <ChevronRight className="w-4 h-4 text-gray-600" />
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <select
+                value={maxAdults}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  setMaxAdults(v);
+                  setMaxChildren(0);
+                }}
+                className="w-full px-4 py-2.5 bg-gray-50 border-2 border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500"
+              >
+                {Array.from({ length: 20 }, (_, i) => i + 1).map((n) => (
+                  <option key={n} value={n}>
+                    {n}{currentLanguage === "ko" ? "명" : currentLanguage === "vi" ? " người" : " guests"}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* 1주일 임대료 */}
@@ -704,116 +857,67 @@ function EditPropertyContent() {
               </div>
             </div>
 
-            {/* 방/화장실 수 */}
+            {/* 숙소시설 및 정책 — 애완동물 요금, 주당 청소 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-3">
-                {currentLanguage === "ko" ? "방/화장실 수" : 
-                 currentLanguage === "zh" ? "卧室/浴室数量" : 
-                 currentLanguage === "vi" ? "Số phòng/phòng tắm" :
-                 currentLanguage === "ja" ? "寝室/浴室数" : "Bedrooms/Bathrooms"}
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                {/* 침실 */}
-                <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg border-2 border-gray-200">
-                  <div className="flex items-center gap-2">
-                    <Bed className="w-4 h-4 text-gray-600" />
-                    <div>
-                      <div className="text-xs text-gray-500">
-                        {currentLanguage === "ko" ? "침실" : 
-                         currentLanguage === "zh" ? "卧室" : 
-                         currentLanguage === "vi" ? "Phòng ngủ" :
-                         currentLanguage === "ja" ? "寝室" : "Bedrooms"}
-                      </div>
-                      <div className="text-sm font-medium text-gray-900">
-                        {bedrooms}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setBedrooms(Math.max(0, bedrooms - 1))}
-                      className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-                    >
-                      <ChevronLeft className="w-4 h-4 text-gray-600" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setBedrooms(bedrooms + 1)}
-                      className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-                    >
-                      <ChevronRight className="w-4 h-4 text-gray-600" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* 화장실 */}
-                <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg border-2 border-gray-200">
-                  <div className="flex items-center gap-2">
-                    <Bath className="w-4 h-4 text-gray-600" />
-                    <div>
-                      <div className="text-xs text-gray-500">
-                        {currentLanguage === "ko" ? "화장실" : 
-                         currentLanguage === "zh" ? "浴室" : 
-                         currentLanguage === "vi" ? "Phòng tắm" :
-                         currentLanguage === "ja" ? "浴室" : "Bathrooms"}
-                      </div>
-                      <div className="text-sm font-medium text-gray-900">
-                        {bathrooms}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setBathrooms(Math.max(0, bathrooms - 1))}
-                      className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-                    >
-                      <ChevronLeft className="w-4 h-4 text-gray-600" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setBathrooms(bathrooms + 1)}
-                      className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-                    >
-                      <ChevronRight className="w-4 h-4 text-gray-600" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* 숙소시설 및 정책 */}
-            <section>
-              <label className="block text-sm font-bold mb-3">
                 {currentLanguage === "ko" ? "숙소시설 및 정책" : currentLanguage === "vi" ? "Tiện ích và chính sách" : "Facilities & Policy"}
               </label>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {FACILITY_CATEGORIES.map((cat) => {
                   const options = FACILITY_OPTIONS.filter((o) => o.category === cat.id);
                   const catLabel = (cat.label as any)[currentLanguage] || cat.label.en;
                   return (
                     <div key={cat.id}>
-                      <p className="text-xs font-medium text-gray-500 mb-1.5">{catLabel}</p>
+                      <p className="text-xs font-medium text-gray-500 mb-2">{catLabel}</p>
                       <div className="grid grid-cols-3 gap-2">
                         {options.map((opt) => {
                           const Icon = opt.icon;
                           const isSelected = selectedAmenities.includes(opt.id);
                           const label = (opt.label as any)[currentLanguage] || opt.label.en;
+                          const isPet = opt.id === "pet";
+                          const isCleaning = opt.id === "cleaning";
                           return (
-                            <button
-                              key={opt.id}
-                              type="button"
-                              onClick={() =>
-                                setSelectedAmenities((prev) =>
-                                  prev.includes(opt.id) ? prev.filter((x) => x !== opt.id) : [...prev, opt.id],
-                                )
-                              }
-                              className={`p-3 rounded-xl border text-[10px] flex flex-col items-center gap-1 transition-all ${isSelected ? "border-blue-500 bg-blue-50 text-blue-600" : "text-gray-400"}`}
-                            >
-                              <Icon size={18} />
-                              {label}
-                            </button>
+                            <div key={opt.id} className="flex flex-col items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setSelectedAmenities((prev) =>
+                                    prev.includes(opt.id) ? prev.filter((x) => x !== opt.id) : [...prev, opt.id]
+                                  )
+                                }
+                                className={`w-full flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border-2 transition-all ${
+                                  isSelected ? "border-blue-500 bg-blue-50 text-blue-700" : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
+                                }`}
+                              >
+                                <Icon className={`w-5 h-5 ${isSelected ? "text-blue-600" : "text-gray-400"}`} />
+                                <span className="text-[10px] font-medium text-center leading-tight">{label}</span>
+                              </button>
+                              {isPet && isSelected && (
+                                <div className="w-full flex items-center gap-0.5 px-1.5 py-1 rounded-lg bg-blue-50/80 border border-blue-200">
+                                  <input
+                                    type="text"
+                                    value={petFeeAmount ? parseInt(petFeeAmount.replace(/\D/g, ""), 10).toLocaleString() : ""}
+                                    onChange={(e) => setPetFeeAmount(e.target.value.replace(/\D/g, ""))}
+                                    placeholder="0"
+                                    className="w-14 px-1.5 py-0.5 text-[10px] border border-gray-200 rounded focus:ring-1 focus:ring-blue-500"
+                                  />
+                                  <span className="text-[9px] text-gray-600 font-medium shrink-0">VND</span>
+                                </div>
+                              )}
+                              {isCleaning && isSelected && (
+                                <div className="w-full">
+                                  <select
+                                    value={cleaningPerWeek}
+                                    onChange={(e) => setCleaningPerWeek(Number(e.target.value))}
+                                    className="w-full px-1.5 py-0.5 text-[10px] border border-gray-200 rounded-lg focus:ring-1 focus:ring-blue-500 bg-white"
+                                  >
+                                    {[1, 2, 3, 4, 5, 6, 7].map((n) => (
+                                      <option key={n} value={n}>{n}{currentLanguage === "ko" ? "회" : currentLanguage === "vi" ? " lần" : "x"}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                              )}
+                            </div>
                           );
                         })}
                       </div>
@@ -821,40 +925,27 @@ function EditPropertyContent() {
                   );
                 })}
               </div>
-            </section>
+            </div>
 
-            {/* 날짜 선택 */}
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setCalendarMode("checkin");
-                  setShowCalendar(true);
-                }}
-                className="p-3 border rounded-xl text-left"
-              >
-                <p className="text-[10px] text-gray-400">
-                  {getUIText('checkIn', currentLanguage)}
-                </p>
-                <p className="text-xs font-bold">
-                  {checkInDate ? checkInDate.toLocaleDateString() : getUIText('selectDate', currentLanguage)}
-                </p>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setCalendarMode("checkout");
-                  setShowCalendar(true);
-                }}
-                className="p-3 border rounded-xl text-left"
-              >
-                <p className="text-[10px] text-gray-400">
-                  {getUIText('checkOut', currentLanguage)}
-                </p>
-                <p className="text-xs font-bold">
-                  {checkOutDate ? checkOutDate.toLocaleDateString() : getUIText('selectDate', currentLanguage)}
-                </p>
-              </button>
+            {/* 매물 설명 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {currentLanguage === "ko" ? "매물 설명" : currentLanguage === "vi" ? "Mô tả bất động sản" : "Property Description"}
+                <span className="text-red-500 text-xs ml-1">*</span>
+              </label>
+              <textarea
+                value={propertyDescription}
+                onChange={(e) => setPropertyDescription(e.target.value)}
+                placeholder={
+                  currentLanguage === "ko"
+                    ? "매물에 대한 상세 설명을 입력해주세요."
+                    : currentLanguage === "vi"
+                      ? "Nhập mô tả chi tiết về bất động sản."
+                      : "Enter detailed description of the property."
+                }
+                rows={4}
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 resize-none"
+              />
             </div>
 
             {/* 외부 캘린더 가져오기 (드롭다운) - 재등록/수정 버튼 바로 위 */}

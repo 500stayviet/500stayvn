@@ -13,13 +13,15 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getProperty } from '@/lib/api/properties';
 import { PropertyData } from '@/types/property';
-import { ArrowLeft, Edit, MapPin, Square, Calendar, Users, ChevronLeft, ChevronRight, Bed, Bath } from 'lucide-react';
+import { ArrowLeft, Edit, Calendar, CalendarDays, Users, ChevronLeft, ChevronRight, Bed, Bath, Square } from 'lucide-react';
 import TopBar from '@/components/TopBar';
 import { PropertyDescription } from '@/components/PropertyDescription';
 import Image from 'next/image';
 import { FACILITY_OPTIONS } from '@/lib/constants/facilities';
-import { 
-  formatFullPrice, 
+import {
+  formatFullPrice,
+  getPropertyTypeLabel,
+  getCityDistrictFromCoords,
 } from '@/lib/utils/propertyUtils';
 import { 
   parseDate, 
@@ -126,6 +128,9 @@ export default function PropertyDetailPage() {
     : ['https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800&h=400&fit=crop'];
   
   const currentImage = images[currentImageIndex] || images[0];
+  const { cityName, districtName } = property.coordinates
+    ? getCityDistrictFromCoords(property.coordinates.lat, property.coordinates.lng, currentLanguage)
+    : { cityName: '', districtName: '' };
 
   return (
     <div className="min-h-screen bg-gray-100 flex justify-center">
@@ -267,152 +272,175 @@ export default function PropertyDetailPage() {
             </div>
           </div>
 
-          {/* 매물 정보 */}
+          {/* 매물 정보 — 등록 시 기입한 모든 항목 */}
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-4">
-            {/* 제목 */}
-            <div>
-              <p className="text-xs text-gray-500 mb-1">
-                {currentLanguage === 'ko' ? '제목' : 
-                 currentLanguage === 'vi' ? 'Tiêu đề' : 
-                 'Title'}
-              </p>
-              <p className="text-lg font-bold text-gray-900">{property.title}</p>
-            </div>
+            {property.propertyType && (
+              <div>
+                <p className="text-xs text-gray-500 mb-0.5">
+                  {currentLanguage === 'ko' ? '매물 종류' : currentLanguage === 'vi' ? 'Loại bất động sản' : 'Property Type'}
+                </p>
+                <p className="text-sm font-semibold text-gray-900">{getPropertyTypeLabel(property.propertyType, currentLanguage)}</p>
+              </div>
+            )}
 
-            {/* 주소 */}
             <div>
-              <p className="text-xs text-gray-500 mb-1">
-                {currentLanguage === 'ko' ? '주소' : 
-                 currentLanguage === 'vi' ? 'Địa chỉ' : 
-                 'Address'}
+              <p className="text-xs text-gray-500 mb-0.5">
+                {currentLanguage === 'ko' ? '주소' : currentLanguage === 'vi' ? 'Địa chỉ' : 'Address'}
               </p>
-              <p className="text-sm font-medium text-gray-900">
-                {property.address}
-              </p>
+              <p className="text-sm font-medium text-gray-900">{property.address}</p>
               {property.unitNumber && (
                 <p className="text-sm text-blue-600 mt-1 font-semibold">
-                  {currentLanguage === 'ko' ? `동호수: ${property.unitNumber}` : 
-                   currentLanguage === 'vi' ? `Số phòng: ${property.unitNumber}` : 
-                   `Unit: ${property.unitNumber}`}
+                  {currentLanguage === 'ko' ? `동호수: ${property.unitNumber}` : currentLanguage === 'vi' ? `Số phòng: ${property.unitNumber}` : `Unit: ${property.unitNumber}`}
                 </p>
               )}
             </div>
 
-            {/* 설명 */}
-            <div>
-              <p className="text-xs text-gray-500 mb-1">
-                {currentLanguage === 'ko' ? '설명' : 
-                 currentLanguage === 'vi' ? 'Mô tả' : 
-                 'Description'}
-              </p>
-              <PropertyDescription
-                description={property.original_description}
-                sourceLanguage="vi"
-                targetLanguage={currentLanguage}
-                cacheKey={`property-detail-owner-${property.id}`}
-                className="mt-2"
-              />
-            </div>
+            {(cityName || districtName) && (
+              <div className="grid grid-cols-2 gap-3">
+                {cityName && (
+                  <div>
+                    <p className="text-xs text-gray-500 mb-0.5">{currentLanguage === 'ko' ? '도시' : currentLanguage === 'vi' ? 'Thành phố' : 'City'}</p>
+                    <p className="text-sm font-medium text-gray-900">{cityName}</p>
+                  </div>
+                )}
+                {districtName && (
+                  <div>
+                    <p className="text-xs text-gray-500 mb-0.5">{currentLanguage === 'ko' ? '구' : currentLanguage === 'vi' ? 'Quận' : 'District'}</p>
+                    <p className="text-sm font-medium text-gray-900">{districtName}</p>
+                  </div>
+                )}
+              </div>
+            )}
 
-            <div className="grid grid-cols-2 gap-4">
-              {/* 면적 */}
+            {(property.checkInDate || property.checkOutDate) && (
               <div>
-                <p className="text-xs text-gray-500 mb-1">
-                  {currentLanguage === 'ko' ? '면적' : 
-                   currentLanguage === 'vi' ? 'Diện tích' : 
-                   'Area'}
+                <p className="text-xs text-gray-500 mb-0.5">
+                  {currentLanguage === 'ko' ? '임대 가능 날짜' : currentLanguage === 'vi' ? 'Ngày cho thuê' : 'Available Dates'}
                 </p>
                 <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
-                  <Square className="w-4 h-4 text-gray-600" />
-                  {property.area} m²
-                </div>
-              </div>
-
-              {/* 임대 가능 날짜 */}
-              {(property.checkInDate || property.checkOutDate) && (
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">
-                    {currentLanguage === 'ko' ? '임대 가능 날짜' : 
-                     currentLanguage === 'vi' ? 'Ngày cho thuê' : 
-                     'Available Dates'}
-                  </p>
-                  <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
-                    <Calendar className="w-4 h-4 text-gray-600" />
-                    <span>
-                      {property.checkInDate && formatDate(property.checkInDate, currentLanguage)}
-                      {property.checkInDate && property.checkOutDate && ' ~ '}
-                      {property.checkOutDate && formatDate(property.checkOutDate, currentLanguage)}
-                    </span>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* 최대 인원 수 */}
-            {(property.maxAdults || property.maxChildren) && (
-              <div>
-                <p className="text-xs text-gray-500 mb-1">
-                  {currentLanguage === 'ko' ? '최대 인원 수' : 
-                   currentLanguage === 'vi' ? 'Số người tối đa' : 
-                   'Maximum Guests'}
-                </p>
-                <div className="flex items-center gap-4 text-sm text-gray-900">
-                  {property.maxAdults !== undefined && (
-                    <div className="flex items-center gap-2">
-                      <Users className="w-4 h-4 text-gray-600" />
-                      <span className="font-medium">
-                        {currentLanguage === 'ko' ? `성인 ${property.maxAdults}명` : 
-                         currentLanguage === 'vi' ? `${property.maxAdults} người lớn` : 
-                         `${property.maxAdults} adults`}
-                      </span>
-                    </div>
-                  )}
-                  {property.maxChildren !== undefined && property.maxChildren > 0 && (
-                    <div className="flex items-center gap-2">
-                      <Users className="w-4 h-4 text-gray-600" />
-                      <span className="font-medium">
-                        {currentLanguage === 'ko' ? `어린이 ${property.maxChildren}명` : 
-                         currentLanguage === 'vi' ? `${property.maxChildren} trẻ em` : 
-                         `${property.maxChildren} children`}
-                      </span>
-                    </div>
-                  )}
+                  <Calendar className="w-4 h-4 text-gray-600 shrink-0" />
+                  <span>
+                    {property.checkInDate && formatDate(property.checkInDate, currentLanguage)}
+                    {property.checkInDate && property.checkOutDate && ' ~ '}
+                    {property.checkOutDate && formatDate(property.checkOutDate, currentLanguage)}
+                  </span>
                 </div>
               </div>
             )}
 
-            {/* 편의시설 */}
+            <div>
+              <p className="text-xs text-gray-500 mb-0.5">
+                {currentLanguage === 'ko' ? '1주일 임대료' : currentLanguage === 'vi' ? 'Giá thuê 1 tuần' : 'Weekly Rent'}
+              </p>
+              <p className="text-2xl font-bold text-gray-900">{formatFullPrice(property.price, property.priceUnit)}</p>
+              <p className="text-xs text-gray-500 mt-1">
+                {currentLanguage === 'ko' ? '공과금/관리비 포함' : currentLanguage === 'vi' ? 'Bao gồm tiện ích/phí quản lý' : 'Utilities/Management fees included'}
+              </p>
+            </div>
+
+            {(property.maxAdults != null || property.maxChildren != null) && (
+              <div>
+                <p className="text-xs text-gray-500 mb-0.5">
+                  {currentLanguage === 'ko' ? '최대 인원 수' : currentLanguage === 'vi' ? 'Số người tối đa' : 'Maximum Guests'}
+                </p>
+                <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
+                  <Users className="w-4 h-4 text-gray-600 shrink-0" />
+                  <span>
+                    {property.maxAdults ?? 0}
+                    {currentLanguage === 'ko' ? '명' : currentLanguage === 'vi' ? ' người' : ' guests'}
+                    {(property.maxChildren ?? 0) > 0 && (
+                      <> (+ {(property.maxChildren ?? 0)} {currentLanguage === 'ko' ? '어린이' : currentLanguage === 'vi' ? 'trẻ em' : 'children'})</>
+                    )}
+                  </span>
+                </div>
+              </div>
+            )}
+
             <div>
               <p className="text-xs text-gray-500 mb-3">
-                {currentLanguage === 'ko' ? '편의시설' : 
-                 currentLanguage === 'vi' ? 'Tiện ích' : 
-                 'Amenities'}
+                {currentLanguage === 'ko' ? '숙소시설 및 정책' : currentLanguage === 'vi' ? 'Tiện ích và chính sách' : 'Facilities & Policy'}
               </p>
-              {property.amenities && property.amenities.length > 0 ? (
-                <div className="grid grid-cols-3 gap-3">
-                  {FACILITY_OPTIONS.filter(opt => property.amenities?.includes(opt.id)).map((amenity) => {
-                    const Icon = amenity.icon;
-                    const label = (amenity.label as any)[currentLanguage] || amenity.label.en;
-                    
+              {property.amenities?.length ? (
+                <div className="grid grid-cols-3 gap-2">
+                  {FACILITY_OPTIONS.filter((opt) => property.amenities?.includes(opt.id)).map((opt) => {
+                    const Icon = opt.icon;
+                    const label = (opt.label as Record<string, string>)[currentLanguage] || opt.label.en;
+                    const isPet = opt.id === 'pet';
+                    const isCleaning = opt.id === 'cleaning';
+                    const petFee = isPet && property.petAllowed && property.petFee != null ? property.petFee : null;
+                    const cleaningCount = isCleaning && (property.cleaningPerWeek ?? 0) > 0 ? property.cleaningPerWeek : null;
                     return (
                       <div
-                        key={amenity.id}
-                        className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 border-blue-500 bg-blue-50"
+                        key={opt.id}
+                        className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border-2 border-blue-500 bg-blue-50"
                       >
-                        <Icon className="w-6 h-6 text-blue-600" />
-                        <span className="text-xs font-medium text-center text-blue-700">{label}</span>
+                        <Icon className="w-5 h-5 text-blue-600" />
+                        <span className="text-[10px] font-medium text-center text-blue-700 leading-tight">{label}</span>
+                        {petFee != null && (
+                          <span className="text-[10px] font-semibold text-blue-800">
+                            {property.priceUnit === 'vnd' ? `${(petFee / 1_000_000).toFixed(1)}M VND` : `$${petFee}`}
+                          </span>
+                        )}
+                        {cleaningCount != null && (
+                          <span className="text-[10px] font-semibold text-blue-800">
+                            {cleaningCount}
+                            {currentLanguage === 'ko' ? '회/주' : currentLanguage === 'vi' ? ' lần/tuần' : '/week'}
+                          </span>
+                        )}
                       </div>
                     );
                   })}
                 </div>
               ) : (
                 <p className="text-sm text-gray-400 text-center py-4">
-                  {currentLanguage === 'ko' ? '편의시설 정보가 없습니다' : 
-                   currentLanguage === 'vi' ? 'Không có thông tin tiện ích' : 
-                   'No amenities information'}
+                  {currentLanguage === 'ko' ? '편의시설 정보가 없습니다' : currentLanguage === 'vi' ? 'Không có thông tin tiện ích' : 'No amenities information'}
                 </p>
               )}
             </div>
+
+            {property.original_description && (
+              <div className="pt-2 border-t border-gray-100">
+                <p className="text-xs text-gray-500 mb-1">
+                  {currentLanguage === 'ko' ? '매물 설명' : currentLanguage === 'vi' ? 'Mô tả bất động sản' : 'Property Description'}
+                </p>
+                <PropertyDescription
+                  description={property.original_description}
+                  sourceLanguage="vi"
+                  targetLanguage={currentLanguage}
+                  cacheKey={`property-detail-owner-${property.id}`}
+                  className="mt-2"
+                />
+              </div>
+            )}
+
+            {(property.icalPlatform || property.icalCalendarName || property.icalUrl) && (
+              <div className="pt-4 border-t border-gray-100">
+                <p className="text-xs text-gray-500 mb-2 flex items-center gap-1.5">
+                  <CalendarDays className="w-4 h-4" />
+                  {currentLanguage === 'ko' ? '외부 캘린더 가져오기' : currentLanguage === 'vi' ? 'Đồng bộ lịch ngoài' : 'Import External Calendar'}
+                </p>
+                <div className="space-y-1.5 text-sm text-gray-800">
+                  {property.icalPlatform && (
+                    <p>
+                      <span className="text-gray-500">{currentLanguage === 'ko' ? '플랫폼: ' : currentLanguage === 'vi' ? 'Nền tảng: ' : 'Platform: '}</span>
+                      <span className="font-medium capitalize">{property.icalPlatform}</span>
+                    </p>
+                  )}
+                  {property.icalCalendarName && (
+                    <p>
+                      <span className="text-gray-500">{currentLanguage === 'ko' ? '캘린더 이름: ' : currentLanguage === 'vi' ? 'Tên lịch: ' : 'Calendar name: '}</span>
+                      <span className="font-medium">{property.icalCalendarName}</span>
+                    </p>
+                  )}
+                  {property.icalUrl && (
+                    <p className="break-all">
+                      <span className="text-gray-500">{currentLanguage === 'ko' ? 'iCal URL: ' : 'iCal URL: '}</span>
+                      <span className="text-blue-600 font-medium">{property.icalUrl}</span>
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
