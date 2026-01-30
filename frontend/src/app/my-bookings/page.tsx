@@ -95,24 +95,20 @@ function BookingListContent() {
 
   const tabParam = searchParams.get("tab");
   const initialFilter =
-    tabParam === "pending" ||
-    tabParam === "confirmed" ||
-    tabParam === "cancelled"
+    tabParam === "active" || tabParam === "closed"
       ? tabParam
-      : "pending";
-  const [filter, setFilter] = useState<"pending" | "confirmed" | "cancelled">(
-    initialFilter,
-  );
+      : tabParam === "pending" || tabParam === "confirmed"
+        ? "active"
+        : tabParam === "cancelled"
+          ? "closed"
+          : "active";
+  const [filter, setFilter] = useState<"active" | "closed">(initialFilter);
 
   useEffect(() => {
     const newTab = searchParams.get("tab");
-    if (
-      newTab === "pending" ||
-      newTab === "confirmed" ||
-      newTab === "cancelled"
-    ) {
-      setFilter(newTab);
-    }
+    if (newTab === "active" || newTab === "closed") setFilter(newTab);
+    else if (newTab === "pending" || newTab === "confirmed") setFilter("active");
+    else if (newTab === "cancelled") setFilter("closed");
   }, [searchParams]);
 
   useEffect(() => {
@@ -180,6 +176,25 @@ function BookingListContent() {
   const formatPrice = (p: number, u: string) =>
     u === "vnd" ? `${p.toLocaleString()} VND` : `$${p.toLocaleString()}`;
 
+  // 활성 예약: 승인대기 + 예약확정 (임대인 예약관리와 동일 구조)
+  const activeBookings = bookings.filter(
+    (b) => b.status === "pending" || b.status === "confirmed",
+  );
+  const activeBookingsSorted = [...activeBookings].sort((a, b) => {
+    if (a.status === "pending" && b.status !== "pending") return -1;
+    if (a.status !== "pending" && b.status === "pending") return 1;
+    return (
+      new Date(b.createdAt || 0).getTime() -
+      new Date(a.createdAt || 0).getTime()
+    );
+  });
+  // 종료 내역: 취소됨, 완료됨
+  const closedBookings = bookings.filter(
+    (b) => b.status === "cancelled" || b.status === "completed",
+  );
+  const filteredBookings =
+    filter === "active" ? activeBookingsSorted : closedBookings;
+
   const handleCancel = async (bookingId: string) => {
     if (!cancelAgreed) return;
     setCancellingId(bookingId);
@@ -241,22 +256,27 @@ function BookingListContent() {
           )}
         </div>
 
-        <div className="px-4 py-3 border-b flex gap-2">
-          {(["pending", "confirmed", "cancelled"] as const).map((t) => (
+        <div className="px-4 py-3 border-b border-gray-200 flex gap-2">
+          {[
+            { id: "active" as const, labelKey: "activeBookings" as const },
+            { id: "closed" as const, labelKey: "closedHistory" as const },
+          ].map((tab) => (
             <button
-              key={t}
-              onClick={() => setFilter(t)}
-              className={`px-4 py-2 rounded-full text-xs font-bold ${filter === t ? "bg-blue-600 text-white" : "bg-gray-100"}`}
+              key={tab.id}
+              onClick={() => {
+                setFilter(tab.id);
+                router.replace(`/my-bookings?tab=${tab.id}`, { scroll: false });
+              }}
+              className={`px-3 py-2 rounded-full text-sm font-medium ${filter === tab.id ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600"}`}
             >
-              {getUIText(t === 'pending' ? 'pending' : t === 'confirmed' ? 'confirmed' : 'cancelled', currentLanguage)} ({bookings.filter((b) => b.status === t).length})
+              {getUIText(tab.labelKey, currentLanguage)} (
+              {tab.id === "active" ? activeBookings.length : closedBookings.length})
             </button>
           ))}
         </div>
 
         <div className="p-4 space-y-4">
-          {bookings
-            .filter((b) => b.status === filter)
-            .map((booking) => (
+          {filteredBookings.map((booking) => (
               <div
                 key={booking.id}
                 onClick={() => setSelectedBookingForDetails(booking)}
