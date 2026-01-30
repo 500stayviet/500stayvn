@@ -14,6 +14,7 @@ import {
   Car,
   ShieldCheck,
   Dog,
+  Sparkles,
 } from "lucide-react";
 import type { SupportedLanguage } from "@/lib/api/translation";
 
@@ -176,17 +177,29 @@ export const FACILITY_OPTIONS: FacilityOption[] = [
     icon: ShieldCheck,
     category: "amenities",
   },
-  // 5. 추가 정책 (애완동물)
+  // 5. 추가 정책 (애완동물, 주당 청소)
   {
     id: "pet",
     label: {
-      ko: "애완동물 가능",
-      vi: "Cho phép thú cưng",
-      en: "Pet Friendly",
-      ja: "ペット可",
-      zh: "允许宠物",
+      ko: "애완동물 가능 (마리당)",
+      vi: "Cho phép thú cưng (mỗi con)",
+      en: "Pet Friendly (per pet)",
+      ja: "ペット可 (1頭あたり)",
+      zh: "允许宠物 (每只)",
     },
     icon: Dog,
+    category: "policy",
+  },
+  {
+    id: "cleaning",
+    label: {
+      ko: "주당 청소",
+      vi: "Dọn dẹp theo tuần",
+      en: "Weekly Cleaning",
+      ja: "週間清掃",
+      zh: "每周清洁",
+    },
+    icon: Sparkles,
     category: "policy",
   },
 ];

@@ -85,6 +85,7 @@ function EditPropertyContent() {
     "" | "studio" | "one_room" | "two_room" | "three_plus" | "detached"
   >("");
   const [cleaningPerWeek, setCleaningPerWeek] = useState(1);
+  const [maxPets, setMaxPets] = useState(1);
   const [petFeeAmount, setPetFeeAmount] = useState("");
   const [propertyDescription, setPropertyDescription] = useState("");
   const [icalPlatform, setIcalPlatform] = useState("");
@@ -169,6 +170,7 @@ function EditPropertyContent() {
         setCleaningPerWeek(cleaning > 0 ? cleaning : 1);
         const fee = (p as { petFee?: number }).petFee;
         setPetFeeAmount(fee != null ? fee.toString() : "");
+        setMaxPets((p as { maxPets?: number }).maxPets ?? 1);
         setPropertyDescription((p as { original_description?: string }).original_description || "");
         setIcalPlatform(p.icalPlatform || "");
         setIcalCalendarName(p.icalCalendarName || "");
@@ -308,6 +310,7 @@ function EditPropertyContent() {
         propertyType: propertyType || undefined,
         cleaningPerWeek: selectedAmenities.includes("cleaning") ? cleaningPerWeek : 0,
         petAllowed: selectedAmenities.includes("pet"),
+        ...(selectedAmenities.includes("pet") && { maxPets }),
         petFee: selectedAmenities.includes("pet") && petFeeAmount.trim()
           ? parseInt(petFeeAmount.replace(/\D/g, ""), 10) || undefined
           : undefined,
@@ -891,15 +894,31 @@ function EditPropertyContent() {
                                 <span className="text-[10px] font-medium text-center leading-tight">{label}</span>
                               </button>
                               {isPet && isSelected && (
-                                <div className="w-full flex items-center gap-0.5 px-1.5 py-1 rounded-lg bg-blue-50/80 border border-blue-200">
-                                  <input
-                                    type="text"
-                                    value={petFeeAmount ? parseInt(petFeeAmount.replace(/\D/g, ""), 10).toLocaleString() : ""}
-                                    onChange={(e) => setPetFeeAmount(e.target.value.replace(/\D/g, ""))}
-                                    placeholder="0"
-                                    className="w-14 px-1.5 py-0.5 text-[10px] border border-gray-200 rounded focus:ring-1 focus:ring-blue-500"
-                                  />
-                                  <span className="text-[9px] text-gray-600 font-medium shrink-0">VND</span>
+                                <div className="w-full space-y-1">
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-[9px] text-gray-600 shrink-0">
+                                      {currentLanguage === "ko" ? "최대 마리수" : currentLanguage === "vi" ? "Số con tối đa" : "Max pets"}
+                                    </span>
+                                    <select
+                                      value={maxPets}
+                                      onChange={(e) => setMaxPets(Number(e.target.value))}
+                                      className="flex-1 px-1 py-0.5 text-[10px] border border-gray-200 rounded focus:ring-1 focus:ring-blue-500 bg-white"
+                                    >
+                                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                                        <option key={n} value={n}>{n}</option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                  <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-lg bg-blue-50/80 border border-blue-200">
+                                    <input
+                                      type="text"
+                                      value={petFeeAmount ? parseInt(petFeeAmount.replace(/\D/g, ""), 10).toLocaleString() : ""}
+                                      onChange={(e) => setPetFeeAmount(e.target.value.replace(/\D/g, ""))}
+                                      placeholder="0"
+                                      className="w-14 px-1.5 py-0.5 text-[10px] border border-gray-200 rounded focus:ring-1 focus:ring-blue-500"
+                                    />
+                                    <span className="text-[9px] text-gray-600 font-medium shrink-0">VND</span>
+                                  </div>
                                 </div>
                               )}
                               {isCleaning && isSelected && (

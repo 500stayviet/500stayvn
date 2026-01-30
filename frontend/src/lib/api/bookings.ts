@@ -38,11 +38,16 @@ export interface BookingData {
   // 인원
   adults: number; // 성인 수
   children: number; // 어린이 수
+  petCount?: number; // 애완동물 마리 수
   
   // 가격
-  totalPrice: number; // 총 가격
+  totalPrice: number; // 총 가격 (숙박 + 애완동물 + 예약수수료)
   priceUnit: 'vnd' | 'usd'; // 통화 단위
   nights: number; // 숙박 일수
+  accommodationTotal?: number; // 숙박 요금 (몇 박 × 주당 가격)
+  petTotal?: number; // 애완동물 추가 요금
+  serviceFee?: number; // 예약 수수료
+  serviceFeePercent?: number; // 예약 수수료 비율 (예: 10)
   
   // 결제 정보
   paymentMethod?: 'momo' | 'zalopay' | 'bank_transfer' | 'pay_at_property'; // 결제 수단
@@ -76,6 +81,7 @@ export interface CreateBookingRequest {
   checkOutDate: string;
   adults: number;
   children: number;
+  petCount?: number;
 }
 
 /**
@@ -238,6 +244,7 @@ export async function createBooking(
     priceUnit: 'vnd' | 'usd';
     checkInTime?: string;
     checkOutTime?: string;
+    petFee?: number;
   },
   guestId: string
 ): Promise<BookingData> {
@@ -257,9 +264,15 @@ export async function createBooking(
   const checkOut = new Date(toISODateString(data.checkOutDate));
   const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
   
-  // 총 가격 계산 (주 단위 가격 * 주 수)
+  // 요금 계산: 숙박 + 애완동물 + 예약수수료(10%)
   const weeks = Math.ceil(nights / 7);
-  const totalPrice = propertyData.price * weeks;
+  const accommodationTotal = propertyData.price * weeks;
+  const petCount = data.petCount ?? 0;
+  const petFeePerWeek = propertyData.petFee ?? 0;
+  const petTotal = petCount * petFeePerWeek * weeks;
+  const serviceFeePercent = 10;
+  const serviceFee = Math.round((accommodationTotal + petTotal) * (serviceFeePercent / 100));
+  const totalPrice = accommodationTotal + petTotal + serviceFee;
   
   const newBooking: BookingData = {
     id: generateId(),
@@ -284,10 +297,15 @@ export async function createBooking(
     
     adults: data.adults,
     children: data.children,
+    petCount: petCount || undefined,
     
     totalPrice,
     priceUnit: propertyData.priceUnit,
     nights,
+    accommodationTotal,
+    petTotal: petTotal || undefined,
+    serviceFee,
+    serviceFeePercent,
     
     paymentStatus: 'pending',
     status: 'pending',

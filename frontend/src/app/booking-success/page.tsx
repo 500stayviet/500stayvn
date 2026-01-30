@@ -346,6 +346,17 @@ function BookingSuccessContent() {
                 </p>
               </div>
 
+              {(booking.petCount ?? 0) > 0 && (
+                <div className="space-y-1">
+                  <p className="text-[11px] font-bold text-gray-400 uppercase">
+                    {currentLanguage === "ko" ? "애완동물" : "Thú cưng"}
+                  </p>
+                  <p className="text-sm font-bold text-gray-900">
+                    {booking.petCount} {currentLanguage === "ko" ? "마리" : " con"}
+                  </p>
+                </div>
+              )}
+
               <div className="space-y-1">
                 <p className="text-[11px] font-bold text-gray-400 uppercase">
                   {currentLanguage === "ko" ? "숙박 기간" : "Thời gian"}
@@ -365,6 +376,37 @@ function BookingSuccessContent() {
                 <p className="text-xs font-medium text-blue-700 leading-relaxed italic">
                   "{booking.guestMessage}"
                 </p>
+              </div>
+            )}
+
+            {/* 요금 내역 (숙박 / 애완동물 / 수수료 / 총액) */}
+            {(booking.accommodationTotal != null || (booking.petCount ?? 0) > 0) && (
+              <div className="pt-4 border-t border-gray-100 space-y-2">
+                {booking.accommodationTotal != null && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">
+                      {booking.nights}
+                      {currentLanguage === "ko" ? "박" : " đêm"} × {currentLanguage === "ko" ? "주당 가격" : "giá/tuần"}
+                    </span>
+                    <span className="font-medium">{formatPrice(booking.accommodationTotal, booking.priceUnit)}</span>
+                  </div>
+                )}
+                {(booking.petCount ?? 0) > 0 && (booking.petTotal ?? 0) > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">
+                      {currentLanguage === "ko" ? "애완동물" : "Thú cưng"} {booking.petCount}{currentLanguage === "ko" ? "마리" : " con"} × {currentLanguage === "ko" ? "마리당" : "con"}
+                    </span>
+                    <span className="font-medium">{formatPrice(booking.petTotal!, booking.priceUnit)}</span>
+                  </div>
+                )}
+                {(booking.serviceFee ?? 0) > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">
+                      {currentLanguage === "ko" ? "예약 수수료" : "Phí dịch vụ"} ({(booking.serviceFeePercent ?? 10)}%)
+                    </span>
+                    <span className="font-medium">{formatPrice(booking.serviceFee!, booking.priceUnit)}</span>
+                  </div>
+                )}
               </div>
             )}
 

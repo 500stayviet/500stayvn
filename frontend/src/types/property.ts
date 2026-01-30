@@ -49,8 +49,10 @@ export interface PropertyData {
   cleaningPerWeek?: number;
   /** 애완동물 가능 여부 */
   petAllowed?: boolean;
-  /** 애완동물 추가 요금 (VND) */
+  /** 애완동물 추가 요금 (VND, 마리당) */
   petFee?: number;
+  /** 애완동물 최대 마리수 */
+  maxPets?: number;
 }
 
 export interface PropertyFilter {

@@ -69,8 +69,14 @@ export default function PropertyModal({
   const [selectedGuests, setSelectedGuests] = useState(1);
   const [showGuestDropdown, setShowGuestDropdown] = useState(false);
   const guestDropdownRef = useRef<HTMLDivElement>(null);
+  const [addPetSelected, setAddPetSelected] = useState(false);
+  const [selectedPetCount, setSelectedPetCount] = useState(1);
+  const [showPetDropdown, setShowPetDropdown] = useState(false);
+  const petDropdownRef = useRef<HTMLDivElement>(null);
 
   const maxGuests = Math.max(1, (propertyData?.maxAdults ?? 0) + (propertyData?.maxChildren ?? 0));
+  const maxPets = Math.max(1, propertyData?.maxPets ?? 1);
+  const petAllowed = !!(propertyData?.petAllowed && (propertyData?.petFee ?? 0) > 0);
 
   useEffect(() => {
     const max = Math.max(1, (propertyData?.maxAdults ?? 0) + (propertyData?.maxChildren ?? 0));
@@ -78,9 +84,17 @@ export default function PropertyModal({
   }, [propertyData?.maxAdults, propertyData?.maxChildren]);
 
   useEffect(() => {
+    const max = Math.max(1, propertyData?.maxPets ?? 1);
+    setSelectedPetCount((prev) => (prev > max ? max : prev));
+  }, [propertyData?.maxPets]);
+
+  useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (guestDropdownRef.current && !guestDropdownRef.current.contains(e.target as Node)) {
         setShowGuestDropdown(false);
+      }
+      if (petDropdownRef.current && !petDropdownRef.current.contains(e.target as Node)) {
+        setShowPetDropdown(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -369,7 +383,10 @@ export default function PropertyModal({
                 {FACILITY_OPTIONS.filter(opt => propertyData.amenities?.includes(opt.id)).map((amenity) => {
                   const Icon = amenity.icon;
                   const label = (amenity.label as any)[currentLanguage] || amenity.label.en;
-                  
+                  const isPet = amenity.id === 'pet';
+                  const isCleaning = amenity.id === 'cleaning';
+                  const petFee = isPet && propertyData.petAllowed && propertyData.petFee != null ? propertyData.petFee : null;
+                  const cleaningCount = isCleaning && (propertyData.cleaningPerWeek ?? 0) > 0 ? propertyData.cleaningPerWeek : null;
                   return (
                     <div
                       key={amenity.id}
@@ -377,6 +394,17 @@ export default function PropertyModal({
                     >
                       <Icon className="w-5 h-5 text-blue-600" />
                       <span className="text-[10px] font-medium text-center text-blue-700 leading-tight">{label}</span>
+                      {petFee != null && (
+                        <span className="text-[10px] font-semibold text-blue-800">
+                          {propertyData.priceUnit === 'vnd' ? `${(petFee / 1_000_000).toFixed(1)}M VND` : `$${petFee}`}
+                        </span>
+                      )}
+                      {cleaningCount != null && (
+                        <span className="text-[10px] font-semibold text-blue-800">
+                          {cleaningCount}
+                          {currentLanguage === 'ko' ? '회/주' : currentLanguage === 'vi' ? ' lần/tuần' : '/week'}
+                        </span>
+                      )}
                     </div>
                   );
                 })}
@@ -509,6 +537,59 @@ export default function PropertyModal({
               </div>
             </div>
 
+            {/* 애완동물 추가 선택 — 임대인이 애완동물 가능 선택한 경우만 활성화, 경고 위 */}
+            {petAllowed && (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="text-sm text-gray-700">
+                  {currentLanguage === 'ko' ? '애완동물 추가 하시겠습니까?' : currentLanguage === 'vi' ? 'Thêm thú cưng?' : 'Add pets?'}
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setAddPetSelected(true); setShowPetDropdown(true); }}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium ${addPetSelected ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                  >
+                    {currentLanguage === 'ko' ? '예' : currentLanguage === 'vi' ? 'Có' : 'Yes'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setAddPetSelected(false); setSelectedPetCount(0); }}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium ${!addPetSelected ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                  >
+                    {currentLanguage === 'ko' ? '아니오' : currentLanguage === 'vi' ? 'Không' : 'No'}
+                  </button>
+                </div>
+                {addPetSelected && (
+                  <div className="relative" ref={petDropdownRef}>
+                    <button
+                      type="button"
+                      onClick={() => setShowPetDropdown(!showPetDropdown)}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg border-2 border-blue-500 bg-blue-50 text-sm font-medium text-blue-700"
+                    >
+                      {selectedPetCount}
+                      {currentLanguage === 'ko' ? '마리' : currentLanguage === 'vi' ? ' con' : ' pet(s)'}
+                      <ChevronDown className={`w-4 h-4 transition-transform ${showPetDropdown ? 'rotate-180' : ''}`} />
+                    </button>
+                    {showPetDropdown && (
+                      <div className="absolute z-50 left-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg py-1 min-w-[80px]">
+                        {Array.from({ length: maxPets }, (_, i) => i + 1).map((n) => (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => { setSelectedPetCount(n); setShowPetDropdown(false); }}
+                            className={`w-full text-left px-3 py-2 text-sm ${selectedPetCount === n ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700 hover:bg-gray-50'}`}
+                          >
+                            {n} {currentLanguage === 'ko' ? '마리' : currentLanguage === 'vi' ? 'con' : ''}
+                            {n === maxPets && <span className="text-gray-500"> {getUIText('maxSuffix', currentLanguage)}</span>}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* 임대인 최대인원 선택 시에만 경고 — 인원 선택 아래, 예약하기 버튼 위 (빨간색, 글자 축소, 5개국어) */}
             {maxGuests > 0 && selectedGuests === maxGuests && (
               <p className="mt-3 text-xs text-red-600 font-medium">
@@ -523,7 +604,8 @@ export default function PropertyModal({
               onClick={() => {
                 if (!modalCheckInDate || !modalCheckOutDate || !propertyData.id) return;
                 
-                const query = `propertyId=${propertyData.id}&checkIn=${toISODateString(modalCheckInDate)}&checkOut=${toISODateString(modalCheckOutDate)}&guests=${selectedGuests}`;
+                const pets = addPetSelected ? selectedPetCount : 0;
+                const query = `propertyId=${propertyData.id}&checkIn=${toISODateString(modalCheckInDate)}&checkOut=${toISODateString(modalCheckOutDate)}&guests=${selectedGuests}&pets=${pets}`;
                 
                 // 비회원이면 로그인 페이지로 이동 (현재 매물 정보를 returnUrl에 포함)
                 if (!user) {
