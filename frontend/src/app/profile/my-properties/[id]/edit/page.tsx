@@ -46,6 +46,7 @@ function EditPropertyContent() {
   const { currentLanguage, setCurrentLanguage } = useLanguage();
 
   const fromDeletedTab = searchParams.get("tab") === "deleted";
+  const fromModal = searchParams.get("from") === "modal";
   const [loading, setLoading] = useState(false);
   const [loadingProperty, setLoadingProperty] = useState(true);
   const [propertyLoaded, setPropertyLoaded] = useState(false);
@@ -365,7 +366,14 @@ function EditPropertyContent() {
         />
         <div className="p-6 overflow-y-auto">
           <button
-            onClick={() => router.back()}
+            onClick={() => {
+              // 모달 상세에서 들어온 경우: 뒤로 시 my-properties + 해당 매물 모달 다시 열기
+              if (fromModal && propertyId) {
+                router.push(`/profile/my-properties?open=${propertyId}`);
+                return;
+              }
+              router.back();
+            }}
             className="flex items-center gap-2 mb-4 text-gray-600"
           >
             <ArrowLeft size={20} /> {getUIText('back', currentLanguage)}

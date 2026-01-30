@@ -396,7 +396,7 @@ export default function PropertyModal({
                       <span className="text-[10px] font-medium text-center text-blue-700 leading-tight">{label}</span>
                       {petFee != null && (
                         <span className="text-[10px] font-semibold text-blue-800">
-                          {propertyData.priceUnit === 'vnd' ? `${(petFee / 1_000_000).toFixed(1)}M VND` : `$${petFee}`}
+                          {propertyData.priceUnit === 'vnd' ? `${petFee.toLocaleString('vi-VN')} VND` : `$${petFee.toLocaleString()}`}
                         </span>
                       )}
                       {cleaningCount != null && (
@@ -540,25 +540,21 @@ export default function PropertyModal({
             {/* 애완동물 추가 선택 — 임대인이 애완동물 가능 선택한 경우만 활성화, 경고 위 */}
             {petAllowed && (
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <span className="text-sm text-gray-700">
-                  {currentLanguage === 'ko' ? '애완동물 추가 하시겠습니까?' : currentLanguage === 'vi' ? 'Thêm thú cưng?' : 'Add pets?'}
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => { setAddPetSelected(true); setShowPetDropdown(true); }}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium ${addPetSelected ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                  >
-                    {currentLanguage === 'ko' ? '예' : currentLanguage === 'vi' ? 'Có' : 'Yes'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setAddPetSelected(false); setSelectedPetCount(0); }}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium ${!addPetSelected ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                  >
-                    {currentLanguage === 'ko' ? '아니오' : currentLanguage === 'vi' ? 'Không' : 'No'}
-                  </button>
-                </div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={addPetSelected}
+                    onChange={(e) => {
+                      setAddPetSelected(e.target.checked);
+                      if (!e.target.checked) setSelectedPetCount(0);
+                      else setShowPetDropdown(true);
+                    }}
+                    className="w-4 h-4 rounded border-gray-300 text-blue-600"
+                  />
+                  <span className="text-sm text-gray-700">
+                    {currentLanguage === 'ko' ? '애완동물과 함께 여행하시나요?' : currentLanguage === 'vi' ? 'Bạn có đi cùng thú cưng?' : 'Traveling with pets?'}
+                  </span>
+                </label>
                 {addPetSelected && (
                   <div className="relative" ref={petDropdownRef}>
                     <button

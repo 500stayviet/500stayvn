@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   getPropertiesByOwner,
+  getProperty,
   deleteProperty,
   permanentlyDeleteProperty,
 } from "@/lib/api/properties";
@@ -22,6 +23,7 @@ import {
   PropertyDateRange,
 } from "@/lib/utils/propertyUtils";
 import { getUIText } from "@/utils/i18n";
+import MyPropertyDetailContent from "@/components/MyPropertyDetailContent";
 
 type PropertyFetchResult = {
   activeData: PropertyData[];
@@ -50,6 +52,7 @@ function MyPropertiesContent() {
   >(null);
   const [advertisingCount, setAdvertisingCount] = useState(0);
   const [deletedCount, setDeletedCount] = useState(0);
+  const [selectedProperty, setSelectedProperty] = useState<PropertyData | null>(null);
 
   const shouldShowPropertyInActiveTab = (
     property: PropertyData,
@@ -140,6 +143,20 @@ function MyPropertiesContent() {
     };
     init();
   }, [user, authLoading, searchParams]);
+
+  // 수정 페이지에서 뒤로 시: my-properties?open=id 로 들어오면 해당 매물 모달 자동 오픈
+  const openId = searchParams.get("open");
+  useEffect(() => {
+    if (!openId || !user || loading) return;
+    const found = properties.find((p) => p.id === openId);
+    if (found) {
+      setSelectedProperty(found);
+      return;
+    }
+    getProperty(openId).then((data) => {
+      if (data && data.ownerId === user.uid) setSelectedProperty(data);
+    });
+  }, [openId, user, loading, properties]);
 
   const handleDelete = async (id: string) => {
     setDeletingId(id);
@@ -262,13 +279,7 @@ function MyPropertiesContent() {
                   >
                     <div
                       className="relative w-full aspect-[16/9] cursor-pointer"
-                      onClick={() =>
-                        router.push(
-                          activeTab === "deleted"
-                            ? `/profile/my-properties/${property.id}/edit?tab=deleted`
-                            : `/profile/my-properties/${property.id}`,
-                        )
-                      }
+                      onClick={() => setSelectedProperty(property)}
                     >
                       <Image
                         src={mainImage}
@@ -331,6 +342,40 @@ function MyPropertiesContent() {
             )}
           </div>
         </div>
+
+        {/* 매물 상세 모달 — 페이지는 my-properties 유지, 상세는 모달로 표시 */}
+        <AnimatePresence>
+          {selectedProperty && (
+            <div
+              className="fixed inset-0 z-[90] bg-black/50 flex items-center justify-center p-4"
+              onClick={() => setSelectedProperty(null)}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-white rounded-2xl w-full max-w-[430px] max-h-[90vh] overflow-y-auto shadow-2xl"
+              >
+                <MyPropertyDetailContent
+                  property={selectedProperty}
+                  currentLanguage={currentLanguage}
+                  onBack={() => {
+                    setSelectedProperty(null);
+                    if (openId) router.replace("/profile/my-properties");
+                  }}
+                  onEdit={() => {
+                    if (!selectedProperty?.id) return;
+                    setSelectedProperty(null);
+                    // from=modal: 수정 페이지에서 뒤로 시 모달 상세로 복귀하기 위함
+                    const q = activeTab === "deleted" ? "tab=deleted&from=modal" : "from=modal";
+                    router.push(`/profile/my-properties/${selectedProperty.id}/edit?${q}`);
+                  }}
+                />
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
 
         <AnimatePresence>
           {(showDeleteConfirm || showPermanentDeleteConfirm) && (
