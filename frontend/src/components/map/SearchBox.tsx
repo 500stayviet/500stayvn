@@ -59,12 +59,10 @@ export default function SearchBox({
           value={searchValue}
           onChange={(e) => onSearchChange(e.target.value)}
           onFocus={() => {
-            // 검색어가 있고 결과가 있으면 표시
-            if (searchValue && suggestions.length > 0) {
-              setShowSuggestions(true);
-            }
+            // 검색창 클릭 시 드롭다운 닫기
+            setShowSuggestions(false);
           }}
-          placeholder={getUIText('searchPlaceholder', currentLanguage)}
+          placeholder={getUIText('searchPlaceholderCityDistrict', currentLanguage)}
           className="w-full pl-12 pr-10 py-3 text-base rounded-lg bg-white border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-lg"
         />
         {searchValue && (
@@ -86,7 +84,7 @@ export default function SearchBox({
         {/* 검색 결과 목록 (임차인 최적화 UI) */}
         {/* 이름/명칭을 크게, 주소는 보조 정보로 표시 */}
         {/* ============================================================ */}
-        {searchValue && (showSuggestions || suggestions.length > 0) && (
+        {searchValue && showSuggestions && suggestions.length > 0 && (
           <div 
             className="suggestions-list absolute w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-xl max-h-80 overflow-y-auto"
             style={{ zIndex: 9999 }}
@@ -138,7 +136,11 @@ export default function SearchBox({
                   <button
                     key={suggestion.PlaceId || index}
                     type="button"
-                    onClick={() => onSelectSuggestion(suggestion)}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      onSelectSuggestion(suggestion);
+                      setShowSuggestions(false);
+                    }}
                     className={`w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0 ${
                       suggestion.isRegion ? 'bg-blue-50/30' : ''
                     }`}

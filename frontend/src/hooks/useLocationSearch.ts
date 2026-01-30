@@ -131,6 +131,10 @@ export function useLocationSearch(currentLanguage: SupportedLanguage) {
   }, [currentLanguage]);
 
   const clearSuggestions = useCallback(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
     setSuggestions([]);
     lastSearchRef.current = '';
   }, []);

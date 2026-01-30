@@ -8,6 +8,7 @@
 "use client";
 
 import { useState, useEffect, useRef, Suspense } from "react";
+import { flushSync } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -20,12 +21,13 @@ import {
   Home,
   User,
   Calendar,
-  Users,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   MapPin,
   Search,
   X,
+  Bed,
 } from "lucide-react";
 import CalendarComponent from "@/components/CalendarComponent";
 import Image from "next/image";
@@ -114,10 +116,11 @@ function SearchContent() {
   const [checkInDate, setCheckInDate] = useState<Date | null>(null);
   const [checkOutDate, setCheckOutDate] = useState<Date | null>(null);
 
-  // 인원수 필터
-  const [showGuestSelector, setShowGuestSelector] = useState(false);
-  const [adults, setAdults] = useState(1);
-  const [children, setChildren] = useState(0);
+  // 방 개수 필터 (매물 등록 시 카테고리/방 개수 기반)
+  type RoomFilterValue = "studio" | "one_room" | "two_room" | "three_plus" | "detached" | null;
+  const [roomFilter, setRoomFilter] = useState<RoomFilterValue>(null);
+  const [showRoomDropdown, setShowRoomDropdown] = useState(false);
+  const roomDropdownRef = useRef<HTMLDivElement>(null);
 
   // 고급 설정
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
@@ -133,15 +136,21 @@ function SearchContent() {
     null,
   );
 
-  // 필터 탭: 주소 눌림 표시용 (주소 | 날짜 | 인원)
-  const [activeFilter, setActiveFilter] = useState<
-    "address" | "date" | "guest"
-  >("address");
+  // 방 개수 필터 옵션 라벨 (검색 필터용)
+  const ROOM_FILTER_OPTIONS: { value: RoomFilterValue; ko: string; vi: string; en: string }[] = [
+    { value: "studio", ko: "스튜디오", vi: "Studio", en: "Studio" },
+    { value: "one_room", ko: "1룸(방·거실 분리)", vi: "1 phòng (phòng + phòng khách)", en: "1 Room (bed + living)" },
+    { value: "two_room", ko: "2룸", vi: "2 phòng", en: "2 Rooms" },
+    { value: "three_plus", ko: "3룸+", vi: "3+ phòng", en: "3+ Rooms" },
+    { value: "detached", ko: "독채", vi: "Nhà riêng", en: "Detached" },
+  ];
   // 주소 검색 보기 (홈과 동일 로직)
   const { suggestions, isSearching, search, clearSuggestions } =
     useLocationSearch(currentLanguage);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
+  /** 보기 선택으로 닫은 뒤, 검색창 내용을 수정하기 전까지 드롭다운 비표시 (state로 해서 선택 직후 리렌더 보장) */
+  const [closedBySelection, setClosedBySelection] = useState(false);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -156,14 +165,11 @@ function SearchContent() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    if (suggestions.length > 0 && searchQuery.trim()) setShowSuggestions(true);
-  }, [suggestions, searchQuery]);
-
   const handleAddressInputChange = async (
     e: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const value = e.target.value;
+    setClosedBySelection(false); // 검색창 수정 시에만 드롭다운 다시 허용
     setSearchQuery(value);
     if (!value.trim()) {
       clearSuggestions();
@@ -176,8 +182,13 @@ function SearchContent() {
 
   const handleSelectSuggestion = (suggestion: LocationSuggestion) => {
     const text = suggestion.Text || "";
+    // 보기 선택 직후 드롭다운이 즉시 사라지도록 동기 반영 (지도/시야 가림 방지)
+    flushSync(() => {
+      setShowSuggestions(false);
+      setClosedBySelection(true);
+    });
+    clearSuggestions();
     setSearchQuery(text);
-    setShowSuggestions(false);
     const regionId = (suggestion.PlaceId || "").replace(/^region-/, "");
     const region = ALL_REGIONS.find((r) => r.id === regionId);
     if (region) {
@@ -329,12 +340,28 @@ function SearchContent() {
       });
     }
 
-    filtered = filtered.filter((property) => {
-      const maxTotalGuests =
-        (property.maxAdults || 0) + (property.maxChildren || 0);
-      const requiredGuests = adults + children;
-      return maxTotalGuests >= requiredGuests;
-    });
+    // 방 개수/카테고리 필터 (매물 등록 시 저장된 propertyType, bedrooms 기반)
+    // 독채: 카테고리 '독채' 선택 시 노출 + 방 개수 필터(2룸/3룸+) 선택 시 해당 방 수 독채도 노출
+    if (roomFilter) {
+      filtered = filtered.filter((property) => {
+        const pt = property.propertyType;
+        const beds = property.bedrooms ?? 0;
+        switch (roomFilter) {
+          case "studio":
+            return pt === "studio";
+          case "one_room":
+            return pt === "one_room";
+          case "two_room":
+            return beds === 2; // 방 개수 2 (two_room, three_plus 2, 독채 2 포함)
+          case "three_plus":
+            return beds >= 3; // 방 개수 3,4,5+ (three_plus, 독채 3+ 포함)
+          case "detached":
+            return pt === "detached";
+          default:
+            return true;
+        }
+      });
+    }
 
     filtered = filtered.filter((property) => {
       const price = property.price || 0;
@@ -380,13 +407,11 @@ function SearchContent() {
   const handleCheckOutSelect = (date: Date) => {
     setCheckOutDate(date);
     setShowCalendar(false);
-    setShowGuestSelector(false);
   };
 
   const openCalendar = (mode: "checkin" | "checkout") => {
     setCalendarMode(mode);
     setShowCalendar(true);
-    setShowGuestSelector(false);
   };
 
   const closeCalendar = () => {
@@ -408,12 +433,25 @@ function SearchContent() {
     );
   };
 
-  const adjustAdults = (delta: number) => {
-    setAdults(Math.max(1, adults + delta));
-  };
+  // 방 개수 드롭다운 외부 클릭 시 닫기
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        roomDropdownRef.current &&
+        !roomDropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowRoomDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
-  const adjustChildren = (delta: number) => {
-    setChildren(Math.max(0, children + delta));
+  const roomFilterLabel = (): string => {
+    if (!roomFilter) return currentLanguage === "ko" ? "방 개수" : currentLanguage === "vi" ? "Số phòng" : "Rooms";
+    const opt = ROOM_FILTER_OPTIONS.find((o) => o.value === roomFilter);
+    if (!opt) return "";
+    return opt[currentLanguage as "ko" | "vi" | "en"] ?? opt.en;
   };
 
   return (
@@ -444,7 +482,8 @@ function SearchContent() {
                   value={searchQuery}
                   onChange={handleAddressInputChange}
                   onFocus={() => {
-                    if (suggestions.length > 0) setShowSuggestions(true);
+                    // 검색창 클릭 시 드롭다운 닫기
+                    setShowSuggestions(false);
                   }}
                   placeholder={getUIText(
                     "searchPlaceholderCityDistrict",
@@ -453,7 +492,7 @@ function SearchContent() {
                   className="flex-1 bg-transparent text-sm text-gray-900 placeholder-gray-400 focus:outline-none"
                 />
               </div>
-              {showSuggestions && suggestions.length > 0 && (
+              {searchQuery && showSuggestions && suggestions.length > 0 && !closedBySelection && (
                 <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-lg max-h-72 overflow-y-auto">
                   {suggestions.map((suggestion, index) => {
                     const badge = getSuggestionBadge(
@@ -472,6 +511,7 @@ function SearchContent() {
                       <button
                         key={suggestion.PlaceId || index}
                         type="button"
+                        onMouseDown={(e) => e.preventDefault()}
                         onClick={() => handleSelectSuggestion(suggestion)}
                         className={`w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0 ${suggestion.isRegion ? "bg-blue-50/30" : ""}`}
                       >
@@ -605,72 +645,9 @@ function SearchContent() {
         </div>
 
         <div className="px-4 py-3 border-b border-gray-200 bg-white">
-          {/* 필터 탭: 주소 | 날짜 | 인원 — 선택 시 파란색 */}
-          <div className="flex gap-2 mb-3">
-            <button
-              type="button"
-              onClick={() => {
-                setActiveFilter("address");
-                setShowCalendar(false);
-                setShowGuestSelector(false);
-              }}
-              className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${
-                activeFilter === "address"
-                  ? "bg-blue-600 text-white shadow-md"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              {currentLanguage === "ko"
-                ? "주소"
-                : currentLanguage === "vi"
-                  ? "Địa chỉ"
-                  : "Address"}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveFilter("date");
-                openCalendar("checkin");
-                setShowGuestSelector(false);
-              }}
-              className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${
-                activeFilter === "date"
-                  ? "bg-blue-600 text-white shadow-md"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              {currentLanguage === "ko"
-                ? "날짜"
-                : currentLanguage === "vi"
-                  ? "Ngày"
-                  : "Date"}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveFilter("guest");
-                setShowGuestSelector(!showGuestSelector);
-                setShowCalendar(false);
-              }}
-              className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${
-                activeFilter === "guest"
-                  ? "bg-blue-600 text-white shadow-md"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              {currentLanguage === "ko"
-                ? "인원"
-                : currentLanguage === "vi"
-                  ? "Số người"
-                  : "Guests"}
-            </button>
-          </div>
           <div className="flex gap-3">
             <button
-              onClick={() => {
-                setActiveFilter("date");
-                openCalendar("checkin");
-              }}
+              onClick={() => openCalendar("checkin")}
               className="flex-1 flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
             >
               <div className="flex items-center gap-2">
@@ -703,83 +680,64 @@ function SearchContent() {
               </div>
             </button>
 
-            <button
-              onClick={() => {
-                setActiveFilter("guest");
-                setShowGuestSelector(!showGuestSelector);
-                setShowCalendar(false);
-              }}
-              className="flex-1 flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 text-gray-600" />
-                <div className="text-left">
-                  <div className="text-xs text-gray-500">
-                    {currentLanguage === "ko" ? "인원" : "Guests"}
-                  </div>
-                  <div className="text-sm font-medium text-gray-900">
-                    {adults + children} 명
-                  </div>
-                </div>
-              </div>
-            </button>
-          </div>
-
-          {showGuestSelector && (
-            <div className="mt-3 grid grid-cols-2 gap-3">
-              <div className="flex items-center justify-between px-4 py-2 bg-white border border-gray-200 rounded-lg">
-                <div>
-                  <div className="text-xs text-gray-500">
-                    {currentLanguage === "ko" ? "성인" : "Adults"}
-                  </div>
-                  <div className="text-sm font-medium">{adults}</div>
-                </div>
+            <div className="flex-1 relative" ref={roomDropdownRef}>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowRoomDropdown(!showRoomDropdown);
+                  setShowCalendar(false);
+                }}
+                className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+              >
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => adjustAdults(-1)}
-                    className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-                  >
-                    <ChevronLeft className="w-4 h-4 text-gray-600" />
-                  </button>
-                  <button
-                    onClick={() => adjustAdults(1)}
-                    className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-                  >
-                    <ChevronRight className="w-4 h-4 text-gray-600" />
-                  </button>
-                </div>
-              </div>
-              <div className="flex items-center justify-between px-4 py-2 bg-white border border-gray-200 rounded-lg">
-                <div>
-                  <div className="text-xs text-gray-500">
-                    {currentLanguage === "ko" ? "어린이" : "Children"}
+                  <Bed className="w-4 h-4 text-gray-600" />
+                  <div className="text-left">
+                    <div className="text-xs text-gray-500">
+                      {currentLanguage === "ko" ? "방 개수" : currentLanguage === "vi" ? "Số phòng" : "Rooms"}
+                    </div>
+                    <div className="text-sm font-medium text-gray-900">
+                      {roomFilter ? roomFilterLabel() : currentLanguage === "ko" ? "선택" : currentLanguage === "vi" ? "Chọn" : "Select"}
+                    </div>
                   </div>
-                  <div className="text-sm font-medium">{children}</div>
                 </div>
-                <div className="flex items-center gap-2">
+                <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${showRoomDropdown ? "rotate-180" : ""}`} />
+              </button>
+              {showRoomDropdown && (
+                <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg py-1 max-h-60 overflow-y-auto">
                   <button
-                    onClick={() => adjustChildren(-1)}
-                    className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                    type="button"
+                    onClick={() => {
+                      setRoomFilter(null);
+                      setShowRoomDropdown(false);
+                    }}
+                    className={`w-full text-left px-4 py-2.5 text-sm ${!roomFilter ? "bg-blue-50 text-blue-700 font-medium" : "text-gray-700 hover:bg-gray-50"}`}
                   >
-                    <ChevronLeft className="w-4 h-4 text-gray-600" />
+                    {currentLanguage === "ko" ? "전체" : currentLanguage === "vi" ? "Tất cả" : "All"}
                   </button>
-                  <button
-                    onClick={() => adjustChildren(1)}
-                    className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-                  >
-                    <ChevronRight className="w-4 h-4 text-gray-600" />
-                  </button>
+                  {ROOM_FILTER_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value ?? "all"}
+                      type="button"
+                      onClick={() => {
+                        setRoomFilter(opt.value);
+                        setShowRoomDropdown(false);
+                      }}
+                      className={`w-full text-left px-4 py-2.5 text-sm ${roomFilter === opt.value ? "bg-blue-50 text-blue-700 font-medium" : "text-gray-700 hover:bg-gray-50"}`}
+                    >
+                      {opt[currentLanguage as "ko" | "vi" | "en"] ?? opt.en}
+                    </button>
+                  ))}
                 </div>
-              </div>
+              )}
             </div>
-          )}
+          </div>
 
           <div className="mt-3 flex justify-center">
             <button
               onClick={() => {
                 setShowAdvancedSettings(!showAdvancedSettings);
                 setShowCalendar(false);
-                setShowGuestSelector(false);
+                setShowRoomDropdown(false);
               }}
               className="text-xs text-gray-500 hover:text-gray-700 transition-colors flex items-center gap-1"
             >
@@ -841,7 +799,7 @@ function SearchContent() {
           <button
             onClick={async () => {
               setShowCalendar(false);
-              setShowGuestSelector(false);
+              setShowRoomDropdown(false);
               await geocodeSearchQuery();
               applyFilters();
             }}

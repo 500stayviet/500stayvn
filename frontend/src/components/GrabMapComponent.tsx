@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { flushSync } from 'react-dom';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { MapPin } from 'lucide-react';
@@ -472,6 +473,21 @@ export default function GrabMapComponent({
     locationDeniedRef.current = locationDenied;
     locationLoadingRef.current = locationLoading || false;
   }, [initialLocation, locationDenied, locationLoading]);
+
+  // 검색으로 도시/구 선택 시 initialLocation이 바뀌면 지도 해당 위치로 이동
+  useEffect(() => {
+    if (!initialLocation || !map.current?.loaded?.()) return;
+    const safeLat = Number(initialLocation.lat);
+    const safeLng = Number(initialLocation.lng);
+    if (isNaN(safeLat) || isNaN(safeLng) || !isInVietnam(safeLat, safeLng)) return;
+    map.current.flyTo({
+      center: [safeLng, safeLat],
+      zoom: 15,
+      duration: 1000,
+    });
+    setUserLocation(initialLocation);
+    updateUserLocationMarker(initialLocation);
+  }, [initialLocation?.lat, initialLocation?.lng]);
 
   // 지도 초기화 (싱글톤 패턴 - 한 번만 생성)
   useEffect(() => {
@@ -1489,9 +1505,17 @@ export default function GrabMapComponent({
   const handleSelectSuggestion = (suggestion: Suggestion) => {
     if (!map.current) return;
 
+    // 보기 선택 직후 드롭다운이 즉시 사라지도록 동기 반영 (지도 가림 방지)
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    flushSync(() => {
+      setShowSuggestions(false);
+      setSuggestions([]);
+    });
     const displayText = suggestion.Text || '';
     setSearchValue(displayText);
-    setShowSuggestions(false);
     setIsSearching(true);
 
     // 도시 선택 → 구 필터 해제

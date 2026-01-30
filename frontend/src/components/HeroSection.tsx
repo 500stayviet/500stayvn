@@ -326,16 +326,15 @@ export default function HeroSection({ currentLanguage }: HeroSectionProps) {
               value={searchValue}
               onChange={handleInputChange}
               onFocus={() => {
-                if (suggestions.length > 0) {
-                  setShowSuggestions(true);
-                }
+                // 검색창 클릭 시 드롭다운 닫기
+                setShowSuggestions(false);
               }}
               placeholder={getUIText('searchPlaceholderCityDistrict', currentLanguage)}
               className="w-full pl-12 pr-4 py-3.5 text-base rounded-full bg-white border-0 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-xl transition-all"
             />
             
             {/* 추천 결과 드롭다운 (도시·구만, 같은 구명은 "구, 도시"로 구별) */}
-            {showSuggestions && suggestions.length > 0 && (
+            {searchValue && showSuggestions && suggestions.length > 0 && (
               <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-lg max-h-72 overflow-y-auto">
                 {suggestions.map((suggestion, index) => {
                   const badge = getSuggestionBadge(suggestion, currentLanguage);
@@ -348,7 +347,10 @@ export default function HeroSection({ currentLanguage }: HeroSectionProps) {
                     <button
                       key={suggestion.PlaceId || index}
                       type="button"
-                      onClick={() => handleSelectSuggestion(suggestion)}
+                      onClick={() => {
+                        handleSelectSuggestion(suggestion);
+                        setShowSuggestions(false);
+                      }}
                       className={`w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0 ${
                         suggestion.isRegion ? 'bg-blue-50/30' : ''
                       }`}

@@ -68,10 +68,6 @@ function MapContent() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    if (suggestions.length > 0 && searchValue.trim()) setShowSuggestions(true);
-  }, [suggestions, searchValue]);
-
   const handleAddressInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchValue(value);
@@ -85,8 +81,10 @@ function MapContent() {
   };
 
   const handleSelectSuggestion = (suggestion: LocationSuggestion) => {
-    setSearchValue(suggestion.Text || "");
+    const text = suggestion.Text || "";
+    clearSuggestions();
     setShowSuggestions(false);
+    setSearchValue(text);
     const regionId = (suggestion.PlaceId || "").replace(/^region-/, "");
     const region = ALL_REGIONS.find((r) => r.id === regionId);
     if (region) {
@@ -191,7 +189,7 @@ function MapContent() {
   return (
     <div className="min-h-screen bg-gray-100 flex justify-center">
       <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative overflow-hidden">
-        {/* TopBar 삭제됨 - GrabMapComponent 내부 검색창만 사용 */}
+        <TopBar currentLanguage={currentLanguage} onLanguageChange={setCurrentLanguage} />
         <main className="flex-1 relative flex flex-col overflow-hidden bg-white">
           <div className="h-full relative">
             <GrabMapComponent
