@@ -32,6 +32,7 @@ import {
 import CalendarComponent from "@/components/CalendarComponent";
 import Image from "next/image";
 import PropertyModal from "@/components/map/PropertyModal";
+import MyPropertyDetailContent from "@/components/MyPropertyDetailContent";
 import { formatPrice, formatFullPrice } from "@/lib/utils/propertyUtils";
 import {
   parseDate,
@@ -861,17 +862,40 @@ function SearchContent() {
       </div>
 
       {showPropertyModal && selectedProperty && (
-        <PropertyModal
-          propertyData={selectedProperty}
-          currentLanguage={currentLanguage}
-          onClose={() => setShowPropertyModal(false)}
-          onPrev={handlePrevProperty}
-          onNext={handleNextProperty}
-          hasPrev={filteredProperties.length > 1}
-          hasNext={filteredProperties.length > 1}
-          currentIndex={getCurrentPropertyIndex()}
-          totalProperties={filteredProperties.length}
-        />
+        user && selectedProperty.ownerId === user.uid ? (
+          <div
+            className="fixed inset-0 z-[90] bg-black/50 flex items-center justify-center p-4"
+            onClick={() => setShowPropertyModal(false)}
+          >
+            <div
+              className="bg-white rounded-2xl w-full max-w-[430px] max-h-[90vh] overflow-y-auto shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <MyPropertyDetailContent
+                property={selectedProperty}
+                currentLanguage={currentLanguage}
+                onBack={() => setShowPropertyModal(false)}
+                onEdit={() => {
+                  setShowPropertyModal(false);
+                  if (selectedProperty?.id)
+                    router.push(`/profile/my-properties/${selectedProperty.id}/edit`);
+                }}
+              />
+            </div>
+          </div>
+        ) : (
+          <PropertyModal
+            propertyData={selectedProperty}
+            currentLanguage={currentLanguage}
+            onClose={() => setShowPropertyModal(false)}
+            onPrev={handlePrevProperty}
+            onNext={handleNextProperty}
+            hasPrev={filteredProperties.length > 1}
+            hasNext={filteredProperties.length > 1}
+            currentIndex={getCurrentPropertyIndex()}
+            totalProperties={filteredProperties.length}
+          />
+        )
       )}
     </div>
   );

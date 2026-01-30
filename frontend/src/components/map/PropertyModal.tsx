@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { 
   X, 
+  ArrowLeft,
   ChevronLeft, 
   ChevronRight, 
   ChevronDown,
@@ -152,6 +153,20 @@ export default function PropertyModal({
         className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto relative"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* 상단 뒤로가기 — 임대인용 모달과 동일하게 */}
+        <div className="sticky top-0 z-40 flex items-center gap-2 px-4 py-3 border-b border-gray-100 bg-white rounded-t-2xl">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex items-center gap-2 text-gray-700 hover:text-gray-900 transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span className="font-medium">
+              {currentLanguage === 'ko' ? '뒤로' : currentLanguage === 'vi' ? 'Quay lại' : 'Back'}
+            </span>
+          </button>
+        </div>
+
         {/* 이전 매물 버튼 (모달 내부 좌측) */}
         {hasPrev && onPrev && (
           <button

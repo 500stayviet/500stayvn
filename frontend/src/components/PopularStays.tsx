@@ -19,6 +19,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { getUIText } from '@/utils/i18n';
 import { PropertyData } from '@/types/property';
 import PropertyModal from '@/components/map/PropertyModal';
+import MyPropertyDetailContent from '@/components/MyPropertyDetailContent';
 import { 
   formatPrice, 
   getCityName, 
@@ -272,14 +273,28 @@ export default function PopularStays({ currentLanguage }: PopularStaysProps) {
         )}
       </div>
 
-      {/* 상세 모달 */}
-      {selectedProperty && (
+      {/* 상세 모달 — 본인 매물이면 임대인용(my-properties) 모달, 아니면 임차인용 모달 */}
+      {selectedProperty && (user && selectedProperty.ownerId === user.uid ? (
+        <div className="fixed inset-0 z-[90] bg-black/50 flex items-center justify-center p-4" onClick={closePropertyModal}>
+          <div className="bg-white rounded-2xl w-full max-w-[430px] max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <MyPropertyDetailContent
+              property={selectedProperty}
+              currentLanguage={currentLanguage}
+              onBack={closePropertyModal}
+              onEdit={() => {
+                closePropertyModal();
+                if (selectedProperty?.id) router.push(`/profile/my-properties/${selectedProperty.id}/edit`);
+              }}
+            />
+          </div>
+        </div>
+      ) : (
         <PropertyModal
           propertyData={selectedProperty}
           onClose={closePropertyModal}
           currentLanguage={currentLanguage}
         />
-      )}
+      ))}
     </section>
   );
 }
