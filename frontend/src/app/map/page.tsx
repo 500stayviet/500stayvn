@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect, Suspense } from "react"; // Suspense 추가
-import { useSearchParams } from "next/navigation";
+import { useState, useRef, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useLanguage } from "@/contexts/LanguageContext";
 import TopBar from "@/components/TopBar";
 import GrabMapComponent from "@/components/GrabMapComponent";
@@ -12,7 +12,15 @@ import { formatPrice, getCityName } from "@/lib/utils/propertyUtils";
 import { isAvailableNow, formatDateForBadge } from "@/lib/utils/dateUtils";
 import Image from "next/image";
 import { getUIText } from "@/utils/i18n";
-import { ChevronLeft, ChevronRight, MapPin, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, MapPin, Loader2, Search } from "lucide-react";
+import { ALL_REGIONS } from "@/lib/data/vietnam-regions";
+import {
+  useLocationSearch,
+  getSuggestionBadge,
+  cleanDisplayName,
+  cleanSubAddress,
+  type LocationSuggestion,
+} from "@/hooks/useLocationSearch";
 
 interface Property {
   id: string;
@@ -28,8 +36,9 @@ interface Property {
 
 // 1. 실제 로직이 들어있는 알맹이 컴포넌트
 function MapContent() {
+  const router = useRouter();
   const { currentLanguage, setCurrentLanguage } = useLanguage();
-  const searchParams = useSearchParams(); // 빌드 에러의 원인 훅
+  const searchParams = useSearchParams();
   const [nearbyProperties, setNearbyProperties] = useState<Property[]>([]);
   const [selectedPropertyIndex, setSelectedPropertyIndex] = useState(0);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(
@@ -42,6 +51,49 @@ function MapContent() {
     null,
   );
   const [detailLoading, setDetailLoading] = useState(false);
+
+  // 검색어 입력 — 홈과 동일 로직 (보기 드롭다운)
+  const [searchValue, setSearchValue] = useState("");
+  const { suggestions, isSearching, search, clearSuggestions } = useLocationSearch(currentLanguage);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (suggestions.length > 0 && searchValue.trim()) setShowSuggestions(true);
+  }, [suggestions, searchValue]);
+
+  const handleAddressInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchValue(value);
+    if (!value.trim()) {
+      clearSuggestions();
+      setShowSuggestions(false);
+      return;
+    }
+    await search(value);
+    setShowSuggestions(true);
+  };
+
+  const handleSelectSuggestion = (suggestion: LocationSuggestion) => {
+    setSearchValue(suggestion.Text || "");
+    setShowSuggestions(false);
+    const regionId = (suggestion.PlaceId || "").replace(/^region-/, "");
+    const region = ALL_REGIONS.find((r) => r.id === regionId);
+    if (region) {
+      const [lng, lat] = region.center;
+      router.push(`/map?lat=${lat}&lng=${lng}`);
+    }
+  };
 
   useEffect(() => {
     const container = cardSliderRef.current;
@@ -140,6 +192,60 @@ function MapContent() {
     <div className="min-h-screen bg-gray-100 flex justify-center">
       <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative overflow-hidden">
         <TopBar />
+        {/* 검색어 입력 — 홈과 동일 보기(드롭다운) 로직 */}
+        <div className="px-4 py-3 border-b border-gray-100 bg-white">
+          <div className="relative" ref={searchContainerRef}>
+            <div className="flex items-center gap-2 rounded-xl bg-gray-50 border border-gray-200 px-3 py-2.5">
+              <Search className="w-4 h-4 text-gray-500 shrink-0" />
+              <input
+                type="text"
+                value={searchValue}
+                onChange={handleAddressInputChange}
+                onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
+                placeholder={getUIText("searchPlaceholderCityDistrict", currentLanguage)}
+                className="flex-1 bg-transparent text-sm text-gray-900 placeholder-gray-400 focus:outline-none"
+              />
+            </div>
+            {showSuggestions && suggestions.length > 0 && (
+              <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-lg max-h-72 overflow-y-auto">
+                {suggestions.map((suggestion, index) => {
+                  const badge = getSuggestionBadge(suggestion, currentLanguage);
+                  const displayText = suggestion.Text || "";
+                  const parts = displayText.split(",");
+                  const mainName = cleanDisplayName(parts[0]?.trim() || displayText);
+                  const subAddress = cleanSubAddress(parts.slice(1).join(",").trim());
+                  return (
+                    <button
+                      key={suggestion.PlaceId || index}
+                      type="button"
+                      onClick={() => handleSelectSuggestion(suggestion)}
+                      className={`w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0 ${suggestion.isRegion ? "bg-blue-50/30" : ""}`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <span className="text-lg flex-shrink-0 mt-0.5">{badge.icon}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${badge.color} text-white font-medium flex-shrink-0`}>{badge.text}</span>
+                            <p className="text-sm font-semibold text-gray-900 truncate">{mainName}</p>
+                          </div>
+                          {subAddress && <p className="text-xs text-gray-400 mt-1 truncate">{subAddress}</p>}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {isSearching && (
+              <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-lg p-4">
+                <div className="flex items-center justify-center gap-2 text-gray-500">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500" />
+                  <span className="text-sm">{getUIText("searching", currentLanguage)}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
         <main className="flex-1 relative flex flex-col overflow-hidden bg-white">
           <div className="h-[50%] relative border-b border-gray-100">
             <GrabMapComponent

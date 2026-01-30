@@ -7,7 +7,7 @@
 
 'use client';
 
-import { useState, useEffect, Suspense } from 'react'; // 1. Suspense 추가
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -31,6 +31,13 @@ import {
 } from '@/lib/utils/dateUtils';
 import { VIETNAM_CITIES, getDistrictsByCityId, ALL_REGIONS, searchRegions } from '@/lib/data/vietnam-regions';
 import type { VietnamRegion } from '@/lib/data/vietnam-regions';
+import { 
+  useLocationSearch, 
+  getSuggestionBadge, 
+  cleanDisplayName, 
+  cleanSubAddress,
+  type LocationSuggestion 
+} from '@/hooks/useLocationSearch';
 
 // 두 좌표 간 거리 계산 (Haversine 공식)
 function calculateDistance(
@@ -100,6 +107,58 @@ function SearchContent() {
   // 매물 상세 모달
   const [showPropertyModal, setShowPropertyModal] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState<PropertyData | null>(null);
+
+  // 필터 탭: 주소 눌림 표시용 (주소 | 날짜 | 인원)
+  const [activeFilter, setActiveFilter] = useState<'address' | 'date' | 'guest'>('address');
+  // 주소 검색 보기 (홈과 동일 로직)
+  const { suggestions, isSearching, search, clearSuggestions } = useLocationSearch(currentLanguage);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (suggestions.length > 0 && searchQuery.trim()) setShowSuggestions(true);
+  }, [suggestions, searchQuery]);
+
+  const handleAddressInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+    if (!value.trim()) {
+      clearSuggestions();
+      setShowSuggestions(false);
+      return;
+    }
+    await search(value);
+    setShowSuggestions(true);
+  };
+
+  const handleSelectSuggestion = (suggestion: LocationSuggestion) => {
+    const text = suggestion.Text || '';
+    setSearchQuery(text);
+    setShowSuggestions(false);
+    const regionId = (suggestion.PlaceId || '').replace(/^region-/, '');
+    const region = ALL_REGIONS.find(r => r.id === regionId);
+    if (region) {
+      if (region.type === 'city') {
+        setSelectedCityId(region.id);
+        setSelectedDistrictId(null);
+        setSearchLocation({ lat: region.center[1], lng: region.center[0] });
+      } else {
+        setSelectedCityId(region.parentCity ?? null);
+        setSelectedDistrictId(region.id);
+        setSearchLocation({ lat: region.center[1], lng: region.center[0] });
+      }
+    }
+  };
 
   // 매물 클릭 시 모달 열기
   const handlePropertyClick = (property: PropertyData) => {
@@ -304,29 +363,87 @@ function SearchContent() {
               <User className="w-5 h-5 text-gray-700" />
             </button>
           </div>
-          {/* 검색어 입력창 */}
+          {/* 검색어 입력창 — 홈과 동일 보기(드롭다운) 로직 */}
           <div className="px-4 pb-3">
-            <div className="flex items-center gap-2 rounded-xl bg-gray-50 border border-gray-200 px-3 py-2.5">
-              <MapPin className="w-4 h-4 text-gray-500 shrink-0" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={getUIText('searchPlaceholderCityDistrict', currentLanguage)}
-                className="flex-1 bg-transparent text-sm text-gray-900 placeholder-gray-400 focus:outline-none"
-              />
+            <div className="relative" ref={searchContainerRef}>
+              <div className="flex items-center gap-2 rounded-xl bg-gray-50 border border-gray-200 px-3 py-2.5">
+                <MapPin className="w-4 h-4 text-gray-500 shrink-0" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={handleAddressInputChange}
+                  onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
+                  placeholder={getUIText('searchPlaceholderCityDistrict', currentLanguage)}
+                  className="flex-1 bg-transparent text-sm text-gray-900 placeholder-gray-400 focus:outline-none"
+                />
+              </div>
+              {showSuggestions && suggestions.length > 0 && (
+                <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-lg max-h-72 overflow-y-auto">
+                  {suggestions.map((suggestion, index) => {
+                    const badge = getSuggestionBadge(suggestion, currentLanguage);
+                    const displayText = suggestion.Text || '';
+                    const parts = displayText.split(',');
+                    const mainName = cleanDisplayName(parts[0]?.trim() || displayText);
+                    const subAddress = cleanSubAddress(parts.slice(1).join(',').trim());
+                    return (
+                      <button
+                        key={suggestion.PlaceId || index}
+                        type="button"
+                        onClick={() => handleSelectSuggestion(suggestion)}
+                        className={`w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0 ${suggestion.isRegion ? 'bg-blue-50/30' : ''}`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className="text-lg flex-shrink-0 mt-0.5">{badge.icon}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className={`text-xs px-2 py-0.5 rounded-full ${badge.color} text-white font-medium flex-shrink-0`}>{badge.text}</span>
+                              <p className="text-sm font-semibold text-gray-900 truncate">{mainName}</p>
+                            </div>
+                            {subAddress && <p className="text-xs text-gray-400 mt-1 truncate">{subAddress}</p>}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {isSearching && (
+                <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-lg p-4">
+                  <div className="flex items-center justify-center gap-2 text-gray-500">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500" />
+                    <span className="text-sm">{getUIText('searching', currentLanguage)}</span>
+                  </div>
+                </div>
+              )}
             </div>
-            {/* 검색어창 하단: 도시·구 (홈에서 도시/구 검색 후 보기 시 여기 값 채워짐) */}
+            {/* 도시·구 — 도시 드롭다운, 선택 시 파란색 */}
             <div className="mt-3 grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">
                   {getUIText('labelCity', currentLanguage)}
                 </label>
-                <div className="rounded-lg bg-gray-50 border border-gray-200 px-3 py-2.5 text-sm text-gray-800 min-h-[42px] flex items-center">
-                  {selectedCity ? getRegionDisplayName(selectedCity, currentLanguage) : (
-                    <span className="text-gray-400">—</span>
-                  )}
-                </div>
+                <select
+                  value={selectedCityId ?? ''}
+                  onChange={(e) => {
+                    const id = e.target.value || null;
+                    setSelectedCityId(id);
+                    setSelectedDistrictId(null);
+                    if (id) {
+                      const city = VIETNAM_CITIES.find((c) => c.id === id) ?? ALL_REGIONS.find((r) => r.id === id);
+                      if (city) setSearchLocation({ lat: city.center[1], lng: city.center[0] });
+                    } else setSearchLocation(null);
+                  }}
+                  className={`w-full rounded-lg border px-3 py-2.5 text-sm min-h-[42px] focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
+                    selectedCityId ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium' : 'bg-gray-50 border-gray-200 text-gray-800'
+                  }`}
+                >
+                  <option value="">{currentLanguage === 'ko' ? '도시 선택' : currentLanguage === 'vi' ? 'Chọn thành phố' : 'Select city'}</option>
+                  {VIETNAM_CITIES.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {getRegionDisplayName(c, currentLanguage)}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">
@@ -334,13 +451,23 @@ function SearchContent() {
                 </label>
                 <select
                   value={selectedDistrictId ?? ''}
-                  onChange={(e) => setSelectedDistrictId(e.target.value || null)}
+                  onChange={(e) => {
+                    const id = e.target.value || null;
+                    setSelectedDistrictId(id);
+                    if (id) {
+                      const district = districts.find((d) => d.id === id);
+                      if (district) setSearchLocation({ lat: district.center[1], lng: district.center[0] });
+                    } else if (selectedCityId) {
+                      const city = VIETNAM_CITIES.find((c) => c.id === selectedCityId) ?? ALL_REGIONS.find((r) => r.id === selectedCityId);
+                      if (city) setSearchLocation({ lat: city.center[1], lng: city.center[0] });
+                    } else setSearchLocation(null);
+                  }}
                   disabled={!selectedCityId || districts.length === 0}
-                  className="w-full rounded-lg bg-gray-50 border border-gray-200 px-3 py-2.5 text-sm text-gray-800 min-h-[42px] focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-70 disabled:cursor-not-allowed"
+                  className={`w-full rounded-lg border px-3 py-2.5 text-sm min-h-[42px] focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-70 disabled:cursor-not-allowed transition-colors ${
+                    selectedDistrictId ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium' : 'bg-gray-50 border-gray-200 text-gray-800'
+                  }`}
                 >
-                  <option value="">
-                    {getUIText('selectDistrictPlaceholder', currentLanguage)}
-                  </option>
+                  <option value="">{getUIText('selectDistrictPlaceholder', currentLanguage)}</option>
                   {districts.map((d) => (
                     <option key={d.id} value={d.id}>
                       {getRegionDisplayName(d, currentLanguage)}
@@ -353,8 +480,38 @@ function SearchContent() {
         </div>
 
         <div className="px-4 py-3 border-b border-gray-200 bg-white">
+          {/* 필터 탭: 주소 | 날짜 | 인원 — 선택 시 파란색 */}
+          <div className="flex gap-2 mb-3">
+            <button
+              type="button"
+              onClick={() => { setActiveFilter('address'); setShowCalendar(false); setShowGuestSelector(false); }}
+              className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${
+                activeFilter === 'address' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {currentLanguage === 'ko' ? '주소' : currentLanguage === 'vi' ? 'Địa chỉ' : 'Address'}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setActiveFilter('date'); openCalendar('checkin'); setShowGuestSelector(false); }}
+              className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${
+                activeFilter === 'date' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {currentLanguage === 'ko' ? '날짜' : currentLanguage === 'vi' ? 'Ngày' : 'Date'}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setActiveFilter('guest'); setShowGuestSelector(!showGuestSelector); setShowCalendar(false); }}
+              className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${
+                activeFilter === 'guest' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {currentLanguage === 'ko' ? '인원' : currentLanguage === 'vi' ? 'Số người' : 'Guests'}
+            </button>
+          </div>
           <div className="flex gap-3">
-            <button onClick={() => openCalendar('checkin')} className="flex-1 flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+            <button onClick={() => { setActiveFilter('date'); openCalendar('checkin'); }} className="flex-1 flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-gray-600" />
                 <div className="text-left">
@@ -374,7 +531,7 @@ function SearchContent() {
               </div>
             </button>
 
-            <button onClick={() => { setShowGuestSelector(!showGuestSelector); setShowCalendar(false); }} className="flex-1 flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+            <button onClick={() => { setActiveFilter('guest'); setShowGuestSelector(!showGuestSelector); setShowCalendar(false); }} className="flex-1 flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4 text-gray-600" />
                 <div className="text-left">
