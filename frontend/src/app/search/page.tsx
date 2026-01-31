@@ -913,7 +913,6 @@ function SearchContent() {
                   
                   const el = rentTrackRef.current;
                   if (!el) {
-                    console.log('줄자 클릭: rentTrackRef 없음');
                     return;
                   }
                   
@@ -930,47 +929,29 @@ function SearchContent() {
                   const distToMin = Math.abs(clickPos - minPos);
                   const distToMax = Math.abs(clickPos - maxPos);
                   
-                  console.log('줄자 클릭:', { 
-                    clickPos: clickPos.toFixed(2), 
-                    minPos: minPos.toFixed(2), 
-                    maxPos: maxPos.toFixed(2), 
-                    distToMin: distToMin.toFixed(2), 
-                    distToMax: distToMax.toFixed(2),
-                    minPrice,
-                    maxPrice,
-                    priceCap
-                  });
-                  
                   // 더 가까운 포인터만 이동
                   if (distToMin < distToMax) {
                     // 최저값 포인터가 더 가까움
-                    console.log('최저값 포인터가 더 가까움, 최저값 이동');
                     const newValue = Math.round(pct * priceCap);
                     const nearestValue = allowedValues[getClosestAllowedIndex(newValue, allowedValues)];
-                    console.log('새 값:', { newValue, nearestValue, maxPrice });
                     if (nearestValue < maxPrice) {
                       setMinPrice(nearestValue);
                     } else {
                       // 최저값이 최대값에 도달하면 최대값 이동
-                      console.log('최저값이 최대값에 도달, 최대값 이동');
                       setMaxPrice(nearestValue);
                     }
                   } else if (distToMax < distToMin) {
                     // 최대값 포인터가 더 가까움
-                    console.log('최대값 포인터가 더 가까움, 최대값 이동');
                     const newValue = Math.round(pct * priceCap);
                     const nearestValue = allowedValues[getClosestAllowedIndex(newValue, allowedValues)];
-                    console.log('새 값:', { newValue, nearestValue, minPrice });
                     if (nearestValue > minPrice) {
                       setMaxPrice(nearestValue);
                     } else {
                       // 최대값이 최저값에 도달하면 최저값 이동
-                      console.log('최대값이 최저값에 도달, 최저값 이동');
                       setMinPrice(nearestValue);
                     }
                   } else {
                     // 거리가 같을 때 (매우 드문 경우)
-                    console.log('거리가 같음, 최저값 이동');
                     const newValue = Math.round(pct * priceCap);
                     const nearestValue = allowedValues[getClosestAllowedIndex(newValue, allowedValues)];
                     if (nearestValue < maxPrice) {
@@ -1058,7 +1039,6 @@ function SearchContent() {
                       <div className="absolute top-3 -translate-x-1/2 -translate-y-1/2 cursor-pointer z-30"
                            style={{ left: `${(minPrice / (priceCap || 1)) * 100}%` }}
                            onPointerDown={(e) => {
-                             console.log('최저값 포인터 포인터다운 시작');
                              e.preventDefault();
                              e.stopPropagation();
                              
@@ -1066,7 +1046,6 @@ function SearchContent() {
                              const handlePointerMove = (moveEvent: PointerEvent) => {
                                const trackEl = rentTrackRef.current;
                                if (!trackEl) {
-                                 console.log('트랙 엘리먼트 없음');
                                  return;
                                }
                                
@@ -1076,16 +1055,6 @@ function SearchContent() {
                                const newValue = Math.round(pct * priceCap);
                                const nearestValue = allowedValues[getClosestAllowedIndex(newValue, allowedValues)];
                                
-                               console.log('최저값 드래그 중:', { 
-                                 clientX: moveEvent.clientX, 
-                                 rectLeft: rect.left, 
-                                 x, 
-                                 pct, 
-                                 newValue, 
-                                 nearestValue, 
-                                 maxPrice 
-                               });
-                               
                                if (nearestValue < maxPrice) {
                                  setMinPrice(nearestValue);
                                }
@@ -1093,7 +1062,6 @@ function SearchContent() {
                              
                              // 포인터 업 이벤트 핸들러
                              const handlePointerUp = () => {
-                               console.log('최저값 드래그 종료');
                                document.removeEventListener('pointermove', handlePointerMove);
                                document.removeEventListener('pointerup', handlePointerUp);
                                document.removeEventListener('pointerleave', handlePointerUp);
@@ -1102,13 +1070,11 @@ function SearchContent() {
                              
                              // 포인터가 창 밖으로 나갈 때도 드래그 종료
                              const handlePointerLeave = () => {
-                               console.log('포인터 창 밖으로 나감, 드래그 종료');
                                handlePointerUp();
                              };
                              
                              // 포인터 취소 시 드래그 종료
                              const handlePointerCancel = () => {
-                               console.log('포인터 취소, 드래그 종료');
                                handlePointerUp();
                              };
                              
@@ -1129,7 +1095,6 @@ function SearchContent() {
                       <div className="absolute top-3 -translate-x-1/2 -translate-y-1/2 cursor-pointer z-30"
                            style={{ left: `${(maxPrice / (priceCap || 1)) * 100}%` }}
                            onPointerDown={(e) => {
-                             console.log('최대값 포인터 포인터다운 시작');
                              e.preventDefault();
                              e.stopPropagation();
                              
@@ -1137,7 +1102,6 @@ function SearchContent() {
                              const handlePointerMove = (moveEvent: PointerEvent) => {
                                const trackEl = rentTrackRef.current;
                                if (!trackEl) {
-                                 console.log('트랙 엘리먼트 없음');
                                  return;
                                }
                                
@@ -1147,16 +1111,6 @@ function SearchContent() {
                                const newValue = Math.round(pct * priceCap);
                                const nearestValue = allowedValues[getClosestAllowedIndex(newValue, allowedValues)];
                                
-                               console.log('최대값 드래그 중:', { 
-                                 clientX: moveEvent.clientX, 
-                                 rectLeft: rect.left, 
-                                 x, 
-                                 pct, 
-                                 newValue, 
-                                 nearestValue, 
-                                 minPrice 
-                               });
-                               
                                if (nearestValue > minPrice) {
                                  setMaxPrice(nearestValue);
                                }
@@ -1164,7 +1118,6 @@ function SearchContent() {
                              
                              // 포인터 업 이벤트 핸들러
                              const handlePointerUp = () => {
-                               console.log('최대값 드래그 종료');
                                document.removeEventListener('pointermove', handlePointerMove);
                                document.removeEventListener('pointerup', handlePointerUp);
                                document.removeEventListener('pointerleave', handlePointerUp);
@@ -1173,13 +1126,11 @@ function SearchContent() {
                              
                              // 포인터가 창 밖으로 나갈 때도 드래그 종료
                              const handlePointerLeave = () => {
-                               console.log('포인터 창 밖으로 나감, 드래그 종료');
                                handlePointerUp();
                              };
                              
                              // 포인터 취소 시 드래그 종료
                              const handlePointerCancel = () => {
-                               console.log('포인터 취소, 드래그 종료');
                                handlePointerUp();
                              };
                              
