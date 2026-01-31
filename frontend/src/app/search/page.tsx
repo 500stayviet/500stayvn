@@ -384,8 +384,13 @@ function SearchContent() {
         const allProperties = await getAvailableProperties();
         setProperties(allProperties);
         if (allProperties.length > 0) {
-          const cap = Math.max(0, ...allProperties.map((p) => p.price || 0));
-          setMaxPrice(cap);
+          const prices = allProperties.map((p) => p.price || 0).filter(p => p > 0);
+          if (prices.length > 0) {
+            const min = Math.min(...prices);
+            const max = Math.max(...prices);
+            setMinPrice(min);
+            setMaxPrice(max);
+          }
         }
       } catch (error) {
         // Silent fail
@@ -903,97 +908,229 @@ function SearchContent() {
                 const safeMinIndex = Math.max(0, Math.min(minIndex, maxIndex - 1));
                 const safeMaxIndex = Math.min(allowedValues.length - 1, Math.max(maxIndex, safeMinIndex + 1));
                 const handleRentTrackPointerDown = (e: React.PointerEvent) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  
                   const el = rentTrackRef.current;
-                  if (!el) return;
+                  if (!el) {
+                    console.log('줄자 클릭: rentTrackRef 없음');
+                    return;
+                  }
+                  
                   const rect = el.getBoundingClientRect();
                   const x = e.clientX - rect.left;
                   const pct = Math.max(0, Math.min(1, x / rect.width));
-                  const mid = (minPrice / (priceCap || 1) + maxPrice / (priceCap || 1)) / 2;
-                  setRentActiveThumb(pct < mid ? "min" : "max");
+                  
+                  // 클릭한 위치와 각 포인터의 거리 계산 (퍼센트 단위)
+                  const minPos = (minPrice / (priceCap || 1)) * 100;
+                  const maxPos = (maxPrice / (priceCap || 1)) * 100;
+                  const clickPos = pct * 100;
+                  
+                  // 가까운 포인터 선택
+                  const distToMin = Math.abs(clickPos - minPos);
+                  const distToMax = Math.abs(clickPos - maxPos);
+                  
+                  console.log('줄자 클릭:', { 
+                    clickPos: clickPos.toFixed(2), 
+                    minPos: minPos.toFixed(2), 
+                    maxPos: maxPos.toFixed(2), 
+                    distToMin: distToMin.toFixed(2), 
+                    distToMax: distToMax.toFixed(2),
+                    minPrice,
+                    maxPrice,
+                    priceCap
+                  });
+                  
+                  // 더 가까운 포인터만 이동
+                  if (distToMin < distToMax) {
+                    // 최저값 포인터가 더 가까움
+                    console.log('최저값 포인터가 더 가까움, 최저값 이동');
+                    const newValue = Math.round(pct * priceCap);
+                    const nearestValue = allowedValues[getClosestAllowedIndex(newValue, allowedValues)];
+                    console.log('새 값:', { newValue, nearestValue, maxPrice });
+                    if (nearestValue < maxPrice) {
+                      setMinPrice(nearestValue);
+                    } else {
+                      // 최저값이 최대값에 도달하면 최대값 이동
+                      console.log('최저값이 최대값에 도달, 최대값 이동');
+                      setMaxPrice(nearestValue);
+                    }
+                  } else if (distToMax < distToMin) {
+                    // 최대값 포인터가 더 가까움
+                    console.log('최대값 포인터가 더 가까움, 최대값 이동');
+                    const newValue = Math.round(pct * priceCap);
+                    const nearestValue = allowedValues[getClosestAllowedIndex(newValue, allowedValues)];
+                    console.log('새 값:', { newValue, nearestValue, minPrice });
+                    if (nearestValue > minPrice) {
+                      setMaxPrice(nearestValue);
+                    } else {
+                      // 최대값이 최저값에 도달하면 최저값 이동
+                      console.log('최대값이 최저값에 도달, 최저값 이동');
+                      setMinPrice(nearestValue);
+                    }
+                  } else {
+                    // 거리가 같을 때 (매우 드문 경우)
+                    console.log('거리가 같음, 최저값 이동');
+                    const newValue = Math.round(pct * priceCap);
+                    const nearestValue = allowedValues[getClosestAllowedIndex(newValue, allowedValues)];
+                    if (nearestValue < maxPrice) {
+                      setMinPrice(nearestValue);
+                    } else {
+                      setMaxPrice(nearestValue);
+                    }
+                  }
                 };
                 return (
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">
                       {getUIText("rentWeekly", currentLanguage)}
                     </label>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="text-sm font-semibold text-gray-900">
-                        {formatVndToManSimple(minPrice)} ~ {formatVndToManSimple(maxPrice)}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {currentLanguage === "ko" ? "만 단위" : 
-                         currentLanguage === "vi" ? "đơn vị vạn" : 
-                         "10k units"}
+                    {/* 간단한 가격 표시 */}
+                    <div className="mb-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <div className="text-center">
+                        <div className="text-lg font-bold text-blue-700">
+                          {formatVndToManSimple(minPrice)} ~ {formatVndToManSimple(maxPrice)}
+                        </div>
+                        <div className="text-xs text-blue-500 mt-1">
+                          {formatVndWithComma(minPrice)} ~ {formatVndWithComma(maxPrice)} VND
+                        </div>
                       </div>
                     </div>
-                    <div className="text-xs text-gray-400 mb-3 text-center">
-                      ({formatVndWithComma(minPrice)} ~ {formatVndWithComma(maxPrice)} VND)
-                    </div>
-                    <div
+                    
+                    {/* 개선된 비선형 슬라이더 - 자 모양 눈금 추가 */}
+                    <div 
+                      className="relative py-6"
                       ref={rentTrackRef}
-                      className="relative flex items-center py-4 select-none"
                       onPointerDown={handleRentTrackPointerDown}
-                      onPointerUp={() => setRentActiveThumb(null)}
-                      onPointerLeave={() => setRentActiveThumb(null)}
                     >
-                      {/* 줄자 배경 */}
-                      <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-3 bg-gradient-to-r from-gray-100 via-gray-200 to-gray-100 rounded-full shadow-inner" />
+                      {/* 자 모양 배경 - 가로선 */}
+                      <div className="absolute left-0 right-0 top-3 h-px bg-gray-300" />
+                      
+                      {/* 주요 구간 눈금 (자 모양) */}
+                      <div className="absolute left-0 right-0 top-3 flex justify-between pointer-events-none">
+                        {[0, 2000000, 5000000, 10000000, priceCap].map((value) => {
+                          if (value > priceCap) return null;
+                          const position = (value / (priceCap || 1)) * 100;
+                          return (
+                            <div
+                              key={value}
+                              className="absolute top-0 -translate-x-1/2"
+                              style={{ left: `${position}%` }}
+                            >
+                              {/* 긴 눈금선 */}
+                              <div className="w-px h-3 bg-gray-400" />
+                              {/* 눈금 라벨 */}
+                              <div className="absolute top-4 left-1/2 -translate-x-1/2 text-[10px] text-gray-500 whitespace-nowrap">
+                                {formatVndToManSimple(value)}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      
+                      {/* 중간 눈금 (짧은 선) */}
+                      <div className="absolute left-0 right-0 top-3 flex justify-between pointer-events-none">
+                        {[1000000, 3000000, 4000000, 6000000, 7000000, 8000000, 9000000].map((value) => {
+                          if (value > priceCap) return null;
+                          const position = (value / (priceCap || 1)) * 100;
+                          return (
+                            <div
+                              key={value}
+                              className="absolute top-0 -translate-x-1/2"
+                              style={{ left: `${position}%` }}
+                            >
+                              <div className="w-px h-2 bg-gray-300" />
+                            </div>
+                          );
+                        })}
+                      </div>
                       
                       {/* 선택된 범위 */}
                       <div
-                        className="absolute top-1/2 -translate-y-1/2 h-3 bg-gradient-to-r from-blue-400 to-blue-500 rounded-full pointer-events-none transition-all duration-150"
+                        className="absolute top-3 h-2 bg-blue-500 rounded-full -translate-y-1/2"
                         style={{
                           left: `${(minPrice / (priceCap || 1)) * 100}%`,
                           width: `${((maxPrice - minPrice) / (priceCap || 1)) * 100}%`,
                         }}
                       />
                       
-                      {/* 눈금 표시 */}
-                      <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 flex justify-between px-1 pointer-events-none">
-                        {[0, 2000000, 5000000, 10000000].map((value) => {
-                          if (value > priceCap) return null;
-                          const position = (value / (priceCap || 1)) * 100;
-                          return (
-                            <div
-                              key={value}
-                              className="absolute top-1/2 -translate-y-1/2 w-px h-4 bg-gray-300"
-                              style={{ left: `${position}%` }}
-                            />
-                          );
-                        })}
-                      </div>
-                      
-                      {/* 최저가 포인터 */}
-                      <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 pointer-events-none z-20">
-                        <div
-                          className="relative"
-                          style={{ left: `${(minPrice / (priceCap || 1)) * 100}%` }}
-                        >
-                          <div className="w-8 h-8 bg-white border-2 border-blue-600 rounded-full shadow-lg flex items-center justify-center">
-                            <div className="w-2 h-2 bg-blue-600 rounded-full" />
-                          </div>
-                          <div className="absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs font-semibold text-blue-700 bg-white px-2 py-1 rounded-md shadow-sm border border-blue-100">
-                            {formatVndToManSimple(minPrice)}
-                          </div>
+                      {/* 최저가 포인터 - 드래그 가능 */}
+                      <div className="absolute top-3 -translate-x-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing z-30"
+                           style={{ left: `${(minPrice / (priceCap || 1)) * 100}%` }}
+                           onMouseDown={(e) => {
+                             e.preventDefault();
+                             const startX = e.clientX;
+                             const startLeft = (minPrice / (priceCap || 1)) * 100;
+                             
+                             const handleMouseMove = (moveEvent: MouseEvent) => {
+                               const deltaX = moveEvent.clientX - startX;
+                               const trackWidth = 100; // 전체 너비 100%
+                               const deltaPercent = (deltaX / window.innerWidth) * 100 * 2; // 조정 계수
+                               const newPercent = Math.max(0, Math.min(startLeft + deltaPercent, 100));
+                               const newValue = Math.round((newPercent / 100) * priceCap);
+                               const nearestValue = allowedValues[getClosestAllowedIndex(newValue, allowedValues)];
+                               
+                               // 최저값은 최대값보다 작기만 하면 됨 (최소 1단계 차이)
+                               if (nearestValue < maxPrice) {
+                                 setMinPrice(nearestValue);
+                               }
+                             };
+                             
+                             const handleMouseUp = () => {
+                               document.removeEventListener('mousemove', handleMouseMove);
+                               document.removeEventListener('mouseup', handleMouseUp);
+                             };
+                             
+                             document.addEventListener('mousemove', handleMouseMove);
+                             document.addEventListener('mouseup', handleMouseUp);
+                           }}>
+                        <div className="w-6 h-6 bg-white border-2 border-blue-600 rounded-full shadow-lg flex items-center justify-center">
+                          <div className="w-2 h-2 bg-blue-600 rounded-full" />
+                        </div>
+                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-xs font-bold text-blue-700 bg-white px-2 py-1 rounded-md shadow border border-blue-200 whitespace-nowrap">
+                          {formatVndToManSimple(minPrice)}
                         </div>
                       </div>
                       
-                      {/* 최대가 포인터 */}
-                      <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 pointer-events-none z-20">
-                        <div
-                          className="relative"
-                          style={{ left: `${(maxPrice / (priceCap || 1)) * 100}%` }}
-                        >
-                          <div className="w-8 h-8 bg-white border-2 border-blue-600 rounded-full shadow-lg flex items-center justify-center">
-                            <div className="w-2 h-2 bg-blue-600 rounded-full" />
-                          </div>
-                          <div className="absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs font-semibold text-blue-700 bg-white px-2 py-1 rounded-md shadow-sm border border-blue-100">
-                            {formatVndToManSimple(maxPrice)}
-                          </div>
+                      {/* 최대가 포인터 - 드래그 가능 */}
+                      <div className="absolute top-3 -translate-x-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing z-30"
+                           style={{ left: `${(maxPrice / (priceCap || 1)) * 100}%` }}
+                           onMouseDown={(e) => {
+                             e.preventDefault();
+                             const startX = e.clientX;
+                             const startLeft = (maxPrice / (priceCap || 1)) * 100;
+                             
+                             const handleMouseMove = (moveEvent: MouseEvent) => {
+                               const deltaX = moveEvent.clientX - startX;
+                               const trackWidth = 100; // 전체 너비 100%
+                               const deltaPercent = (deltaX / window.innerWidth) * 100 * 2; // 조정 계수
+                               const newPercent = Math.max(0, Math.min(startLeft + deltaPercent, 100));
+                               const newValue = Math.round((newPercent / 100) * priceCap);
+                               const nearestValue = allowedValues[getClosestAllowedIndex(newValue, allowedValues)];
+                               
+                               // 최대값은 최저값보다 크기만 하면 됨
+                               if (nearestValue > minPrice) {
+                                 setMaxPrice(nearestValue);
+                               }
+                             };
+                             
+                             const handleMouseUp = () => {
+                               document.removeEventListener('mousemove', handleMouseMove);
+                               document.removeEventListener('mouseup', handleMouseUp);
+                             };
+                             
+                             document.addEventListener('mousemove', handleMouseMove);
+                             document.addEventListener('mouseup', handleMouseUp);
+                           }}>
+                        <div className="w-6 h-6 bg-white border-2 border-blue-600 rounded-full shadow-lg flex items-center justify-center">
+                          <div className="w-2 h-2 bg-blue-600 rounded-full" />
+                        </div>
+                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-xs font-bold text-blue-700 bg-white px-2 py-1 rounded-md shadow border border-blue-200 whitespace-nowrap">
+                          {formatVndToManSimple(maxPrice)}
                         </div>
                       </div>
                       
-                      {/* 숨겨진 슬라이더 입력 (실제 조작용) */}
+                      {/* 숨겨진 슬라이더 (백업) */}
                       <input
                         type="range"
                         min={0}
@@ -1004,7 +1141,7 @@ function SearchContent() {
                           const idx = Math.min(Number(e.target.value), safeMaxIndex - 1);
                           setMinPrice(allowedValues[idx]);
                         }}
-                        className="absolute inset-0 w-full h-10 bg-transparent appearance-none cursor-pointer z-30 opacity-0 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-10 [&::-webkit-slider-thumb]:h-10 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-transparent [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-runnable-track]:bg-transparent"
+                        className="absolute inset-0 w-full h-10 opacity-0 cursor-pointer z-20"
                       />
                       <input
                         type="range"
@@ -1016,17 +1153,17 @@ function SearchContent() {
                           const idx = Math.max(Number(e.target.value), safeMinIndex + 1);
                           setMaxPrice(allowedValues[idx]);
                         }}
-                        className="absolute inset-0 w-full h-10 bg-transparent appearance-none cursor-pointer z-30 opacity-0 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-10 [&::-webkit-slider-thumb]:h-10 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-transparent [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-runnable-track]:bg-transparent"
+                        className="absolute inset-0 w-full h-10 opacity-0 cursor-pointer z-20"
                       />
                     </div>
                     
-                    {/* 단위 설명 */}
-                    <div className="mt-4 text-[10px] text-gray-500 text-center">
+                    {/* 간단한 설명 */}
+                    <div className="mt-2 text-xs text-gray-500 text-center">
                       {currentLanguage === "ko" 
-                        ? "비선형 단위: 0~200만(10만), 200~500만(50만), 500~1000만(100만), 1000만+(1000만)" 
+                        ? "드래그하여 가격 범위 조정" 
                         : currentLanguage === "vi" 
-                        ? "Đơn vị phi tuyến: 0~2tr(100k), 2~5tr(500k), 5~10tr(1tr), 10tr+(10tr)" 
-                        : "Non-linear units: 0~2M(100k), 2~5M(500k), 5~10M(1M), 10M+(10M)"}
+                        ? "Kéo để điều chỉnh khoảng giá" 
+                        : "Drag to adjust price range"}
                     </div>
                   </div>
                 );
