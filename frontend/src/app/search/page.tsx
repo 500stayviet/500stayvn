@@ -422,7 +422,40 @@ function SearchContent() {
   const applyFilters = () => {
     let filtered = properties;
 
-    if (searchLocation) {
+    // 구 필터링: 선택된 구에 있는 매물만 표시
+    if (selectedDistrictId) {
+      const selectedDistrict = districts.find(d => d.id === selectedDistrictId);
+      if (selectedDistrict) {
+        filtered = filtered.filter((property) => {
+          if (!property.coordinates) return false;
+          // 구 중심점과의 거리 계산 (12km 이내)
+          const distance = calculateDistance(
+            selectedDistrict.center[1], // lat
+            selectedDistrict.center[0], // lng
+            property.coordinates.lat,
+            property.coordinates.lng,
+          );
+          return distance <= 12; // 구 반경 12km 이내
+        });
+      }
+    } else if (selectedCityId) {
+      // 도시만 선택된 경우: 도시 중심점 기준 50km 이내
+      const selectedCity = VIETNAM_CITIES.find(c => c.id === selectedCityId) || 
+                          ALL_REGIONS.find(r => r.id === selectedCityId);
+      if (selectedCity) {
+        filtered = filtered.filter((property) => {
+          if (!property.coordinates) return false;
+          const distance = calculateDistance(
+            selectedCity.center[1], // lat
+            selectedCity.center[0], // lng
+            property.coordinates.lat,
+            property.coordinates.lng,
+          );
+          return distance <= 50; // 도시 반경 50km 이내
+        });
+      }
+    } else if (searchLocation) {
+      // 검색 위치가 있는 경우: 검색 위치 기준 50km 이내
       filtered = filtered.filter((property) => {
         if (!property.coordinates) return false;
         const distance = calculateDistance(
@@ -512,23 +545,35 @@ function SearchContent() {
       return price >= minPrice && price <= maxPrice;
     });
 
-    if (searchLocation) {
-      filtered = filtered.sort((a, b) => {
-        if (!a.coordinates || !b.coordinates) return 0;
-        const distA = calculateDistance(
-          searchLocation.lat,
-          searchLocation.lng,
-          a.coordinates.lat,
-          a.coordinates.lng,
-        );
-        const distB = calculateDistance(
-          searchLocation.lat,
-          searchLocation.lng,
-          b.coordinates.lat,
-          b.coordinates.lng,
-        );
-        return distA - distB;
-      });
+    // 거리순 정렬 (가장 가까운 매물 먼저)
+    if (selectedDistrictId || selectedCityId || searchLocation) {
+      const centerPoint = selectedDistrictId 
+        ? districts.find(d => d.id === selectedDistrictId)?.center
+        : selectedCityId
+          ? (VIETNAM_CITIES.find(c => c.id === selectedCityId) || 
+             ALL_REGIONS.find(r => r.id === selectedCityId))?.center
+          : searchLocation
+            ? [searchLocation.lng, searchLocation.lat]
+            : null;
+      
+      if (centerPoint) {
+        filtered = filtered.sort((a, b) => {
+          if (!a.coordinates || !b.coordinates) return 0;
+          const distA = calculateDistance(
+            centerPoint[1], // lat
+            centerPoint[0], // lng
+            a.coordinates.lat,
+            a.coordinates.lng,
+          );
+          const distB = calculateDistance(
+            centerPoint[1], // lat
+            centerPoint[0], // lng
+            b.coordinates.lat,
+            b.coordinates.lng,
+          );
+          return distA - distB;
+        });
+      }
     }
 
     setFilteredProperties(filtered);
