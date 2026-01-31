@@ -12,7 +12,7 @@ import { updateUserData } from '@/lib/api/auth';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Mail, Phone, Globe, Home, CheckCircle2, Building2, Calendar, ChevronRight, ShieldCheck } from 'lucide-react';
+import { User, Mail, Phone, Globe, Home, CheckCircle2, Building2, Calendar, ChevronRight, ShieldCheck, Wallet, Star, Heart, CreditCard, Tag } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getCurrentUserData, verifyOwner, OwnerVerificationData, UserData, updateUserEmail, updateUserPhoneNumber, deleteAccount } from '@/lib/api/auth';
@@ -396,7 +396,7 @@ export default function ProfilePage() {
               {allStepsCompleted && (
                 <button 
                   onClick={() => router.push('/host/bookings')}
-                  className="w-full py-4 px-5 flex items-center justify-between hover:bg-gray-50"
+                  className="w-full py-4 px-5 flex items-center justify-between border-b border-gray-100 hover:bg-gray-50"
                 >
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-orange-100 rounded-lg"><Calendar className="w-5 h-5 text-orange-600" /></div>
@@ -408,6 +408,81 @@ export default function ProfilePage() {
                   <ChevronRight className="w-5 h-5 text-gray-400" />
                 </button>
               )}
+
+              {/* 정산 및 지갑 - 코인 3개(1~3단계 완료) 시에만 표시 */}
+              {allStepsCompleted && (
+                <div className="border-b border-gray-100">
+                  <div className="px-5 py-3 bg-gray-50">
+                    <div className="flex items-center gap-2">
+                      <Wallet className="w-4 h-4 text-purple-600" />
+                      <span className="text-xs font-semibold text-gray-700">{getUIText('settlementWallet', currentLanguage)}</span>
+                    </div>
+                  </div>
+                  
+                  {/* 수익 내역 */}
+                  <button 
+                    onClick={() => {}}
+                    className="w-full py-4 px-5 flex items-center justify-between hover:bg-gray-50"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-green-100 rounded-lg"><Wallet className="w-5 h-5 text-green-600" /></div>
+                      <div className="text-left">
+                        <p className="text-sm font-semibold text-gray-900">{getUIText('revenueHistory', currentLanguage)}</p>
+                        <p className="text-xs text-gray-500">{getUIText('revenueHistoryDesc', currentLanguage)}</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400" />
+                  </button>
+                  
+                  {/* 출금 신청 */}
+                  <button 
+                    onClick={() => {}}
+                    className="w-full py-4 px-5 flex items-center justify-between hover:bg-gray-50"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-blue-100 rounded-lg"><Wallet className="w-5 h-5 text-blue-600" /></div>
+                      <div className="text-left">
+                        <p className="text-sm font-semibold text-gray-900">{getUIText('withdrawalRequest', currentLanguage)}</p>
+                        <p className="text-xs text-gray-500">{getUIText('withdrawalRequestDesc', currentLanguage)}</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400" />
+                  </button>
+                  
+                  {/* 은행 계좌 설정 */}
+                  <button 
+                    onClick={() => {}}
+                    className="w-full py-4 px-5 flex items-center justify-between hover:bg-gray-50"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-indigo-100 rounded-lg"><CreditCard className="w-5 h-5 text-indigo-600" /></div>
+                      <div className="text-left">
+                        <p className="text-sm font-semibold text-gray-900">{getUIText('bankAccountSetup', currentLanguage)}</p>
+                        <p className="text-xs text-gray-500">{getUIText('bankAccountSetupDesc', currentLanguage)}</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400" />
+                  </button>
+                </div>
+              )}
+
+              {/* 리뷰 관리 - 코인 3개(1~3단계 완료) 시에만 표시 */}
+              {allStepsCompleted && (
+                <button 
+                  onClick={() => {}}
+                  className="w-full py-4 px-5 flex items-center justify-between hover:bg-gray-50"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-yellow-100 rounded-lg"><Star className="w-5 h-5 text-yellow-600" /></div>
+                    <div className="text-left">
+                      <p className="text-sm font-semibold text-gray-900">{getUIText('reviewManagement', currentLanguage)}</p>
+                      <p className="text-xs text-gray-500">{getUIText('reviewManagementDesc', currentLanguage)}</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-gray-400" />
+                </button>
+              )}
+              
               {!allStepsCompleted && (
                 <div className="px-5 py-3 bg-gray-50">
                   <p className="text-xs text-gray-500 text-center">
@@ -433,7 +508,7 @@ export default function ProfilePage() {
               <h2 className="text-lg font-bold text-gray-900">{getUIText('guestMenu', currentLanguage)}</h2>
             </div>
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-              <button onClick={() => router.push('/my-bookings')} className="w-full py-4 px-5 flex items-center justify-between hover:bg-gray-50">
+              <button onClick={() => router.push('/my-bookings')} className="w-full py-4 px-5 flex items-center justify-between border-b border-gray-100 hover:bg-gray-50">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-teal-100 rounded-lg"><Calendar className="w-5 h-5 text-teal-600" /></div>
                   <div className="text-left">
@@ -443,6 +518,58 @@ export default function ProfilePage() {
                 </div>
                 <ChevronRight className="w-5 h-5 text-gray-400" />
               </button>
+              
+              {/* 위시리스트 */}
+              <button 
+                onClick={() => {}}
+                className="w-full py-4 px-5 flex items-center justify-between border-b border-gray-100 hover:bg-gray-50"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-pink-100 rounded-lg"><Heart className="w-5 h-5 text-pink-600" /></div>
+                  <div className="text-left">
+                    <p className="text-sm font-semibold text-gray-900">{getUIText('wishlist', currentLanguage)}</p>
+                    <p className="text-xs text-gray-500">{getUIText('wishlistDesc', currentLanguage)}</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-gray-400" />
+              </button>
+              
+              {/* 결제 수단 관리 */}
+              <button 
+                onClick={() => {}}
+                className="w-full py-4 px-5 flex items-center justify-between border-b border-gray-100 hover:bg-gray-50"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-100 rounded-lg"><CreditCard className="w-5 h-5 text-blue-600" /></div>
+                  <div className="text-left">
+                    <p className="text-sm font-semibold text-gray-900">{getUIText('paymentMethodManagement', currentLanguage)}</p>
+                    <p className="text-xs text-gray-500">{getUIText('paymentMethodManagementDesc', currentLanguage)}</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-gray-400" />
+              </button>
+              
+              {/* 쿠폰 */}
+              <button 
+                onClick={() => {}}
+                className="w-full py-4 px-5 flex items-center justify-between hover:bg-gray-50"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-yellow-100 rounded-lg"><Tag className="w-5 h-5 text-yellow-600" /></div>
+                  <div className="text-left">
+                    <p className="text-sm font-semibold text-gray-900">{getUIText('coupons', currentLanguage)}</p>
+                    <p className="text-xs text-gray-500">{getUIText('couponsDesc', currentLanguage)}</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-gray-400" />
+              </button>
+              
+              {/* 결제 수단 등록 필요 안내 */}
+              <div className="px-5 py-3 bg-gray-50 border-t border-gray-100">
+                <p className="text-xs text-gray-500 text-center">
+                  {getUIText('paymentMethodRequired', currentLanguage)}: {getUIText('paymentMethodRequiredDesc', currentLanguage)}
+                </p>
+              </div>
             </div>
           </div>
 

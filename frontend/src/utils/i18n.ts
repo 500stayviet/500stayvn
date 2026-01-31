@@ -189,7 +189,26 @@ export type UITextKey =
   | 'noResultsFound'
   | 'propertiesFound'
   | 'minExceedsMaxError'
-  | 'maxBelowMinError';
+  | 'maxBelowMinError'
+  // 새로운 카테고리 텍스트
+  | 'settlementWallet'
+  | 'settlementWalletDesc'
+  | 'revenueHistory'
+  | 'revenueHistoryDesc'
+  | 'withdrawalRequest'
+  | 'withdrawalRequestDesc'
+  | 'bankAccountSetup'
+  | 'bankAccountSetupDesc'
+  | 'reviewManagement'
+  | 'reviewManagementDesc'
+  | 'wishlist'
+  | 'wishlistDesc'
+  | 'paymentMethodManagement'
+  | 'paymentMethodManagementDesc'
+  | 'coupons'
+  | 'couponsDesc'
+  | 'paymentMethodRequired'
+  | 'paymentMethodRequiredDesc';
 
 /**
  * 언어별 UI 텍스트 사전
@@ -374,6 +393,25 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     propertiesFound: '개의 매물을 찾았습니다.',
     minExceedsMaxError: '최저값은 최대값을 초과할 수 없습니다. 수정해 주세요.',
     maxBelowMinError: '최대값은 최저값보다 낮을 수 없습니다. 수정해 주세요.',
+    // 새로운 카테고리 텍스트
+    settlementWallet: '정산 및 지갑',
+    settlementWalletDesc: '수익 관리 및 출금',
+    revenueHistory: '수익 내역',
+    revenueHistoryDesc: '매출 및 수익 확인',
+    withdrawalRequest: '출금 신청',
+    withdrawalRequestDesc: '수익금 출금 요청',
+    bankAccountSetup: '은행 계좌 설정',
+    bankAccountSetupDesc: '출금 계좌 등록',
+    reviewManagement: '리뷰 관리',
+    reviewManagementDesc: '받은 리뷰 확인 및 관리',
+    wishlist: '위시리스트',
+    wishlistDesc: '저장한 매물 목록',
+    paymentMethodManagement: '결제 수단 관리',
+    paymentMethodManagementDesc: '카드 및 결제 방법 등록',
+    coupons: '쿠폰',
+    couponsDesc: '할인 쿠폰 관리',
+    paymentMethodRequired: '결제 수단 등록 필요',
+    paymentMethodRequiredDesc: '결제 수단 등록 시 활성화됩니다',
   },
   vi: {
     login: 'Đăng nhập',
@@ -734,6 +772,25 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     propertiesFound: ' properties found.',
     minExceedsMaxError: 'Min cannot exceed max. Please correct.',
     maxBelowMinError: 'Max cannot be lower than min. Please correct.',
+    // 새로운 카테고리 텍스트
+    settlementWallet: 'Settlement & Wallet',
+    settlementWalletDesc: 'Revenue management & withdrawals',
+    revenueHistory: 'Revenue History',
+    revenueHistoryDesc: 'Check sales & revenue',
+    withdrawalRequest: 'Withdrawal Request',
+    withdrawalRequestDesc: 'Request revenue withdrawal',
+    bankAccountSetup: 'Bank Account Setup',
+    bankAccountSetupDesc: 'Register withdrawal account',
+    reviewManagement: 'Review Management',
+    reviewManagementDesc: 'Check & manage received reviews',
+    wishlist: 'Wishlist',
+    wishlistDesc: 'Saved properties list',
+    paymentMethodManagement: 'Payment Method Management',
+    paymentMethodManagementDesc: 'Register cards & payment methods',
+    coupons: 'Coupons',
+    couponsDesc: 'Discount coupons management',
+    paymentMethodRequired: 'Payment Method Required',
+    paymentMethodRequiredDesc: 'Activated when payment method is registered',
   },
   ja: {
     login: 'ログイン',
