@@ -428,18 +428,125 @@ export const HANOI_DISTRICTS: VietnamRegion[] = [
 ];
 
 // ============================================================================
+// 다른 주요 도시들의 기본 구 데이터 (간소화)
+// ============================================================================
+export const OTHER_CITY_DISTRICTS: VietnamRegion[] = [
+  // 다낭 (Da Nang)
+  {
+    id: 'danang-city-center',
+    name: 'City Center',
+    nameVi: 'Trung tâm thành phố',
+    nameKo: '시내 중심',
+    nameJa: '市中心',
+    nameZh: '市中心',
+    keywords: ['city center', 'trung tâm', '시내', '市中心'],
+    center: [108.2022, 16.0544],
+    type: 'district',
+    parentCity: 'danang',
+    zoom: 14,
+  },
+  {
+    id: 'danang-my-khe',
+    name: 'My Khe Beach',
+    nameVi: 'Bãi biển Mỹ Khê',
+    nameKo: '미케 해변',
+    nameJa: 'ミーケビーチ',
+    nameZh: '美溪海滩',
+    keywords: ['my khe', 'my khe beach', 'mỹ khê', '미케', '美溪'],
+    center: [108.2500, 16.0600],
+    type: 'district',
+    parentCity: 'danang',
+    zoom: 14,
+  },
+  {
+    id: 'danang-son-tra',
+    name: 'Son Tra Peninsula',
+    nameVi: 'Bán đảo Sơn Trà',
+    nameKo: '손트라 반도',
+    nameJa: 'ソントラ半島',
+    nameZh: '山茶半岛',
+    keywords: ['son tra', 'sơn trà', '손트라', '山茶'],
+    center: [108.2800, 16.1100],
+    type: 'district',
+    parentCity: 'danang',
+    zoom: 14,
+  },
+  
+  // 나짱 (Nha Trang)
+  {
+    id: 'nhatrang-beach',
+    name: 'Beach Area',
+    nameVi: 'Khu vực biển',
+    nameKo: '해변 지역',
+    nameJa: 'ビーチエリア',
+    nameZh: '海滩区',
+    keywords: ['beach', 'biển', '해변', '海滩'],
+    center: [109.1943, 12.2451],
+    type: 'district',
+    parentCity: 'nhatrang',
+    zoom: 14,
+  },
+  {
+    id: 'nhatrang-city-center',
+    name: 'City Center',
+    nameVi: 'Trung tâm thành phố',
+    nameKo: '시내 중심',
+    nameJa: '市中心',
+    nameZh: '市中心',
+    keywords: ['city center', 'trung tâm', '시내', '市中心'],
+    center: [109.1800, 12.2500],
+    type: 'district',
+    parentCity: 'nhatrang',
+    zoom: 14,
+  },
+  
+  // 푸꾸옥 (Phu Quoc)
+  {
+    id: 'phuquoc-duong-dong',
+    name: 'Duong Dong',
+    nameVi: 'Dương Đông',
+    nameKo: '동동',
+    nameJa: 'ドンドン',
+    nameZh: '阳东',
+    keywords: ['duong dong', 'dương đông', '동동', '阳东'],
+    center: [103.9500, 10.2200],
+    type: 'district',
+    parentCity: 'phuquoc',
+    zoom: 14,
+  },
+  {
+    id: 'phuquoc-an-thoi',
+    name: 'An Thoi',
+    nameVi: 'An Thới',
+    nameKo: '안토이',
+    nameJa: 'アントイ',
+    nameZh: '安泰',
+    keywords: ['an thoi', 'an thới', '안토이', '安泰'],
+    center: [104.0000, 10.0200],
+    type: 'district',
+    parentCity: 'phuquoc',
+    zoom: 14,
+  },
+];
+
+// ============================================================================
 // 모든 행정 구역 통합 (검색용)
 // ============================================================================
 export const ALL_REGIONS: VietnamRegion[] = [
   ...VIETNAM_CITIES,
   ...HCMC_DISTRICTS,
   ...HANOI_DISTRICTS,
+  ...OTHER_CITY_DISTRICTS,
 ];
 
 // 도시 ID별 구/군 목록 (하드코딩)
 const DISTRICTS_BY_CITY: Record<string, VietnamRegion[]> = {
   hcmc: HCMC_DISTRICTS,
   hanoi: HANOI_DISTRICTS,
+  danang: OTHER_CITY_DISTRICTS.filter(d => d.parentCity === 'danang'),
+  nhatrang: OTHER_CITY_DISTRICTS.filter(d => d.parentCity === 'nhatrang'),
+  phuquoc: OTHER_CITY_DISTRICTS.filter(d => d.parentCity === 'phuquoc'),
+  // 다른 도시들도 필요시 추가
 };
 
 /** 선택한 도시의 구/군 목록 반환 (해당 도시에 구 데이터가 없으면 빈 배열) */

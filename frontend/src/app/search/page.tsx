@@ -562,7 +562,7 @@ function SearchContent() {
     setShowCalendar(false);
   };
 
-  // 고급 필터 초기화 함수
+  // 고급 필터 초기화 함수 (주소, 도시, 구는 유지)
   const resetAdvancedFilters = () => {
     // 가격 범위 초기화 (전체 매물의 최소/최대값으로)
     if (properties.length > 0) {
@@ -596,11 +596,11 @@ function SearchContent() {
     setCheckInDate(null);
     setCheckOutDate(null);
     
-    // 검색 위치 초기화
-    setSearchLocation(null);
-    setSearchQuery("");
-    setSelectedCityId(null);
-    setSelectedDistrictId(null);
+    // 주소, 도시, 구는 초기화하지 않음 (검색 위치, 검색어, 도시/구 선택 유지)
+    // setSearchLocation(null);
+    // setSearchQuery("");
+    // setSelectedCityId(null);
+    // setSelectedDistrictId(null);
     
     // 필터 적용 상태 초기화
     setFiltersApplied(false);
