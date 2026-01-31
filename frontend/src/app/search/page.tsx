@@ -30,6 +30,7 @@ import {
   Bed,
   Sparkles,
   Tv,
+  RotateCcw,
 } from "lucide-react";
 import {
   FULL_OPTION_KITCHEN_IDS,
@@ -559,6 +560,51 @@ function SearchContent() {
 
   const closeCalendar = () => {
     setShowCalendar(false);
+  };
+
+  // 고급 필터 초기화 함수
+  const resetAdvancedFilters = () => {
+    // 가격 범위 초기화 (전체 매물의 최소/최대값으로)
+    if (properties.length > 0) {
+      const prices = properties.map((p) => p.price || 0).filter(p => p > 0);
+      if (prices.length > 0) {
+        const min = Math.min(...prices);
+        const max = Math.max(...prices);
+        setMinPrice(min);
+        setMaxPrice(max);
+      } else {
+        setMinPrice(0);
+        setMaxPrice(50000000);
+      }
+    } else {
+      setMinPrice(0);
+      setMaxPrice(50000000);
+    }
+    
+    // 풀 옵션 필터 초기화
+    setFullFurniture(false);
+    setFullElectronics(false);
+    setFullOptionKitchen(false);
+    
+    // 시설·정책 필터 초기화
+    setAmenityFilters({});
+    
+    // 방 개수 필터 초기화
+    setRoomFilter(null);
+    
+    // 날짜 필터 초기화
+    setCheckInDate(null);
+    setCheckOutDate(null);
+    
+    // 검색 위치 초기화
+    setSearchLocation(null);
+    setSearchQuery("");
+    setSelectedCityId(null);
+    setSelectedDistrictId(null);
+    
+    // 필터 적용 상태 초기화
+    setFiltersApplied(false);
+    setFilteredProperties(properties);
   };
 
   const formatDate = (date: Date | null): string => {
@@ -1271,18 +1317,38 @@ function SearchContent() {
             </div>
           )}
 
-          <button
-            onClick={async () => {
-              setShowCalendar(false);
-              setShowRoomDropdown(false);
-              await geocodeSearchQuery();
-              applyFilters();
-            }}
-            className="w-full mt-4 py-3.5 px-6 bg-blue-600 text-white rounded-lg font-semibold text-base hover:bg-blue-700 transition-all shadow-lg flex items-center justify-center gap-2"
-          >
-            <Search className="w-5 h-5" />
-            <span>{getUIText("searchButton", currentLanguage)}</span>
-          </button>
+          {/* 초기화 버튼 - 검색하기 버튼 위에 배치 */}
+          <div className="flex gap-2 mt-4">
+            <button
+              onClick={resetAdvancedFilters}
+              className="flex-1 py-3 px-4 bg-gray-100 text-gray-700 rounded-lg font-medium text-sm hover:bg-gray-200 transition-all flex items-center justify-center gap-2 border border-gray-300"
+            >
+              <RotateCcw className="w-4 h-4" />
+              <span>
+                {currentLanguage === "ko" 
+                  ? "초기화" 
+                  : currentLanguage === "vi" 
+                  ? "Đặt lại" 
+                  : currentLanguage === "ja"
+                  ? "リセット"
+                  : currentLanguage === "zh"
+                  ? "重置"
+                  : "Reset"}
+              </span>
+            </button>
+            <button
+              onClick={async () => {
+                setShowCalendar(false);
+                setShowRoomDropdown(false);
+                await geocodeSearchQuery();
+                applyFilters();
+              }}
+              className="flex-1 py-3.5 px-6 bg-blue-600 text-white rounded-lg font-semibold text-base hover:bg-blue-700 transition-all shadow-lg flex items-center justify-center gap-2"
+            >
+              <Search className="w-5 h-5" />
+              <span>{getUIText("searchButton", currentLanguage)}</span>
+            </button>
+          </div>
         </div>
 
         {showCalendar && (
