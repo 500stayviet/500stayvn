@@ -193,6 +193,8 @@ export type UITextKey =
   // 새로운 카테고리 텍스트
   | 'settlementWallet'
   | 'settlementWalletDesc'
+  | 'settlementAccount'
+  | 'settlementAccountDesc'
   | 'revenueHistory'
   | 'revenueHistoryDesc'
   | 'withdrawalRequest'
@@ -235,7 +237,10 @@ export type UITextKey =
   | 'accountHolder'
   | 'enterAccountHolder'
   | 'setAsPrimaryAccount'
-  | 'registerAccount';
+  | 'registerAccount'
+  | 'primary'
+  | 'completed'
+  | 'setAsPrimary';
 
 /**
  * 언어별 UI 텍스트 사전
@@ -423,6 +428,8 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     // 새로운 카테고리 텍스트
     settlementWallet: '정산 및 지갑',
     settlementWalletDesc: '수익 관리 및 출금',
+    settlementAccount: '정산 및 계좌',
+    settlementAccountDesc: '수익 관리 및 계좌 설정',
     revenueHistory: '수익 내역',
     revenueHistoryDesc: '매출 및 수익 확인',
     withdrawalRequest: '출금 신청',
@@ -466,6 +473,9 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     enterAccountHolder: '예금주 입력',
     setAsPrimaryAccount: '주 계좌로 설정',
     registerAccount: '계좌 등록',
+    primary: '주 계좌',
+    completed: '완료됨',
+    setAsPrimary: '주 계좌로 설정',
   },
   vi: {
     login: 'Đăng nhập',
@@ -649,6 +659,8 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     // 새로운 카테고리 텍스트
     settlementWallet: 'Thanh toán & Ví',
     settlementWalletDesc: 'Quản lý doanh thu & rút tiền',
+    settlementAccount: 'Thanh toán & Tài khoản',
+    settlementAccountDesc: 'Quản lý doanh thu & thiết lập tài khoản',
     revenueHistory: 'Lịch sử doanh thu',
     revenueHistoryDesc: 'Kiểm tra doanh số & doanh thu',
     withdrawalRequest: 'Yêu cầu rút tiền',
@@ -692,6 +704,9 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     enterAccountHolder: 'Nhập chủ tài khoản',
     setAsPrimaryAccount: 'Đặt làm tài khoản chính',
     registerAccount: 'Đăng ký tài khoản',
+    primary: 'Tài khoản chính',
+    completed: 'Hoàn thành',
+    setAsPrimary: 'Đặt làm tài khoản chính',
   },
   en: {
     login: 'Login',
@@ -875,6 +890,8 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     // 새로운 카테고리 텍스트
     settlementWallet: 'Settlement & Wallet',
     settlementWalletDesc: 'Revenue management & withdrawals',
+    settlementAccount: 'Settlement & Account',
+    settlementAccountDesc: 'Revenue management & account setup',
     revenueHistory: 'Revenue History',
     revenueHistoryDesc: 'Check sales & revenue',
     withdrawalRequest: 'Withdrawal Request',
@@ -918,6 +935,9 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     enterAccountHolder: 'Enter account holder',
     setAsPrimaryAccount: 'Set as primary account',
     registerAccount: 'Register Account',
+    primary: 'Primary',
+    completed: 'Completed',
+    setAsPrimary: 'Set as primary',
   },
   ja: {
     login: 'ログイン',
@@ -1101,6 +1121,8 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     // 새로운 카테고리 텍스트
     settlementWallet: '決済 & ウォレット',
     settlementWalletDesc: '収益管理 & 出金',
+    settlementAccount: '決済 & 口座',
+    settlementAccountDesc: '収益管理 & 口座設定',
     revenueHistory: '収益履歴',
     revenueHistoryDesc: '売上 & 収益の確認',
     withdrawalRequest: '出金リクエスト',
@@ -1144,6 +1166,9 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     enterAccountHolder: '口座名義人を入力',
     setAsPrimaryAccount: '主口座として設定',
     registerAccount: '口座を登録',
+    primary: '主口座',
+    completed: '完了',
+    setAsPrimary: '主口座として設定',
   },
   zh: {
     login: '登录',
@@ -1327,6 +1352,8 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     // 새로운 카테고리 텍스트
     settlementWallet: '结算与钱包',
     settlementWalletDesc: '收益管理与提现',
+    settlementAccount: '结算与账户',
+    settlementAccountDesc: '收益管理与账户设置',
     revenueHistory: '收益历史',
     revenueHistoryDesc: '查看销售额与收益',
     withdrawalRequest: '提现申请',
@@ -1370,6 +1397,9 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     enterAccountHolder: '输入账户持有人',
     setAsPrimaryAccount: '设为主账户',
     registerAccount: '注册账户',
+    primary: '主账户',
+    completed: '已完成',
+    setAsPrimary: '设为主账户',
   },
 };
 

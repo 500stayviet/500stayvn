@@ -409,61 +409,21 @@ export default function ProfilePage() {
                 </button>
               )}
 
-              {/* 정산 및 지갑 - 코인 3개(1~3단계 완료) 시에만 표시 */}
+              {/* 정산 및 계좌 - 코인 3개(1~3단계 완료) 시에만 표시 */}
               {allStepsCompleted && (
-                <div className="border-b border-gray-100">
-                  <div className="px-5 py-3 bg-gray-50">
-                    <div className="flex items-center gap-2">
-                      <Wallet className="w-4 h-4 text-purple-600" />
-                      <span className="text-xs font-semibold text-gray-700">{getUIText('settlementWallet', currentLanguage)}</span>
+                <button 
+                  onClick={() => router.push('/profile/settlement')}
+                  className="w-full py-4 px-5 flex items-center justify-between border-b border-gray-100 hover:bg-gray-50"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-purple-100 rounded-lg"><Wallet className="w-5 h-5 text-purple-600" /></div>
+                    <div className="text-left">
+                      <p className="text-sm font-semibold text-gray-900">{getUIText('settlementAccount', currentLanguage)}</p>
+                      <p className="text-xs text-gray-500">{getUIText('settlementAccountDesc', currentLanguage)}</p>
                     </div>
                   </div>
-                  
-                  {/* 수익 내역 */}
-                  <button 
-                    onClick={() => router.push('/profile/settlement')}
-                    className="w-full py-4 px-5 flex items-center justify-between hover:bg-gray-50"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-green-100 rounded-lg"><Wallet className="w-5 h-5 text-green-600" /></div>
-                      <div className="text-left">
-                        <p className="text-sm font-semibold text-gray-900">{getUIText('revenueHistory', currentLanguage)}</p>
-                        <p className="text-xs text-gray-500">{getUIText('revenueHistoryDesc', currentLanguage)}</p>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-gray-400" />
-                  </button>
-                  
-                  {/* 출금 신청 */}
-                  <button 
-                    onClick={() => router.push('/profile/settlement')}
-                    className="w-full py-4 px-5 flex items-center justify-between hover:bg-gray-50"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-blue-100 rounded-lg"><Wallet className="w-5 h-5 text-blue-600" /></div>
-                      <div className="text-left">
-                        <p className="text-sm font-semibold text-gray-900">{getUIText('withdrawalRequest', currentLanguage)}</p>
-                        <p className="text-xs text-gray-500">{getUIText('withdrawalRequestDesc', currentLanguage)}</p>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-gray-400" />
-                  </button>
-                  
-                  {/* 은행 계좌 설정 */}
-                  <button 
-                    onClick={() => router.push('/profile/settlement')}
-                    className="w-full py-4 px-5 flex items-center justify-between hover:bg-gray-50"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-indigo-100 rounded-lg"><CreditCard className="w-5 h-5 text-indigo-600" /></div>
-                      <div className="text-left">
-                        <p className="text-sm font-semibold text-gray-900">{getUIText('bankAccountSetup', currentLanguage)}</p>
-                        <p className="text-xs text-gray-500">{getUIText('bankAccountSetupDesc', currentLanguage)}</p>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-gray-400" />
-                  </button>
-                </div>
+                  <ChevronRight className="w-5 h-5 text-gray-400" />
+                </button>
               )}
 
               {/* 리뷰 관리 - 코인 3개(1~3단계 완료) 시에만 표시 */}

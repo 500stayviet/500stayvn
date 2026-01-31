@@ -74,7 +74,7 @@ export default function SettlementPage() {
             </button>
             <div className="flex items-center gap-2">
               <Wallet className="w-6 h-6 text-purple-600" />
-              <h1 className="text-2xl font-bold text-gray-900">{getUIText('settlementWallet', currentLanguage)}</h1>
+              <h1 className="text-2xl font-bold text-gray-900">{getUIText('settlementAccount', currentLanguage)}</h1>
             </div>
           </div>
           
