@@ -421,7 +421,7 @@ export default function ProfilePage() {
                   
                   {/* 수익 내역 */}
                   <button 
-                    onClick={() => {}}
+                    onClick={() => router.push('/profile/settlement')}
                     className="w-full py-4 px-5 flex items-center justify-between hover:bg-gray-50"
                   >
                     <div className="flex items-center gap-3">
@@ -436,7 +436,7 @@ export default function ProfilePage() {
                   
                   {/* 출금 신청 */}
                   <button 
-                    onClick={() => {}}
+                    onClick={() => router.push('/profile/settlement')}
                     className="w-full py-4 px-5 flex items-center justify-between hover:bg-gray-50"
                   >
                     <div className="flex items-center gap-3">
@@ -451,7 +451,7 @@ export default function ProfilePage() {
                   
                   {/* 은행 계좌 설정 */}
                   <button 
-                    onClick={() => {}}
+                    onClick={() => router.push('/profile/settlement')}
                     className="w-full py-4 px-5 flex items-center justify-between hover:bg-gray-50"
                   >
                     <div className="flex items-center gap-3">

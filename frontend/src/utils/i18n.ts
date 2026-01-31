@@ -208,7 +208,34 @@ export type UITextKey =
   | 'coupons'
   | 'couponsDesc'
   | 'paymentMethodRequired'
-  | 'paymentMethodRequiredDesc';
+  | 'paymentMethodRequiredDesc'
+  // 정산 페이지 텍스트
+  | 'availableBalance'
+  | 'totalRevenue'
+  | 'pendingWithdrawal'
+  | 'recentRevenue'
+  | 'viewAll'
+  | 'rentalIncome'
+  | 'nextPayout'
+  | 'estimatedAmount'
+  | 'requestWithdrawal'
+  | 'withdrawalAmount'
+  | 'availableForWithdrawal'
+  | 'selectBankAccount'
+  | 'selectAccount'
+  | 'submitWithdrawalRequest'
+  | 'withdrawalHistory'
+  | 'registeredAccounts'
+  | 'addNewAccount'
+  | 'registerNewAccount'
+  | 'bankName'
+  | 'enterBankName'
+  | 'accountNumber'
+  | 'enterAccountNumber'
+  | 'accountHolder'
+  | 'enterAccountHolder'
+  | 'setAsPrimaryAccount'
+  | 'registerAccount';
 
 /**
  * 언어별 UI 텍스트 사전
@@ -412,6 +439,33 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     couponsDesc: '할인 쿠폰 관리',
     paymentMethodRequired: '결제 수단 등록 필요',
     paymentMethodRequiredDesc: '결제 수단 등록 시 활성화됩니다',
+    // 정산 페이지 텍스트
+    availableBalance: '사용 가능 잔액',
+    totalRevenue: '총 수익',
+    pendingWithdrawal: '출금 대기',
+    recentRevenue: '최근 수익',
+    viewAll: '전체보기',
+    rentalIncome: '임대 수익',
+    nextPayout: '다음 지급일',
+    estimatedAmount: '예상 금액',
+    requestWithdrawal: '출금 신청',
+    withdrawalAmount: '출금 금액',
+    availableForWithdrawal: '출금 가능 금액',
+    selectBankAccount: '은행 계좌 선택',
+    selectAccount: '계좌 선택',
+    submitWithdrawalRequest: '출금 신청하기',
+    withdrawalHistory: '출금 내역',
+    registeredAccounts: '등록된 계좌',
+    addNewAccount: '새 계좌 추가',
+    registerNewAccount: '새 계좌 등록',
+    bankName: '은행명',
+    enterBankName: '은행명 입력',
+    accountNumber: '계좌번호',
+    enterAccountNumber: '계좌번호 입력',
+    accountHolder: '예금주',
+    enterAccountHolder: '예금주 입력',
+    setAsPrimaryAccount: '주 계좌로 설정',
+    registerAccount: '계좌 등록',
   },
   vi: {
     login: 'Đăng nhập',
@@ -592,6 +646,52 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     propertiesFound: ' bất động sản.',
     minExceedsMaxError: 'Giá tối thiểu không được vượt quá giá tối đa. Vui lòng sửa.',
     maxBelowMinError: 'Giá tối đa không được thấp hơn giá tối thiểu. Vui lòng sửa.',
+    // 새로운 카테고리 텍스트
+    settlementWallet: 'Thanh toán & Ví',
+    settlementWalletDesc: 'Quản lý doanh thu & rút tiền',
+    revenueHistory: 'Lịch sử doanh thu',
+    revenueHistoryDesc: 'Kiểm tra doanh số & doanh thu',
+    withdrawalRequest: 'Yêu cầu rút tiền',
+    withdrawalRequestDesc: 'Yêu cầu rút doanh thu',
+    bankAccountSetup: 'Thiết lập tài khoản ngân hàng',
+    bankAccountSetupDesc: 'Đăng ký tài khoản rút tiền',
+    reviewManagement: 'Quản lý đánh giá',
+    reviewManagementDesc: 'Kiểm tra & quản lý đánh giá nhận được',
+    wishlist: 'Danh sách yêu thích',
+    wishlistDesc: 'Danh sách bất động sản đã lưu',
+    paymentMethodManagement: 'Quản lý phương thức thanh toán',
+    paymentMethodManagementDesc: 'Đăng ký thẻ & phương thức thanh toán',
+    coupons: 'Phiếu giảm giá',
+    couponsDesc: 'Quản lý phiếu giảm giá',
+    paymentMethodRequired: 'Cần đăng ký phương thức thanh toán',
+    paymentMethodRequiredDesc: 'Kích hoạt khi đăng ký phương thức thanh toán',
+    // 정산 페이지 텍스트
+    availableBalance: 'Số dư khả dụng',
+    totalRevenue: 'Tổng doanh thu',
+    pendingWithdrawal: 'Rút tiền đang chờ',
+    recentRevenue: 'Doanh thu gần đây',
+    viewAll: 'Xem tất cả',
+    rentalIncome: 'Thu nhập cho thuê',
+    nextPayout: 'Ngày thanh toán tiếp theo',
+    estimatedAmount: 'Số tiền ước tính',
+    requestWithdrawal: 'Yêu cầu rút tiền',
+    withdrawalAmount: 'Số tiền rút',
+    availableForWithdrawal: 'Có thể rút',
+    selectBankAccount: 'Chọn tài khoản ngân hàng',
+    selectAccount: 'Chọn tài khoản',
+    submitWithdrawalRequest: 'Gửi yêu cầu rút tiền',
+    withdrawalHistory: 'Lịch sử rút tiền',
+    registeredAccounts: 'Tài khoản đã đăng ký',
+    addNewAccount: 'Thêm tài khoản mới',
+    registerNewAccount: 'Đăng ký tài khoản mới',
+    bankName: 'Tên ngân hàng',
+    enterBankName: 'Nhập tên ngân hàng',
+    accountNumber: 'Số tài khoản',
+    enterAccountNumber: 'Nhập số tài khoản',
+    accountHolder: 'Chủ tài khoản',
+    enterAccountHolder: 'Nhập chủ tài khoản',
+    setAsPrimaryAccount: 'Đặt làm tài khoản chính',
+    registerAccount: 'Đăng ký tài khoản',
   },
   en: {
     login: 'Login',
@@ -791,6 +891,33 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     couponsDesc: 'Discount coupons management',
     paymentMethodRequired: 'Payment Method Required',
     paymentMethodRequiredDesc: 'Activated when payment method is registered',
+    // 정산 페이지 텍스트
+    availableBalance: 'Available Balance',
+    totalRevenue: 'Total Revenue',
+    pendingWithdrawal: 'Pending Withdrawal',
+    recentRevenue: 'Recent Revenue',
+    viewAll: 'View All',
+    rentalIncome: 'Rental Income',
+    nextPayout: 'Next Payout',
+    estimatedAmount: 'Estimated Amount',
+    requestWithdrawal: 'Request Withdrawal',
+    withdrawalAmount: 'Withdrawal Amount',
+    availableForWithdrawal: 'Available for Withdrawal',
+    selectBankAccount: 'Select Bank Account',
+    selectAccount: 'Select Account',
+    submitWithdrawalRequest: 'Submit Withdrawal Request',
+    withdrawalHistory: 'Withdrawal History',
+    registeredAccounts: 'Registered Accounts',
+    addNewAccount: 'Add New Account',
+    registerNewAccount: 'Register New Account',
+    bankName: 'Bank Name',
+    enterBankName: 'Enter bank name',
+    accountNumber: 'Account Number',
+    enterAccountNumber: 'Enter account number',
+    accountHolder: 'Account Holder',
+    enterAccountHolder: 'Enter account holder',
+    setAsPrimaryAccount: 'Set as primary account',
+    registerAccount: 'Register Account',
   },
   ja: {
     login: 'ログイン',
@@ -971,6 +1098,52 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     propertiesFound: '件の物件が見つかりました。',
     minExceedsMaxError: '最低値は最高値を超えられません。修正してください。',
     maxBelowMinError: '最高値は最低値より低くできません。修正してください。',
+    // 새로운 카테고리 텍스트
+    settlementWallet: '決済 & ウォレット',
+    settlementWalletDesc: '収益管理 & 出金',
+    revenueHistory: '収益履歴',
+    revenueHistoryDesc: '売上 & 収益の確認',
+    withdrawalRequest: '出金リクエスト',
+    withdrawalRequestDesc: '収益の出金リクエスト',
+    bankAccountSetup: '銀行口座設定',
+    bankAccountSetupDesc: '出金口座の登録',
+    reviewManagement: 'レビュー管理',
+    reviewManagementDesc: '受け取ったレビューの確認・管理',
+    wishlist: 'ウィッシュリスト',
+    wishlistDesc: '保存した物件リスト',
+    paymentMethodManagement: '決済方法管理',
+    paymentMethodManagementDesc: 'カード & 決済方法の登録',
+    coupons: 'クーポン',
+    couponsDesc: '割引クーポンの管理',
+    paymentMethodRequired: '決済方法登録が必要',
+    paymentMethodRequiredDesc: '決済方法登録時に有効化されます',
+    // 정산 페이지 텍스트
+    availableBalance: '利用可能残高',
+    totalRevenue: '総収益',
+    pendingWithdrawal: '出金待ち',
+    recentRevenue: '最近の収益',
+    viewAll: 'すべて表示',
+    rentalIncome: '賃貸収入',
+    nextPayout: '次回支払日',
+    estimatedAmount: '見積金額',
+    requestWithdrawal: '出金リクエスト',
+    withdrawalAmount: '出金額',
+    availableForWithdrawal: '出金可能金額',
+    selectBankAccount: '銀行口座を選択',
+    selectAccount: '口座を選択',
+    submitWithdrawalRequest: '出金リクエストを送信',
+    withdrawalHistory: '出金履歴',
+    registeredAccounts: '登録済み口座',
+    addNewAccount: '新規口座を追加',
+    registerNewAccount: '新規口座を登録',
+    bankName: '銀行名',
+    enterBankName: '銀行名を入力',
+    accountNumber: '口座番号',
+    enterAccountNumber: '口座番号を入力',
+    accountHolder: '口座名義人',
+    enterAccountHolder: '口座名義人を入力',
+    setAsPrimaryAccount: '主口座として設定',
+    registerAccount: '口座を登録',
   },
   zh: {
     login: '登录',
@@ -1151,6 +1324,52 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     propertiesFound: ' 个房源。',
     minExceedsMaxError: '最低值不能高于最高值。请修改。',
     maxBelowMinError: '最高值不能低于最低值。请修改。',
+    // 새로운 카테고리 텍스트
+    settlementWallet: '结算与钱包',
+    settlementWalletDesc: '收益管理与提现',
+    revenueHistory: '收益历史',
+    revenueHistoryDesc: '查看销售额与收益',
+    withdrawalRequest: '提现申请',
+    withdrawalRequestDesc: '收益提现申请',
+    bankAccountSetup: '银行账户设置',
+    bankAccountSetupDesc: '注册提现账户',
+    reviewManagement: '评价管理',
+    reviewManagementDesc: '查看与管理收到的评价',
+    wishlist: '收藏列表',
+    wishlistDesc: '已保存的房源列表',
+    paymentMethodManagement: '支付方式管理',
+    paymentMethodManagementDesc: '注册卡片与支付方式',
+    coupons: '优惠券',
+    couponsDesc: '折扣优惠券管理',
+    paymentMethodRequired: '需要注册支付方式',
+    paymentMethodRequiredDesc: '注册支付方式后激活',
+    // 정산 페이지 텍스트
+    availableBalance: '可用余额',
+    totalRevenue: '总收益',
+    pendingWithdrawal: '待提现',
+    recentRevenue: '近期收益',
+    viewAll: '查看全部',
+    rentalIncome: '租赁收入',
+    nextPayout: '下次支付日',
+    estimatedAmount: '预计金额',
+    requestWithdrawal: '申请提现',
+    withdrawalAmount: '提现金额',
+    availableForWithdrawal: '可提现金额',
+    selectBankAccount: '选择银行账户',
+    selectAccount: '选择账户',
+    submitWithdrawalRequest: '提交提现申请',
+    withdrawalHistory: '提现历史',
+    registeredAccounts: '已注册账户',
+    addNewAccount: '添加新账户',
+    registerNewAccount: '注册新账户',
+    bankName: '银行名称',
+    enterBankName: '输入银行名称',
+    accountNumber: '账户号码',
+    enterAccountNumber: '输入账户号码',
+    accountHolder: '账户持有人',
+    enterAccountHolder: '输入账户持有人',
+    setAsPrimaryAccount: '设为主账户',
+    registerAccount: '注册账户',
   },
 };
 
