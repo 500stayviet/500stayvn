@@ -169,7 +169,27 @@ export type UITextKey =
   | 'selectDatesAndGuests'
   | 'guestSelect'
   | 'maxSuffix'
-  | 'guestOverMaxNotice';
+  | 'guestOverMaxNotice'
+  // 검색·고급필터 (5개국어)
+  | 'advancedFilter'
+  | 'rentWeekly'
+  | 'minLabel'
+  | 'maxLabel'
+  | 'fullOption'
+  | 'fullFurniture'
+  | 'fullElectronics'
+  | 'fullKitchen'
+  | 'amenitiesPolicy'
+  | 'cleaningShort'
+  | 'roomsLabel'
+  | 'selectLabel'
+  | 'allLabel'
+  | 'selectDatePlaceholder'
+  | 'searchButton'
+  | 'noResultsFound'
+  | 'propertiesFound'
+  | 'minExceedsMaxError'
+  | 'maxBelowMinError';
 
 /**
  * 언어별 UI 텍스트 사전
@@ -335,6 +355,25 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     guestSelect: '인원 선택',
     maxSuffix: '(최대)',
     guestOverMaxNotice: '최대인원을 초과할시 인원추가료가 발생할 수 있습니다.',
+    advancedFilter: '고급필터',
+    rentWeekly: '임대료(주당)',
+    minLabel: '최저',
+    maxLabel: '최대',
+    fullOption: '풀 옵션',
+    fullFurniture: '풀 가구',
+    fullElectronics: '풀 가전',
+    fullKitchen: '풀옵션 주방',
+    amenitiesPolicy: '시설·정책',
+    cleaningShort: '집청소',
+    roomsLabel: '방 개수',
+    selectLabel: '선택',
+    allLabel: '전체',
+    selectDatePlaceholder: '날짜 선택',
+    searchButton: '검색하기',
+    noResultsFound: '검색 결과가 없습니다.',
+    propertiesFound: '개의 매물을 찾았습니다.',
+    minExceedsMaxError: '최저값은 최대값을 초과할 수 없습니다. 수정해 주세요.',
+    maxBelowMinError: '최대값은 최저값보다 낮을 수 없습니다. 수정해 주세요.',
   },
   vi: {
     login: 'Đăng nhập',
@@ -496,6 +535,25 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     guestSelect: 'Số người',
     maxSuffix: '(tối đa)',
     guestOverMaxNotice: 'Vượt quá số người tối đa có thể phát sinh phí bổ sung.',
+    advancedFilter: 'Bộ lọc nâng cao',
+    rentWeekly: 'Giá thuê (tuần)',
+    minLabel: 'Tối thiểu',
+    maxLabel: 'Tối đa',
+    fullOption: 'Đầy đủ',
+    fullFurniture: 'Đủ nội thất',
+    fullElectronics: 'Đủ điện tử',
+    fullKitchen: 'Bếp đầy đủ',
+    amenitiesPolicy: 'Tiện ích & Chính sách',
+    cleaningShort: 'Dọn nhà',
+    roomsLabel: 'Số phòng',
+    selectLabel: 'Chọn',
+    allLabel: 'Tất cả',
+    selectDatePlaceholder: 'Chọn ngày',
+    searchButton: 'Tìm kiếm',
+    noResultsFound: 'Không tìm thấy kết quả.',
+    propertiesFound: ' bất động sản.',
+    minExceedsMaxError: 'Giá tối thiểu không được vượt quá giá tối đa. Vui lòng sửa.',
+    maxBelowMinError: 'Giá tối đa không được thấp hơn giá tối thiểu. Vui lòng sửa.',
   },
   en: {
     login: 'Login',
@@ -657,6 +715,25 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     guestSelect: 'Guests',
     maxSuffix: '(max)',
     guestOverMaxNotice: 'Additional charges may apply if you exceed the maximum number of guests.',
+    advancedFilter: 'Advanced Filter',
+    rentWeekly: 'Rent (weekly)',
+    minLabel: 'Min',
+    maxLabel: 'Max',
+    fullOption: 'Full option',
+    fullFurniture: 'Full Furniture',
+    fullElectronics: 'Full Electronics',
+    fullKitchen: 'Full Kitchen',
+    amenitiesPolicy: 'Amenities & Policy',
+    cleaningShort: 'Cleaning',
+    roomsLabel: 'Rooms',
+    selectLabel: 'Select',
+    allLabel: 'All',
+    selectDatePlaceholder: 'Select date',
+    searchButton: 'Search',
+    noResultsFound: 'No results found.',
+    propertiesFound: ' properties found.',
+    minExceedsMaxError: 'Min cannot exceed max. Please correct.',
+    maxBelowMinError: 'Max cannot be lower than min. Please correct.',
   },
   ja: {
     login: 'ログイン',
@@ -818,6 +895,25 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     guestSelect: '人数選択',
     maxSuffix: '(最大)',
     guestOverMaxNotice: '最大人数を超えると追加料金が発生する場合があります。',
+    advancedFilter: '詳細フィルター',
+    rentWeekly: '賃料(週)',
+    minLabel: '最低',
+    maxLabel: '最高',
+    fullOption: 'フルオプション',
+    fullFurniture: '家具完備',
+    fullElectronics: '家電完備',
+    fullKitchen: 'キッチン完備',
+    amenitiesPolicy: '設備・ポリシー',
+    cleaningShort: '清掃',
+    roomsLabel: '部屋数',
+    selectLabel: '選択',
+    allLabel: 'すべて',
+    selectDatePlaceholder: '日付を選択',
+    searchButton: '検索',
+    noResultsFound: '検索結果がありません。',
+    propertiesFound: '件の物件が見つかりました。',
+    minExceedsMaxError: '最低値は最高値を超えられません。修正してください。',
+    maxBelowMinError: '最高値は最低値より低くできません。修正してください。',
   },
   zh: {
     login: '登录',
@@ -979,6 +1075,25 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     guestSelect: '人数选择',
     maxSuffix: '(最多)',
     guestOverMaxNotice: '超过最大人数时可能产生额外费用。',
+    advancedFilter: '高级筛选',
+    rentWeekly: '租金(周)',
+    minLabel: '最低',
+    maxLabel: '最高',
+    fullOption: '全配',
+    fullFurniture: '全家具',
+    fullElectronics: '全家电',
+    fullKitchen: '全厨房',
+    amenitiesPolicy: '设施与政策',
+    cleaningShort: '清洁',
+    roomsLabel: '房间数',
+    selectLabel: '选择',
+    allLabel: '全部',
+    selectDatePlaceholder: '选择日期',
+    searchButton: '搜索',
+    noResultsFound: '未找到结果。',
+    propertiesFound: ' 个房源。',
+    minExceedsMaxError: '最低值不能高于最高值。请修改。',
+    maxBelowMinError: '最高值不能低于最低值。请修改。',
   },
 };
 

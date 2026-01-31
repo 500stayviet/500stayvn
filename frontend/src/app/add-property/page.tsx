@@ -17,6 +17,7 @@ import {
   Calendar,
   ChevronDown,
   ChevronUp,
+  Sparkles,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import TopBar from "@/components/TopBar";
@@ -24,7 +25,7 @@ import CalendarComponent from "@/components/CalendarComponent";
 import AddressVerificationModal from "@/components/AddressVerificationModal";
 // 기존 import들 사이에 추가
 import { uploadToS3 } from "@/lib/s3-client";
-import { FACILITY_OPTIONS, FACILITY_CATEGORIES } from "@/lib/constants/facilities";
+import { FACILITY_OPTIONS, FACILITY_CATEGORIES, FULL_OPTION_KITCHEN_IDS, FULL_FURNITURE_IDS, FULL_ELECTRONICS_IDS } from "@/lib/constants/facilities";
 import {
   getDistrictIdForCoord,
   getDistrictsByCityId,
@@ -1439,9 +1440,24 @@ export default function AddPropertyPage() {
                 {FACILITY_CATEGORIES.map((cat) => {
                   const options = FACILITY_OPTIONS.filter((o) => o.category === cat.id);
                   const catLabel = (cat.label as any)[currentLanguage] || cat.label.en;
+                  const isBadgeCategory = cat.id === "furniture" || cat.id === "electronics" || cat.id === "kitchen";
+                  const fullFurniture = cat.id === "furniture" && FULL_FURNITURE_IDS.every((id) => selectedFacilities.includes(id));
+                  const fullElectronics = cat.id === "electronics" && FULL_ELECTRONICS_IDS.every((id) => selectedFacilities.includes(id));
+                  const fullOptionKitchen = cat.id === "kitchen" && FULL_OPTION_KITCHEN_IDS.every((id) => selectedFacilities.includes(id));
                   return (
                     <div key={cat.id}>
-                      <p className="text-xs font-medium text-gray-500 mb-2">{catLabel}</p>
+                      <div className="flex flex-wrap items-center gap-2 mb-2">
+                        <p className="text-xs font-medium text-gray-500">{catLabel}</p>
+                        {isBadgeCategory && (
+                          <p className="text-[10px] text-gray-500">
+                            {currentLanguage === "ko"
+                              ? "모든 아이콘 선택시 뱃지 획득"
+                              : currentLanguage === "vi"
+                                ? "Chọn đủ tất cả để nhận huy hiệu"
+                                : "Select all to earn badge"}
+                          </p>
+                        )}
+                      </div>
                       <div className="grid grid-cols-3 gap-2">
                         {options.map((opt) => {
                           const Icon = opt.icon;
@@ -1511,6 +1527,24 @@ export default function AddPropertyPage() {
                           );
                         })}
                       </div>
+                      {fullFurniture && (
+                        <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 text-green-800 text-[10px] font-bold border border-green-300">
+                          <Sparkles className="w-3.5 h-3.5" />
+                          {currentLanguage === "ko" ? "풀 가구" : currentLanguage === "vi" ? "Nội thất đầy đủ" : "Full Furniture"}
+                        </div>
+                      )}
+                      {fullElectronics && (
+                        <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 text-green-800 text-[10px] font-bold border border-green-300">
+                          <Sparkles className="w-3.5 h-3.5" />
+                          {currentLanguage === "ko" ? "풀 가전" : currentLanguage === "vi" ? "Điện tử đầy đủ" : "Full Electronics"}
+                        </div>
+                      )}
+                      {fullOptionKitchen && (
+                        <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 text-green-800 text-[10px] font-bold border border-green-300">
+                          <Sparkles className="w-3.5 h-3.5" />
+                          {currentLanguage === "ko" ? "풀옵션 주방" : currentLanguage === "vi" ? "Bếp đầy đủ" : "Full Kitchen"}
+                        </div>
+                      )}
                     </div>
                   );
                 })}

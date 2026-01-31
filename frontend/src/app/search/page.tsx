@@ -28,7 +28,15 @@ import {
   Search,
   X,
   Bed,
+  Sparkles,
+  Tv,
 } from "lucide-react";
+import {
+  FULL_OPTION_KITCHEN_IDS,
+  FULL_FURNITURE_IDS,
+  FULL_ELECTRONICS_IDS,
+  FACILITY_OPTIONS,
+} from "@/lib/constants/facilities";
 import CalendarComponent from "@/components/CalendarComponent";
 import Image from "next/image";
 import PropertyModal from "@/components/map/PropertyModal";
@@ -82,6 +90,53 @@ function getRegionDisplayName(region: VietnamRegion, lang: string): string {
   return region.name ?? "";
 }
 
+/** VND 천 단위 콤마 포맷 */
+function formatVndWithComma(value: number): string {
+  return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+/** 입력 문자열을 숫자로 파싱 (콤마 제거) */
+function parseVndInput(s: string): number {
+  const n = parseInt(String(s).replace(/\D/g, ""), 10);
+  return isNaN(n) ? 0 : n;
+}
+
+/** 비선형 구간별 step (VND): ~200만 10만 / 200만~500만 50만 / 500만~1000만 100만 / 1000만+ 1000만 */
+function getStepForValue(value: number): number {
+  if (value < 2_000_000) return 100_000;
+  if (value < 5_000_000) return 500_000;
+  if (value < 10_000_000) return 1_000_000;
+  return 10_000_000;
+}
+
+/** 0 ~ priceCap 구간의 비선형 허용 금액 배열 (슬라이더 스텝용) */
+function getAllowedPriceValues(priceCap: number): number[] {
+  const out: number[] = [0];
+  let v = 0;
+  while (v < priceCap) {
+    const step = getStepForValue(v);
+    v += step;
+    if (v <= priceCap) out.push(v);
+  }
+  if (out[out.length - 1] !== priceCap) out.push(priceCap);
+  return out;
+}
+
+/** 허용 값 배열에서 value에 가장 가까운 인덱스 */
+function getClosestAllowedIndex(value: number, allowed: number[]): number {
+  if (allowed.length === 0) return 0;
+  let best = 0;
+  let bestDist = Math.abs(allowed[0] - value);
+  for (let i = 1; i < allowed.length; i++) {
+    const d = Math.abs(allowed[i] - value);
+    if (d < bestDist) {
+      bestDist = d;
+      best = i;
+    }
+  }
+  return best;
+}
+
 // 2. 실제 로직이 담긴 컴포넌트로 분리
 function SearchContent() {
   const router = useRouter();
@@ -118,15 +173,29 @@ function SearchContent() {
   const [checkOutDate, setCheckOutDate] = useState<Date | null>(null);
 
   // 방 개수 필터 (매물 등록 시 카테고리/방 개수 기반)
-  type RoomFilterValue = "studio" | "one_room" | "two_room" | "three_plus" | "detached" | null;
+  type RoomFilterValue =
+    | "studio"
+    | "one_room"
+    | "two_room"
+    | "three_plus"
+    | "detached"
+    | null;
   const [roomFilter, setRoomFilter] = useState<RoomFilterValue>(null);
   const [showRoomDropdown, setShowRoomDropdown] = useState(false);
   const roomDropdownRef = useRef<HTMLDivElement>(null);
 
-  // 고급 설정
-  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
+  // 고급필터
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [minPrice, setMinPrice] = useState(0);
-  const [maxPrice, setMaxPrice] = useState(50000000); // 최대 50M VND (기본값)
+  const [maxPrice, setMaxPrice] = useState(50000000);
+  const [fullFurniture, setFullFurniture] = useState(false);
+  const [fullElectronics, setFullElectronics] = useState(false);
+  const [fullOptionKitchen, setFullOptionKitchen] = useState(false);
+  /** 시설·정책: 매물 등록 시 숙소시설 및 정책과 동일한 아이콘 전체. id -> 켜짐 여부 */
+  const [amenityFilters, setAmenityFilters] = useState<Record<string, boolean>>({});
+  /** 임대료 바: 클릭한 쪽 포인터만 드래그되도록 (min | max | null) */
+  const [rentActiveThumb, setRentActiveThumb] = useState<"min" | "max" | null>(null);
+  const rentTrackRef = useRef<HTMLDivElement>(null);
 
   // 필터 적용 상태 (검색 버튼을 눌러야 필터 적용)
   const [filtersApplied, setFiltersApplied] = useState(false);
@@ -137,13 +206,27 @@ function SearchContent() {
     null,
   );
 
-  // 방 개수 필터 옵션 라벨 (검색 필터용)
-  const ROOM_FILTER_OPTIONS: { value: RoomFilterValue; ko: string; vi: string; en: string }[] = [
-    { value: "studio", ko: "스튜디오", vi: "Studio", en: "Studio" },
-    { value: "one_room", ko: "1룸(방·거실 분리)", vi: "1 phòng (phòng + phòng khách)", en: "1 Room (bed + living)" },
-    { value: "two_room", ko: "2룸", vi: "2 phòng", en: "2 Rooms" },
-    { value: "three_plus", ko: "3룸+", vi: "3+ phòng", en: "3+ Rooms" },
-    { value: "detached", ko: "독채", vi: "Nhà riêng", en: "Detached" },
+  // 방 개수 필터 옵션 라벨 (5개국어)
+  const ROOM_FILTER_OPTIONS: {
+    value: RoomFilterValue;
+    ko: string;
+    vi: string;
+    en: string;
+    ja: string;
+    zh: string;
+  }[] = [
+    { value: "studio", ko: "스튜디오", vi: "Studio", en: "Studio", ja: "スタジオ", zh: "一室" },
+    {
+      value: "one_room",
+      ko: "1룸(방·거실 분리)",
+      vi: "1 phòng (phòng + phòng khách)",
+      en: "1 Room (bed + living)",
+      ja: "1ルーム",
+      zh: "一室(卧室+客厅)",
+    },
+    { value: "two_room", ko: "2룸", vi: "2 phòng", en: "2 Rooms", ja: "2ルーム", zh: "两室" },
+    { value: "three_plus", ko: "3룸+", vi: "3+ phòng", en: "3+ Rooms", ja: "3ルーム+", zh: "三室以上" },
+    { value: "detached", ko: "독채", vi: "Nhà riêng", en: "Detached", ja: "戸建て", zh: "独栋" },
   ];
   // 주소 검색 보기 (홈과 동일 로직)
   const { suggestions, isSearching, search, clearSuggestions } =
@@ -272,20 +355,21 @@ function SearchContent() {
     }
   }, [query]);
 
+  // 매물 주당 임대료 최대값 (고급필터 슬라이더 상한)
+  const priceCap =
+    properties.length > 0
+      ? Math.max(0, ...properties.map((p) => p.price || 0))
+      : 50000000;
+
   // 매물 데이터 로드
   useEffect(() => {
     const loadProperties = async () => {
       try {
         const allProperties = await getAvailableProperties();
         setProperties(allProperties);
-
         if (allProperties.length > 0) {
-          const maxPropertyPrice = Math.max(
-            ...allProperties.map((p) => p.price || 0),
-          );
-          if (maxPropertyPrice > 0) {
-            setMaxPrice(Math.ceil(maxPropertyPrice * 1.1));
-          }
+          const cap = Math.max(0, ...allProperties.map((p) => p.price || 0));
+          setMaxPrice(cap);
         }
       } catch (error) {
         // Silent fail
@@ -364,6 +448,43 @@ function SearchContent() {
       });
     }
 
+    if (fullFurniture) {
+      filtered = filtered.filter((property) =>
+        FULL_FURNITURE_IDS.every((id) =>
+          (property.amenities || []).includes(id),
+        ),
+      );
+    }
+    if (fullElectronics) {
+      filtered = filtered.filter((property) =>
+        FULL_ELECTRONICS_IDS.every((id) =>
+          (property.amenities || []).includes(id),
+        ),
+      );
+    }
+    if (fullOptionKitchen) {
+      filtered = filtered.filter((property) =>
+        FULL_OPTION_KITCHEN_IDS.every((id) =>
+          (property.amenities || []).includes(id),
+        ),
+      );
+    }
+    // 시설·정책: 선택된 항목이 true인 매물만
+    Object.entries(amenityFilters).forEach(([id, on]) => {
+      if (!on) return;
+      if (id === "pet") {
+        filtered = filtered.filter((p) => p.petAllowed === true);
+      } else if (id === "cleaning") {
+        filtered = filtered.filter(
+          (p) =>
+            (p.amenities || []).includes("cleaning") ||
+            (p.cleaningPerWeek != null && p.cleaningPerWeek > 0),
+        );
+      } else {
+        filtered = filtered.filter((p) => (p.amenities || []).includes(id));
+      }
+    });
+
     filtered = filtered.filter((property) => {
       const price = property.price || 0;
       return price >= minPrice && price <= maxPrice;
@@ -421,17 +542,17 @@ function SearchContent() {
 
   const formatDate = (date: Date | null): string => {
     if (!date) return "";
-    return date.toLocaleDateString(
+    const locale =
       currentLanguage === "ko"
         ? "ko-KR"
         : currentLanguage === "vi"
           ? "vi-VN"
-          : "en-US",
-      {
-        month: "short",
-        day: "numeric",
-      },
-    );
+          : currentLanguage === "ja"
+            ? "ja-JP"
+            : currentLanguage === "zh"
+              ? "zh-CN"
+              : "en-US";
+    return date.toLocaleDateString(locale, { month: "short", day: "numeric" });
   };
 
   // 방 개수 드롭다운 외부 클릭 시 닫기
@@ -449,10 +570,10 @@ function SearchContent() {
   }, []);
 
   const roomFilterLabel = (): string => {
-    if (!roomFilter) return currentLanguage === "ko" ? "방 개수" : currentLanguage === "vi" ? "Số phòng" : "Rooms";
+    if (!roomFilter) return getUIText("roomsLabel", currentLanguage);
     const opt = ROOM_FILTER_OPTIONS.find((o) => o.value === roomFilter);
     if (!opt) return "";
-    return opt[currentLanguage as "ko" | "vi" | "en"] ?? opt.en;
+    return opt[currentLanguage as "ko" | "vi" | "en" | "ja" | "zh"] ?? opt.en;
   };
 
   return (
@@ -493,56 +614,59 @@ function SearchContent() {
                   className="flex-1 bg-transparent text-sm text-gray-900 placeholder-gray-400 focus:outline-none"
                 />
               </div>
-              {searchQuery && showSuggestions && suggestions.length > 0 && !closedBySelection && (
-                <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-lg max-h-72 overflow-y-auto">
-                  {suggestions.map((suggestion, index) => {
-                    const badge = getSuggestionBadge(
-                      suggestion,
-                      currentLanguage,
-                    );
-                    const displayText = suggestion.Text || "";
-                    const parts = displayText.split(",");
-                    const mainName = cleanDisplayName(
-                      parts[0]?.trim() || displayText,
-                    );
-                    const subAddress = cleanSubAddress(
-                      parts.slice(1).join(",").trim(),
-                    );
-                    return (
-                      <button
-                        key={suggestion.PlaceId || index}
-                        type="button"
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => handleSelectSuggestion(suggestion)}
-                        className={`w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0 ${suggestion.isRegion ? "bg-blue-50/30" : ""}`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <span className="text-lg flex-shrink-0 mt-0.5">
-                            {badge.icon}
-                          </span>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span
-                                className={`text-xs px-2 py-0.5 rounded-full ${badge.color} text-white font-medium flex-shrink-0`}
-                              >
-                                {badge.text}
-                              </span>
-                              <p className="text-sm font-semibold text-gray-900 truncate">
-                                {mainName}
-                              </p>
+              {searchQuery &&
+                showSuggestions &&
+                suggestions.length > 0 &&
+                !closedBySelection && (
+                  <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-lg max-h-72 overflow-y-auto">
+                    {suggestions.map((suggestion, index) => {
+                      const badge = getSuggestionBadge(
+                        suggestion,
+                        currentLanguage,
+                      );
+                      const displayText = suggestion.Text || "";
+                      const parts = displayText.split(",");
+                      const mainName = cleanDisplayName(
+                        parts[0]?.trim() || displayText,
+                      );
+                      const subAddress = cleanSubAddress(
+                        parts.slice(1).join(",").trim(),
+                      );
+                      return (
+                        <button
+                          key={suggestion.PlaceId || index}
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => handleSelectSuggestion(suggestion)}
+                          className={`w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0 ${suggestion.isRegion ? "bg-blue-50/30" : ""}`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <span className="text-lg flex-shrink-0 mt-0.5">
+                              {badge.icon}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={`text-xs px-2 py-0.5 rounded-full ${badge.color} text-white font-medium flex-shrink-0`}
+                                >
+                                  {badge.text}
+                                </span>
+                                <p className="text-sm font-semibold text-gray-900 truncate">
+                                  {mainName}
+                                </p>
+                              </div>
+                              {subAddress && (
+                                <p className="text-xs text-gray-400 mt-1 truncate">
+                                  {subAddress}
+                                </p>
+                              )}
                             </div>
-                            {subAddress && (
-                              <p className="text-xs text-gray-400 mt-1 truncate">
-                                {subAddress}
-                              </p>
-                            )}
                           </div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               {isSearching && (
                 <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-lg p-4">
                   <div className="flex items-center justify-center gap-2 text-gray-500">
@@ -655,10 +779,10 @@ function SearchContent() {
                 <Calendar className="w-4 h-4 text-gray-600" />
                 <div className="text-left">
                   <div className="text-xs text-gray-500">
-                    {currentLanguage === "ko" ? "체크인" : "Check-in"}
+                    {getUIText("checkIn", currentLanguage)}
                   </div>
                   <div className="text-sm font-medium text-gray-900">
-                    {checkInDate ? formatDate(checkInDate) : "Select date"}
+                    {checkInDate ? formatDate(checkInDate) : getUIText("selectDatePlaceholder", currentLanguage)}
                   </div>
                 </div>
               </div>
@@ -672,10 +796,10 @@ function SearchContent() {
                 <Calendar className="w-4 h-4 text-gray-600" />
                 <div className="text-left">
                   <div className="text-xs text-gray-500">
-                    {currentLanguage === "ko" ? "체크아웃" : "Check-out"}
+                    {getUIText("checkOut", currentLanguage)}
                   </div>
                   <div className="text-sm font-medium text-gray-900">
-                    {checkOutDate ? formatDate(checkOutDate) : "Select date"}
+                    {checkOutDate ? formatDate(checkOutDate) : getUIText("selectDatePlaceholder", currentLanguage)}
                   </div>
                 </div>
               </div>
@@ -694,14 +818,16 @@ function SearchContent() {
                   <Bed className="w-4 h-4 text-gray-600" />
                   <div className="text-left">
                     <div className="text-xs text-gray-500">
-                      {currentLanguage === "ko" ? "방 개수" : currentLanguage === "vi" ? "Số phòng" : "Rooms"}
+                      {getUIText("roomsLabel", currentLanguage)}
                     </div>
                     <div className="text-sm font-medium text-gray-900">
-                      {roomFilter ? roomFilterLabel() : currentLanguage === "ko" ? "선택" : currentLanguage === "vi" ? "Chọn" : "Select"}
+                      {roomFilter ? roomFilterLabel() : getUIText("selectLabel", currentLanguage)}
                     </div>
                   </div>
                 </div>
-                <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${showRoomDropdown ? "rotate-180" : ""}`} />
+                <ChevronDown
+                  className={`w-4 h-4 text-gray-500 transition-transform ${showRoomDropdown ? "rotate-180" : ""}`}
+                />
               </button>
               {showRoomDropdown && (
                 <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg py-1 max-h-60 overflow-y-auto">
@@ -713,7 +839,7 @@ function SearchContent() {
                     }}
                     className={`w-full text-left px-4 py-2.5 text-sm ${!roomFilter ? "bg-blue-50 text-blue-700 font-medium" : "text-gray-700 hover:bg-gray-50"}`}
                   >
-                    {currentLanguage === "ko" ? "전체" : currentLanguage === "vi" ? "Tất cả" : "All"}
+                    {getUIText("allLabel", currentLanguage)}
                   </button>
                   {ROOM_FILTER_OPTIONS.map((opt) => (
                     <button
@@ -736,62 +862,173 @@ function SearchContent() {
           <div className="mt-3 flex justify-center">
             <button
               onClick={() => {
-                setShowAdvancedSettings(!showAdvancedSettings);
+                setShowAdvancedFilters(!showAdvancedFilters);
                 setShowCalendar(false);
                 setShowRoomDropdown(false);
               }}
               className="text-xs text-gray-500 hover:text-gray-700 transition-colors flex items-center gap-1"
             >
               <span>
-                {currentLanguage === "ko" ? "고급설정" : "Advanced Settings"}
+                {getUIText("advancedFilter", currentLanguage)}
               </span>
               <ChevronRight
-                className={`w-3 h-3 transition-transform ${showAdvancedSettings ? "rotate-90" : ""}`}
+                className={`w-3 h-3 transition-transform ${showAdvancedFilters ? "rotate-90" : ""}`}
               />
             </button>
           </div>
 
-          {showAdvancedSettings && (
-            <div className="mt-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
-              <div className="mb-3">
-                <label className="block text-xs font-medium text-gray-700 mb-2">
-                  {currentLanguage === "ko" ? "가격 범위" : "Price Range"}
-                </label>
-                <div className="space-y-3">
-                  <input
-                    type="range"
-                    min="0"
-                    max={maxPrice}
-                    value={minPrice}
-                    onChange={(e) =>
-                      setMinPrice(Math.min(Number(e.target.value), maxPrice))
-                    }
-                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                  />
-                  <input
-                    type="range"
-                    min="0"
-                    max={maxPrice}
-                    value={maxPrice}
-                    onChange={(e) =>
-                      setMaxPrice(Math.max(Number(e.target.value), minPrice))
-                    }
-                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                  />
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-600">Min</span>
-                      <span className="font-medium text-gray-900">
-                        {minPrice.toLocaleString()} VND
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-600">Max</span>
-                      <span className="font-medium text-gray-900">
-                        {maxPrice.toLocaleString()} VND
-                      </span>
+          {showAdvancedFilters && (
+            <div className="mt-3 p-4 bg-gray-50 rounded-lg border border-gray-200 space-y-4">
+              {/* 임대료(주당) — 비선형 가격 범위 슬라이더만, 실시간 금액 표시, 최소 거리 유지 */}
+              {(() => {
+                const allowedValues = getAllowedPriceValues(priceCap);
+                const minIndex = getClosestAllowedIndex(minPrice, allowedValues);
+                const maxIndex = getClosestAllowedIndex(maxPrice, allowedValues);
+                const safeMinIndex = Math.max(0, Math.min(minIndex, maxIndex - 1));
+                const safeMaxIndex = Math.min(allowedValues.length - 1, Math.max(maxIndex, safeMinIndex + 1));
+                const handleRentTrackPointerDown = (e: React.PointerEvent) => {
+                  const el = rentTrackRef.current;
+                  if (!el) return;
+                  const rect = el.getBoundingClientRect();
+                  const x = e.clientX - rect.left;
+                  const pct = Math.max(0, Math.min(1, x / rect.width));
+                  const mid = (minPrice / (priceCap || 1) + maxPrice / (priceCap || 1)) / 2;
+                  setRentActiveThumb(pct < mid ? "min" : "max");
+                };
+                return (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      {getUIText("rentWeekly", currentLanguage)}
+                    </label>
+                    <p className="text-sm font-semibold text-gray-900 mb-2">
+                      {formatVndWithComma(minPrice)} ~ {formatVndWithComma(maxPrice)} VND
+                    </p>
+                    <div
+                      ref={rentTrackRef}
+                      className="relative flex items-center py-2 select-none"
+                      onPointerDown={handleRentTrackPointerDown}
+                      onPointerUp={() => setRentActiveThumb(null)}
+                      onPointerLeave={() => setRentActiveThumb(null)}
+                    >
+                      <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-2.5 bg-gray-200 rounded-full shadow-inner" />
+                      <div
+                        className="absolute top-1/2 -translate-y-1/2 h-2.5 bg-blue-500 rounded-full pointer-events-none transition-[left,width] duration-100"
+                        style={{
+                          left: `${(minPrice / (priceCap || 1)) * 100}%`,
+                          width: `${((maxPrice - minPrice) / (priceCap || 1)) * 100}%`,
+                        }}
+                      />
+                      <input
+                        type="range"
+                        min={0}
+                        max={allowedValues.length - 1}
+                        step={1}
+                        value={safeMinIndex}
+                        onChange={(e) => {
+                          const idx = Math.min(Number(e.target.value), safeMaxIndex - 1);
+                          setMinPrice(allowedValues[idx]);
+                        }}
+                        className="absolute inset-0 w-full h-6 bg-transparent appearance-none cursor-pointer z-10 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-blue-600 [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-runnable-track]:bg-transparent"
+                        style={{ zIndex: rentActiveThumb === "min" ? 20 : 10 }}
+                      />
+                      <input
+                        type="range"
+                        min={0}
+                        max={allowedValues.length - 1}
+                        step={1}
+                        value={safeMaxIndex}
+                        onChange={(e) => {
+                          const idx = Math.max(Number(e.target.value), safeMinIndex + 1);
+                          setMaxPrice(allowedValues[idx]);
+                        }}
+                        className="absolute inset-0 w-full h-6 bg-transparent appearance-none cursor-pointer z-10 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-blue-600 [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-runnable-track]:bg-transparent"
+                        style={{ zIndex: rentActiveThumb === "max" ? 20 : 10 }}
+                      />
                     </div>
                   </div>
+                );
+              })()}
+
+              {/* 풀 가구 / 풀 가전 / 풀옵션 주방 */}
+              <div>
+                <span className="block text-xs font-medium text-gray-700 mb-2">
+                  {getUIText("fullOption", currentLanguage)}
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFullFurniture(!fullFurniture)}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-colors shrink-0 ${
+                      fullFurniture
+                        ? "bg-green-50 border-green-300 text-green-800"
+                        : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    <Bed className="w-3.5 h-3.5" />
+                    {getUIText("fullFurniture", currentLanguage)}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFullElectronics(!fullElectronics)}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-colors shrink-0 ${
+                      fullElectronics
+                        ? "bg-green-50 border-green-300 text-green-800"
+                        : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    <Tv className="w-3.5 h-3.5" />
+                    {getUIText("fullElectronics", currentLanguage)}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFullOptionKitchen(!fullOptionKitchen)}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-colors shrink-0 ${
+                      fullOptionKitchen
+                        ? "bg-green-50 border-green-300 text-green-800"
+                        : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    {getUIText("fullKitchen", currentLanguage)}
+                  </button>
+                </div>
+              </div>
+
+              {/* 시설·정책 — 매물 등록 시 숙소시설 및 정책과 동일한 아이콘 전체 */}
+              <div>
+                <span className="block text-xs font-medium text-gray-700 mb-2">
+                  {getUIText("amenitiesPolicy", currentLanguage)}
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {FACILITY_OPTIONS.map((opt) => {
+                    const Icon = opt.icon;
+                    const label =
+                      opt.id === "cleaning"
+                        ? getUIText("cleaningShort", currentLanguage)
+                        : (opt.label[currentLanguage] ?? opt.label.en);
+                    const on = !!amenityFilters[opt.id];
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => {
+                          setAmenityFilters((prev) => ({
+                            ...prev,
+                            [opt.id]: !prev[opt.id],
+                          }));
+                        }}
+                        className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg border text-xs font-medium transition-colors shrink-0 ${
+                          on
+                            ? "bg-blue-50 border-blue-300 text-blue-800"
+                            : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
+                        }`}
+                        title={label}
+                      >
+                        <Icon className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate max-w-[72px]">{label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -807,7 +1044,7 @@ function SearchContent() {
             className="w-full mt-4 py-3.5 px-6 bg-blue-600 text-white rounded-lg font-semibold text-base hover:bg-blue-700 transition-all shadow-lg flex items-center justify-center gap-2"
           >
             <Search className="w-5 h-5" />
-            <span>{currentLanguage === "ko" ? "검색하기" : "Search"}</span>
+            <span>{getUIText("searchButton", currentLanguage)}</span>
           </button>
         </div>
 
@@ -837,15 +1074,16 @@ function SearchContent() {
 
         <div className="p-4">
           {loading ? (
-            <div className="text-center py-12 text-gray-500">Searching...</div>
+            <div className="text-center py-12 text-gray-500">{getUIText("searching", currentLanguage)}</div>
           ) : filteredProperties.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
-              No results found.
+              {getUIText("noResultsFound", currentLanguage)}
             </div>
           ) : (
             <div className="space-y-4">
               <div className="text-sm text-gray-600 mb-4">
-                {filteredProperties.length} 개의 매물을 찾았습니다.
+                {filteredProperties.length}
+                {getUIText("propertiesFound", currentLanguage)}
               </div>
               {filteredProperties.map((property) => (
                 <PropertyCard
@@ -861,8 +1099,9 @@ function SearchContent() {
         </div>
       </div>
 
-      {showPropertyModal && selectedProperty && (
-        user && selectedProperty.ownerId === user.uid ? (
+      {showPropertyModal &&
+        selectedProperty &&
+        (user && selectedProperty.ownerId === user.uid ? (
           <div
             className="fixed inset-0 z-[90] bg-black/50 flex items-center justify-center p-4"
             onClick={() => setShowPropertyModal(false)}
@@ -878,7 +1117,9 @@ function SearchContent() {
                 onEdit={() => {
                   setShowPropertyModal(false);
                   if (selectedProperty?.id)
-                    router.push(`/profile/my-properties/${selectedProperty.id}/edit`);
+                    router.push(
+                      `/profile/my-properties/${selectedProperty.id}/edit`,
+                    );
                 }}
               />
             </div>
@@ -895,8 +1136,7 @@ function SearchContent() {
             currentIndex={getCurrentPropertyIndex()}
             totalProperties={filteredProperties.length}
           />
-        )
-      )}
+        ))}
     </div>
   );
 }
