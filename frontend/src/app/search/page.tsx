@@ -95,6 +95,22 @@ function formatVndWithComma(value: number): string {
   return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
+/** VND 만 단위 포맷 (예: 2,500,000 -> 250만) */
+function formatVndToMan(value: number): string {
+  if (value < 10000) return value.toString();
+  const man = Math.floor(value / 10000);
+  const remainder = value % 10000;
+  if (remainder === 0) return `${man.toLocaleString()}만`;
+  return `${man.toLocaleString()}.${Math.floor(remainder / 1000)}만`;
+}
+
+/** VND 만 단위 간단 포맷 (예: 2,500,000 -> 250만) */
+function formatVndToManSimple(value: number): string {
+  if (value < 10000) return value.toString();
+  const man = Math.floor(value / 10000);
+  return `${man.toLocaleString()}만`;
+}
+
 /** 입력 문자열을 숫자로 파싱 (콤마 제거) */
 function parseVndInput(s: string): number {
   const n = parseInt(String(s).replace(/\D/g, ""), 10);
@@ -900,24 +916,84 @@ function SearchContent() {
                     <label className="block text-xs font-medium text-gray-700 mb-1">
                       {getUIText("rentWeekly", currentLanguage)}
                     </label>
-                    <p className="text-sm font-semibold text-gray-900 mb-2">
-                      {formatVndWithComma(minPrice)} ~ {formatVndWithComma(maxPrice)} VND
-                    </p>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-sm font-semibold text-gray-900">
+                        {formatVndToManSimple(minPrice)} ~ {formatVndToManSimple(maxPrice)}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {currentLanguage === "ko" ? "만 단위" : 
+                         currentLanguage === "vi" ? "đơn vị vạn" : 
+                         "10k units"}
+                      </div>
+                    </div>
+                    <div className="text-xs text-gray-400 mb-3 text-center">
+                      ({formatVndWithComma(minPrice)} ~ {formatVndWithComma(maxPrice)} VND)
+                    </div>
                     <div
                       ref={rentTrackRef}
-                      className="relative flex items-center py-2 select-none"
+                      className="relative flex items-center py-4 select-none"
                       onPointerDown={handleRentTrackPointerDown}
                       onPointerUp={() => setRentActiveThumb(null)}
                       onPointerLeave={() => setRentActiveThumb(null)}
                     >
-                      <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-2.5 bg-gray-200 rounded-full shadow-inner" />
+                      {/* 줄자 배경 */}
+                      <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-3 bg-gradient-to-r from-gray-100 via-gray-200 to-gray-100 rounded-full shadow-inner" />
+                      
+                      {/* 선택된 범위 */}
                       <div
-                        className="absolute top-1/2 -translate-y-1/2 h-2.5 bg-blue-500 rounded-full pointer-events-none transition-[left,width] duration-100"
+                        className="absolute top-1/2 -translate-y-1/2 h-3 bg-gradient-to-r from-blue-400 to-blue-500 rounded-full pointer-events-none transition-all duration-150"
                         style={{
                           left: `${(minPrice / (priceCap || 1)) * 100}%`,
                           width: `${((maxPrice - minPrice) / (priceCap || 1)) * 100}%`,
                         }}
                       />
+                      
+                      {/* 눈금 표시 */}
+                      <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 flex justify-between px-1 pointer-events-none">
+                        {[0, 2000000, 5000000, 10000000].map((value) => {
+                          if (value > priceCap) return null;
+                          const position = (value / (priceCap || 1)) * 100;
+                          return (
+                            <div
+                              key={value}
+                              className="absolute top-1/2 -translate-y-1/2 w-px h-4 bg-gray-300"
+                              style={{ left: `${position}%` }}
+                            />
+                          );
+                        })}
+                      </div>
+                      
+                      {/* 최저가 포인터 */}
+                      <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 pointer-events-none z-20">
+                        <div
+                          className="relative"
+                          style={{ left: `${(minPrice / (priceCap || 1)) * 100}%` }}
+                        >
+                          <div className="w-8 h-8 bg-white border-2 border-blue-600 rounded-full shadow-lg flex items-center justify-center">
+                            <div className="w-2 h-2 bg-blue-600 rounded-full" />
+                          </div>
+                          <div className="absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs font-semibold text-blue-700 bg-white px-2 py-1 rounded-md shadow-sm border border-blue-100">
+                            {formatVndToManSimple(minPrice)}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* 최대가 포인터 */}
+                      <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 pointer-events-none z-20">
+                        <div
+                          className="relative"
+                          style={{ left: `${(maxPrice / (priceCap || 1)) * 100}%` }}
+                        >
+                          <div className="w-8 h-8 bg-white border-2 border-blue-600 rounded-full shadow-lg flex items-center justify-center">
+                            <div className="w-2 h-2 bg-blue-600 rounded-full" />
+                          </div>
+                          <div className="absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs font-semibold text-blue-700 bg-white px-2 py-1 rounded-md shadow-sm border border-blue-100">
+                            {formatVndToManSimple(maxPrice)}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* 숨겨진 슬라이더 입력 (실제 조작용) */}
                       <input
                         type="range"
                         min={0}
@@ -928,8 +1004,7 @@ function SearchContent() {
                           const idx = Math.min(Number(e.target.value), safeMaxIndex - 1);
                           setMinPrice(allowedValues[idx]);
                         }}
-                        className="absolute inset-0 w-full h-6 bg-transparent appearance-none cursor-pointer z-10 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-blue-600 [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-runnable-track]:bg-transparent"
-                        style={{ zIndex: rentActiveThumb === "min" ? 20 : 10 }}
+                        className="absolute inset-0 w-full h-10 bg-transparent appearance-none cursor-pointer z-30 opacity-0 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-10 [&::-webkit-slider-thumb]:h-10 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-transparent [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-runnable-track]:bg-transparent"
                       />
                       <input
                         type="range"
@@ -941,9 +1016,17 @@ function SearchContent() {
                           const idx = Math.max(Number(e.target.value), safeMinIndex + 1);
                           setMaxPrice(allowedValues[idx]);
                         }}
-                        className="absolute inset-0 w-full h-6 bg-transparent appearance-none cursor-pointer z-10 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-blue-600 [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-runnable-track]:bg-transparent"
-                        style={{ zIndex: rentActiveThumb === "max" ? 20 : 10 }}
+                        className="absolute inset-0 w-full h-10 bg-transparent appearance-none cursor-pointer z-30 opacity-0 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-10 [&::-webkit-slider-thumb]:h-10 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-transparent [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-runnable-track]:bg-transparent"
                       />
+                    </div>
+                    
+                    {/* 단위 설명 */}
+                    <div className="mt-4 text-[10px] text-gray-500 text-center">
+                      {currentLanguage === "ko" 
+                        ? "비선형 단위: 0~200만(10만), 200~500만(50만), 500~1000만(100만), 1000만+(1000만)" 
+                        : currentLanguage === "vi" 
+                        ? "Đơn vị phi tuyến: 0~2tr(100k), 2~5tr(500k), 5~10tr(1tr), 10tr+(10tr)" 
+                        : "Non-linear units: 0~2M(100k), 2~5M(500k), 5~10M(1M), 10M+(10M)"}
                     </div>
                   </div>
                 );
