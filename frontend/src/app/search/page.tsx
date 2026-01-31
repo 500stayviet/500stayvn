@@ -17,9 +17,8 @@ import { PropertyData } from "@/types/property";
 import { geocodeAddress } from "@/lib/api/geocoding";
 import { getUIText } from "@/utils/i18n";
 import PropertyCard from "@/components/PropertyCard";
+import TopBar from "@/components/TopBar";
 import {
-  Home,
-  User,
   Calendar,
   ChevronLeft,
   ChevronRight,
@@ -426,16 +425,31 @@ function SearchContent() {
   const applyFilters = () => {
     let filtered = properties;
 
-    // 구 필터링: 선택된 구에 있는 매물만 표시 (구 ID 직접 비교 + 하위 호환성)
+    // 구 필터링: 선택된 구에 있는 매물만 표시 (구 ID 직접 비교 + 도시 ID 검증)
     if (selectedDistrictId) {
       const selectedDistrict = districts.find(d => d.id === selectedDistrictId);
       if (selectedDistrict) {
         filtered = filtered.filter((property) => {
           // 1. 구 ID가 있는 경우: 정확한 ID 비교
           if (property.districtId) {
-            return property.districtId === selectedDistrictId;
+            // 구 ID가 일치하는지 확인
+            const districtMatch = property.districtId === selectedDistrictId;
+            
+            // 도시 ID도 있는 경우 도시 ID도 검증 (구는 특정 도시에 속하므로)
+            if (property.cityId && selectedCityId) {
+              return districtMatch && property.cityId === selectedCityId;
+            }
+            
+            return districtMatch;
           }
-          // 2. 구 ID가 없는 경우: 거리 기반 필터링 (하위 호환성)
+          
+          // 2. 구 ID가 없지만 도시 ID가 있는 경우: 도시 ID 비교
+          if (property.cityId && selectedCityId) {
+            // 구를 선택했으면 해당 구의 도시 ID와 매물의 도시 ID 비교
+            return property.cityId === selectedCityId;
+          }
+          
+          // 3. 구 ID와 도시 ID 모두 없는 경우: 거리 기반 필터링 (하위 호환성)
           if (!property.coordinates) return false;
           const distance = calculateDistance(
             selectedDistrict.center[1], // lat
@@ -452,10 +466,11 @@ function SearchContent() {
                           ALL_REGIONS.find(r => r.id === selectedCityId);
       if (selectedCity) {
         filtered = filtered.filter((property) => {
-          // 1. 도시 ID가 있는 경우: 정확한 ID 비교
+          // 1. 도시 ID가 있는 경우: 정확한 ID 비교 (우선순위 1)
           if (property.cityId) {
             return property.cityId === selectedCityId;
           }
+          
           // 2. 도시 ID가 없는 경우: 거리 기반 필터링 (하위 호환성)
           if (!property.coordinates) return false;
           const distance = calculateDistance(
@@ -704,200 +719,191 @@ function SearchContent() {
   return (
     <div className="min-h-screen bg-gray-100 flex justify-center">
       <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative">
-        <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
-          <div className="flex items-center justify-between px-4 py-3">
-            <button
-              onClick={() => router.push("/")}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-            >
-              <Home className="w-5 h-5 text-gray-700" />
-            </button>
-            <button
-              onClick={() => router.push(user ? "/profile" : "/login")}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-            >
-              <User className="w-5 h-5 text-gray-700" />
-            </button>
-          </div>
-          {/* 검색어 입력창 — 지도 페이지와 동일한 로직 (드롭다운 포함) */}
-          <div className="px-4 pb-3">
-            <div className="relative" ref={searchContainerRef}>
-              <div className="flex items-center gap-2 rounded-xl bg-gray-50 border border-gray-200 px-3 py-2.5">
-                <Search className="w-4 h-4 text-gray-500 shrink-0" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={handleAddressInputChange}
-                  onFocus={() => {
-                    // 검색창 클릭 시 드롭다운 닫기
-                    setShowSuggestions(false);
-                  }}
-                  placeholder={getUIText(
-                    "searchPlaceholderCityDistrict",
-                    currentLanguage,
-                  )}
-                  className="flex-1 bg-transparent text-sm text-gray-900 placeholder-gray-400 focus:outline-none"
-                />
-              </div>
-              {searchQuery &&
-                showSuggestions &&
-                suggestions.length > 0 &&
-                !closedBySelection && (
-                  <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-lg max-h-72 overflow-y-auto">
-                    {suggestions.map((suggestion, index) => {
-                      const badge = getSuggestionBadge(
-                        suggestion,
-                        currentLanguage,
-                      );
-                      const displayText = suggestion.Text || "";
-                      const parts = displayText.split(",");
-                      const mainName = cleanDisplayName(
-                        parts[0]?.trim() || displayText,
-                      );
-                      const subAddress = cleanSubAddress(
-                        parts.slice(1).join(",").trim(),
-                      );
-                      return (
-                        <button
-                          key={suggestion.PlaceId || index}
-                          type="button"
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => handleSelectSuggestion(suggestion)}
-                          className={`w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0 ${suggestion.isRegion ? "bg-blue-50/30" : ""}`}
-                        >
-                          <div className="flex items-start gap-3">
-                            <span className="text-lg flex-shrink-0 mt-0.5">
-                              {badge.icon}
-                            </span>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span
-                                  className={`text-xs px-2 py-0.5 rounded-full ${badge.color} text-white font-medium flex-shrink-0`}
-                                >
-                                  {badge.text}
-                                </span>
-                                <p className="text-sm font-semibold text-gray-900 truncate">
-                                  {mainName}
-                                </p>
-                              </div>
-                              {subAddress && (
-                                <p className="text-xs text-gray-400 mt-1 truncate">
-                                  {subAddress}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
+        {/* TopBar 컴포넌트 사용 */}
+        <TopBar 
+          currentLanguage={currentLanguage}
+          onLanguageChange={setCurrentLanguage}
+          hideLanguageSelector={false}
+        />
+
+        {/* 검색어 입력창 — 지도 페이지와 동일한 로직 (드롭다운 포함) */}
+        <div className="px-4 pb-3 pt-3 border-b border-gray-200">
+          <div className="relative" ref={searchContainerRef}>
+            <div className="flex items-center gap-2 rounded-xl bg-gray-50 border border-gray-200 px-3 py-2.5">
+              <Search className="w-4 h-4 text-gray-500 shrink-0" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={handleAddressInputChange}
+                onFocus={() => {
+                  // 검색창 클릭 시 드롭다운 닫기
+                  setShowSuggestions(false);
+                }}
+                placeholder={getUIText(
+                  "searchPlaceholderCityDistrict",
+                  currentLanguage,
                 )}
-              {isSearching && (
-                <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-lg p-4">
-                  <div className="flex items-center justify-center gap-2 text-gray-500">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500" />
-                    <span className="text-sm">
-                      {getUIText("searching", currentLanguage)}
-                    </span>
-                  </div>
+                className="flex-1 bg-transparent text-sm text-gray-900 placeholder-gray-400 focus:outline-none"
+              />
+            </div>
+            {searchQuery &&
+              showSuggestions &&
+              suggestions.length > 0 &&
+              !closedBySelection && (
+                <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-lg max-h-72 overflow-y-auto">
+                  {suggestions.map((suggestion, index) => {
+                    const badge = getSuggestionBadge(
+                      suggestion,
+                      currentLanguage,
+                    );
+                    const displayText = suggestion.Text || "";
+                    const parts = displayText.split(",");
+                    const mainName = cleanDisplayName(
+                      parts[0]?.trim() || displayText,
+                    );
+                    const subAddress = cleanSubAddress(
+                      parts.slice(1).join(",").trim(),
+                    );
+                    return (
+                      <button
+                        key={suggestion.PlaceId || index}
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => handleSelectSuggestion(suggestion)}
+                        className={`w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0 ${suggestion.isRegion ? "bg-blue-50/30" : ""}`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className="text-lg flex-shrink-0 mt-0.5">
+                            {badge.icon}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`text-xs px-2 py-0.5 rounded-full ${badge.color} text-white font-medium flex-shrink-0`}
+                              >
+                                {badge.text}
+                              </span>
+                              <p className="text-sm font-semibold text-gray-900 truncate">
+                                {mainName}
+                              </p>
+                            </div>
+                            {subAddress && (
+                              <p className="text-xs text-gray-400 mt-1 truncate">
+                                {subAddress}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
+            {isSearching && (
+              <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-lg p-4">
+                <div className="flex items-center justify-center gap-2 text-gray-500">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500" />
+                  <span className="text-sm">
+                    {getUIText("searching", currentLanguage)}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+          {/* 도시·구 — 도시 드롭다운, 선택 시 파란색 */}
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">
+                {getUIText("labelCity", currentLanguage)}
+              </label>
+              <select
+                value={selectedCityId ?? ""}
+                onChange={(e) => {
+                  const id = e.target.value || null;
+                  setSelectedCityId(id);
+                  setSelectedDistrictId(null);
+                  if (id) {
+                    const city =
+                      VIETNAM_CITIES.find((c) => c.id === id) ??
+                      ALL_REGIONS.find((r) => r.id === id);
+                    if (city)
+                      setSearchLocation({
+                        lat: city.center[1],
+                        lng: city.center[0],
+                      });
+                  } else setSearchLocation(null);
+                  // 도시 선택 시 자동으로 필터링 적용
+                  setTimeout(() => {
+                    applyFilters();
+                  }, 100);
+                }}
+                className={`w-full rounded-lg border px-3 py-2.5 text-sm min-h-[42px] focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
+                  selectedCityId
+                    ? "border-blue-500 bg-blue-50 text-blue-700 font-medium"
+                    : "bg-gray-50 border-gray-200 text-gray-800"
+                }`}
+              >
+                <option value="">
+                  {currentLanguage === "ko"
+                    ? "도시 선택"
+                    : currentLanguage === "vi"
+                      ? "Chọn thành phố"
+                      : "Select city"}
+                </option>
+                {VIETNAM_CITIES.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {getRegionDisplayName(c, currentLanguage)}
+                  </option>
+                ))}
+              </select>
             </div>
-            {/* 도시·구 — 도시 드롭다운, 선택 시 파란색 */}
-            <div className="mt-3 grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">
-                  {getUIText("labelCity", currentLanguage)}
-                </label>
-                <select
-                  value={selectedCityId ?? ""}
-                  onChange={(e) => {
-                    const id = e.target.value || null;
-                    setSelectedCityId(id);
-                    setSelectedDistrictId(null);
-                    if (id) {
-                      const city =
-                        VIETNAM_CITIES.find((c) => c.id === id) ??
-                        ALL_REGIONS.find((r) => r.id === id);
-                      if (city)
-                        setSearchLocation({
-                          lat: city.center[1],
-                          lng: city.center[0],
-                        });
-                    } else setSearchLocation(null);
-                    // 도시 선택 시 자동으로 필터링 적용
-                    setTimeout(() => {
-                      applyFilters();
-                    }, 100);
-                  }}
-                  className={`w-full rounded-lg border px-3 py-2.5 text-sm min-h-[42px] focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
-                    selectedCityId
-                      ? "border-blue-500 bg-blue-50 text-blue-700 font-medium"
-                      : "bg-gray-50 border-gray-200 text-gray-800"
-                  }`}
-                >
-                  <option value="">
-                    {currentLanguage === "ko"
-                      ? "도시 선택"
-                      : currentLanguage === "vi"
-                        ? "Chọn thành phố"
-                        : "Select city"}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">
+                {getUIText("labelDistrict", currentLanguage)}
+              </label>
+              <select
+                value={selectedDistrictId ?? ""}
+                onChange={(e) => {
+                  const id = e.target.value || null;
+                  setSelectedDistrictId(id);
+                  if (id) {
+                    const district = districts.find((d) => d.id === id);
+                    if (district)
+                      setSearchLocation({
+                        lat: district.center[1],
+                        lng: district.center[0],
+                      });
+                  } else if (selectedCityId) {
+                    const city =
+                      VIETNAM_CITIES.find((c) => c.id === selectedCityId) ??
+                      ALL_REGIONS.find((r) => r.id === selectedCityId);
+                    if (city)
+                      setSearchLocation({
+                        lat: city.center[1],
+                        lng: city.center[0],
+                      });
+                  } else setSearchLocation(null);
+                  // 구 선택 시 자동으로 필터링 적용
+                  setTimeout(() => {
+                    applyFilters();
+                  }, 100);
+                }}
+                disabled={!selectedCityId || districts.length === 0}
+                className={`w-full rounded-lg border px-3 py-2.5 text-sm min-h-[42px] focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-70 disabled:cursor-not-allowed transition-colors ${
+                  selectedDistrictId
+                    ? "border-blue-500 bg-blue-50 text-blue-700 font-medium"
+                    : "bg-gray-50 border-gray-200 text-gray-800"
+                }`}
+              >
+                <option value="">
+                  {getUIText("selectDistrictPlaceholder", currentLanguage)}
+                </option>
+                {districts.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {getRegionDisplayName(d, currentLanguage)}
                   </option>
-                  {VIETNAM_CITIES.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {getRegionDisplayName(c, currentLanguage)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">
-                  {getUIText("labelDistrict", currentLanguage)}
-                </label>
-                <select
-                  value={selectedDistrictId ?? ""}
-                  onChange={(e) => {
-                    const id = e.target.value || null;
-                    setSelectedDistrictId(id);
-                    if (id) {
-                      const district = districts.find((d) => d.id === id);
-                      if (district)
-                        setSearchLocation({
-                          lat: district.center[1],
-                          lng: district.center[0],
-                        });
-                    } else if (selectedCityId) {
-                      const city =
-                        VIETNAM_CITIES.find((c) => c.id === selectedCityId) ??
-                        ALL_REGIONS.find((r) => r.id === selectedCityId);
-                      if (city)
-                        setSearchLocation({
-                          lat: city.center[1],
-                          lng: city.center[0],
-                        });
-                    } else setSearchLocation(null);
-                    // 구 선택 시 자동으로 필터링 적용
-                    setTimeout(() => {
-                      applyFilters();
-                    }, 100);
-                  }}
-                  disabled={!selectedCityId || districts.length === 0}
-                  className={`w-full rounded-lg border px-3 py-2.5 text-sm min-h-[42px] focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-70 disabled:cursor-not-allowed transition-colors ${
-                    selectedDistrictId
-                      ? "border-blue-500 bg-blue-50 text-blue-700 font-medium"
-                      : "bg-gray-50 border-gray-200 text-gray-800"
-                  }`}
-                >
-                  <option value="">
-                    {getUIText("selectDistrictPlaceholder", currentLanguage)}
-                  </option>
-                  {districts.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {getRegionDisplayName(d, currentLanguage)}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                ))}
+              </select>
             </div>
           </div>
         </div>
