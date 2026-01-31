@@ -985,14 +985,14 @@ function SearchContent() {
                     <label className="block text-xs font-medium text-gray-700 mb-1">
                       {getUIText("rentWeekly", currentLanguage)}
                     </label>
-                    {/* 간단한 가격 표시 */}
-                    <div className="mb-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    {/* 개선된 가격 표시 */}
+                    <div className="mb-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 shadow-sm">
                       <div className="text-center">
-                        <div className="text-lg font-bold text-blue-700">
-                          {formatVndToManSimple(minPrice)} ~ {formatVndToManSimple(maxPrice)}
+                        <div className="text-2xl font-bold text-blue-800 tracking-tight">
+                          {formatVndWithComma(minPrice)} ~ {formatVndWithComma(maxPrice)}
                         </div>
-                        <div className="text-xs text-blue-500 mt-1">
-                          {formatVndWithComma(minPrice)} ~ {formatVndWithComma(maxPrice)} VND
+                        <div className="text-sm text-blue-600 mt-2 font-medium">
+                          VND
                         </div>
                       </div>
                     </div>
@@ -1054,79 +1054,145 @@ function SearchContent() {
                         }}
                       />
                       
-                      {/* 최저가 포인터 - 드래그 가능 */}
-                      <div className="absolute top-3 -translate-x-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing z-30"
+                      {/* 최저가 포인터 - 드래그 가능 (웹+앱 호환) */}
+                      <div className="absolute top-3 -translate-x-1/2 -translate-y-1/2 cursor-pointer z-30"
                            style={{ left: `${(minPrice / (priceCap || 1)) * 100}%` }}
-                           onMouseDown={(e) => {
+                           onPointerDown={(e) => {
+                             console.log('최저값 포인터 포인터다운 시작');
                              e.preventDefault();
-                             const startX = e.clientX;
-                             const startLeft = (minPrice / (priceCap || 1)) * 100;
+                             e.stopPropagation();
                              
-                             const handleMouseMove = (moveEvent: MouseEvent) => {
-                               const deltaX = moveEvent.clientX - startX;
-                               const trackWidth = 100; // 전체 너비 100%
-                               const deltaPercent = (deltaX / window.innerWidth) * 100 * 2; // 조정 계수
-                               const newPercent = Math.max(0, Math.min(startLeft + deltaPercent, 100));
-                               const newValue = Math.round((newPercent / 100) * priceCap);
+                             // 포인터 이동 이벤트 핸들러 (웹+앱 호환)
+                             const handlePointerMove = (moveEvent: PointerEvent) => {
+                               const trackEl = rentTrackRef.current;
+                               if (!trackEl) {
+                                 console.log('트랙 엘리먼트 없음');
+                                 return;
+                               }
+                               
+                               const rect = trackEl.getBoundingClientRect();
+                               const x = moveEvent.clientX - rect.left;
+                               const pct = Math.max(0, Math.min(1, x / rect.width));
+                               const newValue = Math.round(pct * priceCap);
                                const nearestValue = allowedValues[getClosestAllowedIndex(newValue, allowedValues)];
                                
-                               // 최저값은 최대값보다 작기만 하면 됨 (최소 1단계 차이)
+                               console.log('최저값 드래그 중:', { 
+                                 clientX: moveEvent.clientX, 
+                                 rectLeft: rect.left, 
+                                 x, 
+                                 pct, 
+                                 newValue, 
+                                 nearestValue, 
+                                 maxPrice 
+                               });
+                               
                                if (nearestValue < maxPrice) {
                                  setMinPrice(nearestValue);
                                }
                              };
                              
-                             const handleMouseUp = () => {
-                               document.removeEventListener('mousemove', handleMouseMove);
-                               document.removeEventListener('mouseup', handleMouseUp);
+                             // 포인터 업 이벤트 핸들러
+                             const handlePointerUp = () => {
+                               console.log('최저값 드래그 종료');
+                               document.removeEventListener('pointermove', handlePointerMove);
+                               document.removeEventListener('pointerup', handlePointerUp);
+                               document.removeEventListener('pointerleave', handlePointerUp);
+                               document.removeEventListener('pointercancel', handlePointerUp);
                              };
                              
-                             document.addEventListener('mousemove', handleMouseMove);
-                             document.addEventListener('mouseup', handleMouseUp);
+                             // 포인터가 창 밖으로 나갈 때도 드래그 종료
+                             const handlePointerLeave = () => {
+                               console.log('포인터 창 밖으로 나감, 드래그 종료');
+                               handlePointerUp();
+                             };
+                             
+                             // 포인터 취소 시 드래그 종료
+                             const handlePointerCancel = () => {
+                               console.log('포인터 취소, 드래그 종료');
+                               handlePointerUp();
+                             };
+                             
+                             document.addEventListener('pointermove', handlePointerMove);
+                             document.addEventListener('pointerup', handlePointerUp);
+                             document.addEventListener('pointerleave', handlePointerLeave);
+                             document.addEventListener('pointercancel', handlePointerCancel);
                            }}>
                         <div className="w-6 h-6 bg-white border-2 border-blue-600 rounded-full shadow-lg flex items-center justify-center">
                           <div className="w-2 h-2 bg-blue-600 rounded-full" />
                         </div>
                         <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-xs font-bold text-blue-700 bg-white px-2 py-1 rounded-md shadow border border-blue-200 whitespace-nowrap">
-                          {formatVndToManSimple(minPrice)}
+                          {formatVndWithComma(minPrice)}
                         </div>
                       </div>
                       
-                      {/* 최대가 포인터 - 드래그 가능 */}
-                      <div className="absolute top-3 -translate-x-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing z-30"
+                      {/* 최대가 포인터 - 드래그 가능 (웹+앱 호환) */}
+                      <div className="absolute top-3 -translate-x-1/2 -translate-y-1/2 cursor-pointer z-30"
                            style={{ left: `${(maxPrice / (priceCap || 1)) * 100}%` }}
-                           onMouseDown={(e) => {
+                           onPointerDown={(e) => {
+                             console.log('최대값 포인터 포인터다운 시작');
                              e.preventDefault();
-                             const startX = e.clientX;
-                             const startLeft = (maxPrice / (priceCap || 1)) * 100;
+                             e.stopPropagation();
                              
-                             const handleMouseMove = (moveEvent: MouseEvent) => {
-                               const deltaX = moveEvent.clientX - startX;
-                               const trackWidth = 100; // 전체 너비 100%
-                               const deltaPercent = (deltaX / window.innerWidth) * 100 * 2; // 조정 계수
-                               const newPercent = Math.max(0, Math.min(startLeft + deltaPercent, 100));
-                               const newValue = Math.round((newPercent / 100) * priceCap);
+                             // 포인터 이동 이벤트 핸들러 (웹+앱 호환)
+                             const handlePointerMove = (moveEvent: PointerEvent) => {
+                               const trackEl = rentTrackRef.current;
+                               if (!trackEl) {
+                                 console.log('트랙 엘리먼트 없음');
+                                 return;
+                               }
+                               
+                               const rect = trackEl.getBoundingClientRect();
+                               const x = moveEvent.clientX - rect.left;
+                               const pct = Math.max(0, Math.min(1, x / rect.width));
+                               const newValue = Math.round(pct * priceCap);
                                const nearestValue = allowedValues[getClosestAllowedIndex(newValue, allowedValues)];
                                
-                               // 최대값은 최저값보다 크기만 하면 됨
+                               console.log('최대값 드래그 중:', { 
+                                 clientX: moveEvent.clientX, 
+                                 rectLeft: rect.left, 
+                                 x, 
+                                 pct, 
+                                 newValue, 
+                                 nearestValue, 
+                                 minPrice 
+                               });
+                               
                                if (nearestValue > minPrice) {
                                  setMaxPrice(nearestValue);
                                }
                              };
                              
-                             const handleMouseUp = () => {
-                               document.removeEventListener('mousemove', handleMouseMove);
-                               document.removeEventListener('mouseup', handleMouseUp);
+                             // 포인터 업 이벤트 핸들러
+                             const handlePointerUp = () => {
+                               console.log('최대값 드래그 종료');
+                               document.removeEventListener('pointermove', handlePointerMove);
+                               document.removeEventListener('pointerup', handlePointerUp);
+                               document.removeEventListener('pointerleave', handlePointerUp);
+                               document.removeEventListener('pointercancel', handlePointerUp);
                              };
                              
-                             document.addEventListener('mousemove', handleMouseMove);
-                             document.addEventListener('mouseup', handleMouseUp);
+                             // 포인터가 창 밖으로 나갈 때도 드래그 종료
+                             const handlePointerLeave = () => {
+                               console.log('포인터 창 밖으로 나감, 드래그 종료');
+                               handlePointerUp();
+                             };
+                             
+                             // 포인터 취소 시 드래그 종료
+                             const handlePointerCancel = () => {
+                               console.log('포인터 취소, 드래그 종료');
+                               handlePointerUp();
+                             };
+                             
+                             document.addEventListener('pointermove', handlePointerMove);
+                             document.addEventListener('pointerup', handlePointerUp);
+                             document.addEventListener('pointerleave', handlePointerLeave);
+                             document.addEventListener('pointercancel', handlePointerCancel);
                            }}>
                         <div className="w-6 h-6 bg-white border-2 border-blue-600 rounded-full shadow-lg flex items-center justify-center">
                           <div className="w-2 h-2 bg-blue-600 rounded-full" />
                         </div>
                         <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-xs font-bold text-blue-700 bg-white px-2 py-1 rounded-md shadow border border-blue-200 whitespace-nowrap">
-                          {formatVndToManSimple(maxPrice)}
+                          {formatVndWithComma(maxPrice)}
                         </div>
                       </div>
                       
