@@ -302,6 +302,10 @@ function SearchContent() {
         setSelectedDistrictId(region.id);
         setSearchLocation({ lat: region.center[1], lng: region.center[0] });
       }
+      // 구/도시 선택 시 자동으로 필터링 적용
+      setTimeout(() => {
+        applyFilters();
+      }, 100);
     }
   };
 
@@ -812,6 +816,10 @@ function SearchContent() {
                           lng: city.center[0],
                         });
                     } else setSearchLocation(null);
+                    // 도시 선택 시 자동으로 필터링 적용
+                    setTimeout(() => {
+                      applyFilters();
+                    }, 100);
                   }}
                   className={`w-full rounded-lg border px-3 py-2.5 text-sm min-h-[42px] focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
                     selectedCityId
@@ -859,6 +867,10 @@ function SearchContent() {
                           lng: city.center[0],
                         });
                     } else setSearchLocation(null);
+                    // 구 선택 시 자동으로 필터링 적용
+                    setTimeout(() => {
+                      applyFilters();
+                    }, 100);
                   }}
                   disabled={!selectedCityId || districts.length === 0}
                   className={`w-full rounded-lg border px-3 py-2.5 text-sm min-h-[42px] focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-70 disabled:cursor-not-allowed transition-colors ${
