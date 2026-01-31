@@ -605,6 +605,9 @@ export default function AddPropertyPage() {
         ...(icalPlatform && { icalPlatform }),
         ...(icalCalendarName.trim() && { icalCalendarName: icalCalendarName.trim() }),
         ...(icalUrl.trim() && { icalUrl: icalUrl.trim() }),
+        // 도시와 구 정보 저장
+        ...(selectedCityId && { cityId: selectedCityId }),
+        ...(selectedDistrictId && { districtId: selectedDistrictId }),
       });
 
       alert(

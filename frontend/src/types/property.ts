@@ -53,6 +53,11 @@ export interface PropertyData {
   petFee?: number;
   /** 애완동물 최대 마리수 */
   maxPets?: number;
+  
+  /** 도시 ID (베트남 도시) */
+  cityId?: string;
+  /** 구 ID (베트남 구) */
+  districtId?: string;
 }
 
 export interface PropertyFilter {

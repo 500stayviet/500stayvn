@@ -426,13 +426,17 @@ function SearchContent() {
   const applyFilters = () => {
     let filtered = properties;
 
-    // 구 필터링: 선택된 구에 있는 매물만 표시
+    // 구 필터링: 선택된 구에 있는 매물만 표시 (구 ID 직접 비교 + 하위 호환성)
     if (selectedDistrictId) {
       const selectedDistrict = districts.find(d => d.id === selectedDistrictId);
       if (selectedDistrict) {
         filtered = filtered.filter((property) => {
+          // 1. 구 ID가 있는 경우: 정확한 ID 비교
+          if (property.districtId) {
+            return property.districtId === selectedDistrictId;
+          }
+          // 2. 구 ID가 없는 경우: 거리 기반 필터링 (하위 호환성)
           if (!property.coordinates) return false;
-          // 구 중심점과의 거리 계산 (12km 이내)
           const distance = calculateDistance(
             selectedDistrict.center[1], // lat
             selectedDistrict.center[0], // lng
@@ -443,11 +447,16 @@ function SearchContent() {
         });
       }
     } else if (selectedCityId) {
-      // 도시만 선택된 경우: 도시 중심점 기준 50km 이내
+      // 도시만 선택된 경우: 도시 ID 비교 + 하위 호환성
       const selectedCity = VIETNAM_CITIES.find(c => c.id === selectedCityId) || 
                           ALL_REGIONS.find(r => r.id === selectedCityId);
       if (selectedCity) {
         filtered = filtered.filter((property) => {
+          // 1. 도시 ID가 있는 경우: 정확한 ID 비교
+          if (property.cityId) {
+            return property.cityId === selectedCityId;
+          }
+          // 2. 도시 ID가 없는 경우: 거리 기반 필터링 (하위 호환성)
           if (!property.coordinates) return false;
           const distance = calculateDistance(
             selectedCity.center[1], // lat
