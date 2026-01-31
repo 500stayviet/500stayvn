@@ -6,7 +6,7 @@
 
 'use client';
 
-import { Bed, Bath, Square, MapPin, Calendar, Users } from 'lucide-react';
+import { Bed, Bath, Square, MapPin, Calendar, Users, Wifi, Sofa, Tv, UtensilsCrossed } from 'lucide-react';
 import Image from 'next/image';
 import { PropertyData } from '@/types/property';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -21,6 +21,11 @@ import {
   formatDate, 
   formatDateForBadge 
 } from '@/lib/utils/dateUtils';
+import { 
+  FULL_FURNITURE_IDS, 
+  FULL_ELECTRONICS_IDS, 
+  FULL_OPTION_KITCHEN_IDS 
+} from '@/lib/constants/facilities';
 
 interface PropertyCardProps {
   property: PropertyData;
@@ -68,6 +73,21 @@ export default function PropertyCard({
         ? getUIText('translationLoading', currentLanguage)
         : translatedDescription || property.original_description;
 
+  // 뱃지 확인 로직
+  const hasWifi = property.amenities?.includes('wifi') || false;
+  
+  const hasFullFurniture = FULL_FURNITURE_IDS.every(id => 
+    property.amenities?.includes(id) || false
+  );
+  
+  const hasFullElectronics = FULL_ELECTRONICS_IDS.every(id => 
+    property.amenities?.includes(id) || false
+  );
+  
+  const hasFullOptionKitchen = FULL_OPTION_KITCHEN_IDS.every(id => 
+    property.amenities?.includes(id) || false
+  );
+
   return (
     <div
       onClick={onClick}
@@ -106,6 +126,49 @@ export default function PropertyCard({
 
       {/* 정보 섹션 */}
       <div className="p-4 flex flex-col gap-3">
+        {/* 뱃지 섹션 - 사진 아래 제목 사이 */}
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          {/* 즉시입주 뱃지 */}
+          {isAvailable && (
+            <div className="flex items-center gap-1 bg-green-100 text-green-800 px-2 py-1 rounded-md text-xs font-medium">
+              <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+              {currentLanguage === 'ko' ? '즉시입주' : currentLanguage === 'vi' ? 'Vào ngay' : 'Available Now'}
+            </div>
+          )}
+          
+          {/* 와이파이 뱃지 */}
+          {hasWifi && (
+            <div className="flex items-center gap-1 bg-blue-100 text-blue-800 px-2 py-1 rounded-md text-xs font-medium">
+              <Wifi className="w-3 h-3" />
+              {currentLanguage === 'ko' ? '와이파이' : currentLanguage === 'vi' ? 'Wifi' : 'WiFi'}
+            </div>
+          )}
+          
+          {/* 풀가구 뱃지 */}
+          {hasFullFurniture && (
+            <div className="flex items-center gap-1 bg-purple-100 text-purple-800 px-2 py-1 rounded-md text-xs font-medium">
+              <Sofa className="w-3 h-3" />
+              {currentLanguage === 'ko' ? '풀가구' : currentLanguage === 'vi' ? 'Nội thất đầy đủ' : 'Full Furniture'}
+            </div>
+          )}
+          
+          {/* 풀가전 뱃지 */}
+          {hasFullElectronics && (
+            <div className="flex items-center gap-1 bg-orange-100 text-orange-800 px-2 py-1 rounded-md text-xs font-medium">
+              <Tv className="w-3 h-3" />
+              {currentLanguage === 'ko' ? '풀가전' : currentLanguage === 'vi' ? 'Điện tử đầy đủ' : 'Full Electronics'}
+            </div>
+          )}
+          
+          {/* 풀옵션 주방 뱃지 */}
+          {hasFullOptionKitchen && (
+            <div className="flex items-center gap-1 bg-pink-100 text-pink-800 px-2 py-1 rounded-md text-xs font-medium">
+              <UtensilsCrossed className="w-3 h-3" />
+              {currentLanguage === 'ko' ? '풀옵션 주방' : currentLanguage === 'vi' ? 'Bếp đầy đủ' : 'Full Kitchen'}
+            </div>
+          )}
+        </div>
+
         <div>
           <h3 className="font-bold text-gray-900 text-lg line-clamp-1">{displayTitle}</h3>
           <div className="flex items-center gap-1.5 text-gray-500 mt-1">
