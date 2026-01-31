@@ -208,9 +208,13 @@ function SearchContent() {
   const [fullElectronics, setFullElectronics] = useState(false);
   const [fullOptionKitchen, setFullOptionKitchen] = useState(false);
   /** 시설·정책: 매물 등록 시 숙소시설 및 정책과 동일한 아이콘 전체. id -> 켜짐 여부 */
-  const [amenityFilters, setAmenityFilters] = useState<Record<string, boolean>>({});
+  const [amenityFilters, setAmenityFilters] = useState<Record<string, boolean>>(
+    {},
+  );
   /** 임대료 바: 클릭한 쪽 포인터만 드래그되도록 (min | max | null) */
-  const [rentActiveThumb, setRentActiveThumb] = useState<"min" | "max" | null>(null);
+  const [rentActiveThumb, setRentActiveThumb] = useState<"min" | "max" | null>(
+    null,
+  );
   const rentTrackRef = useRef<HTMLDivElement>(null);
 
   // 필터 적용 상태 (검색 버튼을 눌러야 필터 적용)
@@ -231,7 +235,14 @@ function SearchContent() {
     ja: string;
     zh: string;
   }[] = [
-    { value: "studio", ko: "스튜디오", vi: "Studio", en: "Studio", ja: "スタジオ", zh: "一室" },
+    {
+      value: "studio",
+      ko: "스튜디오",
+      vi: "Studio",
+      en: "Studio",
+      ja: "スタジオ",
+      zh: "一室",
+    },
     {
       value: "one_room",
       ko: "1룸(방·거실 분리)",
@@ -240,9 +251,30 @@ function SearchContent() {
       ja: "1ルーム",
       zh: "一室(卧室+客厅)",
     },
-    { value: "two_room", ko: "2룸", vi: "2 phòng", en: "2 Rooms", ja: "2ルーム", zh: "两室" },
-    { value: "three_plus", ko: "3룸+", vi: "3+ phòng", en: "3+ Rooms", ja: "3ルーム+", zh: "三室以上" },
-    { value: "detached", ko: "독채", vi: "Nhà riêng", en: "Detached", ja: "戸建て", zh: "独栋" },
+    {
+      value: "two_room",
+      ko: "2룸",
+      vi: "2 phòng",
+      en: "2 Rooms",
+      ja: "2ルーム",
+      zh: "两室",
+    },
+    {
+      value: "three_plus",
+      ko: "3룸+",
+      vi: "3+ phòng",
+      en: "3+ Rooms",
+      ja: "3ルーム+",
+      zh: "三室以上",
+    },
+    {
+      value: "detached",
+      ko: "독채",
+      vi: "Nhà riêng",
+      en: "Detached",
+      ja: "戸建て",
+      zh: "独栋",
+    },
   ];
   // 주소 검색 보기 (홈과 동일 로직)
   const { suggestions, isSearching, search, clearSuggestions } =
@@ -388,13 +420,24 @@ function SearchContent() {
         const allProperties = await getAvailableProperties();
         setProperties(allProperties);
         if (allProperties.length > 0) {
-          const prices = allProperties.map((p) => p.price || 0).filter(p => p > 0);
+          const prices = allProperties
+            .map((p) => p.price || 0)
+            .filter((p) => p > 0);
           if (prices.length > 0) {
             const min = Math.min(...prices);
             const max = Math.max(...prices);
             setMinPrice(min);
             setMaxPrice(max);
           }
+        }
+        
+        // 매물 로드 후, URL 파라미터가 있으면 자동으로 필터링 적용
+        // 홈에서 검색 후 검색 결과 페이지로 넘어올 때 바로 필터링 적용
+        if (cityIdParam || districtIdParam || query) {
+          // 약간의 지연 후 필터링 적용 (상태 업데이트 완료 보장)
+          setTimeout(() => {
+            applyFilters();
+          }, 100);
         }
       } catch (error) {
         // Silent fail
@@ -427,28 +470,30 @@ function SearchContent() {
 
     // 구 필터링: 선택된 구에 있는 매물만 표시 (구 ID 직접 비교 + 도시 ID 검증)
     if (selectedDistrictId) {
-      const selectedDistrict = districts.find(d => d.id === selectedDistrictId);
+      const selectedDistrict = districts.find(
+        (d) => d.id === selectedDistrictId,
+      );
       if (selectedDistrict) {
         filtered = filtered.filter((property) => {
           // 1. 구 ID가 있는 경우: 정확한 ID 비교
           if (property.districtId) {
             // 구 ID가 일치하는지 확인
             const districtMatch = property.districtId === selectedDistrictId;
-            
+
             // 도시 ID도 있는 경우 도시 ID도 검증 (구는 특정 도시에 속하므로)
             if (property.cityId && selectedCityId) {
               return districtMatch && property.cityId === selectedCityId;
             }
-            
+
             return districtMatch;
           }
-          
+
           // 2. 구 ID가 없지만 도시 ID가 있는 경우: 도시 ID 비교
           if (property.cityId && selectedCityId) {
             // 구를 선택했으면 해당 구의 도시 ID와 매물의 도시 ID 비교
             return property.cityId === selectedCityId;
           }
-          
+
           // 3. 구 ID와 도시 ID 모두 없는 경우: 거리 기반 필터링 (하위 호환성)
           if (!property.coordinates) return false;
           const distance = calculateDistance(
@@ -462,15 +507,16 @@ function SearchContent() {
       }
     } else if (selectedCityId) {
       // 도시만 선택된 경우: 도시 ID 비교 + 하위 호환성
-      const selectedCity = VIETNAM_CITIES.find(c => c.id === selectedCityId) || 
-                          ALL_REGIONS.find(r => r.id === selectedCityId);
+      const selectedCity =
+        VIETNAM_CITIES.find((c) => c.id === selectedCityId) ||
+        ALL_REGIONS.find((r) => r.id === selectedCityId);
       if (selectedCity) {
         filtered = filtered.filter((property) => {
           // 1. 도시 ID가 있는 경우: 정확한 ID 비교 (우선순위 1)
           if (property.cityId) {
             return property.cityId === selectedCityId;
           }
-          
+
           // 2. 도시 ID가 없는 경우: 거리 기반 필터링 (하위 호환성)
           if (!property.coordinates) return false;
           const distance = calculateDistance(
@@ -575,15 +621,17 @@ function SearchContent() {
 
     // 거리순 정렬 (가장 가까운 매물 먼저)
     if (selectedDistrictId || selectedCityId || searchLocation) {
-      const centerPoint = selectedDistrictId 
-        ? districts.find(d => d.id === selectedDistrictId)?.center
+      const centerPoint = selectedDistrictId
+        ? districts.find((d) => d.id === selectedDistrictId)?.center
         : selectedCityId
-          ? (VIETNAM_CITIES.find(c => c.id === selectedCityId) || 
-             ALL_REGIONS.find(r => r.id === selectedCityId))?.center
+          ? (
+              VIETNAM_CITIES.find((c) => c.id === selectedCityId) ||
+              ALL_REGIONS.find((r) => r.id === selectedCityId)
+            )?.center
           : searchLocation
             ? [searchLocation.lng, searchLocation.lat]
             : null;
-      
+
       if (centerPoint) {
         filtered = filtered.sort((a, b) => {
           if (!a.coordinates || !b.coordinates) return 0;
@@ -639,7 +687,7 @@ function SearchContent() {
   const resetAdvancedFilters = () => {
     // 가격 범위 초기화 (전체 매물의 최소/최대값으로)
     if (properties.length > 0) {
-      const prices = properties.map((p) => p.price || 0).filter(p => p > 0);
+      const prices = properties.map((p) => p.price || 0).filter((p) => p > 0);
       if (prices.length > 0) {
         const min = Math.min(...prices);
         const max = Math.max(...prices);
@@ -653,28 +701,28 @@ function SearchContent() {
       setMinPrice(0);
       setMaxPrice(50000000);
     }
-    
+
     // 풀 옵션 필터 초기화
     setFullFurniture(false);
     setFullElectronics(false);
     setFullOptionKitchen(false);
-    
+
     // 시설·정책 필터 초기화
     setAmenityFilters({});
-    
+
     // 방 개수 필터 초기화
     setRoomFilter(null);
-    
+
     // 날짜 필터 초기화
     setCheckInDate(null);
     setCheckOutDate(null);
-    
+
     // 주소, 도시, 구는 초기화하지 않음 (검색 위치, 검색어, 도시/구 선택 유지)
     // setSearchLocation(null);
     // setSearchQuery("");
     // setSelectedCityId(null);
     // setSelectedDistrictId(null);
-    
+
     // 필터 적용 상태 초기화
     setFiltersApplied(false);
     setFilteredProperties(properties);
@@ -720,7 +768,7 @@ function SearchContent() {
     <div className="min-h-screen bg-gray-100 flex justify-center">
       <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative">
         {/* TopBar 컴포넌트 사용 */}
-        <TopBar 
+        <TopBar
           currentLanguage={currentLanguage}
           onLanguageChange={setCurrentLanguage}
           hideLanguageSelector={false}
@@ -921,7 +969,9 @@ function SearchContent() {
                     {getUIText("checkIn", currentLanguage)}
                   </div>
                   <div className="text-sm font-medium text-gray-900">
-                    {checkInDate ? formatDate(checkInDate) : getUIText("selectDatePlaceholder", currentLanguage)}
+                    {checkInDate
+                      ? formatDate(checkInDate)
+                      : getUIText("selectDatePlaceholder", currentLanguage)}
                   </div>
                 </div>
               </div>
@@ -938,7 +988,9 @@ function SearchContent() {
                     {getUIText("checkOut", currentLanguage)}
                   </div>
                   <div className="text-sm font-medium text-gray-900">
-                    {checkOutDate ? formatDate(checkOutDate) : getUIText("selectDatePlaceholder", currentLanguage)}
+                    {checkOutDate
+                      ? formatDate(checkOutDate)
+                      : getUIText("selectDatePlaceholder", currentLanguage)}
                   </div>
                 </div>
               </div>
@@ -960,7 +1012,9 @@ function SearchContent() {
                       {getUIText("roomsLabel", currentLanguage)}
                     </div>
                     <div className="text-sm font-medium text-gray-900">
-                      {roomFilter ? roomFilterLabel() : getUIText("selectLabel", currentLanguage)}
+                      {roomFilter
+                        ? roomFilterLabel()
+                        : getUIText("selectLabel", currentLanguage)}
                     </div>
                   </div>
                 </div>
@@ -1007,9 +1061,7 @@ function SearchContent() {
               }}
               className="text-xs text-gray-500 hover:text-gray-700 transition-colors flex items-center gap-1"
             >
-              <span>
-                {getUIText("advancedFilter", currentLanguage)}
-              </span>
+              <span>{getUIText("advancedFilter", currentLanguage)}</span>
               <ChevronRight
                 className={`w-3 h-3 transition-transform ${showAdvancedFilters ? "rotate-90" : ""}`}
               />
@@ -1021,37 +1073,52 @@ function SearchContent() {
               {/* 임대료(주당) — 비선형 가격 범위 슬라이더만, 실시간 금액 표시, 최소 거리 유지 */}
               {(() => {
                 const allowedValues = getAllowedPriceValues(priceCap);
-                const minIndex = getClosestAllowedIndex(minPrice, allowedValues);
-                const maxIndex = getClosestAllowedIndex(maxPrice, allowedValues);
-                const safeMinIndex = Math.max(0, Math.min(minIndex, maxIndex - 1));
-                const safeMaxIndex = Math.min(allowedValues.length - 1, Math.max(maxIndex, safeMinIndex + 1));
+                const minIndex = getClosestAllowedIndex(
+                  minPrice,
+                  allowedValues,
+                );
+                const maxIndex = getClosestAllowedIndex(
+                  maxPrice,
+                  allowedValues,
+                );
+                const safeMinIndex = Math.max(
+                  0,
+                  Math.min(minIndex, maxIndex - 1),
+                );
+                const safeMaxIndex = Math.min(
+                  allowedValues.length - 1,
+                  Math.max(maxIndex, safeMinIndex + 1),
+                );
                 const handleRentTrackPointerDown = (e: React.PointerEvent) => {
                   e.stopPropagation();
                   e.preventDefault();
-                  
+
                   const el = rentTrackRef.current;
                   if (!el) {
                     return;
                   }
-                  
+
                   const rect = el.getBoundingClientRect();
                   const x = e.clientX - rect.left;
                   const pct = Math.max(0, Math.min(1, x / rect.width));
-                  
+
                   // 클릭한 위치와 각 포인터의 거리 계산 (퍼센트 단위)
                   const minPos = (minPrice / (priceCap || 1)) * 100;
                   const maxPos = (maxPrice / (priceCap || 1)) * 100;
                   const clickPos = pct * 100;
-                  
+
                   // 가까운 포인터 선택
                   const distToMin = Math.abs(clickPos - minPos);
                   const distToMax = Math.abs(clickPos - maxPos);
-                  
+
                   // 더 가까운 포인터만 이동
                   if (distToMin < distToMax) {
                     // 최저값 포인터가 더 가까움
                     const newValue = Math.round(pct * priceCap);
-                    const nearestValue = allowedValues[getClosestAllowedIndex(newValue, allowedValues)];
+                    const nearestValue =
+                      allowedValues[
+                        getClosestAllowedIndex(newValue, allowedValues)
+                      ];
                     if (nearestValue < maxPrice) {
                       setMinPrice(nearestValue);
                     } else {
@@ -1061,7 +1128,10 @@ function SearchContent() {
                   } else if (distToMax < distToMin) {
                     // 최대값 포인터가 더 가까움
                     const newValue = Math.round(pct * priceCap);
-                    const nearestValue = allowedValues[getClosestAllowedIndex(newValue, allowedValues)];
+                    const nearestValue =
+                      allowedValues[
+                        getClosestAllowedIndex(newValue, allowedValues)
+                      ];
                     if (nearestValue > minPrice) {
                       setMaxPrice(nearestValue);
                     } else {
@@ -1071,7 +1141,10 @@ function SearchContent() {
                   } else {
                     // 거리가 같을 때 (매우 드문 경우)
                     const newValue = Math.round(pct * priceCap);
-                    const nearestValue = allowedValues[getClosestAllowedIndex(newValue, allowedValues)];
+                    const nearestValue =
+                      allowedValues[
+                        getClosestAllowedIndex(newValue, allowedValues)
+                      ];
                     if (nearestValue < maxPrice) {
                       setMinPrice(nearestValue);
                     } else {
@@ -1088,48 +1161,54 @@ function SearchContent() {
                     <div className="mb-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 shadow-sm">
                       <div className="text-center">
                         <div className="text-2xl font-bold text-blue-800 tracking-tight">
-                          {formatVndWithComma(minPrice)} ~ {formatVndWithComma(maxPrice)}
+                          {formatVndWithComma(minPrice)} ~{" "}
+                          {formatVndWithComma(maxPrice)}
                         </div>
                         <div className="text-sm text-blue-600 mt-2 font-medium">
                           VND
                         </div>
                       </div>
                     </div>
-                    
+
                     {/* 개선된 비선형 슬라이더 - 자 모양 눈금 추가 */}
-                    <div 
+                    <div
                       className="relative py-6"
                       ref={rentTrackRef}
                       onPointerDown={handleRentTrackPointerDown}
                     >
                       {/* 자 모양 배경 - 가로선 */}
                       <div className="absolute left-0 right-0 top-3 h-px bg-gray-300" />
-                      
+
                       {/* 주요 구간 눈금 (자 모양) */}
                       <div className="absolute left-0 right-0 top-3 flex justify-between pointer-events-none">
-                        {[0, 2000000, 5000000, 10000000, priceCap].map((value) => {
-                          if (value > priceCap) return null;
-                          const position = (value / (priceCap || 1)) * 100;
-                          return (
-                            <div
-                              key={value}
-                              className="absolute top-0 -translate-x-1/2"
-                              style={{ left: `${position}%` }}
-                            >
-                              {/* 긴 눈금선 */}
-                              <div className="w-px h-3 bg-gray-400" />
-                              {/* 눈금 라벨 */}
-                              <div className="absolute top-4 left-1/2 -translate-x-1/2 text-[10px] text-gray-500 whitespace-nowrap">
-                                {formatVndToManSimple(value)}
+                        {[0, 2000000, 5000000, 10000000, priceCap].map(
+                          (value) => {
+                            if (value > priceCap) return null;
+                            const position = (value / (priceCap || 1)) * 100;
+                            return (
+                              <div
+                                key={value}
+                                className="absolute top-0 -translate-x-1/2"
+                                style={{ left: `${position}%` }}
+                              >
+                                {/* 긴 눈금선 */}
+                                <div className="w-px h-3 bg-gray-400" />
+                                {/* 눈금 라벨 */}
+                                <div className="absolute top-4 left-1/2 -translate-x-1/2 text-[10px] text-gray-500 whitespace-nowrap">
+                                  {formatVndToManSimple(value)}
+                                </div>
                               </div>
-                            </div>
-                          );
-                        })}
+                            );
+                          },
+                        )}
                       </div>
-                      
+
                       {/* 중간 눈금 (짧은 선) */}
                       <div className="absolute left-0 right-0 top-3 flex justify-between pointer-events-none">
-                        {[1000000, 3000000, 4000000, 6000000, 7000000, 8000000, 9000000].map((value) => {
+                        {[
+                          1000000, 3000000, 4000000, 6000000, 7000000, 8000000,
+                          9000000,
+                        ].map((value) => {
                           if (value > priceCap) return null;
                           const position = (value / (priceCap || 1)) * 100;
                           return (
@@ -1143,7 +1222,7 @@ function SearchContent() {
                           );
                         })}
                       </div>
-                      
+
                       {/* 선택된 범위 */}
                       <div
                         className="absolute top-3 h-2 bg-blue-500 rounded-full -translate-y-1/2"
@@ -1152,55 +1231,91 @@ function SearchContent() {
                           width: `${((maxPrice - minPrice) / (priceCap || 1)) * 100}%`,
                         }}
                       />
-                      
+
                       {/* 최저가 포인터 - 드래그 가능 (웹+앱 호환) */}
-                      <div className="absolute top-3 -translate-x-1/2 -translate-y-1/2 cursor-pointer z-30"
-                           style={{ left: `${(minPrice / (priceCap || 1)) * 100}%` }}
-                           onPointerDown={(e) => {
-                             e.preventDefault();
-                             e.stopPropagation();
-                             
-                             // 포인터 이동 이벤트 핸들러 (웹+앱 호환)
-                             const handlePointerMove = (moveEvent: PointerEvent) => {
-                               const trackEl = rentTrackRef.current;
-                               if (!trackEl) {
-                                 return;
-                               }
-                               
-                               const rect = trackEl.getBoundingClientRect();
-                               const x = moveEvent.clientX - rect.left;
-                               const pct = Math.max(0, Math.min(1, x / rect.width));
-                               const newValue = Math.round(pct * priceCap);
-                               const nearestValue = allowedValues[getClosestAllowedIndex(newValue, allowedValues)];
-                               
-                               if (nearestValue < maxPrice) {
-                                 setMinPrice(nearestValue);
-                               }
-                             };
-                             
-                             // 포인터 업 이벤트 핸들러
-                             const handlePointerUp = () => {
-                               document.removeEventListener('pointermove', handlePointerMove);
-                               document.removeEventListener('pointerup', handlePointerUp);
-                               document.removeEventListener('pointerleave', handlePointerUp);
-                               document.removeEventListener('pointercancel', handlePointerUp);
-                             };
-                             
-                             // 포인터가 창 밖으로 나갈 때도 드래그 종료
-                             const handlePointerLeave = () => {
-                               handlePointerUp();
-                             };
-                             
-                             // 포인터 취소 시 드래그 종료
-                             const handlePointerCancel = () => {
-                               handlePointerUp();
-                             };
-                             
-                             document.addEventListener('pointermove', handlePointerMove);
-                             document.addEventListener('pointerup', handlePointerUp);
-                             document.addEventListener('pointerleave', handlePointerLeave);
-                             document.addEventListener('pointercancel', handlePointerCancel);
-                           }}>
+                      <div
+                        className="absolute top-3 -translate-x-1/2 -translate-y-1/2 cursor-pointer z-30"
+                        style={{
+                          left: `${(minPrice / (priceCap || 1)) * 100}%`,
+                        }}
+                        onPointerDown={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+
+                          // 포인터 이동 이벤트 핸들러 (웹+앱 호환)
+                          const handlePointerMove = (
+                            moveEvent: PointerEvent,
+                          ) => {
+                            const trackEl = rentTrackRef.current;
+                            if (!trackEl) {
+                              return;
+                            }
+
+                            const rect = trackEl.getBoundingClientRect();
+                            const x = moveEvent.clientX - rect.left;
+                            const pct = Math.max(
+                              0,
+                              Math.min(1, x / rect.width),
+                            );
+                            const newValue = Math.round(pct * priceCap);
+                            const nearestValue =
+                              allowedValues[
+                                getClosestAllowedIndex(newValue, allowedValues)
+                              ];
+
+                            if (nearestValue < maxPrice) {
+                              setMinPrice(nearestValue);
+                            }
+                          };
+
+                          // 포인터 업 이벤트 핸들러
+                          const handlePointerUp = () => {
+                            document.removeEventListener(
+                              "pointermove",
+                              handlePointerMove,
+                            );
+                            document.removeEventListener(
+                              "pointerup",
+                              handlePointerUp,
+                            );
+                            document.removeEventListener(
+                              "pointerleave",
+                              handlePointerUp,
+                            );
+                            document.removeEventListener(
+                              "pointercancel",
+                              handlePointerUp,
+                            );
+                          };
+
+                          // 포인터가 창 밖으로 나갈 때도 드래그 종료
+                          const handlePointerLeave = () => {
+                            handlePointerUp();
+                          };
+
+                          // 포인터 취소 시 드래그 종료
+                          const handlePointerCancel = () => {
+                            handlePointerUp();
+                          };
+
+                          document.addEventListener(
+                            "pointermove",
+                            handlePointerMove,
+                          );
+                          document.addEventListener(
+                            "pointerup",
+                            handlePointerUp,
+                          );
+                          document.addEventListener(
+                            "pointerleave",
+                            handlePointerLeave,
+                          );
+                          document.addEventListener(
+                            "pointercancel",
+                            handlePointerCancel,
+                          );
+                        }}
+                      >
                         <div className="w-6 h-6 bg-white border-2 border-blue-600 rounded-full shadow-lg flex items-center justify-center">
                           <div className="w-2 h-2 bg-blue-600 rounded-full" />
                         </div>
@@ -1208,55 +1323,91 @@ function SearchContent() {
                           {formatVndWithComma(minPrice)}
                         </div>
                       </div>
-                      
+
                       {/* 최대가 포인터 - 드래그 가능 (웹+앱 호환) */}
-                      <div className="absolute top-3 -translate-x-1/2 -translate-y-1/2 cursor-pointer z-30"
-                           style={{ left: `${(maxPrice / (priceCap || 1)) * 100}%` }}
-                           onPointerDown={(e) => {
-                             e.preventDefault();
-                             e.stopPropagation();
-                             
-                             // 포인터 이동 이벤트 핸들러 (웹+앱 호환)
-                             const handlePointerMove = (moveEvent: PointerEvent) => {
-                               const trackEl = rentTrackRef.current;
-                               if (!trackEl) {
-                                 return;
-                               }
-                               
-                               const rect = trackEl.getBoundingClientRect();
-                               const x = moveEvent.clientX - rect.left;
-                               const pct = Math.max(0, Math.min(1, x / rect.width));
-                               const newValue = Math.round(pct * priceCap);
-                               const nearestValue = allowedValues[getClosestAllowedIndex(newValue, allowedValues)];
-                               
-                               if (nearestValue > minPrice) {
-                                 setMaxPrice(nearestValue);
-                               }
-                             };
-                             
-                             // 포인터 업 이벤트 핸들러
-                             const handlePointerUp = () => {
-                               document.removeEventListener('pointermove', handlePointerMove);
-                               document.removeEventListener('pointerup', handlePointerUp);
-                               document.removeEventListener('pointerleave', handlePointerUp);
-                               document.removeEventListener('pointercancel', handlePointerUp);
-                             };
-                             
-                             // 포인터가 창 밖으로 나갈 때도 드래그 종료
-                             const handlePointerLeave = () => {
-                               handlePointerUp();
-                             };
-                             
-                             // 포인터 취소 시 드래그 종료
-                             const handlePointerCancel = () => {
-                               handlePointerUp();
-                             };
-                             
-                             document.addEventListener('pointermove', handlePointerMove);
-                             document.addEventListener('pointerup', handlePointerUp);
-                             document.addEventListener('pointerleave', handlePointerLeave);
-                             document.addEventListener('pointercancel', handlePointerCancel);
-                           }}>
+                      <div
+                        className="absolute top-3 -translate-x-1/2 -translate-y-1/2 cursor-pointer z-30"
+                        style={{
+                          left: `${(maxPrice / (priceCap || 1)) * 100}%`,
+                        }}
+                        onPointerDown={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+
+                          // 포인터 이동 이벤트 핸들러 (웹+앱 호환)
+                          const handlePointerMove = (
+                            moveEvent: PointerEvent,
+                          ) => {
+                            const trackEl = rentTrackRef.current;
+                            if (!trackEl) {
+                              return;
+                            }
+
+                            const rect = trackEl.getBoundingClientRect();
+                            const x = moveEvent.clientX - rect.left;
+                            const pct = Math.max(
+                              0,
+                              Math.min(1, x / rect.width),
+                            );
+                            const newValue = Math.round(pct * priceCap);
+                            const nearestValue =
+                              allowedValues[
+                                getClosestAllowedIndex(newValue, allowedValues)
+                              ];
+
+                            if (nearestValue > minPrice) {
+                              setMaxPrice(nearestValue);
+                            }
+                          };
+
+                          // 포인터 업 이벤트 핸들러
+                          const handlePointerUp = () => {
+                            document.removeEventListener(
+                              "pointermove",
+                              handlePointerMove,
+                            );
+                            document.removeEventListener(
+                              "pointerup",
+                              handlePointerUp,
+                            );
+                            document.removeEventListener(
+                              "pointerleave",
+                              handlePointerUp,
+                            );
+                            document.removeEventListener(
+                              "pointercancel",
+                              handlePointerUp,
+                            );
+                          };
+
+                          // 포인터가 창 밖으로 나갈 때도 드래그 종료
+                          const handlePointerLeave = () => {
+                            handlePointerUp();
+                          };
+
+                          // 포인터 취소 시 드래그 종료
+                          const handlePointerCancel = () => {
+                            handlePointerUp();
+                          };
+
+                          document.addEventListener(
+                            "pointermove",
+                            handlePointerMove,
+                          );
+                          document.addEventListener(
+                            "pointerup",
+                            handlePointerUp,
+                          );
+                          document.addEventListener(
+                            "pointerleave",
+                            handlePointerLeave,
+                          );
+                          document.addEventListener(
+                            "pointercancel",
+                            handlePointerCancel,
+                          );
+                        }}
+                      >
                         <div className="w-6 h-6 bg-white border-2 border-blue-600 rounded-full shadow-lg flex items-center justify-center">
                           <div className="w-2 h-2 bg-blue-600 rounded-full" />
                         </div>
@@ -1264,7 +1415,7 @@ function SearchContent() {
                           {formatVndWithComma(maxPrice)}
                         </div>
                       </div>
-                      
+
                       {/* 숨겨진 슬라이더 (백업) */}
                       <input
                         type="range"
@@ -1273,7 +1424,10 @@ function SearchContent() {
                         step={1}
                         value={safeMinIndex}
                         onChange={(e) => {
-                          const idx = Math.min(Number(e.target.value), safeMaxIndex - 1);
+                          const idx = Math.min(
+                            Number(e.target.value),
+                            safeMaxIndex - 1,
+                          );
                           setMinPrice(allowedValues[idx]);
                         }}
                         className="absolute inset-0 w-full h-10 opacity-0 cursor-pointer z-20"
@@ -1285,20 +1439,23 @@ function SearchContent() {
                         step={1}
                         value={safeMaxIndex}
                         onChange={(e) => {
-                          const idx = Math.max(Number(e.target.value), safeMinIndex + 1);
+                          const idx = Math.max(
+                            Number(e.target.value),
+                            safeMinIndex + 1,
+                          );
                           setMaxPrice(allowedValues[idx]);
                         }}
                         className="absolute inset-0 w-full h-10 opacity-0 cursor-pointer z-20"
                       />
                     </div>
-                    
+
                     {/* 간단한 설명 */}
                     <div className="mt-2 text-xs text-gray-500 text-center">
-                      {currentLanguage === "ko" 
-                        ? "드래그하여 가격 범위 조정" 
-                        : currentLanguage === "vi" 
-                        ? "Kéo để điều chỉnh khoảng giá" 
-                        : "Drag to adjust price range"}
+                      {currentLanguage === "ko"
+                        ? "드래그하여 가격 범위 조정"
+                        : currentLanguage === "vi"
+                          ? "Kéo để điều chỉnh khoảng giá"
+                          : "Drag to adjust price range"}
                     </div>
                   </div>
                 );
@@ -1397,15 +1554,15 @@ function SearchContent() {
             >
               <RotateCcw className="w-4 h-4" />
               <span>
-                {currentLanguage === "ko" 
-                  ? "초기화" 
-                  : currentLanguage === "vi" 
-                  ? "Đặt lại" 
-                  : currentLanguage === "ja"
-                  ? "リセット"
-                  : currentLanguage === "zh"
-                  ? "重置"
-                  : "Reset"}
+                {currentLanguage === "ko"
+                  ? "초기화"
+                  : currentLanguage === "vi"
+                    ? "Đặt lại"
+                    : currentLanguage === "ja"
+                      ? "リセット"
+                      : currentLanguage === "zh"
+                        ? "重置"
+                        : "Reset"}
               </span>
             </button>
             <button
@@ -1449,7 +1606,9 @@ function SearchContent() {
 
         <div className="p-4">
           {loading ? (
-            <div className="text-center py-12 text-gray-500">{getUIText("searching", currentLanguage)}</div>
+            <div className="text-center py-12 text-gray-500">
+              {getUIText("searching", currentLanguage)}
+            </div>
           ) : filteredProperties.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
               {getUIText("noResultsFound", currentLanguage)}
