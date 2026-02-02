@@ -19,7 +19,7 @@ export interface TranslationResponse {
 // Gemini API 설정
 const GEMINI_API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY || "";
 const GEMINI_API_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+  "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent";
 
 // 언어 코드 매핑 (Gemini API용)
 const LANGUAGE_MAP: Record<SupportedLanguage, string> = {
