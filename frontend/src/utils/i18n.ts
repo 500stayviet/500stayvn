@@ -250,7 +250,13 @@ export type UITextKey =
   | 'rentingInProgress'
   | 'withdrawalCompleted'
   | 'serverTimeSyncError'
-  | 'systemMaintenance';
+  | 'systemMaintenance'
+  // 매물명 관련
+  | 'propertyName'
+  | 'propertyNamePlaceholder'
+  | 'propertyNicknamePlaceholder'
+  | 'propertyDescription'
+  | 'propertyDescriptionPlaceholder';
 
 /**
  * 언어별 UI 텍스트 사전
@@ -457,7 +463,7 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     paymentMethodRequired: '결제 수단 등록 필요',
     paymentMethodRequiredDesc: '결제 수단 등록 시 활성화됩니다',
     // 정산 페이지 텍스트
-    availableBalance: '사용 가능 잔액',
+    availableBalance: '출금 가능 금액',
     totalRevenue: '총 수익',
     pendingWithdrawal: '출금 대기',
     recentRevenue: '최근 수익',
@@ -495,6 +501,12 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     withdrawalCompleted: '출금완료',
     serverTimeSyncError: '서버 시간 동기화 실패',
     systemMaintenance: '시스템 점검 중',
+    // 매물명 관련
+    propertyName: '매물명',
+    propertyNamePlaceholder: '예: 내 첫 번째 스튜디오',
+    propertyNicknamePlaceholder: '예: 내 첫 번째 스튜디오',
+    propertyDescription: '매물 설명',
+    propertyDescriptionPlaceholder: '매물에 대한 상세 설명을 입력해주세요.',
   },
   vi: {
     login: 'Đăng nhập',
@@ -697,7 +709,7 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     paymentMethodRequired: 'Cần đăng ký phương thức thanh toán',
     paymentMethodRequiredDesc: 'Kích hoạt khi đăng ký phương thức thanh toán',
     // 정산 페이지 텍스트
-    availableBalance: 'Số dư khả dụng',
+    availableBalance: 'Có thể rút',
     totalRevenue: 'Tổng doanh thu',
     pendingWithdrawal: 'Rút tiền đang chờ',
     recentRevenue: 'Doanh thu gần đây',
@@ -735,6 +747,12 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     withdrawalCompleted: 'Rút tiền hoàn tất',
     serverTimeSyncError: 'Đồng bộ thời gian máy chủ thất bại',
     systemMaintenance: 'Hệ thống đang bảo trì',
+    // 매물명 관련
+    propertyName: 'Tên bất động sản',
+    propertyNamePlaceholder: 'VD: Studio đầu tiên của tôi',
+    propertyNicknamePlaceholder: 'VD: Studio đầu tiên của tôi',
+    propertyDescription: 'Mô tả bất động sản',
+    propertyDescriptionPlaceholder: 'Nhập mô tả chi tiết về bất động sản.',
   },
   en: {
     login: 'Login',
@@ -937,7 +955,7 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     paymentMethodRequired: 'Payment Method Required',
     paymentMethodRequiredDesc: 'Activated when payment method is registered',
     // 정산 페이지 텍스트
-    availableBalance: 'Available Balance',
+    availableBalance: 'Available for Withdrawal',
     totalRevenue: 'Total Revenue',
     pendingWithdrawal: 'Pending Withdrawal',
     recentRevenue: 'Recent Revenue',
@@ -975,6 +993,12 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     withdrawalCompleted: 'Withdrawal completed',
     serverTimeSyncError: 'Server time sync failed',
     systemMaintenance: 'System under maintenance',
+    // 매물명 관련
+    propertyName: 'Property Name',
+    propertyNamePlaceholder: 'e.g., My first studio',
+    propertyNicknamePlaceholder: 'e.g., My first studio',
+    propertyDescription: 'Property Description',
+    propertyDescriptionPlaceholder: 'Enter detailed description of the property.',
   },
   ja: {
     login: 'ログイン',
@@ -1177,7 +1201,7 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     paymentMethodRequired: '決済方法登録が必要',
     paymentMethodRequiredDesc: '決済方法登録時に有効化されます',
     // 정산 페이지 텍스트
-    availableBalance: '利用可能残高',
+    availableBalance: '出金可能金額',
     totalRevenue: '総収益',
     pendingWithdrawal: '出金待ち',
     recentRevenue: '最近の収益',
@@ -1215,6 +1239,12 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     withdrawalCompleted: '出金完了',
     serverTimeSyncError: 'サーバー時刻同期に失敗しました',
     systemMaintenance: 'システムメンテナンス中',
+    // 매물명 관련
+    propertyName: '物件名',
+    propertyNamePlaceholder: '例: 私の最初のスタジオ',
+    propertyNicknamePlaceholder: '例: 私の最初のスタジオ',
+    propertyDescription: '物件説明',
+    propertyDescriptionPlaceholder: '物件の詳細な説明を入力してください。',
   },
   zh: {
     login: '登录',
@@ -1417,7 +1447,7 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     paymentMethodRequired: '需要注册支付方式',
     paymentMethodRequiredDesc: '注册支付方式后激活',
     // 정산 페이지 텍스트
-    availableBalance: '可用余额',
+    availableBalance: '可提现金额',
     totalRevenue: '总收益',
     pendingWithdrawal: '待提现',
     recentRevenue: '近期收益',
@@ -1455,6 +1485,12 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     withdrawalCompleted: '提现完成',
     serverTimeSyncError: '服务器时间同步失败',
     systemMaintenance: '系统维护中',
+    // 매물명 관련
+    propertyName: '房源名称',
+    propertyNamePlaceholder: '例如: 我的第一个工作室',
+    propertyNicknamePlaceholder: '例如: 我的第一个工作室',
+    propertyDescription: '房源描述',
+    propertyDescriptionPlaceholder: '请输入房源的详细描述。',
   },
 };
 
