@@ -66,6 +66,7 @@ export default function AddPropertyPage() {
   const [maxChildren, setMaxChildren] = useState(0);
   const [bedrooms, setBedrooms] = useState(0);
   const [bathrooms, setBathrooms] = useState(0);
+  const [propertyName, setPropertyName] = useState(""); // 매물명 (임대인용)
   const [propertyDescription, setPropertyDescription] = useState("");
 
   // 매물종류에 따라 방/화장실 제한 적용
@@ -461,6 +462,18 @@ export default function AddPropertyPage() {
       return;
     }
 
+    // 매물명 필수 검증
+    if (!propertyName || propertyName.trim() === "") {
+      alert(
+        currentLanguage === "ko"
+          ? "매물명을 입력해주세요."
+          : currentLanguage === "vi"
+            ? "Vui lòng nhập tên bất động sản."
+            : "Please enter property name.",
+      );
+      return;
+    }
+
     if (!user) {
       alert(
         currentLanguage === "ko"
@@ -579,7 +592,8 @@ export default function AddPropertyPage() {
 
       await addProperty({
         title: apartmentName || address,
-        original_description: propertyDescription || publicAddress, // 매물 설명 또는 주소
+        propertyName: propertyName.trim(), // 매물명 (임대인용, 필수)
+        original_description: propertyDescription, // 매물 설명 (빈 문자열 허용)
         translated_description: "", // 나중에 번역 서비스로 채움
         price: parseInt(weeklyRent.replace(/\D/g, "")),
         priceUnit: "vnd",
@@ -1552,6 +1566,32 @@ export default function AddPropertyPage() {
                   );
                 })}
               </div>
+            </div>
+
+            {/* 매물명 (임대인용) - 필수사항 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {currentLanguage === "ko"
+                  ? "매물명"
+                  : currentLanguage === "vi"
+                    ? "Tên bất động sản"
+                    : "Property Name"}
+                <span className="text-red-500 text-xs ml-1">*</span>
+              </label>
+              <input
+                type="text"
+                value={propertyName}
+                onChange={(e) => setPropertyName(e.target.value)}
+                placeholder={
+                  currentLanguage === "ko"
+                    ? "예: 내 첫 번째 스튜디오"
+                    : currentLanguage === "vi"
+                      ? "VD: Studio đầu tiên của tôi"
+                      : "e.g., My first studio"
+                }
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                required
+              />
             </div>
 
             {/* 매물 설명 */}

@@ -1,53 +1,167 @@
 /**
  * Settlement & Wallet Page (정산 및 지갑 페이지)
- * 
- * 임대인의 수익 관리, 출금 신청, 은행 계좌 설정을 위한 페이지
- * - 수익 내역 탭
- * - 출금 신청 탭
- * - 은행 계좌 설정 탭
+ *
+ * 임대수익: bookings API 기반. 체크인 시각(베트남) 경과 시 대기금액 생성,
+ * 체크아웃 경과 시 확정금액, +24h 경과 시 지급됨(사용가능잔액에만 합산).
+ * 총수익 = 대기+확정+지급됨 전체 합. 출금 대기/완료는 API 연동 전 플레이스홀더.
  */
 
 'use client';
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Wallet, CreditCard, TrendingUp, ArrowUpRight, ArrowDownRight, CheckCircle2, ChevronLeft } from 'lucide-react';
+import { Wallet, CreditCard, TrendingUp, ArrowUpRight, CheckCircle2, ChevronLeft } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import TopBar from '@/components/TopBar';
 import { getUIText } from '@/utils/i18n';
+import { getOwnerBookings } from '@/lib/api/bookings';
+import { getProperty } from '@/lib/api/properties';
+import { getServerTime, ServerTimeSyncError } from '@/lib/api/serverTime';
+import {
+  toISO8601ForAudit,
+  getCheckInMoment,
+  getCheckOutMoment,
+  getPayableAfterMoment,
+} from '@/lib/utils/rentalIncome';
+import { recordSettlementAudit } from '@/lib/utils/settlementAuditLog';
+import type { RentalIncomeStatus } from '@/lib/utils/rentalIncome';
+import {
+  getRentalIncomeStatus,
+  getRentalIncomeAmount,
+  isEligibleForRentalIncome,
+  aggregateRentalIncome,
+} from '@/lib/utils/rentalIncome';
+import { formatDate } from '@/lib/utils/dateUtils';
+import type { SupportedLanguage } from '@/lib/api/translation';
 
 type TabType = 'revenue' | 'withdrawal' | 'bank';
+
+/** 수익 내역 한 건 (booking 기반, 조회 시점 상태) */
+interface RevenueEntry {
+  bookingId: string;
+  propertyName: string;
+  checkInDate: string;
+  checkOutDate: string;
+  checkInTime: string;
+  checkOutTime: string;
+  amount: number;
+  status: RentalIncomeStatus;
+}
+
+/** 출금 대기/완료용 플레이스홀더 (API 연동 전) */
+const WITHDRAWAL_PLACEHOLDER = {
+  pendingAmount: 0,
+  completedAmount: 0,
+  history: [] as { id: string; date: string; amount: number; status: 'pending' | 'completed'; bank?: string }[],
+};
 
 export default function SettlementPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const { currentLanguage } = useLanguage();
   const [activeTab, setActiveTab] = useState<TabType>('revenue');
-  
-  // 더미 데이터 - 실제 구현 시 API에서 가져옴
-  const revenueData = [
-    { id: 1, date: '2026-01-30', property: '호치민 시내 아파트', amount: 5000000, type: 'rental' },
-    { id: 2, date: '2026-01-28', property: '하노이 오피스텔', amount: 3200000, type: 'rental' },
-    { id: 3, date: '2026-01-25', property: '다낭 바다뷰 빌라', amount: 7500000, type: 'rental' },
-    { id: 4, date: '2026-01-20', property: '호치민 시내 아파트', amount: 5000000, type: 'rental' },
-  ];
-  
-  const withdrawalHistory = [
-    { id: 1, date: '2026-01-28', amount: 10000000, status: 'completed', bank: '국민은행 ****1234' },
-    { id: 2, date: '2026-01-15', amount: 5000000, status: 'completed', bank: '신한은행 ****5678' },
-    { id: 3, date: '2026-01-05', amount: 8000000, status: 'pending', bank: '국민은행 ****1234' },
-  ];
-  
-  const bankAccounts = [
-    { id: 1, bankName: '국민은행', accountNumber: '123-456-789012', accountHolder: '홍길동', isPrimary: true },
-    { id: 2, bankName: '신한은행', accountNumber: '987-654-321098', accountHolder: '홍길동', isPrimary: false },
-  ];
-  
-  const totalRevenue = revenueData.reduce((sum, item) => sum + item.amount, 0);
-  const availableBalance = totalRevenue - withdrawalHistory
-    .filter(item => item.status === 'completed')
-    .reduce((sum, item) => sum + item.amount, 0);
-  
+  const [revenueEntries, setRevenueEntries] = useState<RevenueEntry[]>([]);
+  const [revenueLoading, setRevenueLoading] = useState(true);
+  const [serverTimeError, setServerTimeError] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!user?.uid) {
+      setRevenueEntries([]);
+      setRevenueLoading(false);
+      setServerTimeError(false);
+      return;
+    }
+    let cancelled = false;
+    setRevenueLoading(true);
+    setServerTimeError(false);
+    (async () => {
+      try {
+        const [bookings, now] = await Promise.all([
+          getOwnerBookings(user.uid),
+          getServerTime(),
+        ]);
+        if (cancelled) return;
+        const serverTimeISO = toISO8601ForAudit(now);
+        const serverTimeMs = now.getTime();
+        const eligible = bookings.filter((b) =>
+          isEligibleForRentalIncome({
+            paymentStatus: b.paymentStatus ?? 'pending',
+            status: b.status ?? 'pending',
+            checkInDate: b.checkInDate,
+            checkOutDate: b.checkOutDate,
+            checkInTime: b.checkInTime ?? '14:00',
+            checkOutTime: b.checkOutTime ?? '12:00',
+            now,
+          })
+        );
+        const entries: RevenueEntry[] = [];
+        for (const b of eligible) {
+          const status = getRentalIncomeStatus(
+            b.checkInDate,
+            b.checkOutDate,
+            b.checkInTime ?? '14:00',
+            b.checkOutTime ?? '12:00',
+            now
+          );
+          if (status === null) continue;
+          const checkIn = getCheckInMoment(b.checkInDate, b.checkInTime ?? '14:00');
+          const checkOut = getCheckOutMoment(b.checkOutDate, b.checkOutTime ?? '12:00');
+          const payableAfter = getPayableAfterMoment(b.checkOutDate, b.checkOutTime ?? '12:00');
+          recordSettlementAudit({
+            serverTimeISO,
+            serverTimeMs,
+            bookingId: b.id ?? '',
+            status,
+            checkInISO: toISO8601ForAudit(checkIn),
+            checkOutISO: toISO8601ForAudit(checkOut),
+            payableAfterISO: toISO8601ForAudit(payableAfter),
+          });
+          let propertyName = b.propertyTitle ?? '';
+          try {
+            const prop = await getProperty(b.propertyId);
+            if (prop?.propertyName) propertyName = prop.propertyName;
+          } catch {
+            // keep propertyTitle fallback
+          }
+          entries.push({
+            bookingId: b.id ?? '',
+            propertyName,
+            checkInDate: b.checkInDate,
+            checkOutDate: b.checkOutDate,
+            checkInTime: b.checkInTime ?? '14:00',
+            checkOutTime: b.checkOutTime ?? '12:00',
+            amount: getRentalIncomeAmount(b),
+            status,
+          });
+        }
+        if (!cancelled) {
+          setRevenueEntries(entries);
+        }
+      } catch (err) {
+        if (cancelled) return;
+        if (err instanceof ServerTimeSyncError) {
+          setServerTimeError(true);
+          setRevenueEntries([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setRevenueLoading(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.uid]);
+
+  const { totalRevenue, availableBalance } = useMemo(() => {
+    return aggregateRentalIncome(revenueEntries);
+  }, [revenueEntries]);
+
+  const withdrawalPendingAmount = WITHDRAWAL_PLACEHOLDER.pendingAmount;
+  const withdrawalHistory = WITHDRAWAL_PLACEHOLDER.history;
+  const bankAccounts: { id: string; bankName: string; accountNumber: string; accountHolder: string; isPrimary: boolean }[] = [];
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -59,6 +173,31 @@ export default function SettlementPage() {
   if (!user) {
     router.push('/login');
     return null;
+  }
+
+  if (serverTimeError) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex justify-center">
+        <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative pb-10">
+          <TopBar currentLanguage={currentLanguage} />
+          <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
+            <p className="text-lg font-semibold text-red-600 text-center mb-2">
+              {getUIText('serverTimeSyncError', currentLanguage)}
+            </p>
+            <p className="text-sm text-gray-600 text-center mb-6">
+              {getUIText('systemMaintenance', currentLanguage)}
+            </p>
+            <p className="text-xs text-gray-500 text-center">
+              {currentLanguage === 'ko'
+                ? '정산 프로세스를 중단했습니다. 잠시 후 다시 시도해 주세요.'
+                : currentLanguage === 'vi'
+                ? 'Đã tạm dừng quy trình thanh toán. Vui lòng thử lại sau.'
+                : 'Settlement process halted. Please try again later.'}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -96,12 +235,7 @@ export default function SettlementPage() {
               </div>
               <div>
                 <p className="opacity-80">{getUIText('pendingWithdrawal', currentLanguage)}</p>
-                <p className="font-semibold">
-                  {withdrawalHistory
-                    .filter(item => item.status === 'pending')
-                    .reduce((sum, item) => sum + item.amount, 0)
-                    .toLocaleString()} ₫
-                </p>
+                <p className="font-semibold">{withdrawalPendingAmount.toLocaleString()} ₫</p>
               </div>
             </div>
           </div>
@@ -145,46 +279,58 @@ export default function SettlementPage() {
         
         {/* 탭 컨텐츠 */}
         <div className="flex-1 px-6 py-6">
-          {/* 수익 내역 탭 */}
+          {/* 수익 내역 탭 (bookings 기반, 베트남 시간 기준 상태) */}
           {activeTab === 'revenue' && (
             <div className="space-y-4">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-bold text-gray-900">{getUIText('recentRevenue', currentLanguage)}</h2>
-                <button className="text-sm text-purple-600 font-medium">
-                  {getUIText('viewAll', currentLanguage)}
-                </button>
               </div>
-              
-              {revenueData.map((item) => (
-                <div key={item.id} className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-semibold text-gray-900">{item.property}</p>
-                      <p className="text-sm text-gray-500 mt-1">{item.date}</p>
-                    </div>
-                    <div className="text-right">
-                      <div className="flex items-center gap-1 text-green-600">
-                        <ArrowUpRight className="w-4 h-4" />
-                        <p className="font-bold">{item.amount.toLocaleString()} ₫</p>
+              {revenueLoading ? (
+                <p className="text-gray-500 py-4">{getUIText('loading', currentLanguage)}</p>
+              ) : revenueEntries.length === 0 ? (
+                <p className="text-gray-500 py-4">
+                  {currentLanguage === 'ko'
+                    ? '체크인 시각이 지난 결제 완료 예약이 없습니다.'
+                    : currentLanguage === 'vi'
+                    ? 'Chưa có đặt phòng đã thanh toán sau thời gian nhận phòng.'
+                    : 'No paid bookings past check-in time yet.'}
+                </p>
+              ) : (
+                revenueEntries.map((entry) => (
+                  <div key={entry.bookingId} className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+                    <div className="flex justify-between items-start">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-gray-900 truncate">{entry.propertyName || getUIText('propertyNickname', currentLanguage)}</p>
+                        <p className="text-sm text-gray-500 mt-1">
+                          {formatDate(entry.checkInDate, currentLanguage as SupportedLanguage)} ~ {formatDate(entry.checkOutDate, currentLanguage as SupportedLanguage)}
+                        </p>
+                        <span
+                          className={`inline-block mt-2 px-2 py-1 text-xs font-medium rounded-full ${
+                            entry.status === 'pending'
+                              ? 'bg-amber-100 text-amber-800'
+                              : entry.status === 'confirmed'
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-green-100 text-green-800'
+                          }`}
+                        >
+                          {entry.status === 'pending'
+                            ? getUIText('incomeStatusPending', currentLanguage)
+                            : entry.status === 'confirmed'
+                            ? getUIText('incomeStatusConfirmed', currentLanguage)
+                            : getUIText('incomeStatusPayable', currentLanguage)}
+                        </span>
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">{getUIText('rentalIncome', currentLanguage)}</p>
+                      <div className="text-right shrink-0 ml-2">
+                        <div className="flex items-center gap-1 text-green-600">
+                          <ArrowUpRight className="w-4 h-4" />
+                          <p className="font-bold">{entry.amount.toLocaleString()} ₫</p>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">{getUIText('rentalIncome', currentLanguage)}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-              
-              <div className="bg-gray-50 rounded-xl p-4 mt-6">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="text-sm text-gray-600">{getUIText('nextPayout', currentLanguage)}</p>
-                    <p className="font-bold text-gray-900">2026-02-05</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm text-gray-600">{getUIText('estimatedAmount', currentLanguage)}</p>
-                    <p className="font-bold text-purple-600">12,500,000 ₫</p>
-                  </div>
-                </div>
-              </div>
+                ))
+              )}
             </div>
           )}
           
@@ -235,11 +381,15 @@ export default function SettlementPage() {
                 </div>
               </div>
               
-              {/* 출금 내역 */}
+              {/* 출금 내역 (API 연동 전 플레이스홀더) */}
               <div>
                 <h3 className="text-lg font-bold text-gray-900 mb-4">{getUIText('withdrawalHistory', currentLanguage)}</h3>
-                
-                {withdrawalHistory.map((item) => (
+                {withdrawalHistory.length === 0 ? (
+                  <p className="text-gray-500 py-4 text-sm">
+                    {currentLanguage === 'ko' ? '출금 내역이 없습니다.' : currentLanguage === 'vi' ? 'Chưa có lịch sử rút tiền.' : 'No withdrawal history yet.'}
+                  </p>
+                ) : (
+                withdrawalHistory.map((item) => (
                   <div key={item.id} className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm mb-3">
                     <div className="flex justify-between items-start">
                       <div>
@@ -263,7 +413,8 @@ export default function SettlementPage() {
                       )}
                     </div>
                   </div>
-                ))}
+                ))
+                )}
               </div>
             </div>
           )}
@@ -279,7 +430,11 @@ export default function SettlementPage() {
                     {getUIText('addNewAccount', currentLanguage)}
                   </button>
                 </div>
-                
+                {bankAccounts.length === 0 && (
+                  <p className="text-gray-500 py-2 text-sm mb-2">
+                    {currentLanguage === 'ko' ? '등록된 계좌가 없습니다.' : currentLanguage === 'vi' ? 'Chưa có tài khoản đăng ký.' : 'No accounts registered.'}
+                  </p>
+                )}
                 {bankAccounts.map((account) => (
                   <div key={account.id} className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm mb-3">
                     <div className="flex justify-between items-start">

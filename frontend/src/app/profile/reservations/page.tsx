@@ -16,6 +16,11 @@ import { getCurrentUserData } from '@/lib/api/auth';
 import { ReservationData } from '@/lib/api/reservations';
 import { PropertyData } from '@/types/property';
 import { markAllMessagesInRoomAsRead, findChatRoom } from '@/lib/api/chat';
+import { getOwnerBookings } from '@/lib/api/bookings';
+import { getServerTime, ServerTimeSyncError } from '@/lib/api/serverTime';
+import { getCheckInMoment } from '@/lib/utils/rentalIncome';
+import { toISODateString } from '@/lib/utils/dateUtils';
+import { getUIText } from '@/utils/i18n';
 import { ArrowLeft, Calendar, User, Mail, Phone, CheckCircle2, XCircle, MapPin, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import TopBar from '@/components/TopBar';
@@ -39,6 +44,9 @@ function ReservationsContent() {
   });
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [allStepsCompleted, setAllStepsCompleted] = useState(false);
+  const [ownerBookings, setOwnerBookings] = useState<Awaited<ReturnType<typeof getOwnerBookings>>>([]);
+  const [serverTime, setServerTime] = useState<Date | null>(null);
+  const [serverTimeError, setServerTimeError] = useState<boolean>(false);
 
   useEffect(() => {
     if (!authLoading) {
@@ -88,6 +96,28 @@ function ReservationsContent() {
       fetchData();
     }
   }, [user, authLoading, router, activeTab]);
+
+  useEffect(() => {
+    if (!user?.uid) {
+      setOwnerBookings([]);
+      setServerTime(null);
+      setServerTimeError(false);
+      return;
+    }
+    Promise.all([getOwnerBookings(user.uid), getServerTime()])
+      .then(([bookings, now]) => {
+        setOwnerBookings(bookings);
+        setServerTime(now);
+        setServerTimeError(false);
+      })
+      .catch((err) => {
+        if (err instanceof ServerTimeSyncError) {
+          setServerTimeError(true);
+          setServerTime(null);
+          setOwnerBookings([]);
+        }
+      });
+  }, [user?.uid]);
 
   useEffect(() => {
     const tab = searchParams.get('tab');
@@ -271,12 +301,31 @@ function ReservationsContent() {
     }
   };
 
-  const getStatusText = (status: ReservationData['status']) => {
+  const isReservationInStay = (reservation: ReservationWithProperty): boolean => {
+    if (reservation.status !== 'confirmed') return false;
+    const checkInDateStr = toISODateString(reservation.checkInDate);
+    if (!checkInDateStr) return false;
+    const matching = ownerBookings.find(
+      (b) =>
+        b.propertyId === reservation.propertyId &&
+        b.checkInDate === checkInDateStr &&
+        b.guestId === reservation.tenantId
+    );
+    if (!matching) return false;
+    if (serverTime === null) return false;
+    const checkInMoment = getCheckInMoment(matching.checkInDate, matching.checkInTime ?? '14:00');
+    return serverTime.getTime() >= checkInMoment.getTime();
+  };
+
+  const getStatusText = (status: ReservationData['status'], reservation?: ReservationWithProperty) => {
     if (status === 'pending') {
       return currentLanguage === 'ko' ? '예약 대기' : 
              currentLanguage === 'vi' ? 'Chờ xác nhận' : 
              'Pending';
     } else if (status === 'confirmed') {
+      if (reservation && isReservationInStay(reservation)) {
+        return getUIText('rentingInProgress', currentLanguage);
+      }
       return currentLanguage === 'ko' ? '예약 확정' : 
              currentLanguage === 'vi' ? 'Đã xác nhận' : 
              'Confirmed';
@@ -290,8 +339,9 @@ function ReservationsContent() {
            'Cancelled';
   };
 
-  const getStatusColor = (status: ReservationData['status']) => {
+  const getStatusColor = (status: ReservationData['status'], reservation?: ReservationWithProperty) => {
     if (status === 'pending') return 'bg-yellow-500';
+    if (status === 'confirmed' && reservation && isReservationInStay(reservation)) return 'bg-purple-500';
     if (status === 'confirmed') return 'bg-blue-500';
     if (status === 'completed') return 'bg-green-500';
     return 'bg-red-500';
@@ -311,6 +361,35 @@ function ReservationsContent() {
 
   if (!user) {
     return null;
+  }
+
+  if (serverTimeError) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex justify-center">
+        <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative">
+          <TopBar
+            currentLanguage={currentLanguage}
+            onLanguageChange={setCurrentLanguage}
+            hideLanguageSelector={false}
+          />
+          <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
+            <p className="text-lg font-semibold text-red-600 text-center mb-2">
+              {getUIText('serverTimeSyncError', currentLanguage)}
+            </p>
+            <p className="text-sm text-gray-600 text-center mb-6">
+              {getUIText('systemMaintenance', currentLanguage)}
+            </p>
+            <p className="text-xs text-gray-500 text-center">
+              {currentLanguage === 'ko'
+                ? '서버 시간을 확인할 수 없어 예약 상태를 표시할 수 없습니다. 잠시 후 다시 시도해 주세요.'
+                : currentLanguage === 'vi'
+                ? 'Không thể xác minh thời gian máy chủ. Vui lòng thử lại sau.'
+                : 'Cannot verify server time. Please try again later.'}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const activeCount = reservations.filter(r => r.status === 'pending' || r.status === 'confirmed').length;
@@ -418,8 +497,8 @@ function ReservationsContent() {
                         sizes="(max-width: 430px) 100vw, 430px"
                       />
                       <div className="absolute top-4 left-4">
-                        <span className={`${getStatusColor(reservation.status)} text-white px-3 py-1 rounded-lg text-xs font-semibold shadow-lg`}>
-                          {getStatusText(reservation.status)}
+                        <span className={`${getStatusColor(reservation.status, reservation)} text-white px-3 py-1 rounded-lg text-xs font-semibold shadow-lg`}>
+                          {getStatusText(reservation.status, reservation)}
                         </span>
                       </div>
                     </div>

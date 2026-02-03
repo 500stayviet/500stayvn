@@ -240,7 +240,17 @@ export type UITextKey =
   | 'registerAccount'
   | 'primary'
   | 'completed'
-  | 'setAsPrimary';
+  | 'setAsPrimary'
+  // 임대수익 상태
+  | 'incomeStatusPending'
+  | 'incomeStatusConfirmed'
+  | 'incomeStatusPayable'
+  | 'rentalPeriod'
+  | 'propertyNickname'
+  | 'rentingInProgress'
+  | 'withdrawalCompleted'
+  | 'serverTimeSyncError'
+  | 'systemMaintenance';
 
 /**
  * 언어별 UI 텍스트 사전
@@ -476,6 +486,15 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     primary: '주 계좌',
     completed: '완료됨',
     setAsPrimary: '주 계좌로 설정',
+    incomeStatusPending: '대기금액',
+    incomeStatusConfirmed: '확정금액',
+    incomeStatusPayable: '지급됨',
+    rentalPeriod: '임대 기간',
+    propertyNickname: '매물명',
+    rentingInProgress: '임대중',
+    withdrawalCompleted: '출금완료',
+    serverTimeSyncError: '서버 시간 동기화 실패',
+    systemMaintenance: '시스템 점검 중',
   },
   vi: {
     login: 'Đăng nhập',
@@ -707,6 +726,15 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     primary: 'Tài khoản chính',
     completed: 'Hoàn thành',
     setAsPrimary: 'Đặt làm tài khoản chính',
+    incomeStatusPending: 'Số tiền chờ',
+    incomeStatusConfirmed: 'Số tiền xác nhận',
+    incomeStatusPayable: 'Đã thanh toán',
+    rentalPeriod: 'Thời gian thuê',
+    propertyNickname: 'Tên bất động sản',
+    rentingInProgress: 'Đang cho thuê',
+    withdrawalCompleted: 'Rút tiền hoàn tất',
+    serverTimeSyncError: 'Đồng bộ thời gian máy chủ thất bại',
+    systemMaintenance: 'Hệ thống đang bảo trì',
   },
   en: {
     login: 'Login',
@@ -938,6 +966,15 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     primary: 'Primary',
     completed: 'Completed',
     setAsPrimary: 'Set as primary',
+    incomeStatusPending: 'Pending',
+    incomeStatusConfirmed: 'Confirmed',
+    incomeStatusPayable: 'Payable',
+    rentalPeriod: 'Rental period',
+    propertyNickname: 'Property name',
+    rentingInProgress: 'In stay',
+    withdrawalCompleted: 'Withdrawal completed',
+    serverTimeSyncError: 'Server time sync failed',
+    systemMaintenance: 'System under maintenance',
   },
   ja: {
     login: 'ログイン',
@@ -1169,6 +1206,15 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     primary: '主口座',
     completed: '完了',
     setAsPrimary: '主口座として設定',
+    incomeStatusPending: '保留金額',
+    incomeStatusConfirmed: '確定金額',
+    incomeStatusPayable: '支払済',
+    rentalPeriod: '賃貸期間',
+    propertyNickname: '物件名',
+    rentingInProgress: '滞在中',
+    withdrawalCompleted: '出金完了',
+    serverTimeSyncError: 'サーバー時刻同期に失敗しました',
+    systemMaintenance: 'システムメンテナンス中',
   },
   zh: {
     login: '登录',
@@ -1400,6 +1446,15 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     primary: '主账户',
     completed: '已完成',
     setAsPrimary: '设为主账户',
+    incomeStatusPending: '待定金额',
+    incomeStatusConfirmed: '确认金额',
+    incomeStatusPayable: '已支付',
+    rentalPeriod: '租期',
+    propertyNickname: '房源名称',
+    rentingInProgress: '租住中',
+    withdrawalCompleted: '提现完成',
+    serverTimeSyncError: '服务器时间同步失败',
+    systemMaintenance: '系统维护中',
   },
 };
 

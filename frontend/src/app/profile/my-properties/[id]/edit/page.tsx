@@ -89,6 +89,7 @@ function EditPropertyContent() {
   const [cleaningPerWeek, setCleaningPerWeek] = useState(1);
   const [maxPets, setMaxPets] = useState(1);
   const [petFeeAmount, setPetFeeAmount] = useState("");
+  const [propertyName, setPropertyName] = useState(""); // 매물명 (임대인용)
   const [propertyDescription, setPropertyDescription] = useState("");
   const [icalPlatform, setIcalPlatform] = useState("");
   const [icalCalendarName, setIcalCalendarName] = useState("");
@@ -173,6 +174,7 @@ function EditPropertyContent() {
         const fee = (p as { petFee?: number }).petFee;
         setPetFeeAmount(fee != null ? fee.toString() : "");
         setMaxPets((p as { maxPets?: number }).maxPets ?? 1);
+        setPropertyName(p.propertyName || ""); // 매물명 로드
         setPropertyDescription((p as { original_description?: string }).original_description || "");
         setIcalPlatform(p.icalPlatform || "");
         setIcalCalendarName(p.icalCalendarName || "");
@@ -298,6 +300,7 @@ function EditPropertyContent() {
 
       const updates: Partial<import("@/types/property").PropertyData> = {
         title: apartmentName || address,
+        propertyName: propertyName.trim(), // 매물명 추가
         original_description: propertyDescription || publicAddress,
         price: parseInt(weeklyRent.replace(/\D/g, "") || "0", 10),
         priceUnit: "vnd",
@@ -984,6 +987,32 @@ function EditPropertyContent() {
                   );
                 })}
               </div>
+            </div>
+
+            {/* 매물명 (임대인용) - 필수사항 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {currentLanguage === "ko"
+                  ? "매물명"
+                  : currentLanguage === "vi"
+                    ? "Tên bất động sản"
+                    : "Property Name"}
+                <span className="text-red-500 text-xs ml-1">*</span>
+              </label>
+              <input
+                type="text"
+                value={propertyName}
+                onChange={(e) => setPropertyName(e.target.value)}
+                placeholder={
+                  currentLanguage === "ko"
+                    ? "예: 내 첫 번째 스튜디오"
+                    : currentLanguage === "vi"
+                      ? "VD: Studio đầu tiên của tôi"
+                      : "e.g., My first studio"
+                }
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                required
+              />
             </div>
 
             {/* 매물 설명 */}

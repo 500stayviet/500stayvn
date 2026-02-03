@@ -16,10 +16,10 @@ export interface TranslationResponse {
   confidence?: number;
 }
 
-// Gemini API 설정
+// Gemini API 설정 (v1 stable, 공식 문서 기준)
 const GEMINI_API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY || "";
 const GEMINI_API_URL =
-  "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent";
+  "https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent";
 
 // 언어 코드 매핑 (Gemini API용)
 const LANGUAGE_MAP: Record<SupportedLanguage, string> = {
@@ -99,9 +99,9 @@ export async function translate(
     
     Translation:`;
 
-    // Gemini API 호출
+    // Gemini API 호출 (공식 문서: x-goog-api-key 헤더 사용)
     const response = await axios.post(
-      `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`,
+      GEMINI_API_URL,
       {
         contents: [
           {
@@ -121,6 +121,7 @@ export async function translate(
         timeout: 15000, // 15초 타임아웃
         headers: {
           "Content-Type": "application/json",
+          "x-goog-api-key": GEMINI_API_KEY,
         },
       },
     );

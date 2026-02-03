@@ -131,6 +131,9 @@ export const PropertyDescription: React.FC<PropertyDescriptionProps> = ({
     return null;
   }
 
+  // 번역 가능 여부 확인 (빈 설명이면 번역 불가)
+  const canTranslateDescription = description.trim() !== '';
+
   return (
     <div className={`relative ${className}`}>
       {/* 설명 텍스트 컨테이너 - 글자/줄바꿈 최적화 */}
@@ -160,7 +163,7 @@ export const PropertyDescription: React.FC<PropertyDescriptionProps> = ({
       </div>
       
       {/* 번역 버튼 - 우측 하단에 위치 */}
-      {canTranslate && (
+      {canTranslate && canTranslateDescription && (
         <div className="flex justify-end mt-2">
           <button
             onClick={handleTranslationClick}
