@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getCurrentUserData } from "@/lib/api/auth";
 import { addProperty, getPropertyCountByOwner } from "@/lib/api/properties";
+import { getUIText } from "@/utils/i18n";
 import {
   Camera,
   MapPin,
@@ -66,8 +67,11 @@ export default function AddPropertyPage() {
   const [maxChildren, setMaxChildren] = useState(0);
   const [bedrooms, setBedrooms] = useState(0);
   const [bathrooms, setBathrooms] = useState(0);
-  const [propertyName, setPropertyName] = useState(""); // 매물명 (임대인용)
+  const [propertyNickname, setPropertyNickname] = useState(""); // 매물명 (임대인용)
   const [propertyDescription, setPropertyDescription] = useState("");
+  // 체크인/체크아웃 시간
+  const [checkInTime, setCheckInTime] = useState("14:00");
+  const [checkOutTime, setCheckOutTime] = useState("12:00");
 
   // 매물종류에 따라 방/화장실 제한 적용
   useEffect(() => {
@@ -463,7 +467,7 @@ export default function AddPropertyPage() {
     }
 
     // 매물명 필수 검증
-    if (!propertyName || propertyName.trim() === "") {
+    if (!propertyNickname || propertyNickname.trim() === "") {
       alert(
         currentLanguage === "ko"
           ? "매물명을 입력해주세요."
@@ -592,7 +596,7 @@ export default function AddPropertyPage() {
 
       await addProperty({
         title: apartmentName || address,
-        propertyName: propertyName.trim(), // 매물명 (임대인용, 필수)
+        propertyNickname: propertyNickname.trim(), // 매물명 (임대인용, 필수)
         original_description: propertyDescription, // 매물 설명 (빈 문자열 허용)
         translated_description: "", // 나중에 번역 서비스로 채움
         price: parseInt(weeklyRent.replace(/\D/g, "")),
@@ -613,6 +617,8 @@ export default function AddPropertyPage() {
         ownerId: user.uid, // 임대인 사용자 ID 저장
         checkInDate: checkInDateObj,
         checkOutDate: checkOutDateObj,
+        checkInTime: checkInTime,
+        checkOutTime: checkOutTime,
         maxAdults: maxAdults,
         maxChildren: maxChildren,
         status: "active",
@@ -1568,27 +1574,64 @@ export default function AddPropertyPage() {
               </div>
             </div>
 
-            {/* 매물명 (임대인용) - 필수사항 */}
+            {/* 체크인/체크아웃 시간 - 매물명 위에 위치 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 {currentLanguage === "ko"
-                  ? "매물명"
+                  ? "체크인/체크아웃 시간"
                   : currentLanguage === "vi"
-                    ? "Tên bất động sản"
-                    : "Property Name"}
+                    ? "Giờ check-in/check-out"
+                    : "Check-in/Check-out Time"}
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                    {currentLanguage === "ko" ? "체크인" : currentLanguage === "vi" ? "Check-in" : "Check-in"}
+                  </label>
+                  <select
+                    value={checkInTime}
+                    onChange={(e) => setCheckInTime(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-gray-50 border-2 border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    {Array.from({ length: 24 }, (_, i) => {
+                      const hour = i.toString().padStart(2, '0');
+                      return [`${hour}:00`, `${hour}:30`];
+                    }).flat().map((time) => (
+                      <option key={time} value={time}>{time}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                    {currentLanguage === "ko" ? "체크아웃" : currentLanguage === "vi" ? "Check-out" : "Check-out"}
+                  </label>
+                  <select
+                    value={checkOutTime}
+                    onChange={(e) => setCheckOutTime(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-gray-50 border-2 border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    {Array.from({ length: 24 }, (_, i) => {
+                      const hour = i.toString().padStart(2, '0');
+                      return [`${hour}:00`, `${hour}:30`];
+                    }).flat().map((time) => (
+                      <option key={time} value={time}>{time}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* 매물명 (임대인용) - 필수사항 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {getUIText('propertyNickname', currentLanguage)}
                 <span className="text-red-500 text-xs ml-1">*</span>
               </label>
               <input
                 type="text"
-                value={propertyName}
-                onChange={(e) => setPropertyName(e.target.value)}
-                placeholder={
-                  currentLanguage === "ko"
-                    ? "예: 내 첫 번째 스튜디오"
-                    : currentLanguage === "vi"
-                      ? "VD: Studio đầu tiên của tôi"
-                      : "e.g., My first studio"
-                }
+                value={propertyNickname}
+                onChange={(e) => setPropertyNickname(e.target.value)}
+                placeholder={getUIText('propertyNicknamePlaceholder', currentLanguage)}
                 className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 required
               />
