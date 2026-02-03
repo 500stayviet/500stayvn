@@ -119,7 +119,7 @@ export default function SettlementPage() {
           let propertyName = b.propertyTitle ?? '';
           try {
             const prop = await getProperty(b.propertyId);
-            if (prop?.propertyName) propertyName = prop.propertyName;
+            if (prop?.propertyNickname) propertyName = prop.propertyNickname;
           } catch {
             // keep propertyTitle fallback
           }
@@ -177,9 +177,9 @@ export default function SettlementPage() {
 
   if (serverTimeError) {
     return (
-      <div className="min-h-screen bg-gray-100 flex justify-center">
+        <div className="min-h-screen bg-gray-100 flex justify-center">
         <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative pb-10">
-          <TopBar currentLanguage={currentLanguage} />
+        <TopBar currentLanguage={currentLanguage} />
           <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
             <p className="text-lg font-semibold text-red-600 text-center mb-2">
               {getUIText('serverTimeSyncError', currentLanguage)}
@@ -302,7 +302,7 @@ export default function SettlementPage() {
                       <div className="min-w-0 flex-1">
                         <p className="font-semibold text-gray-900 truncate">{entry.propertyName || getUIText('propertyNickname', currentLanguage)}</p>
                         <p className="text-sm text-gray-500 mt-1">
-                          {formatDate(entry.checkInDate, currentLanguage as SupportedLanguage)} ~ {formatDate(entry.checkOutDate, currentLanguage as SupportedLanguage)}
+                          {formatDate(entry.checkInDate, currentLanguage)} ~ {formatDate(entry.checkOutDate, currentLanguage)}
                         </p>
                         <span
                           className={`inline-block mt-2 px-2 py-1 text-xs font-medium rounded-full ${
