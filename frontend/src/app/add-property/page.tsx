@@ -19,12 +19,17 @@ import {
   ChevronDown,
   ChevronUp,
   Sparkles,
+  Home,
+  Search,
+  Building,
+  User,
+  Plus,
+  Image as ImageIcon,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import TopBar from "@/components/TopBar";
 import CalendarComponent from "@/components/CalendarComponent";
 import AddressVerificationModal from "@/components/AddressVerificationModal";
-// 기존 import들 사이에 추가
 import { uploadToS3 } from "@/lib/s3-client";
 import { FACILITY_OPTIONS, FACILITY_CATEGORIES, FULL_OPTION_KITCHEN_IDS, FULL_FURNITURE_IDS, FULL_ELECTRONICS_IDS } from "@/lib/constants/facilities";
 import {
@@ -35,6 +40,23 @@ import {
   ALL_REGIONS,
 } from "@/lib/data/vietnam-regions";
 
+// 컬러 상수
+const COLORS = {
+  deepBlue: "#003366",
+  emeraldGreen: "#10B981",
+  white: "#FFFFFF",
+  gray50: "#F9FAFB",
+  gray100: "#F3F4F6",
+  gray200: "#E5E7EB",
+  gray300: "#D1D5DB",
+  gray400: "#9CA3AF",
+  gray500: "#6B7280",
+  gray600: "#4B5563",
+  gray700: "#374151",
+  gray800: "#1F2937",
+  gray900: "#111827",
+};
+
 export default function AddPropertyPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
@@ -42,13 +64,14 @@ export default function AddPropertyPage() {
   const [loading, setLoading] = useState(false);
   const [checkingAccess, setCheckingAccess] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
+  
   // 폼 상태
   const [images, setImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [address, setAddress] = useState("");
   const [apartmentName, setApartmentName] = useState("");
-  const [buildingNumber, setBuildingNumber] = useState(""); // 동
-  const [roomNumber, setRoomNumber] = useState(""); // 호실
+  const [buildingNumber, setBuildingNumber] = useState("");
+  const [roomNumber, setRoomNumber] = useState("");
   const [weeklyRent, setWeeklyRent] = useState("");
   const [selectedFacilities, setSelectedFacilities] = useState<string[]>([]);
   const [propertyType, setPropertyType] = useState<
@@ -67,9 +90,8 @@ export default function AddPropertyPage() {
   const [maxChildren, setMaxChildren] = useState(0);
   const [bedrooms, setBedrooms] = useState(0);
   const [bathrooms, setBathrooms] = useState(0);
-  const [propertyNickname, setPropertyNickname] = useState(""); // 매물명 (임대인용)
+  const [propertyNickname, setPropertyNickname] = useState("");
   const [propertyDescription, setPropertyDescription] = useState("");
-  // 체크인/체크아웃 시간
   const [checkInTime, setCheckInTime] = useState("14:00");
   const [checkOutTime, setCheckOutTime] = useState("12:00");
 
@@ -105,13 +127,11 @@ export default function AddPropertyPage() {
 
   // 임대 희망 날짜
   const [showCalendar, setShowCalendar] = useState(false);
-  const [calendarMode, setCalendarMode] = useState<"checkin" | "checkout">(
-    "checkin",
-  );
+  const [calendarMode, setCalendarMode] = useState<"checkin" | "checkout">("checkin");
   const [checkInDate, setCheckInDate] = useState<Date | null>(null);
   const [checkOutDate, setCheckOutDate] = useState<Date | null>(null);
 
-  // 외부 캘린더(iCal) 가져오기
+  // 외부 캘린더(iCal)
   const [icalPlatform, setIcalPlatform] = useState<string>("");
   const [icalCalendarName, setIcalCalendarName] = useState("");
   const [icalUrl, setIcalUrl] = useState("");
@@ -120,15 +140,9 @@ export default function AddPropertyPage() {
   // 사진첩 모달 상태
   const [showPhotoLibrary, setShowPhotoLibrary] = useState(false);
   const [photoLibraryFiles, setPhotoLibraryFiles] = useState<File[]>([]);
-  const [photoLibraryPreviews, setPhotoLibraryPreviews] = useState<string[]>(
-    [],
-  );
-  const [selectedLibraryIndices, setSelectedLibraryIndices] = useState<
-    Set<number>
-  >(new Set());
-  const [fullScreenImageIndex, setFullScreenImageIndex] = useState<
-    number | null
-  >(null);
+  const [photoLibraryPreviews, setPhotoLibraryPreviews] = useState<string[]>([]);
+  const [selectedLibraryIndices, setSelectedLibraryIndices] = useState<Set<number>>(new Set());
+  const [fullScreenImageIndex, setFullScreenImageIndex] = useState<number | null>(null);
 
   // 이미지 소스 선택 메뉴 상태
   const [showImageSourceMenu, setShowImageSourceMenu] = useState(false);
@@ -151,18 +165,12 @@ export default function AddPropertyPage() {
 
       try {
         const userData = await getCurrentUserData(user.uid);
-
-        // KYC 1~3단계 토큰이 모두 있어야 매물 등록 가능
-        // 사용자 요구사항: "코인3개가 되면 다 사용가능한거야"
         const kycSteps = userData?.kyc_steps || {};
-        const allStepsCompleted =
-          kycSteps.step1 && kycSteps.step2 && kycSteps.step3;
+        const allStepsCompleted = kycSteps.step1 && kycSteps.step2 && kycSteps.step3;
 
-        // 프로필 페이지와 동일한 조건: KYC 완료 또는 owner 권한
         if (allStepsCompleted || userData?.is_owner === true) {
           setHasAccess(true);
         } else {
-          // KYC 미완료 시 1~3단계 인증 페이지로 이동
           router.push("/kyc");
         }
       } catch (error) {
@@ -175,7 +183,7 @@ export default function AddPropertyPage() {
     checkAccess();
   }, [user, authLoading, router]);
 
-  // 주소 확인 모달에서 주소 확정 시 (도시·구 자동 설정)
+  // 주소 확인 모달에서 주소 확정 시
   const handleAddressConfirm = (data: {
     address: string;
     lat: number;
@@ -217,20 +225,11 @@ export default function AddPropertyPage() {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    // 사진첩에 파일 저장
     setPhotoLibraryFiles(files);
-
-    // 미리보기 생성
     const previews = files.map((file) => URL.createObjectURL(file));
     setPhotoLibraryPreviews(previews);
-
-    // 선택 초기화
     setSelectedLibraryIndices(new Set());
-
-    // 사진첩 모달 열기
     setShowPhotoLibrary(true);
-
-    // input 초기화
     e.target.value = "";
   };
 
@@ -263,11 +262,9 @@ export default function AddPropertyPage() {
     const newImages = [...images, ...selectedFiles];
     setImages(newImages);
 
-    // 미리보기 생성
     const newPreviews = selectedFiles.map((file) => URL.createObjectURL(file));
     setImagePreviews([...imagePreviews, ...newPreviews]);
 
-    // 사진첩 닫기 및 정리
     setShowPhotoLibrary(false);
     setPhotoLibraryFiles([]);
     photoLibraryPreviews.forEach((url) => URL.revokeObjectURL(url));
@@ -298,35 +295,27 @@ export default function AddPropertyPage() {
     const newImages = [...images, file];
     setImages(newImages);
 
-    // 미리보기 생성
     const preview = URL.createObjectURL(file);
     setImagePreviews([...imagePreviews, preview]);
-
-    // input 초기화
     e.target.value = "";
   };
-
-  // 이미지 추가 버튼 클릭 (사진첩 또는 카메라 선택) - ref는 이미 위에서 선언됨
 
   const handleAddImageClick = () => {
     if (images.length >= 5) return;
 
-    // 1시간에 한 번만 가이드라인 팝업 표시
     const GUIDELINE_STORAGE_KEY = "property_guideline_last_shown";
     const lastShownTime = localStorage.getItem(GUIDELINE_STORAGE_KEY);
     const now = Date.now();
-    const oneHour = 60 * 60 * 1000; // 1시간 (밀리초)
+    const oneHour = 60 * 60 * 1000;
 
     if (lastShownTime) {
       const timeSinceLastShown = now - parseInt(lastShownTime, 10);
       if (timeSinceLastShown < oneHour) {
-        // 1시간이 지나지 않았으면 팝업 없이 바로 이미지 소스 메뉴 표시
         setShowImageSourceMenu(true);
         return;
       }
     }
 
-    // 1시간이 지났거나 처음이면 가이드라인 팝업 표시
     setShowGuidelinePopup(true);
   };
 
@@ -342,11 +331,8 @@ export default function AddPropertyPage() {
 
   const handleGuidelinePopupClick = () => {
     setShowGuidelinePopup(false);
-
-    // 가이드라인을 본 시간을 localStorage에 저장
     const GUIDELINE_STORAGE_KEY = "property_guideline_last_shown";
     localStorage.setItem(GUIDELINE_STORAGE_KEY, Date.now().toString());
-
     setShowImageSourceMenu(true);
   };
 
@@ -354,10 +340,7 @@ export default function AddPropertyPage() {
   const handleImageRemove = (index: number) => {
     const newImages = images.filter((_, i) => i !== index);
     const newPreviews = imagePreviews.filter((_, i) => i !== index);
-
-    // URL 해제
     URL.revokeObjectURL(imagePreviews[index]);
-
     setImages(newImages);
     setImagePreviews(newPreviews);
   };
@@ -373,22 +356,22 @@ export default function AddPropertyPage() {
 
   const petAllowed = selectedFacilities.includes("pet");
 
-  // 방 개수 옵션 (매물종류별)
+  // 방 개수 옵션
   const bedroomOptions = (() => {
     if (!propertyType) return [];
     if (propertyType === "studio" || propertyType === "one_room") return [1];
     if (propertyType === "two_room") return [2];
-    if (propertyType === "three_plus") return [2, 3, 4, 5]; // 5 = 5+
+    if (propertyType === "three_plus") return [2, 3, 4, 5];
     if (propertyType === "detached") return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     return [];
   })();
 
-  // 화장실 개수 옵션 (매물종류별)
+  // 화장실 개수 옵션
   const bathroomOptions = (() => {
     if (!propertyType) return [];
     if (propertyType === "studio" || propertyType === "one_room") return [1, 2];
     if (propertyType === "two_room") return [1, 2, 3];
-    if (propertyType === "three_plus") return [1, 2, 3, 4, 5, 6]; // 6 = 5+
+    if (propertyType === "three_plus") return [1, 2, 3, 4, 5, 6];
     if (propertyType === "detached") return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     return [];
   })();
@@ -397,7 +380,6 @@ export default function AddPropertyPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // 필수 정보 검증
     if (!address || address.trim() === "") {
       alert(
         currentLanguage === "ko"
@@ -409,7 +391,6 @@ export default function AddPropertyPage() {
       return;
     }
 
-    // 좌표 검증
     if (!coordinates || !coordinates.lat || !coordinates.lng) {
       alert(
         currentLanguage === "ko"
@@ -466,7 +447,6 @@ export default function AddPropertyPage() {
       return;
     }
 
-    // 매물명 필수 검증
     if (!propertyNickname || propertyNickname.trim() === "") {
       alert(
         currentLanguage === "ko"
@@ -515,11 +495,9 @@ export default function AddPropertyPage() {
 
     setLoading(true);
     try {
-      // KYC 1~3단계 토큰 확인
       const userData = await getCurrentUserData(user.uid);
       const kycSteps = userData?.kyc_steps || {};
-      const allStepsCompleted =
-        kycSteps.step1 && kycSteps.step2 && kycSteps.step3;
+      const allStepsCompleted = kycSteps.step1 && kycSteps.step2 && kycSteps.step3;
 
       if (!allStepsCompleted) {
         alert(
@@ -534,7 +512,6 @@ export default function AddPropertyPage() {
         return;
       }
 
-      // 인당 매물 수 제한 확인 (최대 5개)
       const propertyCount = await getPropertyCountByOwner(user.uid);
       if (propertyCount >= 5) {
         alert(
@@ -548,8 +525,6 @@ export default function AddPropertyPage() {
         return;
       }
 
-      // 동호수 조합 (비공개 - 별도 필드로만 저장)
-      // 호실 번호는 4자리로 패딩 (예: 1호 → 0001호)
       const formatRoomNumber = (room: string) => {
         const num = parseInt(room.replace(/\D/g, ""));
         if (isNaN(num)) return room;
@@ -565,10 +540,8 @@ export default function AddPropertyPage() {
               ? `${formatRoomNumber(roomNumber)}호`
               : undefined;
 
-      // 주소와 설명에는 동호수 포함하지 않음 (비공개)
       const publicAddress = `${apartmentName ? `${apartmentName}, ` : ""}${address}`;
 
-      // 이미지 업로드
       let imageUrls: string[];
       try {
         imageUrls = await Promise.all(
@@ -576,9 +549,7 @@ export default function AddPropertyPage() {
         );
       } catch (error) {
         console.error("S3 업로드 실패:", error);
-        // 실제 에러 메시지를 사용자에게 표시
-        const errorMessage =
-          error instanceof Error ? error.message : "S3 업로드 실패";
+        const errorMessage = error instanceof Error ? error.message : "S3 업로드 실패";
         alert(
           currentLanguage === "ko"
             ? `사진 업로드 실패: ${errorMessage}`
@@ -590,31 +561,30 @@ export default function AddPropertyPage() {
         return;
       }
 
-      // 날짜를 Date 객체로 변환 (LocalStorage용)
       const checkInDateObj = checkInDate || undefined;
       const checkOutDateObj = checkOutDate || undefined;
 
       await addProperty({
         title: apartmentName || address,
-        propertyNickname: propertyNickname.trim(), // 매물명 (임대인용, 필수)
-        original_description: propertyDescription, // 매물 설명 (빈 문자열 허용)
-        translated_description: "", // 나중에 번역 서비스로 채움
+        propertyNickname: propertyNickname.trim(),
+        original_description: propertyDescription,
+        translated_description: "",
         price: parseInt(weeklyRent.replace(/\D/g, "")),
         priceUnit: "vnd",
-        area: 0, // 나중에 추가 가능
+        area: 0,
         bedrooms: bedrooms,
         bathrooms: bathrooms,
-        coordinates: coordinates, // 좌표는 필수 (위에서 검증됨)
-        address: publicAddress, // 동호수 제외
+        coordinates: coordinates,
+        address: publicAddress,
         images: imageUrls,
         amenities: selectedFacilities,
-        unitNumber: unitNumber, // 동호수 (예약 완료 후에만 표시, 비공개)
+        unitNumber: unitNumber,
         propertyType,
         cleaningPerWeek: selectedFacilities.includes("cleaning") ? cleaningPerWeek : 0,
         petAllowed,
         ...(petAllowed && { maxPets }),
         ...(petAllowed && petFeeAmount.trim() && { petFee: parseInt(petFeeAmount.replace(/\D/g, ""), 10) || undefined }),
-        ownerId: user.uid, // 임대인 사용자 ID 저장
+        ownerId: user.uid,
         checkInDate: checkInDateObj,
         checkOutDate: checkOutDateObj,
         checkInTime: checkInTime,
@@ -625,7 +595,6 @@ export default function AddPropertyPage() {
         ...(icalPlatform && { icalPlatform }),
         ...(icalCalendarName.trim() && { icalCalendarName: icalCalendarName.trim() }),
         ...(icalUrl.trim() && { icalUrl: icalUrl.trim() }),
-        // 도시와 구 정보 저장
         ...(selectedCityId && { cityId: selectedCityId }),
         ...(selectedDistrictId && { districtId: selectedDistrictId }),
       });
@@ -639,16 +608,12 @@ export default function AddPropertyPage() {
       );
       router.replace("/profile/my-properties");
     } catch (error: any) {
-      // 중복 등록 등 예상된 비즈니스 로직 에러는 콘솔 에러를 남기지 않음 (개발 오버레이 방지)
       const knownErrors = ["OverlapDetected", "AlreadyBooked"];
       if (!knownErrors.includes(error.message)) {
         console.error("매물 등록 중 예기치 못한 실패:", error);
       }
 
-      if (
-        error.message === "OverlapDetected" ||
-        error.message === "AlreadyBooked"
-      ) {
+      if (error.message === "OverlapDetected" || error.message === "AlreadyBooked") {
         alert(
           currentLanguage === "ko"
             ? "이미 동일한 주소와 날짜에 등록된 매물이 있습니다."
@@ -671,13 +636,16 @@ export default function AddPropertyPage() {
   // 접근 권한 확인 중
   if (checkingAccess || authLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-500">
-          {currentLanguage === "ko"
-            ? "로딩 중..."
-            : currentLanguage === "vi"
-              ? "Đang tải..."
-              : "Loading..."}
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin" style={{ color: COLORS.deepBlue }} />
+          <span className="text-gray-500 font-sans">
+            {currentLanguage === "ko"
+              ? "로딩 중..."
+              : currentLanguage === "vi"
+                ? "Đang tải..."
+                : "Loading..."}
+          </span>
         </div>
       </div>
     );
@@ -688,16 +656,17 @@ export default function AddPropertyPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex justify-center">
-      <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative">
+    <div className="min-h-screen bg-gray-100 flex justify-center font-sans">
+      {/* PWA 모바일 컨테이너 */}
+      <div className="w-full max-w-[480px] bg-white min-h-screen shadow-2xl flex flex-col relative">
         {/* 상단 바 */}
         <TopBar />
 
-        {/* 콘텐츠 */}
-        <div className="px-6 py-6">
+        {/* 스크롤 가능한 콘텐츠 영역 */}
+        <div className="flex-1 overflow-y-auto pb-40">
           {/* 헤더 */}
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900 mb-1">
+          <div className="px-6 pt-6 pb-4">
+            <h1 className="text-2xl font-bold text-gray-900">
               {currentLanguage === "ko"
                 ? "새 매물 등록"
                 : currentLanguage === "vi"
@@ -706,26 +675,29 @@ export default function AddPropertyPage() {
             </h1>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* 이미지 업로드 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {currentLanguage === "ko"
-                  ? "사진 등록"
-                  : currentLanguage === "vi"
-                    ? "Đăng ảnh"
-                    : "Upload Photos"}
-                <span className="text-red-500 text-xs ml-1">*</span>
-                <span className="text-gray-500 text-xs ml-2">
+          <form onSubmit={handleSubmit} className="px-6 space-y-6">
+            {/* ===== 사진 등록 섹션 ===== */}
+            <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-semibold text-gray-900">
+                  {currentLanguage === "ko"
+                    ? "사진 등록"
+                    : currentLanguage === "vi"
+                      ? "Đăng ảnh"
+                      : "Upload Photos"}
+                  <span className="text-red-500 ml-1">*</span>
+                </h2>
+                <span className="text-sm text-gray-500">
                   ({images.length}/5)
                 </span>
-              </label>
+              </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              {/* 가로형 썸네일 리스트 */}
+              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
                 {imagePreviews.map((preview, index) => (
                   <div
                     key={index}
-                    className="relative aspect-square rounded-xl overflow-hidden border-2 border-gray-200"
+                    className="relative flex-shrink-0 w-24 h-24 rounded-2xl overflow-hidden border-2 border-gray-200"
                   >
                     <img
                       src={preview}
@@ -735,253 +707,70 @@ export default function AddPropertyPage() {
                     <button
                       type="button"
                       onClick={() => handleImageRemove(index)}
-                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors min-h-[28px] min-w-[28px] flex items-center justify-center"
                     >
                       <X className="w-4 h-4" />
                     </button>
                   </div>
                 ))}
+                
                 {images.length < 5 && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={handleAddImageClick}
-                      className="aspect-square rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors"
-                    >
-                      <Camera className="w-8 h-8 text-gray-400 mb-1" />
-                      <span className="text-xs text-gray-500">
-                        {currentLanguage === "ko"
-                          ? "추가"
-                          : currentLanguage === "vi"
-                            ? "Thêm"
-                            : "Add"}
-                      </span>
-                    </button>
-
-                    {/* 숨겨진 input들 */}
-                    <input
-                      ref={photoLibraryInputRef}
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={handlePhotoLibrarySelect}
-                      className="hidden"
-                    />
-                    <input
-                      ref={cameraInputRef}
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      onChange={handleCameraCapture}
-                      className="hidden"
-                    />
-                  </>
+                  <button
+                    type="button"
+                    onClick={handleAddImageClick}
+                    className="flex-shrink-0 w-24 h-24 rounded-2xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer transition-all min-h-[96px]"
+                    style={{ 
+                      borderColor: images.length < 5 ? COLORS.gray300 : COLORS.gray200,
+                    }}
+                  >
+                    <Plus className="w-8 h-8 text-gray-400 mb-1" />
+                    <span className="text-xs text-gray-500">
+                      {currentLanguage === "ko"
+                        ? "추가"
+                        : currentLanguage === "vi"
+                          ? "Thêm"
+                          : "Add"}
+                    </span>
+                  </button>
                 )}
               </div>
 
-              {/* 이미지 소스 선택 메뉴 */}
-              {showImageSourceMenu && (
-                <div
-                  className="fixed inset-0 bg-black/50 flex items-end z-50"
-                  onClick={() => setShowImageSourceMenu(false)}
-                >
-                  <div
-                    className="w-full bg-white rounded-t-2xl p-6"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">
-                      {currentLanguage === "ko"
-                        ? "사진 추가 방법 선택"
-                        : currentLanguage === "vi"
-                          ? "Chọn cách thêm ảnh"
-                          : "Select Photo Source"}
-                    </h3>
-                    <div className="space-y-3">
-                      <button
-                        type="button"
-                        onClick={handleSelectFromLibrary}
-                        className="w-full py-4 px-4 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-3"
-                      >
-                        <Camera className="w-5 h-5" />
-                        <span>
-                          {currentLanguage === "ko"
-                            ? "사진첩에서 선택"
-                            : currentLanguage === "vi"
-                              ? "Chọn từ thư viện ảnh"
-                              : "Select from Photo Library"}
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleTakePhoto}
-                        className="w-full py-4 px-4 bg-gray-100 text-gray-900 rounded-xl font-medium hover:bg-gray-200 transition-colors flex items-center justify-center gap-3"
-                      >
-                        <Camera className="w-5 h-5" />
-                        <span>
-                          {currentLanguage === "ko"
-                            ? "카메라로 촬영"
-                            : currentLanguage === "vi"
-                              ? "Chụp ảnh"
-                              : "Take Photo"}
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShowImageSourceMenu(false)}
-                        className="w-full py-3 px-4 text-gray-600 rounded-xl font-medium hover:bg-gray-100 transition-colors"
-                      >
-                        {currentLanguage === "ko"
-                          ? "취소"
-                          : currentLanguage === "vi"
-                            ? "Hủy"
-                            : "Cancel"}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {/* 숨겨진 input들 */}
+              <input
+                ref={photoLibraryInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handlePhotoLibrarySelect}
+                className="hidden"
+              />
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleCameraCapture}
+                className="hidden"
+              />
+            </section>
 
-              {/* 사진첩 모달 (카톡 스타일) */}
-              {showPhotoLibrary && (
-                <div className="fixed inset-0 bg-white z-50 flex flex-col">
-                  {/* 헤더 */}
-                  <div className="flex items-center justify-between p-4 border-b border-gray-200">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowPhotoLibrary(false);
-                        setPhotoLibraryFiles([]);
-                        photoLibraryPreviews.forEach((url) =>
-                          URL.revokeObjectURL(url),
-                        );
-                        setPhotoLibraryPreviews([]);
-                        setSelectedLibraryIndices(new Set());
-                        setFullScreenImageIndex(null);
-                      }}
-                      className="text-gray-700"
-                    >
-                      <X className="w-6 h-6" />
-                    </button>
-                    <h2 className="text-lg font-semibold text-gray-900">
-                      {currentLanguage === "ko"
-                        ? "사진 선택"
-                        : currentLanguage === "vi"
-                          ? "Chọn ảnh"
-                          : "Select Photos"}
-                    </h2>
-                    <div className="w-6" /> {/* 공간 맞춤 */}
-                  </div>
-
-                  {/* 사진 그리드 */}
-                  <div className="flex-1 overflow-y-auto p-2">
-                    <div className="grid grid-cols-4 gap-1">
-                      {photoLibraryPreviews.map((preview, index) => {
-                        const isSelected = selectedLibraryIndices.has(index);
-                        return (
-                          <div
-                            key={index}
-                            className="relative aspect-square"
-                            onClick={() => togglePhotoSelection(index)}
-                          >
-                            <img
-                              src={preview}
-                              alt={`Photo ${index + 1}`}
-                              className={`w-full h-full object-cover rounded ${
-                                isSelected ? "opacity-50" : ""
-                              }`}
-                            />
-                            {isSelected && (
-                              <div className="absolute inset-0 flex items-center justify-center bg-blue-500/30 rounded">
-                                <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
-                                  <Check className="w-4 h-4 text-white" />
-                                </div>
-                              </div>
-                            )}
-                            {/* 전체화면 보기 버튼 (우측 하단) */}
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleViewFullScreen(index);
-                              }}
-                              className="absolute bottom-1 right-1 bg-black/50 text-white rounded-full p-1.5 hover:bg-black/70 transition-colors"
-                            >
-                              <Maximize2 className="w-3 h-3" />
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* 하단 버튼 */}
-                  <div className="p-4 border-t border-gray-200">
-                    <button
-                      type="button"
-                      onClick={handleConfirmPhotoSelection}
-                      disabled={selectedLibraryIndices.size === 0}
-                      className="w-full py-3 px-4 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {currentLanguage === "ko"
-                        ? `선택한 ${selectedLibraryIndices.size}장 추가`
-                        : currentLanguage === "vi"
-                          ? `Thêm ${selectedLibraryIndices.size} ảnh đã chọn`
-                          : `Add ${selectedLibraryIndices.size} selected`}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* 전체화면 이미지 보기 */}
-              {fullScreenImageIndex !== null && (
-                <div className="fixed inset-0 bg-black z-[60] flex items-center justify-center">
-                  <img
-                    src={photoLibraryPreviews[fullScreenImageIndex]}
-                    alt={`Full screen ${fullScreenImageIndex + 1}`}
-                    className="max-w-full max-h-full object-contain"
-                  />
-                  {/* 우측 하단: 사진첩으로 돌아가기 버튼 */}
-                  <button
-                    type="button"
-                    onClick={handleBackToLibrary}
-                    className="absolute bottom-6 right-6 bg-white/90 text-gray-900 rounded-full p-4 hover:bg-white transition-colors shadow-lg flex items-center gap-2"
-                  >
-                    <ArrowLeft className="w-5 h-5" />
-                    <span className="font-medium">
-                      {currentLanguage === "ko"
-                        ? "사진첩"
-                        : currentLanguage === "vi"
-                          ? "Thư viện ảnh"
-                          : "Library"}
-                    </span>
-                  </button>
-                  {/* 닫기 버튼 (좌측 상단) */}
-                  <button
-                    type="button"
-                    onClick={handleBackToLibrary}
-                    className="absolute top-6 left-6 bg-white/90 text-gray-900 rounded-full p-2 hover:bg-white transition-colors"
-                  >
-                    <X className="w-6 h-6" />
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* 매물 종류 / 방 개수 / 화장실 수 */}
-            <div className="space-y-4">
-              <label className="block text-sm font-medium text-gray-700">
+            {/* ===== 매물 종류 섹션 ===== */}
+            <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+              <h2 className="text-base font-semibold text-gray-900 mb-4">
                 {currentLanguage === "ko"
                   ? "매물 종류"
                   : currentLanguage === "vi"
                     ? "Loại bất động sản"
                     : "Property Type"}
-                <span className="text-red-500 text-xs ml-1">*</span>
-              </label>
-              <div className="grid grid-cols-2 gap-2">
+                <span className="text-red-500 ml-1">*</span>
+              </h2>
+
+              {/* 칩 스타일 버튼 */}
+              <div className="flex flex-wrap gap-2">
                 {(
                   [
                     { value: "studio", ko: "스튜디오", vi: "Studio", en: "Studio" },
-                    { value: "one_room", ko: "원룸(방·거실 분리)", vi: "1 phòng", en: "1 Room" },
+                    { value: "one_room", ko: "원룸", vi: "1 phòng", en: "1 Room" },
                     { value: "two_room", ko: "2룸", vi: "2 phòng", en: "2 Rooms" },
                     { value: "three_plus", ko: "3+룸", vi: "3+ phòng", en: "3+ Rooms" },
                     { value: "detached", ko: "독채", vi: "Nhà riêng", en: "Detached" },
@@ -991,50 +780,51 @@ export default function AddPropertyPage() {
                     key={value}
                     type="button"
                     onClick={() => setPropertyType(value)}
-                    className={`px-4 py-2.5 rounded-xl border-2 text-sm font-medium transition-all ${
-                      propertyType === value
-                        ? "border-blue-500 bg-blue-50 text-blue-700"
-                        : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
-                    }`}
+                    className="px-4 py-2.5 rounded-full text-sm font-medium transition-all min-h-[44px]"
+                    style={{
+                      backgroundColor: propertyType === value ? COLORS.deepBlue : COLORS.gray100,
+                      color: propertyType === value ? COLORS.white : COLORS.gray700,
+                    }}
                   >
                     {currentLanguage === "ko" ? ko : currentLanguage === "vi" ? vi : en}
                   </button>
                 ))}
               </div>
 
+              {/* 방/화장실/최대인원 */}
               {propertyType && (
-                <div className="grid grid-cols-3 gap-3 pt-2">
+                <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-gray-100">
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                    <label className="block text-xs font-medium text-gray-500 mb-2">
                       {currentLanguage === "ko" ? "방 개수" : currentLanguage === "vi" ? "Số phòng" : "Bedrooms"}
                     </label>
                     <select
                       value={bedrooms}
                       onChange={(e) => setBedrooms(Number(e.target.value))}
                       disabled={propertyType === "studio" || propertyType === "one_room" || propertyType === "two_room"}
-                      className={`w-full px-4 py-2.5 border-2 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 ${
-                        propertyType === "studio" || propertyType === "one_room" || propertyType === "two_room"
-                          ? "bg-gray-200 border-gray-300 text-gray-500 cursor-not-allowed"
-                          : "bg-gray-50 border-gray-200"
-                      }`}
+                      className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm min-h-[44px] focus:outline-none transition-all"
+                      style={{
+                        backgroundColor: propertyType === "studio" || propertyType === "one_room" || propertyType === "two_room" ? COLORS.gray100 : COLORS.white,
+                      }}
                     >
                       {bedroomOptions.map((n) => (
                         <option key={n} value={n}>
-                          {n === 5 && (propertyType === "three_plus" || propertyType === "detached")
-                            ? "5+"
-                            : n}
+                          {n === 5 && (propertyType === "three_plus" || propertyType === "detached") ? "5+" : n}
                         </option>
                       ))}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                      {currentLanguage === "ko" ? "화장실 수" : currentLanguage === "vi" ? "Số phòng tắm" : "Bathrooms"}
+                    <label className="block text-xs font-medium text-gray-500 mb-2">
+                      {currentLanguage === "ko" ? "화장실" : currentLanguage === "vi" ? "Phòng tắm" : "Bathrooms"}
                     </label>
                     <select
                       value={bathrooms}
                       onChange={(e) => setBathrooms(Number(e.target.value))}
-                      className="w-full px-4 py-2.5 bg-gray-50 border-2 border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm min-h-[44px] focus:outline-none transition-all"
+                      style={{ 
+                        borderColor: COLORS.gray200,
+                      }}
                     >
                       {bathroomOptions.map((n) => (
                         <option key={n} value={n}>
@@ -1044,8 +834,8 @@ export default function AddPropertyPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                      {currentLanguage === "ko" ? "최대 인원" : currentLanguage === "vi" ? "Số người tối đa" : "Max Guests"}
+                    <label className="block text-xs font-medium text-gray-500 mb-2">
+                      {currentLanguage === "ko" ? "최대인원" : currentLanguage === "vi" ? "Tối đa" : "Max"}
                     </label>
                     <select
                       value={maxAdults}
@@ -1054,34 +844,36 @@ export default function AddPropertyPage() {
                         setMaxAdults(v);
                         setMaxChildren(0);
                       }}
-                      className="w-full px-4 py-2.5 bg-gray-50 border-2 border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm min-h-[44px] focus:outline-none transition-all"
                     >
                       {Array.from({ length: 20 }, (_, i) => i + 1).map((n) => (
                         <option key={n} value={n}>
-                          {n}{currentLanguage === "ko" ? "명" : currentLanguage === "vi" ? " người" : " guests"}
+                          {n}{currentLanguage === "ko" ? "명" : ""}
                         </option>
                       ))}
                     </select>
                   </div>
                 </div>
               )}
-            </div>
+            </section>
 
-            {/* 주소 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            {/* ===== 주소 섹션 ===== */}
+            <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+              <h2 className="text-base font-semibold text-gray-900 mb-4">
                 {currentLanguage === "ko"
                   ? "주소"
                   : currentLanguage === "vi"
                     ? "Địa chỉ"
                     : "Address"}
-                <span className="text-red-500 text-xs ml-1">*</span>
-              </label>
+                <span className="text-red-500 ml-1">*</span>
+              </h2>
+
               {(!address || !coordinates) && (
                 <button
                   type="button"
                   onClick={() => setShowAddressModal(true)}
-                  className="w-full px-4 py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 font-medium bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700 shadow-md hover:shadow-lg active:scale-[0.98]"
+                  className="w-full px-4 py-4 rounded-2xl transition-all flex items-center justify-center gap-3 min-h-[56px] text-white font-medium"
+                  style={{ backgroundColor: COLORS.deepBlue }}
                 >
                   <MapPin className="w-5 h-5" />
                   <span>
@@ -1093,28 +885,26 @@ export default function AddPropertyPage() {
                   </span>
                 </button>
               )}
+
               {address && coordinates && (
                 <div
-                  className="mt-3 p-4 bg-green-50 border-2 border-green-200 rounded-xl cursor-pointer hover:bg-green-100 transition-colors"
+                  className="p-4 rounded-2xl cursor-pointer transition-colors"
+                  style={{ backgroundColor: `${COLORS.emeraldGreen}10`, border: `2px solid ${COLORS.emeraldGreen}30` }}
                   onClick={() => setShowAddressModal(true)}
                 >
                   <div className="flex items-start gap-3">
-                    <div className="p-2 bg-green-100 rounded-lg flex-shrink-0">
-                      <Check className="w-5 h-5 text-green-600" />
+                    <div className="p-2 rounded-xl flex-shrink-0" style={{ backgroundColor: `${COLORS.emeraldGreen}20` }}>
+                      <Check className="w-5 h-5" style={{ color: COLORS.emeraldGreen }} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-medium text-green-700">
-                          {currentLanguage === "ko"
-                            ? "확정된 주소 (클릭하여 수정)"
-                            : currentLanguage === "vi"
-                              ? "Địa chỉ đã xác nhận"
-                              : "Confirmed Address"}
-                        </span>
-                      </div>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {address}
-                      </p>
+                      <span className="text-xs font-medium" style={{ color: COLORS.emeraldGreen }}>
+                        {currentLanguage === "ko"
+                          ? "확정된 주소 (클릭하여 수정)"
+                          : currentLanguage === "vi"
+                            ? "Địa chỉ đã xác nhận"
+                            : "Confirmed Address"}
+                      </span>
+                      <p className="text-sm font-semibold text-gray-900 mt-1">{address}</p>
                     </div>
                     <button
                       type="button"
@@ -1125,317 +915,186 @@ export default function AddPropertyPage() {
                         setSelectedCityId("");
                         setSelectedDistrictId("");
                       }}
-                      className="p-1.5 hover:bg-green-200 rounded-full transition-colors flex-shrink-0"
-                      aria-label={
-                        currentLanguage === "ko"
-                          ? "주소 삭제"
-                          : currentLanguage === "vi"
-                            ? "Xóa địa chỉ"
-                            : "Remove address"
-                      }
+                      className="p-2 rounded-full transition-colors flex-shrink-0 min-h-[36px] min-w-[36px] flex items-center justify-center"
+                      style={{ backgroundColor: `${COLORS.emeraldGreen}20` }}
                     >
                       <X className="w-4 h-4 text-gray-500" />
                     </button>
                   </div>
                 </div>
               )}
-            </div>
 
-            {/* 도시·구 */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                  {currentLanguage === "ko" ? "도시" : currentLanguage === "vi" ? "Thành phố" : "City"}
-                </label>
-                <div className={`w-full px-4 py-2.5 border-2 rounded-xl text-sm ${address && coordinates ? "bg-gray-100 border-gray-200 text-gray-700" : "bg-gray-100 border-gray-200 text-gray-400"}`}>
-                  {address && coordinates && selectedCityId
-                    ? (() => {
-                        const city = VIETNAM_CITIES.find((c) => c.id === selectedCityId);
-                        if (!city) return "—";
-                        const langMap: Record<string, string> = { ko: city.nameKo, vi: city.nameVi, en: city.name, ja: city.nameJa ?? city.name, zh: city.nameZh ?? city.name };
-                        return langMap[currentLanguage] ?? city.name;
-                      })()
-                    : (currentLanguage === "ko" ? "주소 입력 후 자동" : currentLanguage === "vi" ? "Tự động sau địa chỉ" : "Auto after address")}
+              {/* 도시/구 자동 표시 */}
+              <div className="grid grid-cols-2 gap-3 mt-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-2">
+                    {currentLanguage === "ko" ? "도시" : currentLanguage === "vi" ? "Thành phố" : "City"}
+                  </label>
+                  <div className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm bg-gray-50 min-h-[44px] flex items-center">
+                    {address && coordinates && selectedCityId
+                      ? (() => {
+                          const city = VIETNAM_CITIES.find((c) => c.id === selectedCityId);
+                          if (!city) return "—";
+                          const langMap: Record<string, string> = { ko: city.nameKo, vi: city.nameVi, en: city.name, ja: city.nameJa ?? city.name, zh: city.nameZh ?? city.name };
+                          return langMap[currentLanguage] ?? city.name;
+                        })()
+                      : <span className="text-gray-400">{currentLanguage === "ko" ? "자동 입력" : "Auto"}</span>}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-2">
+                    {currentLanguage === "ko" ? "구" : currentLanguage === "vi" ? "Quận" : "District"}
+                  </label>
+                  <select
+                    value={selectedDistrictId}
+                    onChange={(e) => setSelectedDistrictId(e.target.value)}
+                    disabled={!address || !coordinates}
+                    className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm min-h-[44px] focus:outline-none transition-all"
+                    style={{ backgroundColor: !address || !coordinates ? COLORS.gray100 : COLORS.white }}
+                  >
+                    <option value="">{currentLanguage === "ko" ? "선택" : "Select"}</option>
+                    {getDistrictsByCityId(selectedCityId).map((d) => {
+                      const langMap: Record<string, string> = { ko: d.nameKo, vi: d.nameVi, en: d.name, ja: d.nameJa ?? d.name, zh: d.nameZh ?? d.name };
+                      return <option key={d.id} value={d.id}>{langMap[currentLanguage] ?? d.name}</option>;
+                    })}
+                  </select>
                 </div>
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                  {currentLanguage === "ko" ? "구" : currentLanguage === "vi" ? "Quận" : "District"}
-                </label>
-                <select
-                  value={selectedDistrictId}
-                  onChange={(e) => setSelectedDistrictId(e.target.value)}
-                  disabled={!address || !coordinates}
-                  className={`w-full px-4 py-2.5 border-2 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 ${
-                    address && coordinates ? "bg-gray-50 border-gray-200" : "bg-gray-200 border-gray-300 text-gray-500 cursor-not-allowed"
-                  }`}
-                >
-                  <option value="">{currentLanguage === "ko" ? "선택" : currentLanguage === "vi" ? "Chọn" : "Select"}</option>
-                  {getDistrictsByCityId(selectedCityId).map((d) => {
-                    const langMap: Record<string, string> = { ko: d.nameKo, vi: d.nameVi, en: d.name, ja: d.nameJa ?? d.name, zh: d.nameZh ?? d.name };
-                    return <option key={d.id} value={d.id}>{langMap[currentLanguage] ?? d.name}</option>;
-                  })}
-                </select>
-              </div>
-            </div>
 
-            {/* 동호수 입력 (동, 호실 분리) */}
-            <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                {currentLanguage === "ko"
-                  ? "동호수"
-                  : currentLanguage === "vi"
-                    ? "Số phòng"
-                    : "Unit Number"}
-              </label>
-              <div className="grid grid-cols-2 gap-3 mb-3">
-                {/* 동 입력 */}
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                    {currentLanguage === "ko"
-                      ? "동"
-                      : currentLanguage === "vi"
-                        ? "Tòa"
-                        : "Building"}
-                  </label>
-                  <input
-                    type="text"
-                    value={buildingNumber}
-                    onChange={(e) => setBuildingNumber(e.target.value)}
-                    placeholder={
-                      currentLanguage === "ko"
-                        ? "예: A, 1"
-                        : currentLanguage === "vi"
-                          ? "VD: A, 1"
-                          : "e.g., A, 1"
-                    }
-                    className="w-full px-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
-                  />
-                </div>
-                {/* 호실 입력 */}
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                    {currentLanguage === "ko"
-                      ? "호실"
-                      : currentLanguage === "vi"
-                        ? "Phòng"
-                        : "Room"}
-                  </label>
-                  <input
-                    type="text"
-                    value={roomNumber}
-                    onChange={(e) => setRoomNumber(e.target.value)}
-                    placeholder={
-                      currentLanguage === "ko"
-                        ? "예: 101, 301"
-                        : currentLanguage === "vi"
-                          ? "VD: 101, 301"
-                          : "e.g., 101, 301"
-                    }
-                    className="w-full px-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
-                  />
-                </div>
-              </div>
-              <p className="text-xs text-gray-500 flex items-start gap-1">
-                <span className="text-blue-600">ℹ️</span>
-                <span>
+              {/* 동호수 */}
+              <div className="mt-4 p-4 rounded-2xl" style={{ backgroundColor: COLORS.gray50 }}>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
                   {currentLanguage === "ko"
-                    ? "동호수는 예약이 완료된 이후에 임차인에게만 표시됩니다."
+                    ? "동호수"
                     : currentLanguage === "vi"
-                      ? "Số phòng chỉ hiển thị cho người thuê sau khi đặt chỗ được hoàn thành."
-                      : "Unit number will only be visible to tenants after booking is completed."}
-                </span>
-              </p>
-            </div>
+                      ? "Số phòng"
+                      : "Unit Number"}
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-2">
+                      {currentLanguage === "ko" ? "동" : currentLanguage === "vi" ? "Tòa" : "Building"}
+                    </label>
+                    <input
+                      type="text"
+                      value={buildingNumber}
+                      onChange={(e) => setBuildingNumber(e.target.value)}
+                      placeholder={currentLanguage === "ko" ? "예: A, 1" : "e.g., A"}
+                      className="w-full px-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl text-sm min-h-[44px] focus:outline-none transition-all"
+                      style={{ borderColor: COLORS.gray200 }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-2">
+                      {currentLanguage === "ko" ? "호실" : currentLanguage === "vi" ? "Phòng" : "Room"}
+                    </label>
+                    <input
+                      type="text"
+                      value={roomNumber}
+                      onChange={(e) => setRoomNumber(e.target.value)}
+                      placeholder={currentLanguage === "ko" ? "예: 101" : "e.g., 101"}
+                      className="w-full px-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl text-sm min-h-[44px] focus:outline-none transition-all"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 mt-3 flex items-start gap-1">
+                  <span style={{ color: COLORS.deepBlue }}>i</span>
+                  <span>
+                    {currentLanguage === "ko"
+                      ? "동호수는 예약이 완료된 이후에 임차인에게만 표시됩니다."
+                      : currentLanguage === "vi"
+                        ? "Số phòng chỉ hiển thị cho người thuê sau khi đặt chỗ được hoàn thành."
+                        : "Unit number will only be visible to tenants after booking is completed."}
+                  </span>
+                </p>
+              </div>
+            </section>
 
-            {/* 임대 희망 날짜 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
+            {/* ===== 임대 희망 날짜 섹션 ===== */}
+            <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+              <h2 className="text-base font-semibold text-gray-900 mb-4">
                 {currentLanguage === "ko"
                   ? "임대 희망 날짜"
                   : currentLanguage === "vi"
-                    ? "Ngày cho thuê mong muốn"
-                    : "Desired Rental Dates"}
-              </label>
+                    ? "Ngày cho thuê"
+                    : "Rental Dates"}
+              </h2>
               <div className="grid grid-cols-2 gap-3">
-                {/* 체크인 날짜 */}
                 <button
                   type="button"
                   onClick={() => {
                     setCalendarMode("checkin");
                     setShowCalendar(true);
                   }}
-                  className="flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border-2 border-gray-200"
+                  className="flex items-center gap-3 px-4 py-3 rounded-2xl transition-colors min-h-[56px] border-2"
+                  style={{ borderColor: COLORS.gray200, backgroundColor: COLORS.gray50 }}
                 >
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-gray-600" />
-                    <div className="text-left">
-                      <div className="text-xs text-gray-500">
-                        {currentLanguage === "ko"
-                          ? "시작일"
-                          : currentLanguage === "vi"
-                            ? "Ngày bắt đầu"
-                            : "Start Date"}
-                      </div>
-                      <div className="text-sm font-medium text-gray-900">
-                        {checkInDate
-                          ? (() => {
-                              try {
-                                let date: Date | null = null;
-                                if (checkInDate instanceof Date) {
-                                  date = checkInDate;
-                                } else if (typeof checkInDate === "string") {
-                                  date = new Date(checkInDate);
-                                }
-                                if (!date || isNaN(date.getTime())) {
-                                  return currentLanguage === "ko"
-                                    ? "날짜 선택"
-                                    : currentLanguage === "vi"
-                                      ? "Chọn ngày"
-                                      : "Select date";
-                                }
-                                const month = date.getMonth() + 1;
-                                const day = date.getDate();
-                                if (isNaN(month) || isNaN(day)) {
-                                  return currentLanguage === "ko"
-                                    ? "날짜 선택"
-                                    : currentLanguage === "vi"
-                                      ? "Chọn ngày"
-                                      : "Select date";
-                                }
-                                return date.toLocaleDateString(
-                                  currentLanguage === "ko"
-                                    ? "ko-KR"
-                                    : currentLanguage === "vi"
-                                      ? "vi-VN"
-                                      : "en-US",
-                                  {
-                                    month: "short",
-                                    day: "numeric",
-                                  },
-                                );
-                              } catch {
-                                return currentLanguage === "ko"
-                                  ? "날짜 선택"
-                                  : currentLanguage === "vi"
-                                    ? "Chọn ngày"
-                                    : "Select date";
-                              }
-                            })()
-                          : currentLanguage === "ko"
-                            ? "날짜 선택"
-                            : currentLanguage === "vi"
-                              ? "Chọn ngày"
-                              : "Select date"}
-                      </div>
+                  <Calendar className="w-5 h-5" style={{ color: COLORS.deepBlue }} />
+                  <div className="text-left">
+                    <div className="text-xs text-gray-500">
+                      {currentLanguage === "ko" ? "시작일" : "Start"}
+                    </div>
+                    <div className="text-sm font-medium text-gray-900">
+                      {checkInDate
+                        ? checkInDate.toLocaleDateString(
+                            currentLanguage === "ko" ? "ko-KR" : currentLanguage === "vi" ? "vi-VN" : "en-US",
+                            { month: "short", day: "numeric" }
+                          )
+                        : currentLanguage === "ko" ? "선택" : "Select"}
                     </div>
                   </div>
                 </button>
 
-                {/* 체크아웃 날짜 */}
                 <button
                   type="button"
                   onClick={() => {
                     setCalendarMode("checkout");
                     setShowCalendar(true);
                   }}
-                  className="flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border-2 border-gray-200"
+                  className="flex items-center gap-3 px-4 py-3 rounded-2xl transition-colors min-h-[56px] border-2"
+                  style={{ borderColor: COLORS.gray200, backgroundColor: COLORS.gray50 }}
                 >
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-gray-600" />
-                    <div className="text-left">
-                      <div className="text-xs text-gray-500">
-                        {currentLanguage === "ko"
-                          ? "종료일"
-                          : currentLanguage === "vi"
-                            ? "Ngày kết thúc"
-                            : "End Date"}
-                      </div>
-                      <div className="text-sm font-medium text-gray-900">
-                        {checkOutDate
-                          ? (() => {
-                              try {
-                                let date: Date | null = null;
-                                if (checkOutDate instanceof Date) {
-                                  date = checkOutDate;
-                                } else if (typeof checkOutDate === "string") {
-                                  date = new Date(checkOutDate);
-                                }
-                                if (!date || isNaN(date.getTime())) {
-                                  return currentLanguage === "ko"
-                                    ? "날짜 선택"
-                                    : currentLanguage === "vi"
-                                      ? "Chọn ngày"
-                                      : "Select date";
-                                }
-                                const month = date.getMonth() + 1;
-                                const day = date.getDate();
-                                if (isNaN(month) || isNaN(day)) {
-                                  return currentLanguage === "ko"
-                                    ? "날짜 선택"
-                                    : currentLanguage === "vi"
-                                      ? "Chọn ngày"
-                                      : "Select date";
-                                }
-                                return date.toLocaleDateString(
-                                  currentLanguage === "ko"
-                                    ? "ko-KR"
-                                    : currentLanguage === "vi"
-                                      ? "vi-VN"
-                                      : "en-US",
-                                  {
-                                    month: "short",
-                                    day: "numeric",
-                                  },
-                                );
-                              } catch {
-                                return currentLanguage === "ko"
-                                  ? "날짜 선택"
-                                  : currentLanguage === "vi"
-                                    ? "Chọn ngày"
-                                    : "Select date";
-                              }
-                            })()
-                          : currentLanguage === "ko"
-                            ? "날짜 선택"
-                            : currentLanguage === "vi"
-                              ? "Chọn ngày"
-                              : "Select date"}
-                      </div>
+                  <Calendar className="w-5 h-5" style={{ color: COLORS.deepBlue }} />
+                  <div className="text-left">
+                    <div className="text-xs text-gray-500">
+                      {currentLanguage === "ko" ? "종료일" : "End"}
+                    </div>
+                    <div className="text-sm font-medium text-gray-900">
+                      {checkOutDate
+                        ? checkOutDate.toLocaleDateString(
+                            currentLanguage === "ko" ? "ko-KR" : currentLanguage === "vi" ? "vi-VN" : "en-US",
+                            { month: "short", day: "numeric" }
+                          )
+                        : currentLanguage === "ko" ? "선택" : "Select"}
                     </div>
                   </div>
                 </button>
               </div>
-            </div>
+            </section>
 
-            {/* 1주일 임대료 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            {/* ===== 1주일 임대료 섹션 ===== */}
+            <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+              <h2 className="text-base font-semibold text-gray-900 mb-1">
                 {currentLanguage === "ko"
                   ? "1주일 임대료"
                   : currentLanguage === "vi"
                     ? "Giá thuê 1 tuần"
                     : "Weekly Rent"}
-                <span className="text-red-500 text-xs ml-1">*</span>
-                <span className="text-gray-500 text-xs ml-2 font-normal">
-                  (
-                  {currentLanguage === "ko"
-                    ? "공과금/관리비 포함"
-                    : currentLanguage === "vi"
-                      ? "Bao gồm phí dịch vụ/quản lý"
-                      : "Utilities/Management fees included"}
-                  )
-                </span>
-              </label>
-              <div className="flex items-center gap-2">
+                <span className="text-red-500 ml-1">*</span>
+              </h2>
+              <p className="text-xs text-gray-500 mb-4">
+                {currentLanguage === "ko"
+                  ? "공과금/관리비 포함"
+                  : currentLanguage === "vi"
+                    ? "Bao gồm phí dịch vụ"
+                    : "Utilities included"}
+              </p>
+              <div className="flex items-center gap-3">
                 <input
                   type="text"
                   value={
                     weeklyRent
-                      ? parseInt(
-                          weeklyRent.replace(/\D/g, "") || "0",
-                          10,
-                        ).toLocaleString()
+                      ? parseInt(weeklyRent.replace(/\D/g, "") || "0", 10).toLocaleString()
                       : ""
                   }
                   onChange={(e) => {
@@ -1443,23 +1102,25 @@ export default function AddPropertyPage() {
                     setWeeklyRent(value);
                   }}
                   placeholder="0"
-                  className="flex-1 px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-2xl min-h-[48px] text-lg font-semibold focus:outline-none transition-all"
+                  style={{ borderColor: COLORS.gray200 }}
                   required
                 />
-                <span className="text-gray-600 font-medium">VND</span>
+                <span className="text-gray-600 font-semibold text-lg">VND</span>
               </div>
-            </div>
+            </section>
 
-            {/* 숙소시설 및 정책 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
+            {/* ===== 시설 및 정책 섹션 ===== */}
+            <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+              <h2 className="text-base font-semibold text-gray-900 mb-4">
                 {currentLanguage === "ko"
                   ? "숙소시설 및 정책"
                   : currentLanguage === "vi"
                     ? "Tiện ích và chính sách"
                     : "Facilities & Policy"}
-              </label>
-              <div className="space-y-4">
+              </h2>
+
+              <div className="space-y-5">
                 {FACILITY_CATEGORIES.map((cat) => {
                   const options = FACILITY_OPTIONS.filter((o) => o.category === cat.id);
                   const catLabel = (cat.label as any)[currentLanguage] || cat.label.en;
@@ -1467,131 +1128,138 @@ export default function AddPropertyPage() {
                   const fullFurniture = cat.id === "furniture" && FULL_FURNITURE_IDS.every((id) => selectedFacilities.includes(id));
                   const fullElectronics = cat.id === "electronics" && FULL_ELECTRONICS_IDS.every((id) => selectedFacilities.includes(id));
                   const fullOptionKitchen = cat.id === "kitchen" && FULL_OPTION_KITCHEN_IDS.every((id) => selectedFacilities.includes(id));
+                  const hasBadge = fullFurniture || fullElectronics || fullOptionKitchen;
+
                   return (
-                    <div key={cat.id}>
-                      <div className="flex flex-wrap items-center gap-2 mb-2">
-                        <p className="text-xs font-medium text-gray-500">{catLabel}</p>
+                    <div key={cat.id} className="p-4 rounded-2xl" style={{ backgroundColor: COLORS.gray50 }}>
+                      <div className="flex flex-wrap items-center gap-2 mb-3">
+                        <p className="text-sm font-medium text-gray-700">{catLabel}</p>
                         {isBadgeCategory && (
-                          <p className="text-[10px] text-gray-500">
-                            {currentLanguage === "ko"
-                              ? "모든 아이콘 선택시 뱃지 획득"
-                              : currentLanguage === "vi"
-                                ? "Chọn đủ tất cả để nhận huy hiệu"
-                                : "Select all to earn badge"}
+                          <p className="text-xs" style={{ color: hasBadge ? COLORS.emeraldGreen : COLORS.gray400 }}>
+                            {hasBadge ? (
+                              <span className="flex items-center gap-1">
+                                <Sparkles className="w-3 h-3" />
+                                {currentLanguage === "ko" ? "뱃지 획득!" : "Badge earned!"}
+                              </span>
+                            ) : (
+                              currentLanguage === "ko"
+                                ? "모든 아이콘 선택 시 뱃지 획득"
+                                : "Select all for badge"
+                            )}
                           </p>
                         )}
                       </div>
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-4 gap-2">
                         {options.map((opt) => {
                           const Icon = opt.icon;
                           const isSelected = selectedFacilities.includes(opt.id);
                           const label = (opt.label as any)[currentLanguage] || opt.label.en;
                           const isPet = opt.id === "pet";
                           const isCleaning = opt.id === "cleaning";
+
                           return (
                             <div key={opt.id} className="flex flex-col items-center gap-1">
                               <button
                                 type="button"
                                 onClick={() => toggleFacility(opt.id)}
-                                className={`w-full flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border-2 transition-all ${
-                                  isSelected
-                                    ? "border-blue-500 bg-blue-50 text-blue-700"
-                                    : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
-                                }`}
+                                className="w-14 h-14 rounded-2xl flex items-center justify-center transition-all min-h-[56px] min-w-[56px]"
+                                style={{
+                                  backgroundColor: isSelected ? COLORS.deepBlue : COLORS.white,
+                                  border: `2px solid ${isSelected ? COLORS.deepBlue : COLORS.gray200}`,
+                                }}
                               >
-                                <Icon className={`w-5 h-5 ${isSelected ? "text-blue-600" : "text-gray-400"}`} />
-                                <span className="text-[10px] font-medium text-center leading-tight">{label}</span>
+                                <Icon
+                                  className="w-6 h-6"
+                                  style={{ color: isSelected ? COLORS.white : COLORS.gray500 }}
+                                />
                               </button>
-                              {isPet && isSelected && (
-                                <div className="w-full space-y-1">
-                                  <div className="flex items-center gap-1">
-                                    <span className="text-[9px] text-gray-600 shrink-0">
-                                      {currentLanguage === "ko" ? "최대 마리수" : currentLanguage === "vi" ? "Số con tối đa" : "Max pets"}
-                                    </span>
-                                    <select
-                                      value={maxPets}
-                                      onChange={(e) => setMaxPets(Number(e.target.value))}
-                                      className="flex-1 px-1 py-0.5 text-[10px] border border-gray-200 rounded focus:ring-1 focus:ring-blue-500 bg-white"
-                                    >
-                                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-                                        <option key={n} value={n}>{n}</option>
-                                      ))}
-                                    </select>
-                                  </div>
-                                  <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-lg bg-blue-50/80 border border-blue-200">
-                                    <input
-                                      type="text"
-                                      value={petFeeAmount ? parseInt(petFeeAmount.replace(/\D/g, ""), 10).toLocaleString() : ""}
-                                      onChange={(e) => setPetFeeAmount(e.target.value.replace(/\D/g, ""))}
-                                      placeholder="0"
-                                      className="w-14 px-1.5 py-0.5 text-[10px] border border-gray-200 rounded focus:ring-1 focus:ring-blue-500"
-                                    />
-                                    <span className="text-[9px] text-gray-600 font-medium shrink-0">VND</span>
-                                  </div>
-                                </div>
-                              )}
-                              {isCleaning && isSelected && (
-                                <div className="w-full">
-                                  <select
-                                    value={cleaningPerWeek}
-                                    onChange={(e) => setCleaningPerWeek(Number(e.target.value))}
-                                    className="w-full px-1.5 py-0.5 text-[10px] border border-gray-200 rounded-lg focus:ring-1 focus:ring-blue-500 bg-white"
-                                  >
-                                    {[1, 2, 3, 4, 5, 6, 7].map((n) => (
-                                      <option key={n} value={n}>
-                                        {n}
-                                        {currentLanguage === "ko" ? "회" : currentLanguage === "vi" ? " lần" : "x"}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </div>
-                              )}
+                              <span className="text-[10px] text-gray-600 text-center leading-tight line-clamp-2">
+                                {label}
+                              </span>
                             </div>
                           );
                         })}
                       </div>
-                      {fullFurniture && (
-                        <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 text-green-800 text-[10px] font-bold border border-green-300">
-                          <Sparkles className="w-3.5 h-3.5" />
-                          {currentLanguage === "ko" ? "풀 가구" : currentLanguage === "vi" ? "Nội thất đầy đủ" : "Full Furniture"}
+
+                      {/* 펫 추가 옵션 */}
+                      {cat.id === "policy" && petAllowed && (
+                        <div className="mt-4 pt-4 border-t border-gray-200 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600">
+                              {currentLanguage === "ko" ? "최대 마리수" : "Max pets"}
+                            </span>
+                            <select
+                              value={maxPets}
+                              onChange={(e) => setMaxPets(Number(e.target.value))}
+                              className="px-3 py-2 border-2 border-gray-200 rounded-xl text-sm min-h-[40px]"
+                            >
+                              {[1, 2, 3, 4, 5].map((n) => (
+                                <option key={n} value={n}>{n}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm text-gray-600 mb-2">
+                              {currentLanguage === "ko" ? "펫 요금 (선택)" : "Pet fee (optional)"}
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={petFeeAmount ? parseInt(petFeeAmount.replace(/\D/g, "") || "0", 10).toLocaleString() : ""}
+                                onChange={(e) => setPetFeeAmount(e.target.value.replace(/\D/g, ""))}
+                                placeholder="0"
+                                className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-xl text-sm min-h-[40px]"
+                              />
+                              <span className="text-gray-500 text-sm">VND</span>
+                            </div>
+                          </div>
                         </div>
                       )}
-                      {fullElectronics && (
-                        <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 text-green-800 text-[10px] font-bold border border-green-300">
-                          <Sparkles className="w-3.5 h-3.5" />
-                          {currentLanguage === "ko" ? "풀 가전" : currentLanguage === "vi" ? "Điện tử đầy đủ" : "Full Electronics"}
-                        </div>
-                      )}
-                      {fullOptionKitchen && (
-                        <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 text-green-800 text-[10px] font-bold border border-green-300">
-                          <Sparkles className="w-3.5 h-3.5" />
-                          {currentLanguage === "ko" ? "풀옵션 주방" : currentLanguage === "vi" ? "Bếp đầy đủ" : "Full Kitchen"}
+
+                      {/* 청소 횟수 */}
+                      {cat.id === "policy" && selectedFacilities.includes("cleaning") && (
+                        <div className="mt-4 pt-4 border-t border-gray-200">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600">
+                              {currentLanguage === "ko" ? "주당 청소 횟수" : "Cleaning per week"}
+                            </span>
+                            <select
+                              value={cleaningPerWeek}
+                              onChange={(e) => setCleaningPerWeek(Number(e.target.value))}
+                              className="px-3 py-2 border-2 border-gray-200 rounded-xl text-sm min-h-[40px]"
+                            >
+                              {[1, 2, 3, 4, 5, 6, 7].map((n) => (
+                                <option key={n} value={n}>{n}{currentLanguage === "ko" ? "회" : "x"}</option>
+                              ))}
+                            </select>
+                          </div>
                         </div>
                       )}
                     </div>
                   );
                 })}
               </div>
-            </div>
+            </section>
 
-            {/* 체크인/체크아웃 시간 - 매물명 위에 위치 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            {/* ===== 체크인/체크아웃 시간 섹션 ===== */}
+            <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+              <h2 className="text-base font-semibold text-gray-900 mb-4">
                 {currentLanguage === "ko"
                   ? "체크인/체크아웃 시간"
                   : currentLanguage === "vi"
                     ? "Giờ check-in/check-out"
                     : "Check-in/Check-out Time"}
-              </label>
+              </h2>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                    {currentLanguage === "ko" ? "체크인" : currentLanguage === "vi" ? "Check-in" : "Check-in"}
+                  <label className="block text-xs font-medium text-gray-500 mb-2">
+                    {currentLanguage === "ko" ? "체크인" : "Check-in"}
                   </label>
                   <select
                     value={checkInTime}
                     onChange={(e) => setCheckInTime(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-gray-50 border-2 border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-2xl text-sm min-h-[48px] focus:outline-none transition-all"
+                    style={{ backgroundColor: COLORS.gray50 }}
                   >
                     {Array.from({ length: 24 }, (_, i) => {
                       const hour = i.toString().padStart(2, '0');
@@ -1602,13 +1270,14 @@ export default function AddPropertyPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                    {currentLanguage === "ko" ? "체크아웃" : currentLanguage === "vi" ? "Check-out" : "Check-out"}
+                  <label className="block text-xs font-medium text-gray-500 mb-2">
+                    {currentLanguage === "ko" ? "체크아웃" : "Check-out"}
                   </label>
                   <select
                     value={checkOutTime}
                     onChange={(e) => setCheckOutTime(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-gray-50 border-2 border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-2xl text-sm min-h-[48px] focus:outline-none transition-all"
+                    style={{ backgroundColor: COLORS.gray50 }}
                   >
                     {Array.from({ length: 24 }, (_, i) => {
                       const hour = i.toString().padStart(2, '0');
@@ -1619,63 +1288,69 @@ export default function AddPropertyPage() {
                   </select>
                 </div>
               </div>
-            </div>
+            </section>
 
-            {/* 매물명 (임대인용) - 필수사항 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            {/* ===== 매물명 섹션 ===== */}
+            <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+              <h2 className="text-base font-semibold text-gray-900 mb-4">
                 {getUIText('propertyNickname', currentLanguage)}
-                <span className="text-red-500 text-xs ml-1">*</span>
-              </label>
+                <span className="text-red-500 ml-1">*</span>
+              </h2>
               <input
                 type="text"
                 value={propertyNickname}
                 onChange={(e) => setPropertyNickname(e.target.value)}
                 placeholder={getUIText('propertyNicknamePlaceholder', currentLanguage)}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-2xl min-h-[48px] focus:outline-none transition-all"
+                style={{ borderColor: COLORS.gray200 }}
                 required
               />
-            </div>
+            </section>
 
-            {/* 매물 설명 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            {/* ===== 매물 설명 섹션 ===== */}
+            <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+              <h2 className="text-base font-semibold text-gray-900 mb-4">
                 {currentLanguage === "ko"
                   ? "매물 설명"
                   : currentLanguage === "vi"
                     ? "Mô tả bất động sản"
                     : "Property Description"}
-                <span className="text-red-500 text-xs ml-1">*</span>
-              </label>
+                <span className="text-red-500 ml-1">*</span>
+              </h2>
               <textarea
                 value={propertyDescription}
                 onChange={(e) => setPropertyDescription(e.target.value)}
                 placeholder={
                   currentLanguage === "ko"
-                    ? "매물에 대한 상세 설명을 입력해주세요. 예: 새로 지어진 스튜디오 아파트로, 퀴언 1 중심부에 위치해 있습니다. 33m² 면적에 에어컨, 냉장고, 세탁기, 인덕션 레인지 등 모든 편의시설이 구비되어 있습니다. 벤탄 시장, 9월 23일 공원, 쇼핑몰과 가깝습니다. 관광객이나 단기 출장자에게 적합합니다."
+                    ? "매물에 대한 상세 설명을 입력해주세요..."
                     : currentLanguage === "vi"
-                      ? "Nhập mô tả chi tiết về bất động sản. Ví dụ: Căn hộ studio mới xây, nằm ở trung tâm Quận 1. Diện tích 33m2, đầy đủ tiện nghi: máy lạnh, tủ lạnh, máy giặt, bếp từ. Gần chợ Bến Thành, công viên 23/9, các trung tâm thương mại. Phù hợp cho khách du lịch, người đi công tác ngắn hạn."
-                      : "Enter detailed description of the property. Example: Newly built studio apartment located in the center of District 1. 33m² area with all amenities: air conditioning, refrigerator, washing machine, induction stove. Close to Ben Thanh Market, 23/9 Park, shopping malls. Suitable for tourists or short-term business travelers."
+                      ? "Nhập mô tả chi tiết về bất động sản..."
+                      : "Enter detailed description..."
                 }
                 rows={4}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-2xl resize-none min-h-[120px] focus:outline-none transition-all"
+                style={{ borderColor: COLORS.gray200 }}
                 required
               />
-              <p className="text-xs text-gray-500 mt-1">
-                {currentLanguage === "ko"
-                  ? "베트남어로 입력해주세요. 자동 번역 기능이 제공됩니다."
-                  : currentLanguage === "vi"
-                    ? "Vui lòng nhập bằng tiếng Việt. Tính năng dịch tự động sẽ được cung cấp."
-                    : "Please enter in Vietnamese. Automatic translation feature will be provided."}
+              <p className="text-xs mt-3 flex items-start gap-2" style={{ color: COLORS.emeraldGreen }}>
+                <span>i</span>
+                <span>
+                  {currentLanguage === "ko"
+                    ? "베트남어로 입력해주세요. 자동 번역 기능이 제공됩니다."
+                    : currentLanguage === "vi"
+                      ? "Vui lòng nhập bằng tiếng Việt. Tính năng dịch tự động sẽ được cung cấp."
+                      : "Please enter in Vietnamese. Automatic translation will be provided."}
+                </span>
               </p>
-            </div>
+            </section>
 
-            {/* 외부 캘린더 가져오기 (드롭다운) - 등록 버튼 바로 위 */}
-            <div className="rounded-xl border-2 border-gray-200 overflow-hidden">
+            {/* ===== 외부 캘린더 섹션 ===== */}
+            <section className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
               <button
                 type="button"
                 onClick={() => setShowIcalDropdown(!showIcalDropdown)}
-                className="w-full py-3.5 px-4 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+                className="w-full py-4 px-5 flex items-center justify-between transition-colors text-left min-h-[56px]"
+                style={{ backgroundColor: COLORS.gray50 }}
               >
                 <span className="text-sm font-medium text-gray-700">
                   {currentLanguage === "ko"
@@ -1691,94 +1366,306 @@ export default function AddPropertyPage() {
                 )}
               </button>
               {showIcalDropdown && (
-                <div className="p-4 pt-2 border-t border-gray-200 bg-white space-y-3">
+                <div className="p-5 pt-3 border-t border-gray-200 bg-white space-y-4">
                   <p className="text-xs text-gray-500">
                     {currentLanguage === "ko"
-                      ? "에어비앤비·아고다 등 예약을 500stay와 동기화합니다. iCal URL(.ics)을 입력하세요."
-                      : currentLanguage === "vi"
-                        ? "Đồng bộ đặt phòng từ Airbnb, Agoda,... với 500stay. Nhập URL iCal (.ics)."
-                        : "Sync bookings from Airbnb, Agoda, etc. with 500stay. Enter iCal URL (.ics)."}
+                      ? "에어비앤비, 아고다 등 예약을 500stay와 동기화합니다."
+                      : "Sync bookings from Airbnb, Agoda, etc."}
                   </p>
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">
-                      {currentLanguage === "ko" ? "플랫폼" : currentLanguage === "vi" ? "Nền tảng" : "Platform"}
+                    <label className="block text-xs text-gray-500 mb-2">
+                      {currentLanguage === "ko" ? "플랫폼" : "Platform"}
                     </label>
                     <select
                       value={icalPlatform}
                       onChange={(e) => setIcalPlatform(e.target.value)}
-                      className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-2xl bg-white min-h-[48px] focus:outline-none"
                     >
-                      <option value="">{currentLanguage === "ko" ? "선택 안 함" : currentLanguage === "vi" ? "Không chọn" : "None"}</option>
+                      <option value="">{currentLanguage === "ko" ? "선택 안 함" : "None"}</option>
                       <option value="airbnb">Airbnb</option>
                       <option value="agoda">Agoda</option>
                       <option value="booking_com">Booking.com</option>
-                      <option value="other">{currentLanguage === "ko" ? "기타" : currentLanguage === "vi" ? "Khác" : "Other"}</option>
+                      <option value="other">{currentLanguage === "ko" ? "기타" : "Other"}</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">
-                      {currentLanguage === "ko" ? "캘린더 이름" : currentLanguage === "vi" ? "Tên lịch" : "Calendar name"}
+                    <label className="block text-xs text-gray-500 mb-2">
+                      {currentLanguage === "ko" ? "캘린더 이름" : "Calendar name"}
                     </label>
                     <input
                       type="text"
                       value={icalCalendarName}
                       onChange={(e) => setIcalCalendarName(e.target.value)}
-                      placeholder={currentLanguage === "ko" ? "예: 에어비앤비 예약" : currentLanguage === "vi" ? "VD: Đặt phòng Airbnb" : "e.g. Airbnb Bookings"}
-                      className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder={currentLanguage === "ko" ? "예: 에어비앤비 예약" : "e.g. Airbnb"}
+                      className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-2xl min-h-[48px] focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">iCal URL <span className="text-gray-400">(.ics)</span></label>
+                    <label className="block text-xs text-gray-500 mb-2">iCal URL (.ics)</label>
                     <input
                       type="url"
                       value={icalUrl}
                       onChange={(e) => setIcalUrl(e.target.value)}
                       placeholder="https://..."
-                      className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-2xl min-h-[48px] focus:outline-none"
                     />
                   </div>
                 </div>
               )}
-            </div>
-
-            {/* 등록 버튼 */}
-            <button
-              type="submit"
-              disabled={
-                loading ||
-                imagePreviews.length === 0 ||
-                !weeklyRent ||
-                weeklyRent.replace(/\D/g, "") === "" ||
-                !propertyType ||
-                bedrooms === 0 ||
-                bathrooms === 0
-              }
-              className="w-full py-4 px-6 bg-blue-600 text-white rounded-xl font-semibold text-base hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>
-                    {currentLanguage === "ko"
-                      ? "등록 중..."
-                      : currentLanguage === "vi"
-                        ? "Đang đăng ký..."
-                        : "Registering..."}
-                  </span>
-                </>
-              ) : (
-                <span>
-                  {currentLanguage === "ko"
-                    ? "등록"
-                    : currentLanguage === "vi"
-                      ? "Đăng ký"
-                      : "Register"}
-                </span>
-              )}
-            </button>
+            </section>
           </form>
         </div>
+
+        {/* ===== 하단 고정 등록 버튼 ===== */}
+        <div className="sticky bottom-16 left-0 right-0 p-4 bg-white border-t border-gray-100 shadow-lg">
+          <button
+            type="submit"
+            onClick={handleSubmit}
+            disabled={
+              loading ||
+              imagePreviews.length === 0 ||
+              !weeklyRent ||
+              weeklyRent.replace(/\D/g, "") === "" ||
+              !propertyType ||
+              bedrooms === 0 ||
+              bathrooms === 0
+            }
+            className="w-full py-4 px-6 rounded-2xl font-semibold text-base disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center justify-center gap-2 min-h-[56px] text-white"
+            style={{ backgroundColor: COLORS.deepBlue }}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>
+                  {currentLanguage === "ko"
+                    ? "등록 중..."
+                    : currentLanguage === "vi"
+                      ? "Đang đăng ký..."
+                      : "Registering..."}
+                </span>
+              </>
+            ) : (
+              <span>
+                {currentLanguage === "ko"
+                  ? "등록"
+                  : currentLanguage === "vi"
+                    ? "Đăng ký"
+                    : "Register"}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* ===== 하단 네비게이션 바 ===== */}
+        <nav className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-[480px] bg-white border-t border-gray-200 px-2 py-2 z-50">
+          <div className="flex items-center justify-around">
+            <button
+              onClick={() => router.push("/")}
+              className="flex flex-col items-center gap-1 py-2 px-4 min-h-[56px] min-w-[56px]"
+            >
+              <Home className="w-6 h-6 text-gray-400" />
+              <span className="text-xs text-gray-400">
+                {currentLanguage === "ko" ? "홈" : "Home"}
+              </span>
+            </button>
+            <button
+              onClick={() => router.push("/search")}
+              className="flex flex-col items-center gap-1 py-2 px-4 min-h-[56px] min-w-[56px]"
+            >
+              <Search className="w-6 h-6 text-gray-400" />
+              <span className="text-xs text-gray-400">
+                {currentLanguage === "ko" ? "검색" : "Search"}
+              </span>
+            </button>
+            <button
+              onClick={() => router.push("/profile/my-properties")}
+              className="flex flex-col items-center gap-1 py-2 px-4 min-h-[56px] min-w-[56px]"
+            >
+              <Building className="w-6 h-6" style={{ color: COLORS.deepBlue }} />
+              <span className="text-xs font-medium" style={{ color: COLORS.deepBlue }}>
+                {currentLanguage === "ko" ? "내 매물" : "My"}
+              </span>
+            </button>
+            <button
+              onClick={() => router.push("/profile")}
+              className="flex flex-col items-center gap-1 py-2 px-4 min-h-[56px] min-w-[56px]"
+            >
+              <User className="w-6 h-6 text-gray-400" />
+              <span className="text-xs text-gray-400">
+                {currentLanguage === "ko" ? "프로필" : "Profile"}
+              </span>
+            </button>
+          </div>
+        </nav>
       </div>
+
+      {/* ===== 모달들 ===== */}
+
+      {/* 이미지 소스 선택 메뉴 */}
+      {showImageSourceMenu && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-end justify-center z-50"
+          onClick={() => setShowImageSourceMenu(false)}
+        >
+          <div
+            className="w-full max-w-[480px] bg-white rounded-t-3xl p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">
+              {currentLanguage === "ko"
+                ? "사진 추가 방법 선택"
+                : currentLanguage === "vi"
+                  ? "Chọn cách thêm ảnh"
+                  : "Select Photo Source"}
+            </h3>
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={handleSelectFromLibrary}
+                className="w-full py-4 px-4 rounded-2xl font-medium flex items-center justify-center gap-3 min-h-[56px] text-white"
+                style={{ backgroundColor: COLORS.deepBlue }}
+              >
+                <ImageIcon className="w-5 h-5" />
+                <span>
+                  {currentLanguage === "ko"
+                    ? "사진첩에서 선택"
+                    : currentLanguage === "vi"
+                      ? "Chọn từ thư viện ảnh"
+                      : "Select from Library"}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={handleTakePhoto}
+                className="w-full py-4 px-4 rounded-2xl font-medium flex items-center justify-center gap-3 min-h-[56px]"
+                style={{ backgroundColor: COLORS.gray100, color: COLORS.gray900 }}
+              >
+                <Camera className="w-5 h-5" />
+                <span>
+                  {currentLanguage === "ko"
+                    ? "카메라로 촬영"
+                    : currentLanguage === "vi"
+                      ? "Chụp ảnh"
+                      : "Take Photo"}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowImageSourceMenu(false)}
+                className="w-full py-3 px-4 text-gray-600 rounded-2xl font-medium min-h-[48px]"
+              >
+                {currentLanguage === "ko" ? "취소" : "Cancel"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 사진첩 모달 */}
+      {showPhotoLibrary && (
+        <div className="fixed inset-0 bg-white z-50 flex flex-col">
+          <div className="flex items-center justify-between p-4 border-b border-gray-200">
+            <button
+              type="button"
+              onClick={() => {
+                setShowPhotoLibrary(false);
+                setPhotoLibraryFiles([]);
+                photoLibraryPreviews.forEach((url) => URL.revokeObjectURL(url));
+                setPhotoLibraryPreviews([]);
+                setSelectedLibraryIndices(new Set());
+                setFullScreenImageIndex(null);
+              }}
+              className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center"
+            >
+              <X className="w-6 h-6 text-gray-700" />
+            </button>
+            <h2 className="text-lg font-semibold text-gray-900">
+              {currentLanguage === "ko" ? "사진 선택" : "Select Photos"}
+            </h2>
+            <div className="w-10" />
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-2">
+            <div className="grid grid-cols-4 gap-1">
+              {photoLibraryPreviews.map((preview, index) => {
+                const isSelected = selectedLibraryIndices.has(index);
+                return (
+                  <div
+                    key={index}
+                    className="relative aspect-square"
+                    onClick={() => togglePhotoSelection(index)}
+                  >
+                    <img
+                      src={preview}
+                      alt={`Photo ${index + 1}`}
+                      className={`w-full h-full object-cover rounded-lg ${isSelected ? "opacity-50" : ""}`}
+                    />
+                    {isSelected && (
+                      <div className="absolute inset-0 flex items-center justify-center rounded-lg" style={{ backgroundColor: `${COLORS.deepBlue}30` }}>
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: COLORS.deepBlue }}>
+                          <Check className="w-4 h-4 text-white" />
+                        </div>
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleViewFullScreen(index);
+                      }}
+                      className="absolute bottom-1 right-1 bg-black/50 text-white rounded-full p-1.5 min-h-[28px] min-w-[28px] flex items-center justify-center"
+                    >
+                      <Maximize2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="p-4 border-t border-gray-200">
+            <button
+              type="button"
+              onClick={handleConfirmPhotoSelection}
+              disabled={selectedLibraryIndices.size === 0}
+              className="w-full py-4 px-4 rounded-2xl font-medium disabled:opacity-50 disabled:cursor-not-allowed min-h-[56px] text-white"
+              style={{ backgroundColor: COLORS.deepBlue }}
+            >
+              {currentLanguage === "ko"
+                ? `선택한 ${selectedLibraryIndices.size}장 추가`
+                : `Add ${selectedLibraryIndices.size} selected`}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 전체화면 이미지 */}
+      {fullScreenImageIndex !== null && (
+        <div className="fixed inset-0 bg-black z-[60] flex items-center justify-center">
+          <img
+            src={photoLibraryPreviews[fullScreenImageIndex]}
+            alt={`Full screen ${fullScreenImageIndex + 1}`}
+            className="max-w-full max-h-full object-contain"
+          />
+          <button
+            type="button"
+            onClick={handleBackToLibrary}
+            className="absolute bottom-6 right-6 bg-white/90 text-gray-900 rounded-full p-4 shadow-lg flex items-center gap-2 min-h-[56px]"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span className="font-medium">
+              {currentLanguage === "ko" ? "사진첩" : "Library"}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={handleBackToLibrary}
+            className="absolute top-6 left-6 bg-white/90 text-gray-900 rounded-full p-2 min-h-[44px] min-w-[44px] flex items-center justify-center"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+      )}
 
       {/* 달력 모달 */}
       {showCalendar && (
@@ -1824,84 +1711,39 @@ export default function AddPropertyPage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl"
+            className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-bold text-gray-900 mb-4 text-center">
               {currentLanguage === "ko"
-                ? "📸 추천 사진 가이드라인"
-                : currentLanguage === "vi"
-                  ? "📸 Hướng dẫn ảnh đề xuất"
-                  : "📸 Recommended Photo Guidelines"}
+                ? "추천 사진 가이드라인"
+                : "Photo Guidelines"}
             </h3>
             <div className="space-y-3 mb-4">
-              <div className="flex items-center gap-2 text-sm text-gray-700">
-                <span className="text-2xl">🛏️</span>
-                <span>
-                  {currentLanguage === "ko"
-                    ? "침실"
-                    : currentLanguage === "vi"
-                      ? "Phòng ngủ"
-                      : "Bedroom"}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-gray-700">
-                <span className="text-2xl">🍳</span>
-                <span>
-                  {currentLanguage === "ko"
-                    ? "주방"
-                    : currentLanguage === "vi"
-                      ? "Bếp"
-                      : "Kitchen"}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-gray-700">
-                <span className="text-2xl">🛋️</span>
-                <span>
-                  {currentLanguage === "ko"
-                    ? "거실"
-                    : currentLanguage === "vi"
-                      ? "Phòng khách"
-                      : "Living Room"}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-gray-700">
-                <span className="text-2xl">🚿</span>
-                <span>
-                  {currentLanguage === "ko"
-                    ? "화장실"
-                    : currentLanguage === "vi"
-                      ? "Phòng tắm"
-                      : "Bathroom"}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-gray-700">
-                <span className="text-2xl">🪟</span>
-                <span>
-                  {currentLanguage === "ko"
-                    ? "창문뷰"
-                    : currentLanguage === "vi"
-                      ? "Cửa sổ"
-                      : "Window View"}
-                </span>
-              </div>
+              {[
+                { icon: "🛏️", label: currentLanguage === "ko" ? "침실" : "Bedroom" },
+                { icon: "🍳", label: currentLanguage === "ko" ? "주방" : "Kitchen" },
+                { icon: "🛋️", label: currentLanguage === "ko" ? "거실" : "Living Room" },
+                { icon: "🚿", label: currentLanguage === "ko" ? "화장실" : "Bathroom" },
+                { icon: "🪟", label: currentLanguage === "ko" ? "창문뷰" : "Window View" },
+              ].map((item, i) => (
+                <div key={i} className="flex items-center gap-3 text-sm text-gray-700">
+                  <span className="text-2xl">{item.icon}</span>
+                  <span>{item.label}</span>
+                </div>
+              ))}
             </div>
             <p className="text-xs text-gray-500 text-center mb-4">
               {currentLanguage === "ko"
-                ? "아무 곳이나 터치하여 카메라를 시작하세요"
-                : currentLanguage === "vi"
-                  ? "Chạm vào bất kỳ đâu để bắt đầu camera"
-                  : "Tap anywhere to start camera"}
+                ? "아무 곳이나 터치하여 시작하세요"
+                : "Tap anywhere to start"}
             </p>
             <button
               onClick={handleGuidelinePopupClick}
-              className="w-full py-3 px-4 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors"
+              className="w-full py-4 px-4 rounded-2xl font-medium min-h-[56px] text-white"
+              style={{ backgroundColor: COLORS.deepBlue }}
             >
-              {currentLanguage === "ko"
-                ? "동의"
-                : currentLanguage === "vi"
-                  ? "Đồng ý"
-                  : "Agree"}
+              {currentLanguage === "ko" ? "확인" : "OK"}
             </button>
           </motion.div>
         </div>
