@@ -301,6 +301,37 @@ export default function MyPropertyDetailContent({
           </div>
         )}
 
+        {/* 체크인/체크아웃 시간 */}
+        {((property as any).checkInTime || (property as any).checkOutTime) && (
+          <div>
+            <p className="text-xs text-gray-500 mb-0.5">
+              {currentLanguage === "ko"
+                ? "체크인/체크아웃 시간"
+                : currentLanguage === "vi"
+                  ? "Giờ check-in/check-out"
+                  : "Check-in/Check-out Time"}
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-xs text-gray-500 mb-0.5">
+                  {currentLanguage === "ko" ? "체크인" : currentLanguage === "vi" ? "Check-in" : "Check-in"}
+                </p>
+                <p className="text-sm font-medium text-gray-900">
+                  {(property as any).checkInTime || "14:00"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 mb-0.5">
+                  {currentLanguage === "ko" ? "체크아웃" : currentLanguage === "vi" ? "Check-out" : "Check-out"}
+                </p>
+                <p className="text-sm font-medium text-gray-900">
+                  {(property as any).checkOutTime || "12:00"}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div>
           <p className="text-xs text-gray-500 mb-0.5">
             {currentLanguage === "ko"

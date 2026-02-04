@@ -27,7 +27,7 @@ interface Property {
   price: number;
   lat: number;
   lng: number;
-  image?: string;
+  images?: string[];
   address?: string;
   priceUnit?: string;
   checkInDate?: string | Date;
@@ -257,7 +257,7 @@ export default function GrabMapComponent({
       price: propertyData.price || 0,
       lat: lat,
       lng: lng,
-      image: propertyData.images && propertyData.images.length > 0 ? propertyData.images[0] : undefined,
+      images: propertyData.images || [],
       address: propertyData.address || '',
       priceUnit: propertyData.priceUnit,
       checkInDate: propertyData.checkInDate,

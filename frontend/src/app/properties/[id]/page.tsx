@@ -334,6 +334,12 @@ export default function PropertyDetailPage() {
                  currentLanguage === 'vi' ? 'Bao gồm tiện ích/phí quản lý' : 
                  'Utilities/Management fees included'}
               </p>
+              {/* 체크인/체크아웃 시간 */}
+              {(property.checkInTime || property.checkOutTime) && (
+                <p className="text-xs text-blue-600 mt-2">
+                  {currentLanguage === 'ko' ? '체크인' : currentLanguage === 'vi' ? 'Nhận phòng' : 'Check-in'} {property.checkInTime || '14:00'} {currentLanguage === 'ko' ? '이후' : currentLanguage === 'vi' ? 'sau' : 'after'} · {currentLanguage === 'ko' ? '체크아웃' : currentLanguage === 'vi' ? 'Trả phòng' : 'Check-out'} {property.checkOutTime || '12:00'} {currentLanguage === 'ko' ? '이전' : currentLanguage === 'vi' ? 'trước' : 'before'}
+                </p>
+              )}
             </div>
 
             {/* 임대 가능 날짜: 달력과 동일하게 예약 제외 후 실제 예약 가능 구간만 표시 */}

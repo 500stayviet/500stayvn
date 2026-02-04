@@ -31,7 +31,7 @@ interface Property {
   price: number;
   lat: number;
   lng: number;
-  image?: string;
+  images?: string[];
   address?: string;
   priceUnit?: string;
   checkInDate?: string | Date;
@@ -289,7 +289,7 @@ function MapContent() {
                   >
                     <Image
                       src={
-                        property.image ||
+                        property.images?.[0] ||
                         "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400"
                       }
                       alt={property.name}
