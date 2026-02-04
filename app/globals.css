@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #ffffff;
+  --foreground: #111827;
+  --deep-blue: #003366;
+  --emerald-green: #10B981;
+}
+
+body {
+  font-family: var(--font-noto-kr), var(--font-be-vietnam), var(--font-geist-sans), sans-serif;
+}
+
+/* Hide scrollbar for horizontal scroll */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Custom focus styles */
+input:focus, select:focus, textarea:focus, button:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 51, 102, 0.2);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
