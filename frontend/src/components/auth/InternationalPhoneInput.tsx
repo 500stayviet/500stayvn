@@ -122,7 +122,7 @@ export default function InternationalPhoneInput({
   disabled = false,
   initialValue = ''
 }: InternationalPhoneInputProps) {
-  const [selectedCountry, setSelectedCountry] = useState<CountryConfig>(COUNTRIES.KR);
+  const [selectedCountry, setSelectedCountry] = useState<CountryConfig>(COUNTRIES.VN);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [otpCooldown, setOtpCooldown] = useState(0);
