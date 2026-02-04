@@ -87,7 +87,7 @@ export default function AddPropertyPage() {
       setBedrooms(2);
       setBathrooms((b) => (b < 1 || b > 3 ? 1 : b));
     } else if (propertyType === "three_plus") {
-      setBedrooms((prev) => (prev >= 2 && prev <= 5 ? prev : 2));
+      setBedrooms((prev) => (prev >= 2 && prev <= 5 ? prev : 3));
       setBathrooms((b) => (b < 1 || b > 6 ? 1 : b));
     } else if (propertyType === "detached") {
       setBedrooms((b) => Math.min(10, Math.max(1, b || 1)));
