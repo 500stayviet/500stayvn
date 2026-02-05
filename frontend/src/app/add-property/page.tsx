@@ -445,7 +445,7 @@ export default function AddPropertyPage() {
     if (!coordinates || !coordinates.lat || !coordinates.lng) {
       alert(
         currentLanguage === "ko"
-          ? "주소를 선택하여 좌표를 설정해주세요. 주소 입력 버튼을 클릭하여 주소를 확인해주세요."
+          ? "주소를 선택하여 좌표를 설정해주세요. 주소 입력 버튼을 클릭��여 주소를 확인해주세요."
           : currentLanguage === "vi"
             ? "Vui lòng chọn địa chỉ để thiết lập tọa độ. Vui lòng nhấp vào nút nhập địa chỉ để xác nhận địa chỉ."
             : "Please select an address to set coordinates. Please click the address input button to verify the address.",
@@ -1008,7 +1008,7 @@ export default function AddPropertyPage() {
                   </button>
                 </div>
               )}
-            </div>
+            </section>
 
             {/* 매물 종류 / 방 개수 / 화장실 수 */}
             <section 
@@ -1533,7 +1533,7 @@ export default function AddPropertyPage() {
                             {currentLanguage === "ko"
                               ? "모든 아이콘 선택시 뱃지 획득"
                               : currentLanguage === "vi"
-                                ? "Chọn đủ tất cả để nhận huy hiệu"
+                                ? "Ch���n đủ tất cả để nhận huy hiệu"
                                 : "Select all to earn badge"}
                           </p>
                         )}
