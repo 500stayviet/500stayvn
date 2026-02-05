@@ -685,9 +685,12 @@ export default function AddPropertyPage() {
 
           <form onSubmit={handleSubmit} className="px-5 py-5 space-y-6">
             {/* ===== 사진 등록 섹션 ===== */}
-            <section>
+            <section 
+              className="p-4 rounded-xl"
+              style={{ backgroundColor: COLORS.surface, border: `1px solid ${COLORS.border}` }}
+            >
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-semibold" style={{ color: COLORS.text }}>
+                <h2 className="text-sm font-bold" style={{ color: COLORS.text }}>
                   {currentLanguage === "ko"
                     ? "사진 등록"
                     : currentLanguage === "vi"
@@ -763,8 +766,11 @@ export default function AddPropertyPage() {
             </section>
 
             {/* ===== 매물 종류 섹션 ===== */}
-            <section>
-              <h2 className="text-sm font-semibold mb-3" style={{ color: COLORS.text }}>
+            <section 
+              className="p-4 rounded-xl"
+              style={{ backgroundColor: COLORS.surface, border: `1px solid ${COLORS.border}` }}
+            >
+              <h2 className="text-sm font-bold mb-3" style={{ color: COLORS.text }}>
                 {currentLanguage === "ko"
                   ? "매물 종류"
                   : currentLanguage === "vi"
@@ -867,8 +873,11 @@ export default function AddPropertyPage() {
             </section>
 
             {/* ===== 주소 섹션 ===== */}
-            <section>
-              <h2 className="text-sm font-semibold mb-3" style={{ color: COLORS.text }}>
+            <section 
+              className="p-4 rounded-xl"
+              style={{ backgroundColor: COLORS.surface, border: `1px solid ${COLORS.border}` }}
+            >
+              <h2 className="text-sm font-bold mb-3" style={{ color: COLORS.text }}>
                 {currentLanguage === "ko"
                   ? "주소"
                   : currentLanguage === "vi"
@@ -1022,8 +1031,11 @@ export default function AddPropertyPage() {
             </section>
 
             {/* ===== 임대 희망 날짜 섹션 ===== */}
-            <section>
-              <h2 className="text-sm font-semibold mb-3" style={{ color: COLORS.text }}>
+            <section 
+              className="p-4 rounded-xl"
+              style={{ backgroundColor: COLORS.surface, border: `1px solid ${COLORS.border}` }}
+            >
+              <h2 className="text-sm font-bold mb-3" style={{ color: COLORS.text }}>
                 {currentLanguage === "ko"
                   ? "임대 희망 날짜"
                   : currentLanguage === "vi"
@@ -1084,8 +1096,11 @@ export default function AddPropertyPage() {
             </section>
 
             {/* ===== 1주일 임대료 섹션 ===== */}
-            <section>
-              <h2 className="text-sm font-semibold mb-1" style={{ color: COLORS.text }}>
+            <section 
+              className="p-4 rounded-xl"
+              style={{ backgroundColor: COLORS.surface, border: `1px solid ${COLORS.border}` }}
+            >
+              <h2 className="text-sm font-bold mb-1" style={{ color: COLORS.text }}>
                 {currentLanguage === "ko"
                   ? "1주일 임대료"
                   : currentLanguage === "vi"
@@ -1122,8 +1137,11 @@ export default function AddPropertyPage() {
             </section>
 
             {/* ===== 시설 및 정책 섹션 ===== */}
-            <section>
-              <h2 className="text-sm font-semibold mb-4" style={{ color: COLORS.text }}>
+            <section 
+              className="p-4 rounded-xl"
+              style={{ backgroundColor: COLORS.surface, border: `1px solid ${COLORS.border}` }}
+            >
+              <h2 className="text-sm font-bold mb-4" style={{ color: COLORS.text }}>
                 {currentLanguage === "ko"
                   ? "숙소시설 및 정책"
                   : currentLanguage === "vi"
@@ -1253,8 +1271,11 @@ export default function AddPropertyPage() {
             </section>
 
             {/* ===== 체크인/체크아웃 시간 섹션 ===== */}
-            <section className="bg-white rounded-lg p-5 border border-gray-100 shadow-sm">
-              <h2 className="text-base font-semibold text-slate-900 mb-4">
+            <section 
+              className="p-4 rounded-xl"
+              style={{ backgroundColor: COLORS.surface, border: `1px solid ${COLORS.border}` }}
+            >
+              <h2 className="text-sm font-bold mb-4" style={{ color: COLORS.text }}>
                 {currentLanguage === "ko"
                   ? "체크인/체크아웃 시간"
                   : currentLanguage === "vi"
@@ -1302,10 +1323,13 @@ export default function AddPropertyPage() {
             </section>
 
             {/* ===== 매물명 섹션 ===== */}
-            <section className="bg-white rounded-lg p-5 border border-gray-100 shadow-sm">
-              <h2 className="text-base font-semibold text-slate-900 mb-4">
+            <section 
+              className="p-4 rounded-xl"
+              style={{ backgroundColor: COLORS.surface, border: `1px solid ${COLORS.border}` }}
+            >
+              <h2 className="text-sm font-bold mb-4" style={{ color: COLORS.text }}>
                 {getUIText('propertyNickname', currentLanguage)}
-                <span className="text-red-500 ml-1">*</span>
+                <span style={{ color: COLORS.error }} className="ml-1">*</span>
               </h2>
               <input
                 type="text"
@@ -1319,14 +1343,17 @@ export default function AddPropertyPage() {
             </section>
 
             {/* ===== 매물 설명 섹션 ===== */}
-            <section className="bg-white rounded-lg p-5 border border-gray-100 shadow-sm">
-              <h2 className="text-base font-semibold text-slate-900 mb-4">
+            <section 
+              className="p-4 rounded-xl"
+              style={{ backgroundColor: COLORS.surface, border: `1px solid ${COLORS.border}` }}
+            >
+              <h2 className="text-sm font-bold mb-4" style={{ color: COLORS.text }}>
                 {currentLanguage === "ko"
                   ? "매물 설명"
                   : currentLanguage === "vi"
                     ? "Mô tả bất động sản"
                     : "Property Description"}
-                <span className="text-red-500 ml-1">*</span>
+                <span style={{ color: COLORS.error }} className="ml-1">*</span>
               </h2>
               <textarea
                 value={propertyDescription}
@@ -1356,7 +1383,10 @@ export default function AddPropertyPage() {
             </section>
 
             {/* ===== 외부 캘린더 섹션 ===== */}
-            <section className="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden">
+            <section 
+              className="rounded-xl overflow-hidden"
+              style={{ backgroundColor: COLORS.surface, border: `1px solid ${COLORS.border}` }}
+            >
               <button
                 type="button"
                 onClick={() => setShowIcalDropdown(!showIcalDropdown)}
