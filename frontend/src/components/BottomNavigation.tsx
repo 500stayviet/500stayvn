@@ -32,9 +32,10 @@ export default function BottomNavigation({ hideOnPaths = [] }: BottomNavigationP
   const [isOwnerMode, setIsOwnerMode] = useState(false);
   const [checkingOwnerStatus, setCheckingOwnerStatus] = useState(true);
 
-  // KYC 상태 확인 및 임대인 모드 설정
+  // KYC 상태 확인 및 임대인 모드 설정 (캐싱 및 안전성 강화)
   useEffect(() => {
     const checkOwnerStatus = async () => {
+      // 사용자가 없으면 임차인 모드로 설정
       if (!user) {
         setIsOwnerMode(false);
         setCheckingOwnerStatus(false);
@@ -42,28 +43,53 @@ export default function BottomNavigation({ hideOnPaths = [] }: BottomNavigationP
       }
 
       try {
+        // 사용자 데이터 가져오기
         const userData = await getCurrentUserData(user.uid);
         
+        if (!userData) {
+          // 사용자 데이터가 없으면 임차인 모드
+          setIsOwnerMode(false);
+          setCheckingOwnerStatus(false);
+          return;
+        }
+
         // KYC 1~3단계 토큰이 모두 있어야 임대인 모드 활성화
         // 사용자 요구사항: "코인3개가 되면 다 사용가능한거야"
-        const kycSteps = userData?.kyc_steps || {};
-        const allStepsCompleted = kycSteps.step1 && kycSteps.step2 && kycSteps.step3;
+        const kycSteps = userData.kyc_steps || {};
+        
+        // 안전한 boolean 검증 (null/undefined 방지)
+        const step1Completed = Boolean(kycSteps.step1);
+        const step2Completed = Boolean(kycSteps.step2);
+        const step3Completed = Boolean(kycSteps.step3);
+        
+        const allStepsCompleted = step1Completed && step2Completed && step3Completed;
         
         // KYC 완료 또는 owner 권한이 있으면 임대인 모드
-        if (allStepsCompleted || userData?.is_owner === true) {
+        // 안전한 boolean 검증 사용
+        const isOwner = Boolean(userData.is_owner);
+        
+        if (allStepsCompleted || isOwner) {
           setIsOwnerMode(true);
         } else {
           setIsOwnerMode(false);
         }
       } catch (error) {
         console.error('Failed to check owner status:', error);
+        // 에러 발생 시 안전하게 임차인 모드로 설정
         setIsOwnerMode(false);
       } finally {
         setCheckingOwnerStatus(false);
       }
     };
 
-    checkOwnerStatus();
+    // 사용자 상태가 변경될 때만 검증 실행
+    if (user) {
+      checkOwnerStatus();
+    } else {
+      // 사용자가 없으면 즉시 임차인 모드로 설정
+      setIsOwnerMode(false);
+      setCheckingOwnerStatus(false);
+    }
   }, [user]);
 
   // 현재 경로에 따라 활성 탭 설정
