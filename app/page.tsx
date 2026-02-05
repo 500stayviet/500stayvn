@@ -1,11 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-
-// Debug log
-if (typeof window !== 'undefined') {
-  console.log("[v0] AddPropertyPage loaded");
-}
+import { useState } from "react";
 import {
   Home,
   Search,
