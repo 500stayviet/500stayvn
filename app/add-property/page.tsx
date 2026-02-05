@@ -185,27 +185,26 @@ export default function AddPropertyPage() {
               <h2 className="text-sm font-bold mb-3" style={{ color: COLORS.text }}>
                 매물 종류<span style={{ color: COLORS.error }} className="ml-1">*</span>
               </h2>
-              <div className="grid grid-cols-5 gap-1.5">
+              <div className="flex flex-wrap gap-2">
                 {[
-                  { value: "studio", label: "스튜디오", icon: "🏢" },
-                  { value: "one_room", label: "원룸", icon: "🚪" },
-                  { value: "two_room", label: "2룸", icon: "🏠" },
-                  { value: "three_plus", label: "3+룸", icon: "🏡" },
-                  { value: "detached", label: "독채", icon: "🏘️" },
-                ].map(({ value, label, icon }) => (
+                  { value: "studio", label: "스튜디오" },
+                  { value: "one_room", label: "원룸" },
+                  { value: "two_room", label: "2룸" },
+                  { value: "three_plus", label: "3+룸" },
+                  { value: "detached", label: "독채" },
+                ].map(({ value, label }) => (
                   <button
                     key={value}
                     type="button"
                     onClick={() => setPropertyType(value)}
-                    className="flex flex-col items-center justify-center p-2 rounded-lg text-[10px] font-medium transition-all min-h-[60px]"
+                    className="px-4 py-2 rounded-lg text-sm font-medium transition-all min-h-[40px]"
                     style={{
-                      backgroundColor: propertyType === value ? `${COLORS.primary}15` : COLORS.white,
+                      backgroundColor: propertyType === value ? COLORS.primary : COLORS.white,
+                      color: propertyType === value ? COLORS.white : COLORS.text,
                       border: `1px solid ${propertyType === value ? COLORS.primary : COLORS.border}`,
-                      color: propertyType === value ? COLORS.primary : COLORS.text,
                     }}
                   >
-                    <span className="text-lg mb-0.5">{icon}</span>
-                    <span className="leading-tight text-center">{label}</span>
+                    {label}
                   </button>
                 ))}
               </div>
@@ -279,19 +278,20 @@ export default function AddPropertyPage() {
                         const Icon = opt.icon;
                         const isSelected = selectedFacilities.includes(opt.id);
                         return (
-                          <button
-                            key={opt.id}
-                            type="button"
-                            onClick={() => toggleFacility(opt.id)}
-                            className="flex flex-col items-center justify-center gap-1 p-2 rounded-lg transition-all"
-                            style={{
-                              backgroundColor: isSelected ? `${COLORS.primary}15` : COLORS.white,
-                              border: `1px solid ${isSelected ? COLORS.primary : COLORS.border}`,
-                            }}
-                          >
-                            <Icon className="w-4 h-4" style={{ color: isSelected ? COLORS.primary : COLORS.textMuted }} />
-                            <span className="text-[10px]" style={{ color: isSelected ? COLORS.primary : COLORS.text }}>{opt.label.ko}</span>
-                          </button>
+                          <div key={opt.id} className="flex flex-col items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => toggleFacility(opt.id)}
+                              className="w-12 h-12 rounded-lg flex items-center justify-center transition-all min-h-[48px] min-w-[48px]"
+                              style={{
+                                backgroundColor: isSelected ? COLORS.primary : COLORS.white,
+                                border: `1px solid ${isSelected ? COLORS.primary : COLORS.border}`,
+                              }}
+                            >
+                              <Icon className="w-5 h-5" style={{ color: isSelected ? COLORS.white : COLORS.textSecondary }} />
+                            </button>
+                            <span className="text-[10px] text-center leading-tight" style={{ color: COLORS.textSecondary }}>{opt.label.ko}</span>
+                          </div>
                         );
                       })}
                     </div>

@@ -1023,29 +1023,29 @@ export default function AddPropertyPage() {
                     : "Property Type"}
                 <span style={{ color: COLORS.error }} className="ml-1">*</span>
               </h2>
-              <div className="grid grid-cols-5 gap-1.5">
+              {/* 깔끔한 칩 스타일 버튼 */}
+              <div className="flex flex-wrap gap-2">
                 {(
                   [
-                    { value: "studio", ko: "스튜디오", vi: "Studio", en: "Studio", icon: "🏢" },
-                    { value: "one_room", ko: "원룸", vi: "1 phòng", en: "1 Room", icon: "🚪" },
-                    { value: "two_room", ko: "2룸", vi: "2 phòng", en: "2 Rooms", icon: "🏠" },
-                    { value: "three_plus", ko: "3+룸", vi: "3+ phòng", en: "3+ Rooms", icon: "🏡" },
-                    { value: "detached", ko: "독채", vi: "Nhà riêng", en: "Detached", icon: "🏘️" },
+                    { value: "studio", ko: "스튜디오", vi: "Studio", en: "Studio" },
+                    { value: "one_room", ko: "원룸", vi: "1 phòng", en: "1 Room" },
+                    { value: "two_room", ko: "2룸", vi: "2 phòng", en: "2 Rooms" },
+                    { value: "three_plus", ko: "3+룸", vi: "3+ phòng", en: "3+ Rooms" },
+                    { value: "detached", ko: "독채", vi: "Nhà riêng", en: "Detached" },
                   ] as const
-                ).map(({ value, ko, vi, en, icon }) => (
+                ).map(({ value, ko, vi, en }) => (
                   <button
                     key={value}
                     type="button"
                     onClick={() => setPropertyType(value)}
-                    className="flex flex-col items-center justify-center p-2 rounded-lg text-[10px] font-medium transition-all min-h-[60px]"
+                    className="px-4 py-2 rounded-lg text-sm font-medium transition-all min-h-[40px]"
                     style={{
-                      backgroundColor: propertyType === value ? `${COLORS.primary}15` : COLORS.white,
+                      backgroundColor: propertyType === value ? COLORS.primary : COLORS.white,
+                      color: propertyType === value ? COLORS.white : COLORS.text,
                       border: `1px solid ${propertyType === value ? COLORS.primary : COLORS.border}`,
-                      color: propertyType === value ? COLORS.primary : COLORS.text,
                     }}
                   >
-                    <span className="text-lg mb-0.5">{icon}</span>
-                    <span className="leading-tight text-center">{currentLanguage === "ko" ? ko : currentLanguage === "vi" ? vi : en}</span>
+                    {currentLanguage === "ko" ? ko : currentLanguage === "vi" ? vi : en}
                   </button>
                 ))}
               </div>
@@ -1539,92 +1539,88 @@ export default function AddPropertyPage() {
                           </p>
                         )}
                       </div>
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-4 gap-2">
                         {options.map((opt) => {
                           const Icon = opt.icon;
                           const isSelected = selectedFacilities.includes(opt.id);
                           const label = (opt.label as any)[currentLanguage] || opt.label.en;
-                          const isPet = opt.id === "pet";
-                          const isCleaning = opt.id === "cleaning";
+
                           return (
                             <div key={opt.id} className="flex flex-col items-center gap-1">
                               <button
                                 type="button"
                                 onClick={() => toggleFacility(opt.id)}
-                                className="w-full flex flex-col items-center justify-center gap-1.5 p-2.5 rounded-lg transition-all"
+                                className="w-12 h-12 rounded-lg flex items-center justify-center transition-all min-h-[48px] min-w-[48px]"
                                 style={{
-                                  backgroundColor: isSelected ? `${COLORS.primary}15` : COLORS.white,
+                                  backgroundColor: isSelected ? COLORS.primary : COLORS.white,
                                   border: `1px solid ${isSelected ? COLORS.primary : COLORS.border}`,
-                                  color: isSelected ? COLORS.primary : COLORS.text,
                                 }}
                               >
-                                <Icon className="w-5 h-5" style={{ color: isSelected ? COLORS.primary : COLORS.textMuted }} />
-                                <span className="text-[10px] font-medium text-center leading-tight">{label}</span>
+                                <Icon
+                                  className="w-5 h-5"
+                                  style={{ color: isSelected ? COLORS.white : COLORS.textSecondary }}
+                                />
                               </button>
-                              {isPet && isSelected && (
-                                <div className="w-full space-y-1">
-                                  <div className="flex items-center gap-1">
-                                    <span className="text-[9px] text-gray-600 shrink-0">
-                                      {currentLanguage === "ko" ? "최대 마리수" : currentLanguage === "vi" ? "Số con tối đa" : "Max pets"}
-                                    </span>
-                                    <select
-                                      value={maxPets}
-                                      onChange={(e) => setMaxPets(Number(e.target.value))}
-                                      className="flex-1 px-1 py-0.5 text-[10px] border border-gray-200 rounded focus:ring-1 focus:ring-blue-500 bg-white"
-                                    >
-                                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-                                        <option key={n} value={n}>{n}</option>
-                                      ))}
-                                    </select>
-                                  </div>
-                                  <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-lg bg-blue-50/80 border border-blue-200">
-                                    <input
-                                      type="text"
-                                      value={petFeeAmount ? parseInt(petFeeAmount.replace(/\D/g, ""), 10).toLocaleString() : ""}
-                                      onChange={(e) => setPetFeeAmount(e.target.value.replace(/\D/g, ""))}
-                                      placeholder="0"
-                                      className="w-14 px-1.5 py-0.5 text-[10px] border border-gray-200 rounded focus:ring-1 focus:ring-blue-500"
-                                    />
-                                    <span className="text-[9px] text-gray-600 font-medium shrink-0">VND</span>
-                                  </div>
-                                </div>
-                              )}
-                              {isCleaning && isSelected && (
-                                <div className="w-full">
-                                  <select
-                                    value={cleaningPerWeek}
-                                    onChange={(e) => setCleaningPerWeek(Number(e.target.value))}
-                                    className="w-full px-1.5 py-0.5 text-[10px] border border-gray-200 rounded-lg focus:ring-1 focus:ring-blue-500 bg-white"
-                                  >
-                                    {[1, 2, 3, 4, 5, 6, 7].map((n) => (
-                                      <option key={n} value={n}>
-                                        {n}
-                                        {currentLanguage === "ko" ? "회" : currentLanguage === "vi" ? " lần" : "x"}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </div>
-                              )}
+                              <span className="text-[10px] text-center leading-tight line-clamp-2" style={{ color: COLORS.textSecondary }}>
+                                {label}
+                              </span>
                             </div>
                           );
                         })}
                       </div>
-                      {fullFurniture && (
-                        <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 text-green-800 text-[10px] font-bold border border-green-300">
-                          <Sparkles className="w-3.5 h-3.5" />
-                          {currentLanguage === "ko" ? "풀 가구" : currentLanguage === "vi" ? "Nội thất đầy đủ" : "Full Furniture"}
+
+                      {/* 펫 추가 옵션 */}
+                      {cat.id === "policy" && petAllowed && (
+                        <div className="mt-4 pt-4 border-t border-slate-200 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-slate-600">
+                              {currentLanguage === "ko" ? "최대 마리수" : "Max pets"}
+                            </span>
+                            <select
+                              value={maxPets}
+                              onChange={(e) => setMaxPets(Number(e.target.value))}
+                              className="px-3 py-2 border border-slate-200 rounded-lg text-sm min-h-[40px]"
+                            >
+                              {[1, 2, 3, 4, 5].map((n) => (
+                                <option key={n} value={n}>{n}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm text-slate-600 mb-2">
+                              {currentLanguage === "ko" ? "펫 요금 (선택)" : "Pet fee (optional)"}
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={petFeeAmount ? parseInt(petFeeAmount.replace(/\D/g, "") || "0", 10).toLocaleString() : ""}
+                                onChange={(e) => setPetFeeAmount(e.target.value.replace(/\D/g, ""))}
+                                placeholder="0"
+                                className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm min-h-[40px]"
+                              />
+                              <span className="text-slate-500 text-sm">VND</span>
+                            </div>
+                          </div>
                         </div>
                       )}
-                      {fullElectronics && (
-                        <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 text-green-800 text-[10px] font-bold border border-green-300">
-                          <Sparkles className="w-3.5 h-3.5" />
-                          {currentLanguage === "ko" ? "풀 가전" : currentLanguage === "vi" ? "Điện tử đầy đủ" : "Full Electronics"}
-                        </div>
-                      )}
-                      {fullOptionKitchen && (
-                        <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 text-green-800 text-[10px] font-bold border border-green-300">
-                          <Sparkles className="w-3.5 h-3.5" />
-                          {currentLanguage === "ko" ? "풀옵션 주방" : currentLanguage === "vi" ? "Bếp đầy đủ" : "Full Kitchen"}
+
+                      {/* 청소 횟수 */}
+                      {cat.id === "policy" && selectedFacilities.includes("cleaning") && (
+                        <div className="mt-4 pt-4 border-t border-slate-200">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-slate-600">
+                              {currentLanguage === "ko" ? "주당 청소 횟수" : "Cleaning per week"}
+                            </span>
+                            <select
+                              value={cleaningPerWeek}
+                              onChange={(e) => setCleaningPerWeek(Number(e.target.value))}
+                              className="px-3 py-2 border border-slate-200 rounded-lg text-sm min-h-[40px]"
+                            >
+                              {[1, 2, 3, 4, 5, 6, 7].map((n) => (
+                                <option key={n} value={n}>{n}{currentLanguage === "ko" ? "회" : "x"}</option>
+                              ))}
+                            </select>
+                          </div>
                         </div>
                       )}
                     </div>
