@@ -40,21 +40,21 @@ import {
   ALL_REGIONS,
 } from "@/lib/data/vietnam-regions";
 
-// 깔끔하고 신뢰감 있는 컬러 팔레트
+// 최초 요청 컬러: Deep Blue + Emerald Green (깔끔한 스타일)
 const COLORS = {
-  primary: "#2563EB",      // Trust Blue - 메인 컬러
-  primaryLight: "#3B82F6", // Light Blue
-  primaryDark: "#1D4ED8",  // Dark Blue
-  success: "#059669",      // Emerald - 성공/완료
+  primary: "#003366",      // Deep Blue - 메인 컬러
+  primaryLight: "#004080", // Light Deep Blue
+  accent: "#10B981",       // Emerald Green - 강조/성공
+  success: "#10B981",      // Emerald Green - 성공/완료
   error: "#DC2626",        // Red - 에러
   white: "#FFFFFF",
-  background: "#F8FAFC",   // 깔끔한 밝은 회색 배경
+  background: "#F9FAFB",   // 깔끔한 밝은 회색 배경
   surface: "#FFFFFF",      // 카드 배경
-  border: "#E2E8F0",       // 테두리
-  borderFocus: "#93C5FD",  // 포커스 테두리
-  text: "#0F172A",         // 메인 텍스트
-  textSecondary: "#64748B", // 보조 텍스트
-  textMuted: "#94A3B8",    // 희미한 텍스트
+  border: "#E5E7EB",       // 테두리
+  borderFocus: "#003366",  // 포커스 테두리
+  text: "#1F2937",         // 메인 텍스트
+  textSecondary: "#6B7280", // 보조 텍스트
+  textMuted: "#9CA3AF",    // 희미한 텍스트
 };
 
 export default function AddPropertyPage() {
