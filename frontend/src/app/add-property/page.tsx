@@ -1359,7 +1359,11 @@ export default function AddPropertyPage() {
               <div className="pb-2">
                 <div className="flex items-center gap-2 mb-2">
                   <p className="text-xs font-bold text-gray-500">
-                    {currentLanguage === "ko" ? "주소 찾기" : "Find Address"}
+                    {currentLanguage === "ko" ? "주소 찾기" : 
+                     currentLanguage === "vi" ? "Tìm địa chỉ" :
+                     currentLanguage === "ja" ? "住所検索" :
+                     currentLanguage === "zh" ? "查找地址" :
+                     "Find Address"}
                   </p>
                 </div>
                 {(!address || !coordinates) && (
@@ -1449,7 +1453,11 @@ export default function AddPropertyPage() {
               >
                 <div className="flex items-center gap-2 mb-2">
                   <p className="text-xs font-bold text-gray-500">
-                    {currentLanguage === "ko" ? "도시·구" : "City·District"}
+                    {currentLanguage === "ko" ? "도시·구" : 
+                     currentLanguage === "vi" ? "Thành phố·Quận" :
+                     currentLanguage === "ja" ? "都市・区" :
+                     currentLanguage === "zh" ? "城市・区" :
+                     "City·District"}
                   </p>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -1489,7 +1497,11 @@ export default function AddPropertyPage() {
                         })()
                       ) : (
                         <span style={{ color: COLORS.textMuted }}>
-                          {currentLanguage === "ko" ? "자동 입력" : "Auto"}
+                          {currentLanguage === "ko" ? "자동 입력" : 
+                           currentLanguage === "vi" ? "Tự động" :
+                           currentLanguage === "ja" ? "自動入力" :
+                           currentLanguage === "zh" ? "自动输入" :
+                           "Auto"}
                         </span>
                       )}
                     </div>
@@ -1521,6 +1533,10 @@ export default function AddPropertyPage() {
                           ? "선택"
                           : currentLanguage === "vi"
                             ? "Chọn"
+                          : currentLanguage === "ja"
+                            ? "選択"
+                          : currentLanguage === "zh"
+                            ? "选择"
                             : "Select"}
                       </option>
                       {getDistrictsByCityId(selectedCityId).map((d) => {
@@ -1550,7 +1566,11 @@ export default function AddPropertyPage() {
               >
                 <div className="flex items-center gap-2 mb-2">
                   <p className="text-xs font-bold text-gray-500">
-                    {currentLanguage === "ko" ? "동호수" : "Unit Number"}
+                    {currentLanguage === "ko" ? "동호수" : 
+                     currentLanguage === "vi" ? "Số phòng" :
+                     currentLanguage === "ja" ? "部屋番号" :
+                     currentLanguage === "zh" ? "房间号" :
+                     "Unit Number"}
                   </p>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
