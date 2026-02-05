@@ -445,7 +445,7 @@ export default function AddPropertyPage() {
     if (!coordinates || !coordinates.lat || !coordinates.lng) {
       alert(
         currentLanguage === "ko"
-          ? "주소를 선택하여 좌표를 설정해주세요. 주소 입력 버튼을 클릭��여 주소를 확인해주세요."
+          ? "주소를 선택하여 좌표를 설정해주세요. 주소 입력 버튼을 클릭����여 주소를 확인해주세요."
           : currentLanguage === "vi"
             ? "Vui lòng chọn địa chỉ để thiết lập tọa độ. Vui lòng nhấp vào nút nhập địa chỉ để xác nhận địa chỉ."
             : "Please select an address to set coordinates. Please click the address input button to verify the address.",
@@ -657,7 +657,7 @@ export default function AddPropertyPage() {
         ...(icalPlatform && { icalPlatform }),
         ...(icalCalendarName.trim() && { icalCalendarName: icalCalendarName.trim() }),
         ...(icalUrl.trim() && { icalUrl: icalUrl.trim() }),
-        // 도시와 구 정보 저장
+        // 도시와 구 정보 ��장
         ...(selectedCityId && { cityId: selectedCityId }),
         ...(selectedDistrictId && { districtId: selectedDistrictId }),
       });
@@ -1023,28 +1023,29 @@ export default function AddPropertyPage() {
                     : "Property Type"}
                 <span style={{ color: COLORS.error }} className="ml-1">*</span>
               </h2>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-5 gap-1.5">
                 {(
                   [
-                    { value: "studio", ko: "스튜디오", vi: "Studio", en: "Studio" },
-                    { value: "one_room", ko: "원룸(방·거실 분리)", vi: "1 phòng", en: "1 Room" },
-                    { value: "two_room", ko: "2룸", vi: "2 phòng", en: "2 Rooms" },
-                    { value: "three_plus", ko: "3+룸", vi: "3+ phòng", en: "3+ Rooms" },
-                    { value: "detached", ko: "독채", vi: "Nhà riêng", en: "Detached" },
+                    { value: "studio", ko: "스튜디오", vi: "Studio", en: "Studio", icon: "🏢" },
+                    { value: "one_room", ko: "원룸", vi: "1 phòng", en: "1 Room", icon: "🚪" },
+                    { value: "two_room", ko: "2룸", vi: "2 phòng", en: "2 Rooms", icon: "🏠" },
+                    { value: "three_plus", ko: "3+룸", vi: "3+ phòng", en: "3+ Rooms", icon: "🏡" },
+                    { value: "detached", ko: "독채", vi: "Nhà riêng", en: "Detached", icon: "🏘️" },
                   ] as const
-                ).map(({ value, ko, vi, en }) => (
+                ).map(({ value, ko, vi, en, icon }) => (
                   <button
                     key={value}
                     type="button"
                     onClick={() => setPropertyType(value)}
-                    className="px-3 py-2 rounded-lg text-sm font-medium transition-all"
+                    className="flex flex-col items-center justify-center p-2 rounded-lg text-[10px] font-medium transition-all min-h-[60px]"
                     style={{
                       backgroundColor: propertyType === value ? `${COLORS.primary}15` : COLORS.white,
                       border: `1px solid ${propertyType === value ? COLORS.primary : COLORS.border}`,
                       color: propertyType === value ? COLORS.primary : COLORS.text,
                     }}
                   >
-                    {currentLanguage === "ko" ? ko : currentLanguage === "vi" ? vi : en}
+                    <span className="text-lg mb-0.5">{icon}</span>
+                    <span className="leading-tight text-center">{currentLanguage === "ko" ? ko : currentLanguage === "vi" ? vi : en}</span>
                   </button>
                 ))}
               </div>

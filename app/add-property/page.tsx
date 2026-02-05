@@ -185,26 +185,27 @@ export default function AddPropertyPage() {
               <h2 className="text-sm font-bold mb-3" style={{ color: COLORS.text }}>
                 매물 종류<span style={{ color: COLORS.error }} className="ml-1">*</span>
               </h2>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-5 gap-1.5">
                 {[
-                  { value: "studio", label: "스튜디오" },
-                  { value: "one_room", label: "원룸" },
-                  { value: "two_room", label: "2룸" },
-                  { value: "three_plus", label: "3+룸" },
-                  { value: "detached", label: "독채" },
-                ].map(({ value, label }) => (
+                  { value: "studio", label: "스튜디오", icon: "🏢" },
+                  { value: "one_room", label: "원룸", icon: "🚪" },
+                  { value: "two_room", label: "2룸", icon: "🏠" },
+                  { value: "three_plus", label: "3+룸", icon: "🏡" },
+                  { value: "detached", label: "독채", icon: "🏘️" },
+                ].map(({ value, label, icon }) => (
                   <button
                     key={value}
                     type="button"
                     onClick={() => setPropertyType(value)}
-                    className="px-3 py-2 rounded-lg text-sm font-medium transition-all"
+                    className="flex flex-col items-center justify-center p-2 rounded-lg text-[10px] font-medium transition-all min-h-[60px]"
                     style={{
                       backgroundColor: propertyType === value ? `${COLORS.primary}15` : COLORS.white,
                       border: `1px solid ${propertyType === value ? COLORS.primary : COLORS.border}`,
                       color: propertyType === value ? COLORS.primary : COLORS.text,
                     }}
                   >
-                    {label}
+                    <span className="text-lg mb-0.5">{icon}</span>
+                    <span className="leading-tight text-center">{label}</span>
                   </button>
                 ))}
               </div>
