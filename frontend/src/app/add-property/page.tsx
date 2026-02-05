@@ -818,6 +818,10 @@ export default function AddPropertyPage() {
                 ? "새 매물 등록"
                 : currentLanguage === "vi"
                   ? "Đăng ký bất động sản mới"
+                : currentLanguage === "ja"
+                  ? "新規物件登録"
+                : currentLanguage === "zh"
+                  ? "新物业注册"
                   : "Register New Property"}
             </h1>
             <p className="text-sm mt-1" style={{ color: COLORS.textSecondary }}>
@@ -825,6 +829,10 @@ export default function AddPropertyPage() {
                 ? "매물 정보를 입력해주세요"
                 : currentLanguage === "vi"
                   ? "Vui lòng nhập thông tin bất động sản"
+                : currentLanguage === "ja"
+                  ? "物件情報を入力してください"
+                : currentLanguage === "zh"
+                  ? "请输入物业信息"
                   : "Please enter property information"}
             </p>
           </div>
@@ -847,6 +855,10 @@ export default function AddPropertyPage() {
                     ? "사진 등록"
                     : currentLanguage === "vi"
                       ? "Đăng ảnh"
+                    : currentLanguage === "ja"
+                      ? "写真登録"
+                    : currentLanguage === "zh"
+                      ? "照片上传"
                       : "Upload Photos"}
                   <span style={{ color: COLORS.error }} className="ml-1">
                     *
@@ -1147,6 +1159,10 @@ export default function AddPropertyPage() {
                   ? "매물 종류"
                   : currentLanguage === "vi"
                     ? "Loại bất động sản"
+                  : currentLanguage === "ja"
+                    ? "物件の種類"
+                  : currentLanguage === "zh"
+                    ? "物业类型"
                     : "Property Type"}
                 <span style={{ color: COLORS.error }} className="ml-1">
                   *
@@ -1349,6 +1365,10 @@ export default function AddPropertyPage() {
                   ? "주소"
                   : currentLanguage === "vi"
                     ? "Địa chỉ"
+                  : currentLanguage === "ja"
+                    ? "住所"
+                  : currentLanguage === "zh"
+                    ? "地址"
                     : "Address"}
                 <span style={{ color: COLORS.error }} className="ml-1">
                   *
@@ -1657,6 +1677,10 @@ export default function AddPropertyPage() {
                   ? "임대 희망 날짜"
                   : currentLanguage === "vi"
                     ? "Ngày cho thuê mong muốn"
+                  : currentLanguage === "ja"
+                    ? "賃貸希望日"
+                  : currentLanguage === "zh"
+                    ? "租赁希望日期"
                     : "Desired Rental Dates"}
               </h2>
               <div className="grid grid-cols-2 gap-2">
@@ -1834,6 +1858,10 @@ export default function AddPropertyPage() {
                   ? "1주일 임대료"
                   : currentLanguage === "vi"
                     ? "Giá thuê 1 tuần"
+                  : currentLanguage === "ja"
+                    ? "1週間賃貸料"
+                  : currentLanguage === "zh"
+                    ? "1周租金"
                     : "Weekly Rent"}
                 <span style={{ color: COLORS.error }} className="ml-1">
                   *
@@ -1897,6 +1925,10 @@ export default function AddPropertyPage() {
                   ? "숙소시설 및 정책"
                   : currentLanguage === "vi"
                     ? "Tiện ích và chính sách"
+                  : currentLanguage === "ja"
+                    ? "施設とポリシー"
+                  : currentLanguage === "zh"
+                    ? "设施与政策"
                     : "Facilities & Policy"}
               </h2>
               <div className="space-y-6">
@@ -2130,6 +2162,10 @@ export default function AddPropertyPage() {
                   ? "체크인/체크아웃 시간"
                   : currentLanguage === "vi"
                     ? "Giờ check-in/check-out"
+                  : currentLanguage === "ja"
+                    ? "チェックイン/チェックアウト時間"
+                  : currentLanguage === "zh"
+                    ? "入住/退房时间"
                     : "Check-in/Check-out Time"}
               </h2>
               <div className="grid grid-cols-2 gap-2">
