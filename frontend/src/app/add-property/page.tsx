@@ -687,7 +687,7 @@ export default function AddPropertyPage() {
             {/* ===== 사진 등록 섹션 ===== */}
             <section 
               className="p-4 rounded-xl"
-              style={{ backgroundColor: COLORS.surface, border: `1px solid ${COLORS.border}` }}
+              style={{ backgroundColor: COLORS.surface, border: `1px dashed ${COLORS.border}40` }}
             >
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-bold" style={{ color: COLORS.text }}>
@@ -768,7 +768,7 @@ export default function AddPropertyPage() {
             {/* ===== 매물 종류 섹션 ===== */}
             <section 
               className="p-4 rounded-xl"
-              style={{ backgroundColor: COLORS.surface, border: `1px solid ${COLORS.border}` }}
+              style={{ backgroundColor: COLORS.surface, border: `1px dashed ${COLORS.border}40` }}
             >
               <h2 className="text-sm font-bold mb-3" style={{ color: COLORS.text }}>
                 {currentLanguage === "ko"
@@ -808,18 +808,20 @@ export default function AddPropertyPage() {
 
               {/* 방/화장실/최대인원 */}
               {propertyType && (
-                <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-gray-100">
+                <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t" style={{ borderColor: `${COLORS.border}40` }}>
                   <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-2">
+                    <label className="block text-[11px] font-medium mb-1.5" style={{ color: COLORS.textSecondary }}>
                       {currentLanguage === "ko" ? "방 개수" : currentLanguage === "vi" ? "Số phòng" : "Bedrooms"}
                     </label>
                     <select
                       value={bedrooms}
                       onChange={(e) => setBedrooms(Number(e.target.value))}
                       disabled={propertyType === "studio" || propertyType === "one_room" || propertyType === "two_room"}
-                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm min-h-[44px] focus:outline-none transition-all"
+                      className="w-full px-2 py-2 rounded-md text-sm min-h-[36px] focus:outline-none transition-all"
                       style={{
-                        backgroundColor: propertyType === "studio" || propertyType === "one_room" || propertyType === "two_room" ? COLORS.gray100 : COLORS.white,
+                        backgroundColor: `${COLORS.secondary}15`,
+                        border: `1px solid ${COLORS.secondary}30`,
+                        color: COLORS.text,
                       }}
                     >
                       {bedroomOptions.map((n) => (
@@ -830,15 +832,17 @@ export default function AddPropertyPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-2">
+                    <label className="block text-[11px] font-medium mb-1.5" style={{ color: COLORS.textSecondary }}>
                       {currentLanguage === "ko" ? "화장실" : currentLanguage === "vi" ? "Phòng tắm" : "Bathrooms"}
                     </label>
                     <select
                       value={bathrooms}
                       onChange={(e) => setBathrooms(Number(e.target.value))}
-                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm min-h-[44px] focus:outline-none transition-all"
+                      className="w-full px-2 py-2 rounded-md text-sm min-h-[36px] focus:outline-none transition-all"
                       style={{ 
-                        borderColor: COLORS.gray200,
+                        backgroundColor: `${COLORS.secondary}15`,
+                        border: `1px solid ${COLORS.secondary}30`,
+                        color: COLORS.text,
                       }}
                     >
                       {bathroomOptions.map((n) => (
@@ -849,7 +853,7 @@ export default function AddPropertyPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-2">
+                    <label className="block text-[11px] font-medium mb-1.5" style={{ color: COLORS.textSecondary }}>
                       {currentLanguage === "ko" ? "최대인원" : currentLanguage === "vi" ? "Tối đa" : "Max"}
                     </label>
                     <select
@@ -859,7 +863,12 @@ export default function AddPropertyPage() {
                         setMaxAdults(v);
                         setMaxChildren(0);
                       }}
-                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm min-h-[44px] focus:outline-none transition-all"
+                      className="w-full px-2 py-2 rounded-md text-sm min-h-[36px] focus:outline-none transition-all"
+                      style={{
+                        backgroundColor: `${COLORS.secondary}15`,
+                        border: `1px solid ${COLORS.secondary}30`,
+                        color: COLORS.text,
+                      }}
                     >
                       {Array.from({ length: 20 }, (_, i) => i + 1).map((n) => (
                         <option key={n} value={n}>
@@ -875,7 +884,7 @@ export default function AddPropertyPage() {
             {/* ===== 주소 섹션 ===== */}
             <section 
               className="p-4 rounded-xl"
-              style={{ backgroundColor: COLORS.surface, border: `1px solid ${COLORS.border}` }}
+              style={{ backgroundColor: COLORS.surface, border: `1px dashed ${COLORS.border}40` }}
             >
               <h2 className="text-sm font-bold mb-3" style={{ color: COLORS.text }}>
                 {currentLanguage === "ko"
@@ -945,12 +954,15 @@ export default function AddPropertyPage() {
               )}
 
               {/* 도시/구 자동 표시 */}
-              <div className="grid grid-cols-2 gap-3 mt-4">
+              <div className="grid grid-cols-2 gap-2 mt-4">
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-2">
+                  <label className="block text-[11px] font-medium mb-1.5" style={{ color: COLORS.textSecondary }}>
                     {currentLanguage === "ko" ? "도시" : currentLanguage === "vi" ? "Thành phố" : "City"}
                   </label>
-                  <div className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm bg-slate-50 min-h-[44px] flex items-center">
+                  <div 
+                    className="w-full px-2 py-2 rounded-md text-sm min-h-[36px] flex items-center"
+                    style={{ backgroundColor: `${COLORS.accent}15`, border: `1px solid ${COLORS.accent}30`, color: COLORS.text }}
+                  >
                     {address && coordinates && selectedCityId
                       ? (() => {
                           const city = VIETNAM_CITIES.find((c) => c.id === selectedCityId);
@@ -958,19 +970,23 @@ export default function AddPropertyPage() {
                           const langMap: Record<string, string> = { ko: city.nameKo, vi: city.nameVi, en: city.name, ja: city.nameJa ?? city.name, zh: city.nameZh ?? city.name };
                           return langMap[currentLanguage] ?? city.name;
                         })()
-                      : <span className="text-slate-400">{currentLanguage === "ko" ? "자동 입력" : "Auto"}</span>}
+                      : <span style={{ color: COLORS.textMuted }}>{currentLanguage === "ko" ? "자동 입력" : "Auto"}</span>}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-2">
+                  <label className="block text-[11px] font-medium mb-1.5" style={{ color: COLORS.textSecondary }}>
                     {currentLanguage === "ko" ? "구" : currentLanguage === "vi" ? "Quận" : "District"}
                   </label>
                   <select
                     value={selectedDistrictId}
                     onChange={(e) => setSelectedDistrictId(e.target.value)}
                     disabled={!address || !coordinates}
-                    className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm min-h-[44px] focus:outline-none transition-all"
-                    style={{ backgroundColor: !address || !coordinates ? COLORS.gray100 : COLORS.white }}
+                    className="w-full px-2 py-2 rounded-md text-sm min-h-[36px] focus:outline-none transition-all"
+                    style={{ 
+                      backgroundColor: `${COLORS.accent}15`,
+                      border: `1px solid ${COLORS.accent}30`,
+                      color: COLORS.text,
+                    }}
                   >
                     <option value="">{currentLanguage === "ko" ? "선택" : "Select"}</option>
                     {getDistrictsByCityId(selectedCityId).map((d) => {
@@ -982,30 +998,33 @@ export default function AddPropertyPage() {
               </div>
 
               {/* 동호수 */}
-              <div className="mt-4 p-4 rounded-lg" style={{ backgroundColor: COLORS.gray50 }}>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
+              <div className="mt-4 p-3 rounded-lg" style={{ backgroundColor: `${COLORS.border}20` }}>
+                <label className="block text-xs font-medium mb-2" style={{ color: COLORS.text }}>
                   {currentLanguage === "ko"
                     ? "동호수"
                     : currentLanguage === "vi"
                       ? "Số phòng"
                       : "Unit Number"}
                 </label>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-2">
+                    <label className="block text-[11px] font-medium mb-1.5" style={{ color: COLORS.textSecondary }}>
                       {currentLanguage === "ko" ? "동" : currentLanguage === "vi" ? "Tòa" : "Building"}
                     </label>
                     <input
                       type="text"
                       value={buildingNumber}
                       onChange={(e) => setBuildingNumber(e.target.value)}
-                      placeholder={currentLanguage === "ko" ? "예: A, 1" : "e.g., A"}
-                      className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm min-h-[44px] focus:outline-none transition-all"
-                      style={{ borderColor: COLORS.gray200 }}
+                      placeholder={currentLanguage === "ko" ? "예: A" : "e.g., A"}
+                      className="w-full px-2 py-2 rounded-md text-sm min-h-[36px] focus:outline-none transition-all"
+                      style={{ 
+                        backgroundColor: COLORS.white,
+                        border: `1px solid ${COLORS.accent}30`,
+                      }}
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-2">
+                    <label className="block text-[11px] font-medium mb-1.5" style={{ color: COLORS.textSecondary }}>
                       {currentLanguage === "ko" ? "호실" : currentLanguage === "vi" ? "Phòng" : "Room"}
                     </label>
                     <input
@@ -1013,18 +1032,22 @@ export default function AddPropertyPage() {
                       value={roomNumber}
                       onChange={(e) => setRoomNumber(e.target.value)}
                       placeholder={currentLanguage === "ko" ? "예: 101" : "e.g., 101"}
-                      className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm min-h-[44px] focus:outline-none transition-all"
+                      className="w-full px-2 py-2 rounded-md text-sm min-h-[36px] focus:outline-none transition-all"
+                      style={{ 
+                        backgroundColor: COLORS.white,
+                        border: `1px solid ${COLORS.accent}30`,
+                      }}
                     />
                   </div>
                 </div>
-                <p className="text-xs text-slate-500 mt-3 flex items-start gap-1">
+                <p className="text-[10px] mt-2 flex items-start gap-1" style={{ color: COLORS.textSecondary }}>
                   <span style={{ color: COLORS.primary }}>i</span>
                   <span>
                     {currentLanguage === "ko"
-                      ? "동호수는 예약이 완료된 이후에 임차인에게만 표시됩니다."
+                      ? "동호수는 예약 완료 후 임차인에게만 표시됩니다."
                       : currentLanguage === "vi"
-                        ? "Số phòng chỉ hiển thị cho người thuê sau khi đặt chỗ được hoàn thành."
-                        : "Unit number will only be visible to tenants after booking is completed."}
+                        ? "Số phòng chỉ hiển thị cho người thuê sau khi đặt chỗ."
+                        : "Unit number shown to tenants after booking."}
                   </span>
                 </p>
               </div>
@@ -1033,7 +1056,7 @@ export default function AddPropertyPage() {
             {/* ===== 임대 희망 날짜 섹션 ===== */}
             <section 
               className="p-4 rounded-xl"
-              style={{ backgroundColor: COLORS.surface, border: `1px solid ${COLORS.border}` }}
+              style={{ backgroundColor: COLORS.surface, border: `1px dashed ${COLORS.border}40` }}
             >
               <h2 className="text-sm font-bold mb-3" style={{ color: COLORS.text }}>
                 {currentLanguage === "ko"
@@ -1098,7 +1121,7 @@ export default function AddPropertyPage() {
             {/* ===== 1주일 임대료 섹션 ===== */}
             <section 
               className="p-4 rounded-xl"
-              style={{ backgroundColor: COLORS.surface, border: `1px solid ${COLORS.border}` }}
+              style={{ backgroundColor: COLORS.surface, border: `1px dashed ${COLORS.border}40` }}
             >
               <h2 className="text-sm font-bold mb-1" style={{ color: COLORS.text }}>
                 {currentLanguage === "ko"
@@ -1139,7 +1162,7 @@ export default function AddPropertyPage() {
             {/* ===== 시설 및 정책 섹션 ===== */}
             <section 
               className="p-4 rounded-xl"
-              style={{ backgroundColor: COLORS.surface, border: `1px solid ${COLORS.border}` }}
+              style={{ backgroundColor: COLORS.surface, border: `1px dashed ${COLORS.border}40` }}
             >
               <h2 className="text-sm font-bold mb-4" style={{ color: COLORS.text }}>
                 {currentLanguage === "ko"
@@ -1273,7 +1296,7 @@ export default function AddPropertyPage() {
             {/* ===== 체크인/체크아웃 시간 섹션 ===== */}
             <section 
               className="p-4 rounded-xl"
-              style={{ backgroundColor: COLORS.surface, border: `1px solid ${COLORS.border}` }}
+              style={{ backgroundColor: COLORS.surface, border: `1px dashed ${COLORS.border}40` }}
             >
               <h2 className="text-sm font-bold mb-4" style={{ color: COLORS.text }}>
                 {currentLanguage === "ko"
@@ -1284,14 +1307,18 @@ export default function AddPropertyPage() {
               </h2>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-2">
+                  <label className="block text-[11px] font-medium mb-1.5" style={{ color: COLORS.textSecondary }}>
                     {currentLanguage === "ko" ? "체크인" : "Check-in"}
                   </label>
                   <select
                     value={checkInTime}
                     onChange={(e) => setCheckInTime(e.target.value)}
-                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg text-sm min-h-[48px] focus:outline-none transition-all"
-                    style={{ backgroundColor: COLORS.gray50 }}
+                    className="w-full px-2 py-2 rounded-md text-sm min-h-[36px] focus:outline-none transition-all"
+                    style={{ 
+                      backgroundColor: `${COLORS.secondary}15`,
+                      border: `1px solid ${COLORS.secondary}30`,
+                      color: COLORS.text,
+                    }}
                   >
                     {Array.from({ length: 24 }, (_, i) => {
                       const hour = i.toString().padStart(2, '0');
@@ -1302,14 +1329,18 @@ export default function AddPropertyPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-2">
+                  <label className="block text-[11px] font-medium mb-1.5" style={{ color: COLORS.textSecondary }}>
                     {currentLanguage === "ko" ? "체크아웃" : "Check-out"}
                   </label>
                   <select
                     value={checkOutTime}
                     onChange={(e) => setCheckOutTime(e.target.value)}
-                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg text-sm min-h-[48px] focus:outline-none transition-all"
-                    style={{ backgroundColor: COLORS.gray50 }}
+                    className="w-full px-2 py-2 rounded-md text-sm min-h-[36px] focus:outline-none transition-all"
+                    style={{ 
+                      backgroundColor: `${COLORS.secondary}15`,
+                      border: `1px solid ${COLORS.secondary}30`,
+                      color: COLORS.text,
+                    }}
                   >
                     {Array.from({ length: 24 }, (_, i) => {
                       const hour = i.toString().padStart(2, '0');
@@ -1325,9 +1356,9 @@ export default function AddPropertyPage() {
             {/* ===== 매물명 섹션 ===== */}
             <section 
               className="p-4 rounded-xl"
-              style={{ backgroundColor: COLORS.surface, border: `1px solid ${COLORS.border}` }}
+              style={{ backgroundColor: COLORS.surface, border: `1px dashed ${COLORS.border}40` }}
             >
-              <h2 className="text-sm font-bold mb-4" style={{ color: COLORS.text }}>
+              <h2 className="text-sm font-bold mb-3" style={{ color: COLORS.text }}>
                 {getUIText('propertyNickname', currentLanguage)}
                 <span style={{ color: COLORS.error }} className="ml-1">*</span>
               </h2>
@@ -1336,8 +1367,11 @@ export default function AddPropertyPage() {
                 value={propertyNickname}
                 onChange={(e) => setPropertyNickname(e.target.value)}
                 placeholder={getUIText('propertyNicknamePlaceholder', currentLanguage)}
-                className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg min-h-[48px] focus:outline-none transition-all"
-                style={{ borderColor: COLORS.gray200 }}
+                className="w-full px-3 py-2.5 rounded-lg text-sm min-h-[40px] focus:outline-none transition-all"
+                style={{ 
+                  backgroundColor: `${COLORS.accent}08`,
+                  border: `1px solid ${COLORS.accent}30`,
+                }}
                 required
               />
             </section>
@@ -1345,9 +1379,9 @@ export default function AddPropertyPage() {
             {/* ===== 매물 설명 섹션 ===== */}
             <section 
               className="p-4 rounded-xl"
-              style={{ backgroundColor: COLORS.surface, border: `1px solid ${COLORS.border}` }}
+              style={{ backgroundColor: COLORS.surface, border: `1px dashed ${COLORS.border}40` }}
             >
-              <h2 className="text-sm font-bold mb-4" style={{ color: COLORS.text }}>
+              <h2 className="text-sm font-bold mb-3" style={{ color: COLORS.text }}>
                 {currentLanguage === "ko"
                   ? "매물 설명"
                   : currentLanguage === "vi"
@@ -1366,11 +1400,14 @@ export default function AddPropertyPage() {
                       : "Enter detailed description..."
                 }
                 rows={4}
-                className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg resize-none min-h-[120px] focus:outline-none transition-all"
-                style={{ borderColor: COLORS.gray200 }}
+                className="w-full px-3 py-2.5 rounded-lg resize-none text-sm min-h-[100px] focus:outline-none transition-all"
+                style={{ 
+                  backgroundColor: `${COLORS.accent}08`,
+                  border: `1px solid ${COLORS.accent}30`,
+                }}
                 required
               />
-              <p className="text-xs mt-3 flex items-start gap-2" style={{ color: COLORS.success }}>
+              <p className="text-[10px] mt-2 flex items-start gap-1" style={{ color: COLORS.success }}>
                 <span>i</span>
                 <span>
                   {currentLanguage === "ko"
@@ -1385,15 +1422,15 @@ export default function AddPropertyPage() {
             {/* ===== 외부 캘린더 섹션 ===== */}
             <section 
               className="rounded-xl overflow-hidden"
-              style={{ backgroundColor: COLORS.surface, border: `1px solid ${COLORS.border}` }}
+              style={{ backgroundColor: COLORS.surface, border: `1px dashed ${COLORS.border}40` }}
             >
               <button
                 type="button"
                 onClick={() => setShowIcalDropdown(!showIcalDropdown)}
-                className="w-full py-4 px-5 flex items-center justify-between transition-colors text-left min-h-[56px]"
-                style={{ backgroundColor: COLORS.gray50 }}
+                className="w-full py-3 px-4 flex items-center justify-between transition-colors text-left min-h-[48px]"
+                style={{ backgroundColor: `${COLORS.border}20` }}
               >
-                <span className="text-sm font-medium text-gray-700">
+                <span className="text-sm font-medium" style={{ color: COLORS.text }}>
                   {currentLanguage === "ko"
                     ? "외부 캘린더 가져오기"
                     : currentLanguage === "vi"
@@ -1401,26 +1438,31 @@ export default function AddPropertyPage() {
                       : "Import External Calendar"}
                 </span>
                 {showIcalDropdown ? (
-                  <ChevronUp className="w-5 h-5 text-slate-500" />
+                  <ChevronUp className="w-4 h-4" style={{ color: COLORS.textSecondary }} />
                 ) : (
-                  <ChevronDown className="w-5 h-5 text-slate-500" />
+                  <ChevronDown className="w-4 h-4" style={{ color: COLORS.textSecondary }} />
                 )}
               </button>
               {showIcalDropdown && (
-                <div className="p-5 pt-3 border-t border-slate-200 bg-white space-y-4">
-                  <p className="text-xs text-slate-500">
+                <div className="p-4 pt-3 space-y-3" style={{ borderTop: `1px solid ${COLORS.border}30` }}>
+                  <p className="text-[11px]" style={{ color: COLORS.textSecondary }}>
                     {currentLanguage === "ko"
                       ? "에어비앤비, 아고다 등 예약을 500stay와 동기화합니다."
                       : "Sync bookings from Airbnb, Agoda, etc."}
                   </p>
                   <div>
-                    <label className="block text-xs text-slate-500 mb-2">
+                    <label className="block text-[11px] font-medium mb-1.5" style={{ color: COLORS.textSecondary }}>
                       {currentLanguage === "ko" ? "플랫폼" : "Platform"}
                     </label>
                     <select
                       value={icalPlatform}
                       onChange={(e) => setIcalPlatform(e.target.value)}
-                      className="w-full px-4 py-3 text-sm border-2 border-slate-200 rounded-lg bg-white min-h-[48px] focus:outline-none"
+                      className="w-full px-2 py-2 text-sm rounded-md min-h-[36px] focus:outline-none"
+                      style={{ 
+                        backgroundColor: `${COLORS.secondary}15`,
+                        border: `1px solid ${COLORS.secondary}30`,
+                        color: COLORS.text,
+                      }}
                     >
                       <option value="">{currentLanguage === "ko" ? "선택 안 함" : "None"}</option>
                       <option value="airbnb">Airbnb</option>
@@ -1430,7 +1472,7 @@ export default function AddPropertyPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs text-slate-500 mb-2">
+                    <label className="block text-[11px] font-medium mb-1.5" style={{ color: COLORS.textSecondary }}>
                       {currentLanguage === "ko" ? "캘린더 이름" : "Calendar name"}
                     </label>
                     <input
@@ -1438,17 +1480,25 @@ export default function AddPropertyPage() {
                       value={icalCalendarName}
                       onChange={(e) => setIcalCalendarName(e.target.value)}
                       placeholder={currentLanguage === "ko" ? "예: 에어비앤비 예약" : "e.g. Airbnb"}
-                      className="w-full px-4 py-3 text-sm border-2 border-slate-200 rounded-lg min-h-[48px] focus:outline-none"
+                      className="w-full px-2 py-2 text-sm rounded-md min-h-[36px] focus:outline-none"
+                      style={{ 
+                        backgroundColor: `${COLORS.accent}08`,
+                        border: `1px solid ${COLORS.accent}30`,
+                      }}
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-slate-500 mb-2">iCal URL (.ics)</label>
+                    <label className="block text-[11px] font-medium mb-1.5" style={{ color: COLORS.textSecondary }}>iCal URL (.ics)</label>
                     <input
                       type="url"
                       value={icalUrl}
                       onChange={(e) => setIcalUrl(e.target.value)}
                       placeholder="https://..."
-                      className="w-full px-4 py-3 text-sm border-2 border-slate-200 rounded-lg min-h-[48px] focus:outline-none"
+                      className="w-full px-2 py-2 text-sm rounded-md min-h-[36px] focus:outline-none"
+                      style={{ 
+                        backgroundColor: `${COLORS.accent}08`,
+                        border: `1px solid ${COLORS.accent}30`,
+                      }}
                     />
                   </div>
                 </div>
