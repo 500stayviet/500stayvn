@@ -19,7 +19,7 @@ export interface UserData {
   photoURL?: string;
   gender?: "male" | "female";
   preferredLanguage?: SupportedLanguage;
-  role?: "user" | "admin";
+  role?: "user" | "admin" | "owner";
   is_owner?: boolean;
   verification_status?: VerificationStatus;
   private_data?: PrivateData;

@@ -256,7 +256,9 @@ export type UITextKey =
   | 'propertyNamePlaceholder'
   | 'propertyNicknamePlaceholder'
   | 'propertyDescription'
-  | 'propertyDescriptionPlaceholder';
+  | 'propertyDescriptionPlaceholder'
+  | 'confirmLogout'
+  | 'logoutDesc';
 
 /**
  * 언어별 UI 텍스트 사전
@@ -507,6 +509,8 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     propertyNicknamePlaceholder: '예: 내 첫 번째 스튜디오',
     propertyDescription: '매물 설명',
     propertyDescriptionPlaceholder: '매물에 대한 상세 설명을 입력해주세요.',
+    confirmLogout: '로그아웃 확인',
+    logoutDesc: '정말 로그아웃 하시겠습니까?',
   },
   vi: {
     login: 'Đăng nhập',
@@ -753,6 +757,8 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     propertyNicknamePlaceholder: 'VD: Studio đầu tiên của tôi',
     propertyDescription: 'Mô tả bất động sản',
     propertyDescriptionPlaceholder: 'Nhập mô tả chi tiết về bất động sản.',
+    confirmLogout: 'Xác nhận đăng xuất',
+    logoutDesc: 'Bạn có chắc chắn muốn đăng xuất không?',
   },
   en: {
     login: 'Login',
@@ -999,6 +1005,8 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     propertyNicknamePlaceholder: 'e.g., My first studio',
     propertyDescription: 'Property Description',
     propertyDescriptionPlaceholder: 'Enter detailed description of the property.',
+    confirmLogout: 'Confirm Logout',
+    logoutDesc: 'Are you sure you want to logout?',
   },
   ja: {
     login: 'ログイン',
@@ -1245,6 +1253,8 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     propertyNicknamePlaceholder: '例: 私の最初のスタジオ',
     propertyDescription: '物件説明',
     propertyDescriptionPlaceholder: '物件の詳細な説明を入力してください。',
+    confirmLogout: 'ログアウト確認',
+    logoutDesc: '本当にログアウトしますか？',
   },
   zh: {
     login: '登录',
@@ -1491,6 +1501,8 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     propertyNicknamePlaceholder: '例如: 我的第一个工作室',
     propertyDescription: '房源描述',
     propertyDescriptionPlaceholder: '请输入房源的详细描述。',
+    confirmLogout: '确认登出',
+    logoutDesc: '您确定要登出吗？',
   },
 };
 
