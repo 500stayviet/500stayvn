@@ -40,24 +40,28 @@ import {
   ALL_REGIONS,
 } from "@/lib/data/vietnam-regions";
 
-// 베트남 스타일 컬러 상수
+// 아기자기한 파스텔 컬러 상수
 const COLORS = {
-  primary: "#E63946",      // Coral Red - 메인 컬러
-  secondary: "#FF6B35",    // Golden Orange - 보조 컬러
-  accent: "#FFB627",       // Sunshine Yellow - 강조 컬러
-  success: "#10B981",      // Emerald Green - 성공/완료
+  primary: "#FF6B9D",      // Soft Pink - 메인 컬러
+  secondary: "#C44DFF",    // Lavender Purple - 보조 컬러  
+  accent: "#4ECDC4",       // Mint Teal - 강조 컬러
+  peach: "#FFB4A2",        // Soft Peach - 따뜻한 포인트
+  lemon: "#FFE66D",        // Lemon Yellow - 밝은 포인트
+  success: "#7ED321",      // Fresh Green - 성공/완료
   white: "#FFFFFF",
-  cream: "#FFF8F0",        // 따뜻한 크림색 배경
-  gray50: "#F9FAFB",
-  gray100: "#F3F4F6",
-  gray200: "#E5E7EB",
-  gray300: "#D1D5DB",
-  gray400: "#9CA3AF",
-  gray500: "#6B7280",
-  gray600: "#4B5563",
-  gray700: "#374151",
-  gray800: "#1F2937",
-  gray900: "#111827",
+  cream: "#FFF5F7",        // 핑크빛 크림색 배경
+  lavenderBg: "#F8F4FF",   // 연한 라벤더 배경
+  mintBg: "#F0FFFC",       // 연한 민트 배경
+  gray50: "#FAFAFA",
+  gray100: "#F5F5F5",
+  gray200: "#E8E8E8",
+  gray300: "#D4D4D4",
+  gray400: "#A3A3A3",
+  gray500: "#737373",
+  gray600: "#525252",
+  gray700: "#404040",
+  gray800: "#262626",
+  gray900: "#171717",
 };
 
 export default function AddPropertyPage() {
@@ -688,11 +692,15 @@ export default function AddPropertyPage() {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="px-6 space-y-6">
+          <form onSubmit={handleSubmit} className="px-5 space-y-5 pt-5">
             {/* ===== 사진 등록 섹션 ===== */}
-            <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+            <section 
+              className="rounded-3xl p-5 border-2 shadow-sm"
+              style={{ backgroundColor: COLORS.lavenderBg, borderColor: `${COLORS.secondary}30` }}
+            >
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-base font-semibold text-gray-900">
+                <h2 className="text-base font-bold flex items-center gap-2" style={{ color: COLORS.secondary }}>
+                  <span className="text-lg">📸</span>
                   {currentLanguage === "ko"
                     ? "사진 등록"
                     : currentLanguage === "vi"
@@ -768,37 +776,44 @@ export default function AddPropertyPage() {
             </section>
 
             {/* ===== 매물 종류 섹션 ===== */}
-            <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-              <h2 className="text-base font-semibold text-gray-900 mb-4">
+            <section 
+              className="rounded-3xl p-5 border-2 shadow-sm"
+              style={{ backgroundColor: COLORS.mintBg, borderColor: `${COLORS.accent}30` }}
+            >
+              <h2 className="text-base font-bold flex items-center gap-2 mb-4" style={{ color: COLORS.accent }}>
+                <span className="text-lg">🏠</span>
                 {currentLanguage === "ko"
                   ? "매물 종류"
                   : currentLanguage === "vi"
                     ? "Loại bất động sản"
                     : "Property Type"}
-                <span className="text-red-500 ml-1">*</span>
+                <span style={{ color: COLORS.primary }}>*</span>
               </h2>
 
-              {/* 칩 스타일 버튼 */}
+              {/* 칩 스타일 버튼 - 아기자기한 스타일 */}
               <div className="flex flex-wrap gap-2">
                 {(
                   [
-                    { value: "studio", ko: "스튜디오", vi: "Studio", en: "Studio" },
-                    { value: "one_room", ko: "원룸", vi: "1 phòng", en: "1 Room" },
-                    { value: "two_room", ko: "2룸", vi: "2 phòng", en: "2 Rooms" },
-                    { value: "three_plus", ko: "3+룸", vi: "3+ phòng", en: "3+ Rooms" },
-                    { value: "detached", ko: "독채", vi: "Nhà riêng", en: "Detached" },
+                    { value: "studio", ko: "스튜디오", vi: "Studio", en: "Studio", icon: "🛋️" },
+                    { value: "one_room", ko: "원룸", vi: "1 phòng", en: "1 Room", icon: "🚪" },
+                    { value: "two_room", ko: "2룸", vi: "2 phòng", en: "2 Rooms", icon: "🏡" },
+                    { value: "three_plus", ko: "3+룸", vi: "3+ phòng", en: "3+ Rooms", icon: "🏘️" },
+                    { value: "detached", ko: "독채", vi: "Nhà riêng", en: "Detached", icon: "🏰" },
                   ] as const
-                ).map(({ value, ko, vi, en }) => (
+                ).map(({ value, ko, vi, en, icon }) => (
                   <button
                     key={value}
                     type="button"
                     onClick={() => setPropertyType(value)}
-                    className="px-4 py-2.5 rounded-full text-sm font-medium transition-all min-h-[44px]"
+                    className="px-4 py-2.5 rounded-full text-sm font-semibold transition-all min-h-[44px] border-2"
                     style={{
-                      backgroundColor: propertyType === value ? COLORS.primary : COLORS.gray100,
+                      backgroundColor: propertyType === value ? COLORS.accent : COLORS.white,
                       color: propertyType === value ? COLORS.white : COLORS.gray700,
+                      borderColor: propertyType === value ? COLORS.accent : COLORS.gray200,
+                      boxShadow: propertyType === value ? `0 4px 12px ${COLORS.accent}40` : 'none',
                     }}
                   >
+                    <span className="mr-1">{icon}</span>
                     {currentLanguage === "ko" ? ko : currentLanguage === "vi" ? vi : en}
                   </button>
                 ))}
@@ -871,22 +886,30 @@ export default function AddPropertyPage() {
             </section>
 
             {/* ===== 주소 섹션 ===== */}
-            <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-              <h2 className="text-base font-semibold text-gray-900 mb-4">
+            <section 
+              className="rounded-3xl p-5 border-2 shadow-sm"
+              style={{ backgroundColor: `${COLORS.peach}15`, borderColor: `${COLORS.peach}50` }}
+            >
+              <h2 className="text-base font-bold flex items-center gap-2 mb-4" style={{ color: COLORS.gray800 }}>
+                <span className="text-lg">📍</span>
                 {currentLanguage === "ko"
                   ? "주소"
                   : currentLanguage === "vi"
                     ? "Địa chỉ"
                     : "Address"}
-                <span className="text-red-500 ml-1">*</span>
+                <span style={{ color: COLORS.primary }}>*</span>
               </h2>
 
               {(!address || !coordinates) && (
                 <button
                   type="button"
                   onClick={() => setShowAddressModal(true)}
-                  className="w-full px-4 py-4 rounded-2xl transition-all flex items-center justify-center gap-3 min-h-[56px] text-white font-medium"
-                  style={{ backgroundColor: COLORS.primary }}
+                  className="w-full px-4 py-4 rounded-2xl transition-all flex items-center justify-center gap-3 min-h-[56px] text-white font-semibold border-2"
+                  style={{ 
+                    background: `linear-gradient(135deg, ${COLORS.primary} 0%, ${COLORS.peach} 100%)`,
+                    borderColor: 'transparent',
+                    boxShadow: `0 4px 14px ${COLORS.primary}30`
+                  }}
                 >
                   <MapPin className="w-5 h-5" />
                   <span>
@@ -1024,8 +1047,12 @@ export default function AddPropertyPage() {
             </section>
 
             {/* ===== 임대 희망 날짜 섹션 ===== */}
-            <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-              <h2 className="text-base font-semibold text-gray-900 mb-4">
+            <section 
+              className="rounded-3xl p-5 border-2 shadow-sm"
+              style={{ backgroundColor: `${COLORS.lemon}15`, borderColor: `${COLORS.lemon}50` }}
+            >
+              <h2 className="text-base font-bold flex items-center gap-2 mb-4" style={{ color: COLORS.gray800 }}>
+                <span className="text-lg">📅</span>
                 {currentLanguage === "ko"
                   ? "임대 희망 날짜"
                   : currentLanguage === "vi"
@@ -1040,14 +1067,14 @@ export default function AddPropertyPage() {
                     setShowCalendar(true);
                   }}
                   className="flex items-center gap-3 px-4 py-3 rounded-2xl transition-colors min-h-[56px] border-2"
-                  style={{ borderColor: COLORS.gray200, backgroundColor: COLORS.gray50 }}
+                  style={{ borderColor: `${COLORS.lemon}80`, backgroundColor: COLORS.white }}
                 >
-                  <Calendar className="w-5 h-5" style={{ color: COLORS.primary }} />
+                  <span className="text-xl">🌅</span>
                   <div className="text-left">
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs font-medium" style={{ color: COLORS.gray500 }}>
                       {currentLanguage === "ko" ? "시작일" : "Start"}
                     </div>
-                    <div className="text-sm font-medium text-gray-900">
+                    <div className="text-sm font-bold" style={{ color: COLORS.gray800 }}>
                       {checkInDate
                         ? checkInDate.toLocaleDateString(
                             currentLanguage === "ko" ? "ko-KR" : currentLanguage === "vi" ? "vi-VN" : "en-US",
@@ -1065,14 +1092,14 @@ export default function AddPropertyPage() {
                     setShowCalendar(true);
                   }}
                   className="flex items-center gap-3 px-4 py-3 rounded-2xl transition-colors min-h-[56px] border-2"
-                  style={{ borderColor: COLORS.gray200, backgroundColor: COLORS.gray50 }}
+                  style={{ borderColor: `${COLORS.lemon}80`, backgroundColor: COLORS.white }}
                 >
-                  <Calendar className="w-5 h-5" style={{ color: COLORS.primary }} />
+                  <span className="text-xl">🌇</span>
                   <div className="text-left">
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs font-medium" style={{ color: COLORS.gray500 }}>
                       {currentLanguage === "ko" ? "종료일" : "End"}
                     </div>
-                    <div className="text-sm font-medium text-gray-900">
+                    <div className="text-sm font-bold" style={{ color: COLORS.gray800 }}>
                       {checkOutDate
                         ? checkOutDate.toLocaleDateString(
                             currentLanguage === "ko" ? "ko-KR" : currentLanguage === "vi" ? "vi-VN" : "en-US",
@@ -1086,14 +1113,18 @@ export default function AddPropertyPage() {
             </section>
 
             {/* ===== 1주일 임대료 섹션 ===== */}
-            <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-              <h2 className="text-base font-semibold text-gray-900 mb-1">
+            <section 
+              className="rounded-3xl p-5 border-2 shadow-sm"
+              style={{ backgroundColor: `${COLORS.primary}08`, borderColor: `${COLORS.primary}30` }}
+            >
+              <h2 className="text-base font-bold flex items-center gap-2 mb-1" style={{ color: COLORS.primary }}>
+                <span className="text-lg">💰</span>
                 {currentLanguage === "ko"
                   ? "1주일 임대료"
                   : currentLanguage === "vi"
                     ? "Giá thuê 1 tuần"
                     : "Weekly Rent"}
-                <span className="text-red-500 ml-1">*</span>
+                <span style={{ color: COLORS.primary }}>*</span>
               </h2>
               <p className="text-xs text-gray-500 mb-4">
                 {currentLanguage === "ko"
@@ -1430,7 +1461,10 @@ export default function AddPropertyPage() {
         </div>
 
         {/* ===== 하단 고정 등록 버튼 ===== */}
-        <div className="sticky bottom-16 left-0 right-0 p-4 bg-white border-t border-gray-100 shadow-lg">
+        <div 
+          className="sticky bottom-16 left-0 right-0 p-4 border-t shadow-lg"
+          style={{ backgroundColor: COLORS.cream, borderColor: `${COLORS.primary}20` }}
+        >
           <button
             type="submit"
             onClick={handleSubmit}
@@ -1443,8 +1477,11 @@ export default function AddPropertyPage() {
               bedrooms === 0 ||
               bathrooms === 0
             }
-            className="w-full py-4 px-6 rounded-2xl font-semibold text-base disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center justify-center gap-2 min-h-[56px] text-white"
-            style={{ backgroundColor: COLORS.primary }}
+            className="w-full py-4 px-6 rounded-full font-bold text-base disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 min-h-[56px] text-white"
+            style={{ 
+              background: `linear-gradient(135deg, ${COLORS.primary} 0%, ${COLORS.secondary} 100%)`,
+              boxShadow: `0 6px 20px ${COLORS.primary}40`
+            }}
           >
             {loading ? (
               <>
@@ -1458,13 +1495,16 @@ export default function AddPropertyPage() {
                 </span>
               </>
             ) : (
-              <span>
-                {currentLanguage === "ko"
-                  ? "등록"
-                  : currentLanguage === "vi"
-                    ? "Đăng ký"
-                    : "Register"}
-              </span>
+              <>
+                <span className="text-lg">✨</span>
+                <span>
+                  {currentLanguage === "ko"
+                    ? "매물 등록하기"
+                    : currentLanguage === "vi"
+                      ? "Đăng bất động sản"
+                      : "Register Property"}
+                </span>
+              </>
             )}
           </button>
         </div>
