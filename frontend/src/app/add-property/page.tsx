@@ -40,28 +40,21 @@ import {
   ALL_REGIONS,
 } from "@/lib/data/vietnam-regions";
 
-// 아기자기한 파스텔 컬러 상수
+// 깔끔하고 신뢰감 있는 컬러 팔레트
 const COLORS = {
-  primary: "#FF6B9D",      // Soft Pink - 메인 컬러
-  secondary: "#C44DFF",    // Lavender Purple - 보조 컬러  
-  accent: "#4ECDC4",       // Mint Teal - 강조 컬러
-  peach: "#FFB4A2",        // Soft Peach - 따뜻한 포인트
-  lemon: "#FFE66D",        // Lemon Yellow - 밝은 포인트
-  success: "#7ED321",      // Fresh Green - 성공/완료
+  primary: "#2563EB",      // Trust Blue - 메인 컬러
+  primaryLight: "#3B82F6", // Light Blue
+  primaryDark: "#1D4ED8",  // Dark Blue
+  success: "#059669",      // Emerald - 성공/완료
+  error: "#DC2626",        // Red - 에러
   white: "#FFFFFF",
-  cream: "#FFF5F7",        // 핑크빛 크림색 배경
-  lavenderBg: "#F8F4FF",   // 연한 라벤더 배경
-  mintBg: "#F0FFFC",       // 연한 민트 배경
-  gray50: "#FAFAFA",
-  gray100: "#F5F5F5",
-  gray200: "#E8E8E8",
-  gray300: "#D4D4D4",
-  gray400: "#A3A3A3",
-  gray500: "#737373",
-  gray600: "#525252",
-  gray700: "#404040",
-  gray800: "#262626",
-  gray900: "#171717",
+  background: "#F8FAFC",   // 깔끔한 밝은 회색 배경
+  surface: "#FFFFFF",      // 카드 배경
+  border: "#E2E8F0",       // 테두리
+  borderFocus: "#93C5FD",  // 포커스 테두리
+  text: "#0F172A",         // 메인 텍스트
+  textSecondary: "#64748B", // 보조 텍스트
+  textMuted: "#94A3B8",    // 희미한 텍스트
 };
 
 export default function AddPropertyPage() {
@@ -343,7 +336,7 @@ export default function AddPropertyPage() {
     setShowImageSourceMenu(true);
   };
 
-  // 이미지 삭제 핸들러
+  // 이미지 ���제 핸들러
   const handleImageRemove = (index: number) => {
     const newImages = images.filter((_, i) => i !== index);
     const newPreviews = imagePreviews.filter((_, i) => i !== index);
@@ -646,7 +639,7 @@ export default function AddPropertyPage() {
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 animate-spin" style={{ color: COLORS.primary }} />
-          <span className="text-gray-500 font-sans">
+          <span className="text-slate-500 font-sans">
             {currentLanguage === "ko"
               ? "로딩 중..."
               : currentLanguage === "vi"
@@ -663,27 +656,24 @@ export default function AddPropertyPage() {
   }
 
   return (
-    <div className="min-h-screen flex justify-center font-sans" style={{ backgroundColor: COLORS.cream }}>
+    <div className="min-h-screen flex justify-center font-sans" style={{ backgroundColor: COLORS.background }}>
       {/* PWA 모바일 컨테이너 */}
-      <div className="w-full max-w-[480px] bg-white min-h-screen shadow-2xl flex flex-col relative">
+      <div className="w-full max-w-[480px] min-h-screen shadow-xl flex flex-col relative" style={{ backgroundColor: COLORS.surface }}>
         {/* 상단 바 */}
         <TopBar />
 
         {/* 스크롤 가능한 콘텐츠 영역 */}
         <div className="flex-1 overflow-y-auto pb-40">
-          {/* 그라데이션 헤더 */}
-          <div 
-            className="px-6 pt-8 pb-6 rounded-b-3xl"
-            style={{ background: `linear-gradient(135deg, ${COLORS.primary} 0%, ${COLORS.secondary} 100%)` }}
-          >
-            <h1 className="text-2xl font-bold text-white">
+          {/* 심플한 헤더 */}
+          <div className="px-5 pt-6 pb-4 border-b" style={{ borderColor: COLORS.border }}>
+            <h1 className="text-xl font-bold" style={{ color: COLORS.text }}>
               {currentLanguage === "ko"
                 ? "새 매물 등록"
                 : currentLanguage === "vi"
                   ? "Đăng ký bất động sản mới"
                   : "Register New Property"}
             </h1>
-            <p className="text-white/80 text-sm mt-1">
+            <p className="text-sm mt-1" style={{ color: COLORS.textSecondary }}>
               {currentLanguage === "ko"
                 ? "매물 정보를 입력해주세요"
                 : currentLanguage === "vi"
@@ -692,33 +682,30 @@ export default function AddPropertyPage() {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="px-5 space-y-5 pt-5">
+          <form onSubmit={handleSubmit} className="px-5 py-5 space-y-6">
             {/* ===== 사진 등록 섹션 ===== */}
-            <section 
-              className="rounded-3xl p-5 border-2 shadow-sm"
-              style={{ backgroundColor: COLORS.lavenderBg, borderColor: `${COLORS.secondary}30` }}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-base font-bold flex items-center gap-2" style={{ color: COLORS.secondary }}>
-                  <span className="text-lg">📸</span>
+            <section>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-semibold" style={{ color: COLORS.text }}>
                   {currentLanguage === "ko"
                     ? "사진 등록"
                     : currentLanguage === "vi"
                       ? "Đăng ảnh"
                       : "Upload Photos"}
-                  <span className="text-red-500 ml-1">*</span>
+                  <span style={{ color: COLORS.error }} className="ml-1">*</span>
                 </h2>
-                <span className="text-sm text-gray-500">
-                  ({images.length}/5)
+                <span className="text-xs" style={{ color: COLORS.textMuted }}>
+                  {images.length}/5
                 </span>
               </div>
 
-              {/* 가로형 썸네일 리스트 */}
-              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+              {/* 깔끔한 가로형 썸네일 리스트 */}
+              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
                 {imagePreviews.map((preview, index) => (
                   <div
                     key={index}
-                    className="relative flex-shrink-0 w-24 h-24 rounded-2xl overflow-hidden border-2 border-gray-200"
+                    className="relative flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden"
+                    style={{ border: `1px solid ${COLORS.border}` }}
                   >
                     <img
                       src={preview}
@@ -728,9 +715,10 @@ export default function AddPropertyPage() {
                     <button
                       type="button"
                       onClick={() => handleImageRemove(index)}
-                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors min-h-[28px] min-w-[28px] flex items-center justify-center"
+                      className="absolute top-1 right-1 rounded-full p-1 transition-colors min-h-[24px] min-w-[24px] flex items-center justify-center"
+                      style={{ backgroundColor: COLORS.error, color: COLORS.white }}
                     >
-                      <X className="w-4 h-4" />
+                      <X className="w-3 h-3" />
                     </button>
                   </div>
                 ))}
@@ -739,13 +727,11 @@ export default function AddPropertyPage() {
                   <button
                     type="button"
                     onClick={handleAddImageClick}
-                    className="flex-shrink-0 w-24 h-24 rounded-2xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer transition-all min-h-[96px]"
-                    style={{ 
-                      borderColor: images.length < 5 ? COLORS.gray300 : COLORS.gray200,
-                    }}
+                    className="flex-shrink-0 w-20 h-20 rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all hover:border-blue-400 hover:bg-blue-50"
+                    style={{ borderColor: COLORS.border }}
                   >
-                    <Plus className="w-8 h-8 text-gray-400 mb-1" />
-                    <span className="text-xs text-gray-500">
+                    <Plus className="w-6 h-6 mb-1" style={{ color: COLORS.textMuted }} />
+                    <span className="text-xs" style={{ color: COLORS.textSecondary }}>
                       {currentLanguage === "ko"
                         ? "추가"
                         : currentLanguage === "vi"
@@ -776,44 +762,38 @@ export default function AddPropertyPage() {
             </section>
 
             {/* ===== 매물 종류 섹션 ===== */}
-            <section 
-              className="rounded-3xl p-5 border-2 shadow-sm"
-              style={{ backgroundColor: COLORS.mintBg, borderColor: `${COLORS.accent}30` }}
-            >
-              <h2 className="text-base font-bold flex items-center gap-2 mb-4" style={{ color: COLORS.accent }}>
-                <span className="text-lg">🏠</span>
+            <section>
+              <h2 className="text-sm font-semibold mb-3" style={{ color: COLORS.text }}>
                 {currentLanguage === "ko"
                   ? "매물 종류"
                   : currentLanguage === "vi"
                     ? "Loại bất động sản"
                     : "Property Type"}
-                <span style={{ color: COLORS.primary }}>*</span>
+                <span style={{ color: COLORS.error }} className="ml-1">*</span>
               </h2>
 
-              {/* 칩 스타일 버튼 - 아기자기한 스타일 */}
+              {/* 깔끔한 칩 스타일 버튼 */}
               <div className="flex flex-wrap gap-2">
                 {(
                   [
-                    { value: "studio", ko: "스튜디오", vi: "Studio", en: "Studio", icon: "🛋️" },
-                    { value: "one_room", ko: "원룸", vi: "1 phòng", en: "1 Room", icon: "🚪" },
-                    { value: "two_room", ko: "2룸", vi: "2 phòng", en: "2 Rooms", icon: "🏡" },
-                    { value: "three_plus", ko: "3+룸", vi: "3+ phòng", en: "3+ Rooms", icon: "🏘️" },
-                    { value: "detached", ko: "독채", vi: "Nhà riêng", en: "Detached", icon: "🏰" },
+                    { value: "studio", ko: "스튜디오", vi: "Studio", en: "Studio" },
+                    { value: "one_room", ko: "원룸", vi: "1 phòng", en: "1 Room" },
+                    { value: "two_room", ko: "2룸", vi: "2 phòng", en: "2 Rooms" },
+                    { value: "three_plus", ko: "3+룸", vi: "3+ phòng", en: "3+ Rooms" },
+                    { value: "detached", ko: "독채", vi: "Nhà riêng", en: "Detached" },
                   ] as const
-                ).map(({ value, ko, vi, en, icon }) => (
+                ).map(({ value, ko, vi, en }) => (
                   <button
                     key={value}
                     type="button"
                     onClick={() => setPropertyType(value)}
-                    className="px-4 py-2.5 rounded-full text-sm font-semibold transition-all min-h-[44px] border-2"
+                    className="px-4 py-2 rounded-lg text-sm font-medium transition-all min-h-[40px]"
                     style={{
-                      backgroundColor: propertyType === value ? COLORS.accent : COLORS.white,
-                      color: propertyType === value ? COLORS.white : COLORS.gray700,
-                      borderColor: propertyType === value ? COLORS.accent : COLORS.gray200,
-                      boxShadow: propertyType === value ? `0 4px 12px ${COLORS.accent}40` : 'none',
+                      backgroundColor: propertyType === value ? COLORS.primary : COLORS.white,
+                      color: propertyType === value ? COLORS.white : COLORS.text,
+                      border: `1px solid ${propertyType === value ? COLORS.primary : COLORS.border}`,
                     }}
                   >
-                    <span className="mr-1">{icon}</span>
                     {currentLanguage === "ko" ? ko : currentLanguage === "vi" ? vi : en}
                   </button>
                 ))}
@@ -823,14 +803,14 @@ export default function AddPropertyPage() {
               {propertyType && (
                 <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-gray-100">
                   <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-2">
+                    <label className="block text-xs font-medium text-slate-500 mb-2">
                       {currentLanguage === "ko" ? "방 개수" : currentLanguage === "vi" ? "Số phòng" : "Bedrooms"}
                     </label>
                     <select
                       value={bedrooms}
                       onChange={(e) => setBedrooms(Number(e.target.value))}
                       disabled={propertyType === "studio" || propertyType === "one_room" || propertyType === "two_room"}
-                      className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm min-h-[44px] focus:outline-none transition-all"
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm min-h-[44px] focus:outline-none transition-all"
                       style={{
                         backgroundColor: propertyType === "studio" || propertyType === "one_room" || propertyType === "two_room" ? COLORS.gray100 : COLORS.white,
                       }}
@@ -843,13 +823,13 @@ export default function AddPropertyPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-2">
+                    <label className="block text-xs font-medium text-slate-500 mb-2">
                       {currentLanguage === "ko" ? "화장실" : currentLanguage === "vi" ? "Phòng tắm" : "Bathrooms"}
                     </label>
                     <select
                       value={bathrooms}
                       onChange={(e) => setBathrooms(Number(e.target.value))}
-                      className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm min-h-[44px] focus:outline-none transition-all"
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm min-h-[44px] focus:outline-none transition-all"
                       style={{ 
                         borderColor: COLORS.gray200,
                       }}
@@ -862,7 +842,7 @@ export default function AddPropertyPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-2">
+                    <label className="block text-xs font-medium text-slate-500 mb-2">
                       {currentLanguage === "ko" ? "최대인원" : currentLanguage === "vi" ? "Tối đa" : "Max"}
                     </label>
                     <select
@@ -872,7 +852,7 @@ export default function AddPropertyPage() {
                         setMaxAdults(v);
                         setMaxChildren(0);
                       }}
-                      className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm min-h-[44px] focus:outline-none transition-all"
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm min-h-[44px] focus:outline-none transition-all"
                     >
                       {Array.from({ length: 20 }, (_, i) => i + 1).map((n) => (
                         <option key={n} value={n}>
@@ -886,32 +866,27 @@ export default function AddPropertyPage() {
             </section>
 
             {/* ===== 주소 섹션 ===== */}
-            <section 
-              className="rounded-3xl p-5 border-2 shadow-sm"
-              style={{ backgroundColor: `${COLORS.peach}15`, borderColor: `${COLORS.peach}50` }}
-            >
-              <h2 className="text-base font-bold flex items-center gap-2 mb-4" style={{ color: COLORS.gray800 }}>
-                <span className="text-lg">📍</span>
+            <section>
+              <h2 className="text-sm font-semibold mb-3" style={{ color: COLORS.text }}>
                 {currentLanguage === "ko"
                   ? "주소"
                   : currentLanguage === "vi"
                     ? "Địa chỉ"
                     : "Address"}
-                <span style={{ color: COLORS.primary }}>*</span>
+                <span style={{ color: COLORS.error }} className="ml-1">*</span>
               </h2>
 
               {(!address || !coordinates) && (
                 <button
                   type="button"
                   onClick={() => setShowAddressModal(true)}
-                  className="w-full px-4 py-4 rounded-2xl transition-all flex items-center justify-center gap-3 min-h-[56px] text-white font-semibold border-2"
+                  className="w-full px-4 py-3 rounded-lg transition-all flex items-center justify-center gap-2 min-h-[48px] font-medium"
                   style={{ 
-                    background: `linear-gradient(135deg, ${COLORS.primary} 0%, ${COLORS.peach} 100%)`,
-                    borderColor: 'transparent',
-                    boxShadow: `0 4px 14px ${COLORS.primary}30`
+                    backgroundColor: COLORS.primary,
+                    color: COLORS.white,
                   }}
                 >
-                  <MapPin className="w-5 h-5" />
+                  <MapPin className="w-4 h-4" />
                   <span>
                     {currentLanguage === "ko"
                       ? "주소 찾기"
@@ -924,23 +899,23 @@ export default function AddPropertyPage() {
 
               {address && coordinates && (
                 <div
-                  className="p-4 rounded-2xl cursor-pointer transition-colors"
-                  style={{ backgroundColor: `${COLORS.success}10`, border: `2px solid ${COLORS.success}30` }}
+                  className="p-3 rounded-lg cursor-pointer transition-colors"
+                  style={{ backgroundColor: `${COLORS.success}08`, border: `1px solid ${COLORS.success}` }}
                   onClick={() => setShowAddressModal(true)}
                 >
                   <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-xl flex-shrink-0" style={{ backgroundColor: `${COLORS.success}20` }}>
-                      <Check className="w-5 h-5" style={{ color: COLORS.success }} />
+                    <div className="p-1.5 rounded-md flex-shrink-0" style={{ backgroundColor: `${COLORS.success}15` }}>
+                      <Check className="w-4 h-4" style={{ color: COLORS.success }} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <span className="text-xs font-medium" style={{ color: COLORS.success }}>
                         {currentLanguage === "ko"
-                          ? "확정된 주소 (클릭하여 수정)"
+                          ? "확정된 주소"
                           : currentLanguage === "vi"
                             ? "Địa chỉ đã xác nhận"
                             : "Confirmed Address"}
                       </span>
-                      <p className="text-sm font-semibold text-gray-900 mt-1">{address}</p>
+                      <p className="text-sm font-medium mt-0.5" style={{ color: COLORS.text }}>{address}</p>
                     </div>
                     <button
                       type="button"
@@ -951,10 +926,9 @@ export default function AddPropertyPage() {
                         setSelectedCityId("");
                         setSelectedDistrictId("");
                       }}
-                      className="p-2 rounded-full transition-colors flex-shrink-0 min-h-[36px] min-w-[36px] flex items-center justify-center"
-                      style={{ backgroundColor: `${COLORS.success}20` }}
+                      className="p-1.5 rounded-md transition-colors flex-shrink-0 min-h-[32px] min-w-[32px] flex items-center justify-center hover:bg-gray-100"
                     >
-                      <X className="w-4 h-4 text-gray-500" />
+                      <X className="w-4 h-4" style={{ color: COLORS.textSecondary }} />
                     </button>
                   </div>
                 </div>
@@ -963,10 +937,10 @@ export default function AddPropertyPage() {
               {/* 도시/구 자동 표시 */}
               <div className="grid grid-cols-2 gap-3 mt-4">
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-2">
+                  <label className="block text-xs font-medium text-slate-500 mb-2">
                     {currentLanguage === "ko" ? "도시" : currentLanguage === "vi" ? "Thành phố" : "City"}
                   </label>
-                  <div className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm bg-gray-50 min-h-[44px] flex items-center">
+                  <div className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm bg-slate-50 min-h-[44px] flex items-center">
                     {address && coordinates && selectedCityId
                       ? (() => {
                           const city = VIETNAM_CITIES.find((c) => c.id === selectedCityId);
@@ -974,18 +948,18 @@ export default function AddPropertyPage() {
                           const langMap: Record<string, string> = { ko: city.nameKo, vi: city.nameVi, en: city.name, ja: city.nameJa ?? city.name, zh: city.nameZh ?? city.name };
                           return langMap[currentLanguage] ?? city.name;
                         })()
-                      : <span className="text-gray-400">{currentLanguage === "ko" ? "자동 입력" : "Auto"}</span>}
+                      : <span className="text-slate-400">{currentLanguage === "ko" ? "자동 입력" : "Auto"}</span>}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-2">
+                  <label className="block text-xs font-medium text-slate-500 mb-2">
                     {currentLanguage === "ko" ? "구" : currentLanguage === "vi" ? "Quận" : "District"}
                   </label>
                   <select
                     value={selectedDistrictId}
                     onChange={(e) => setSelectedDistrictId(e.target.value)}
                     disabled={!address || !coordinates}
-                    className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm min-h-[44px] focus:outline-none transition-all"
+                    className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm min-h-[44px] focus:outline-none transition-all"
                     style={{ backgroundColor: !address || !coordinates ? COLORS.gray100 : COLORS.white }}
                   >
                     <option value="">{currentLanguage === "ko" ? "선택" : "Select"}</option>
@@ -998,7 +972,7 @@ export default function AddPropertyPage() {
               </div>
 
               {/* 동호수 */}
-              <div className="mt-4 p-4 rounded-2xl" style={{ backgroundColor: COLORS.gray50 }}>
+              <div className="mt-4 p-4 rounded-lg" style={{ backgroundColor: COLORS.gray50 }}>
                 <label className="block text-sm font-medium text-gray-700 mb-3">
                   {currentLanguage === "ko"
                     ? "동호수"
@@ -1008,7 +982,7 @@ export default function AddPropertyPage() {
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-2">
+                    <label className="block text-xs font-medium text-slate-500 mb-2">
                       {currentLanguage === "ko" ? "동" : currentLanguage === "vi" ? "Tòa" : "Building"}
                     </label>
                     <input
@@ -1016,12 +990,12 @@ export default function AddPropertyPage() {
                       value={buildingNumber}
                       onChange={(e) => setBuildingNumber(e.target.value)}
                       placeholder={currentLanguage === "ko" ? "예: A, 1" : "e.g., A"}
-                      className="w-full px-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl text-sm min-h-[44px] focus:outline-none transition-all"
+                      className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm min-h-[44px] focus:outline-none transition-all"
                       style={{ borderColor: COLORS.gray200 }}
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-2">
+                    <label className="block text-xs font-medium text-slate-500 mb-2">
                       {currentLanguage === "ko" ? "호실" : currentLanguage === "vi" ? "Phòng" : "Room"}
                     </label>
                     <input
@@ -1029,11 +1003,11 @@ export default function AddPropertyPage() {
                       value={roomNumber}
                       onChange={(e) => setRoomNumber(e.target.value)}
                       placeholder={currentLanguage === "ko" ? "예: 101" : "e.g., 101"}
-                      className="w-full px-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl text-sm min-h-[44px] focus:outline-none transition-all"
+                      className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm min-h-[44px] focus:outline-none transition-all"
                     />
                   </div>
                 </div>
-                <p className="text-xs text-gray-500 mt-3 flex items-start gap-1">
+                <p className="text-xs text-slate-500 mt-3 flex items-start gap-1">
                   <span style={{ color: COLORS.primary }}>i</span>
                   <span>
                     {currentLanguage === "ko"
@@ -1047,12 +1021,8 @@ export default function AddPropertyPage() {
             </section>
 
             {/* ===== 임대 희망 날짜 섹션 ===== */}
-            <section 
-              className="rounded-3xl p-5 border-2 shadow-sm"
-              style={{ backgroundColor: `${COLORS.lemon}15`, borderColor: `${COLORS.lemon}50` }}
-            >
-              <h2 className="text-base font-bold flex items-center gap-2 mb-4" style={{ color: COLORS.gray800 }}>
-                <span className="text-lg">📅</span>
+            <section>
+              <h2 className="text-sm font-semibold mb-3" style={{ color: COLORS.text }}>
                 {currentLanguage === "ko"
                   ? "임대 희망 날짜"
                   : currentLanguage === "vi"
@@ -1066,15 +1036,15 @@ export default function AddPropertyPage() {
                     setCalendarMode("checkin");
                     setShowCalendar(true);
                   }}
-                  className="flex items-center gap-3 px-4 py-3 rounded-2xl transition-colors min-h-[56px] border-2"
-                  style={{ borderColor: `${COLORS.lemon}80`, backgroundColor: COLORS.white }}
+                  className="flex items-center gap-3 px-3 py-3 rounded-lg transition-colors min-h-[48px]"
+                  style={{ border: `1px solid ${COLORS.border}`, backgroundColor: COLORS.white }}
                 >
-                  <span className="text-xl">🌅</span>
+                  <Calendar className="w-4 h-4" style={{ color: COLORS.primary }} />
                   <div className="text-left">
-                    <div className="text-xs font-medium" style={{ color: COLORS.gray500 }}>
+                    <div className="text-xs" style={{ color: COLORS.textSecondary }}>
                       {currentLanguage === "ko" ? "시작일" : "Start"}
                     </div>
-                    <div className="text-sm font-bold" style={{ color: COLORS.gray800 }}>
+                    <div className="text-sm font-medium" style={{ color: COLORS.text }}>
                       {checkInDate
                         ? checkInDate.toLocaleDateString(
                             currentLanguage === "ko" ? "ko-KR" : currentLanguage === "vi" ? "vi-VN" : "en-US",
@@ -1091,15 +1061,15 @@ export default function AddPropertyPage() {
                     setCalendarMode("checkout");
                     setShowCalendar(true);
                   }}
-                  className="flex items-center gap-3 px-4 py-3 rounded-2xl transition-colors min-h-[56px] border-2"
-                  style={{ borderColor: `${COLORS.lemon}80`, backgroundColor: COLORS.white }}
+                  className="flex items-center gap-3 px-3 py-3 rounded-lg transition-colors min-h-[48px]"
+                  style={{ border: `1px solid ${COLORS.border}`, backgroundColor: COLORS.white }}
                 >
-                  <span className="text-xl">🌇</span>
+                  <Calendar className="w-4 h-4" style={{ color: COLORS.primary }} />
                   <div className="text-left">
-                    <div className="text-xs font-medium" style={{ color: COLORS.gray500 }}>
+                    <div className="text-xs" style={{ color: COLORS.textSecondary }}>
                       {currentLanguage === "ko" ? "종료일" : "End"}
                     </div>
-                    <div className="text-sm font-bold" style={{ color: COLORS.gray800 }}>
+                    <div className="text-sm font-medium" style={{ color: COLORS.text }}>
                       {checkOutDate
                         ? checkOutDate.toLocaleDateString(
                             currentLanguage === "ko" ? "ko-KR" : currentLanguage === "vi" ? "vi-VN" : "en-US",
@@ -1113,27 +1083,23 @@ export default function AddPropertyPage() {
             </section>
 
             {/* ===== 1주일 임대료 섹션 ===== */}
-            <section 
-              className="rounded-3xl p-5 border-2 shadow-sm"
-              style={{ backgroundColor: `${COLORS.primary}08`, borderColor: `${COLORS.primary}30` }}
-            >
-              <h2 className="text-base font-bold flex items-center gap-2 mb-1" style={{ color: COLORS.primary }}>
-                <span className="text-lg">💰</span>
+            <section>
+              <h2 className="text-sm font-semibold mb-1" style={{ color: COLORS.text }}>
                 {currentLanguage === "ko"
                   ? "1주일 임대료"
                   : currentLanguage === "vi"
                     ? "Giá thuê 1 tuần"
                     : "Weekly Rent"}
-                <span style={{ color: COLORS.primary }}>*</span>
+                <span style={{ color: COLORS.error }} className="ml-1">*</span>
               </h2>
-              <p className="text-xs text-gray-500 mb-4">
+              <p className="text-xs mb-3" style={{ color: COLORS.textSecondary }}>
                 {currentLanguage === "ko"
                   ? "공과금/관리비 포함"
                   : currentLanguage === "vi"
                     ? "Bao gồm phí dịch vụ"
                     : "Utilities included"}
               </p>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <input
                   type="text"
                   value={
@@ -1146,17 +1112,17 @@ export default function AddPropertyPage() {
                     setWeeklyRent(value);
                   }}
                   placeholder="0"
-                  className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-2xl min-h-[48px] text-lg font-semibold focus:outline-none transition-all"
-                  style={{ borderColor: COLORS.gray200 }}
+                  className="flex-1 px-4 py-3 rounded-lg min-h-[48px] text-lg font-semibold focus:outline-none transition-all"
+                  style={{ border: `1px solid ${COLORS.border}`, backgroundColor: COLORS.white }}
                   required
                 />
-                <span className="text-gray-600 font-semibold text-lg">VND</span>
+                <span className="font-medium" style={{ color: COLORS.textSecondary }}>VND</span>
               </div>
             </section>
 
             {/* ===== 시설 및 정책 섹션 ===== */}
-            <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-              <h2 className="text-base font-semibold text-gray-900 mb-4">
+            <section>
+              <h2 className="text-sm font-semibold mb-4" style={{ color: COLORS.text }}>
                 {currentLanguage === "ko"
                   ? "숙소시설 및 정책"
                   : currentLanguage === "vi"
@@ -1164,7 +1130,7 @@ export default function AddPropertyPage() {
                     : "Facilities & Policy"}
               </h2>
 
-              <div className="space-y-5">
+              <div className="space-y-4">
                 {FACILITY_CATEGORIES.map((cat) => {
                   const options = FACILITY_OPTIONS.filter((o) => o.category === cat.id);
                   const catLabel = (cat.label as any)[currentLanguage] || cat.label.en;
@@ -1175,11 +1141,11 @@ export default function AddPropertyPage() {
                   const hasBadge = fullFurniture || fullElectronics || fullOptionKitchen;
 
                   return (
-                    <div key={cat.id} className="p-4 rounded-2xl" style={{ backgroundColor: COLORS.gray50 }}>
+                    <div key={cat.id} className="p-4 rounded-lg" style={{ backgroundColor: COLORS.background, border: `1px solid ${COLORS.border}` }}>
                       <div className="flex flex-wrap items-center gap-2 mb-3">
-                        <p className="text-sm font-medium text-gray-700">{catLabel}</p>
+                        <p className="text-sm font-medium" style={{ color: COLORS.text }}>{catLabel}</p>
                         {isBadgeCategory && (
-                          <p className="text-xs" style={{ color: hasBadge ? COLORS.success : COLORS.gray400 }}>
+                          <p className="text-xs" style={{ color: hasBadge ? COLORS.success : COLORS.textMuted }}>
                             {hasBadge ? (
                               <span className="flex items-center gap-1">
                                 <Sparkles className="w-3 h-3" />
@@ -1187,7 +1153,7 @@ export default function AddPropertyPage() {
                               </span>
                             ) : (
                               currentLanguage === "ko"
-                                ? "모든 아이콘 선택 시 뱃지 획득"
+                                ? "모든 선택 시 뱃지 획득"
                                 : "Select all for badge"
                             )}
                           </p>
@@ -1206,18 +1172,18 @@ export default function AddPropertyPage() {
                               <button
                                 type="button"
                                 onClick={() => toggleFacility(opt.id)}
-                                className="w-14 h-14 rounded-2xl flex items-center justify-center transition-all min-h-[56px] min-w-[56px]"
+                                className="w-12 h-12 rounded-lg flex items-center justify-center transition-all min-h-[48px] min-w-[48px]"
                                 style={{
                                   backgroundColor: isSelected ? COLORS.primary : COLORS.white,
-                                  border: `2px solid ${isSelected ? COLORS.primary : COLORS.gray200}`,
+                                  border: `1px solid ${isSelected ? COLORS.primary : COLORS.border}`,
                                 }}
                               >
                                 <Icon
-                                  className="w-6 h-6"
-                                  style={{ color: isSelected ? COLORS.white : COLORS.gray500 }}
+                                  className="w-5 h-5"
+                                  style={{ color: isSelected ? COLORS.white : COLORS.textSecondary }}
                                 />
                               </button>
-                              <span className="text-[10px] text-gray-600 text-center leading-tight line-clamp-2">
+                              <span className="text-[10px] text-center leading-tight line-clamp-2" style={{ color: COLORS.textSecondary }}>
                                 {label}
                               </span>
                             </div>
@@ -1227,15 +1193,15 @@ export default function AddPropertyPage() {
 
                       {/* 펫 추가 옵션 */}
                       {cat.id === "policy" && petAllowed && (
-                        <div className="mt-4 pt-4 border-t border-gray-200 space-y-3">
+                        <div className="mt-4 pt-4 border-t border-slate-200 space-y-3">
                           <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-600">
+                            <span className="text-sm text-slate-600">
                               {currentLanguage === "ko" ? "최대 마리수" : "Max pets"}
                             </span>
                             <select
                               value={maxPets}
                               onChange={(e) => setMaxPets(Number(e.target.value))}
-                              className="px-3 py-2 border-2 border-gray-200 rounded-xl text-sm min-h-[40px]"
+                              className="px-3 py-2 border border-slate-200 rounded-lg text-sm min-h-[40px]"
                             >
                               {[1, 2, 3, 4, 5].map((n) => (
                                 <option key={n} value={n}>{n}</option>
@@ -1243,7 +1209,7 @@ export default function AddPropertyPage() {
                             </select>
                           </div>
                           <div>
-                            <label className="block text-sm text-gray-600 mb-2">
+                            <label className="block text-sm text-slate-600 mb-2">
                               {currentLanguage === "ko" ? "펫 요금 (선택)" : "Pet fee (optional)"}
                             </label>
                             <div className="flex items-center gap-2">
@@ -1252,9 +1218,9 @@ export default function AddPropertyPage() {
                                 value={petFeeAmount ? parseInt(petFeeAmount.replace(/\D/g, "") || "0", 10).toLocaleString() : ""}
                                 onChange={(e) => setPetFeeAmount(e.target.value.replace(/\D/g, ""))}
                                 placeholder="0"
-                                className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-xl text-sm min-h-[40px]"
+                                className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm min-h-[40px]"
                               />
-                              <span className="text-gray-500 text-sm">VND</span>
+                              <span className="text-slate-500 text-sm">VND</span>
                             </div>
                           </div>
                         </div>
@@ -1262,15 +1228,15 @@ export default function AddPropertyPage() {
 
                       {/* 청소 횟수 */}
                       {cat.id === "policy" && selectedFacilities.includes("cleaning") && (
-                        <div className="mt-4 pt-4 border-t border-gray-200">
+                        <div className="mt-4 pt-4 border-t border-slate-200">
                           <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-600">
+                            <span className="text-sm text-slate-600">
                               {currentLanguage === "ko" ? "주당 청소 횟수" : "Cleaning per week"}
                             </span>
                             <select
                               value={cleaningPerWeek}
                               onChange={(e) => setCleaningPerWeek(Number(e.target.value))}
-                              className="px-3 py-2 border-2 border-gray-200 rounded-xl text-sm min-h-[40px]"
+                              className="px-3 py-2 border border-slate-200 rounded-lg text-sm min-h-[40px]"
                             >
                               {[1, 2, 3, 4, 5, 6, 7].map((n) => (
                                 <option key={n} value={n}>{n}{currentLanguage === "ko" ? "회" : "x"}</option>
@@ -1286,8 +1252,8 @@ export default function AddPropertyPage() {
             </section>
 
             {/* ===== 체크인/체크아웃 시간 섹션 ===== */}
-            <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-              <h2 className="text-base font-semibold text-gray-900 mb-4">
+            <section className="bg-white rounded-lg p-5 border border-gray-100 shadow-sm">
+              <h2 className="text-base font-semibold text-slate-900 mb-4">
                 {currentLanguage === "ko"
                   ? "체크인/체크아웃 시간"
                   : currentLanguage === "vi"
@@ -1296,13 +1262,13 @@ export default function AddPropertyPage() {
               </h2>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-2">
+                  <label className="block text-xs font-medium text-slate-500 mb-2">
                     {currentLanguage === "ko" ? "체크인" : "Check-in"}
                   </label>
                   <select
                     value={checkInTime}
                     onChange={(e) => setCheckInTime(e.target.value)}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-2xl text-sm min-h-[48px] focus:outline-none transition-all"
+                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg text-sm min-h-[48px] focus:outline-none transition-all"
                     style={{ backgroundColor: COLORS.gray50 }}
                   >
                     {Array.from({ length: 24 }, (_, i) => {
@@ -1314,13 +1280,13 @@ export default function AddPropertyPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-2">
+                  <label className="block text-xs font-medium text-slate-500 mb-2">
                     {currentLanguage === "ko" ? "체크아웃" : "Check-out"}
                   </label>
                   <select
                     value={checkOutTime}
                     onChange={(e) => setCheckOutTime(e.target.value)}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-2xl text-sm min-h-[48px] focus:outline-none transition-all"
+                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg text-sm min-h-[48px] focus:outline-none transition-all"
                     style={{ backgroundColor: COLORS.gray50 }}
                   >
                     {Array.from({ length: 24 }, (_, i) => {
@@ -1335,8 +1301,8 @@ export default function AddPropertyPage() {
             </section>
 
             {/* ===== 매물명 섹션 ===== */}
-            <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-              <h2 className="text-base font-semibold text-gray-900 mb-4">
+            <section className="bg-white rounded-lg p-5 border border-gray-100 shadow-sm">
+              <h2 className="text-base font-semibold text-slate-900 mb-4">
                 {getUIText('propertyNickname', currentLanguage)}
                 <span className="text-red-500 ml-1">*</span>
               </h2>
@@ -1345,15 +1311,15 @@ export default function AddPropertyPage() {
                 value={propertyNickname}
                 onChange={(e) => setPropertyNickname(e.target.value)}
                 placeholder={getUIText('propertyNicknamePlaceholder', currentLanguage)}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-2xl min-h-[48px] focus:outline-none transition-all"
+                className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg min-h-[48px] focus:outline-none transition-all"
                 style={{ borderColor: COLORS.gray200 }}
                 required
               />
             </section>
 
             {/* ===== 매물 설명 섹션 ===== */}
-            <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-              <h2 className="text-base font-semibold text-gray-900 mb-4">
+            <section className="bg-white rounded-lg p-5 border border-gray-100 shadow-sm">
+              <h2 className="text-base font-semibold text-slate-900 mb-4">
                 {currentLanguage === "ko"
                   ? "매물 설명"
                   : currentLanguage === "vi"
@@ -1372,7 +1338,7 @@ export default function AddPropertyPage() {
                       : "Enter detailed description..."
                 }
                 rows={4}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-2xl resize-none min-h-[120px] focus:outline-none transition-all"
+                className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg resize-none min-h-[120px] focus:outline-none transition-all"
                 style={{ borderColor: COLORS.gray200 }}
                 required
               />
@@ -1389,7 +1355,7 @@ export default function AddPropertyPage() {
             </section>
 
             {/* ===== 외부 캘린더 섹션 ===== */}
-            <section className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <section className="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden">
               <button
                 type="button"
                 onClick={() => setShowIcalDropdown(!showIcalDropdown)}
@@ -1404,26 +1370,26 @@ export default function AddPropertyPage() {
                       : "Import External Calendar"}
                 </span>
                 {showIcalDropdown ? (
-                  <ChevronUp className="w-5 h-5 text-gray-500" />
+                  <ChevronUp className="w-5 h-5 text-slate-500" />
                 ) : (
-                  <ChevronDown className="w-5 h-5 text-gray-500" />
+                  <ChevronDown className="w-5 h-5 text-slate-500" />
                 )}
               </button>
               {showIcalDropdown && (
-                <div className="p-5 pt-3 border-t border-gray-200 bg-white space-y-4">
-                  <p className="text-xs text-gray-500">
+                <div className="p-5 pt-3 border-t border-slate-200 bg-white space-y-4">
+                  <p className="text-xs text-slate-500">
                     {currentLanguage === "ko"
                       ? "에어비앤비, 아고다 등 예약을 500stay와 동기화합니다."
                       : "Sync bookings from Airbnb, Agoda, etc."}
                   </p>
                   <div>
-                    <label className="block text-xs text-gray-500 mb-2">
+                    <label className="block text-xs text-slate-500 mb-2">
                       {currentLanguage === "ko" ? "플랫폼" : "Platform"}
                     </label>
                     <select
                       value={icalPlatform}
                       onChange={(e) => setIcalPlatform(e.target.value)}
-                      className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-2xl bg-white min-h-[48px] focus:outline-none"
+                      className="w-full px-4 py-3 text-sm border-2 border-slate-200 rounded-lg bg-white min-h-[48px] focus:outline-none"
                     >
                       <option value="">{currentLanguage === "ko" ? "선택 안 함" : "None"}</option>
                       <option value="airbnb">Airbnb</option>
@@ -1433,7 +1399,7 @@ export default function AddPropertyPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 mb-2">
+                    <label className="block text-xs text-slate-500 mb-2">
                       {currentLanguage === "ko" ? "캘린더 이름" : "Calendar name"}
                     </label>
                     <input
@@ -1441,17 +1407,17 @@ export default function AddPropertyPage() {
                       value={icalCalendarName}
                       onChange={(e) => setIcalCalendarName(e.target.value)}
                       placeholder={currentLanguage === "ko" ? "예: 에어비앤비 예약" : "e.g. Airbnb"}
-                      className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-2xl min-h-[48px] focus:outline-none"
+                      className="w-full px-4 py-3 text-sm border-2 border-slate-200 rounded-lg min-h-[48px] focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 mb-2">iCal URL (.ics)</label>
+                    <label className="block text-xs text-slate-500 mb-2">iCal URL (.ics)</label>
                     <input
                       type="url"
                       value={icalUrl}
                       onChange={(e) => setIcalUrl(e.target.value)}
                       placeholder="https://..."
-                      className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-2xl min-h-[48px] focus:outline-none"
+                      className="w-full px-4 py-3 text-sm border-2 border-slate-200 rounded-lg min-h-[48px] focus:outline-none"
                     />
                   </div>
                 </div>
@@ -1462,8 +1428,8 @@ export default function AddPropertyPage() {
 
         {/* ===== 하단 고정 등록 버튼 ===== */}
         <div 
-          className="sticky bottom-16 left-0 right-0 p-4 border-t shadow-lg"
-          style={{ backgroundColor: COLORS.cream, borderColor: `${COLORS.primary}20` }}
+          className="sticky bottom-16 left-0 right-0 p-4 border-t"
+          style={{ backgroundColor: COLORS.surface, borderColor: COLORS.border }}
         >
           <button
             type="submit"
@@ -1477,10 +1443,10 @@ export default function AddPropertyPage() {
               bedrooms === 0 ||
               bathrooms === 0
             }
-            className="w-full py-4 px-6 rounded-full font-bold text-base disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 min-h-[56px] text-white"
+            className="w-full py-3.5 px-6 rounded-lg font-semibold text-base disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 min-h-[52px]"
             style={{ 
-              background: `linear-gradient(135deg, ${COLORS.primary} 0%, ${COLORS.secondary} 100%)`,
-              boxShadow: `0 6px 20px ${COLORS.primary}40`
+              backgroundColor: COLORS.primary,
+              color: COLORS.white,
             }}
           >
             {loading ? (
@@ -1495,56 +1461,56 @@ export default function AddPropertyPage() {
                 </span>
               </>
             ) : (
-              <>
-                <span className="text-lg">✨</span>
-                <span>
-                  {currentLanguage === "ko"
-                    ? "매물 등록하기"
-                    : currentLanguage === "vi"
-                      ? "Đăng bất động sản"
-                      : "Register Property"}
-                </span>
-              </>
+              <span>
+                {currentLanguage === "ko"
+                  ? "매물 등록하기"
+                  : currentLanguage === "vi"
+                    ? "Đăng bất động sản"
+                    : "Register Property"}
+              </span>
             )}
           </button>
         </div>
 
         {/* ===== 하단 네비게이션 바 ===== */}
-        <nav className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-[480px] bg-white border-t border-gray-200 px-2 py-2 z-50">
+        <nav 
+          className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-[480px] px-2 py-2 z-50"
+          style={{ backgroundColor: COLORS.surface, borderTop: `1px solid ${COLORS.border}` }}
+        >
           <div className="flex items-center justify-around">
             <button
               onClick={() => router.push("/")}
-              className="flex flex-col items-center gap-1 py-2 px-4 min-h-[56px] min-w-[56px]"
+              className="flex flex-col items-center gap-0.5 py-2 px-4 min-h-[52px] min-w-[52px]"
             >
-              <Home className="w-6 h-6 text-gray-400" />
-              <span className="text-xs text-gray-400">
+              <Home className="w-5 h-5" style={{ color: COLORS.textMuted }} />
+              <span className="text-[10px]" style={{ color: COLORS.textMuted }}>
                 {currentLanguage === "ko" ? "홈" : "Home"}
               </span>
             </button>
             <button
               onClick={() => router.push("/search")}
-              className="flex flex-col items-center gap-1 py-2 px-4 min-h-[56px] min-w-[56px]"
+              className="flex flex-col items-center gap-0.5 py-2 px-4 min-h-[52px] min-w-[52px]"
             >
-              <Search className="w-6 h-6 text-gray-400" />
-              <span className="text-xs text-gray-400">
+              <Search className="w-5 h-5" style={{ color: COLORS.textMuted }} />
+              <span className="text-[10px]" style={{ color: COLORS.textMuted }}>
                 {currentLanguage === "ko" ? "검색" : "Search"}
               </span>
             </button>
             <button
               onClick={() => router.push("/profile/my-properties")}
-              className="flex flex-col items-center gap-1 py-2 px-4 min-h-[56px] min-w-[56px]"
+              className="flex flex-col items-center gap-0.5 py-2 px-4 min-h-[52px] min-w-[52px]"
             >
-              <Building className="w-6 h-6" style={{ color: COLORS.primary }} />
-              <span className="text-xs font-medium" style={{ color: COLORS.primary }}>
+              <Building className="w-5 h-5" style={{ color: COLORS.primary }} />
+              <span className="text-[10px] font-medium" style={{ color: COLORS.primary }}>
                 {currentLanguage === "ko" ? "내 매물" : "My"}
               </span>
             </button>
             <button
               onClick={() => router.push("/profile")}
-              className="flex flex-col items-center gap-1 py-2 px-4 min-h-[56px] min-w-[56px]"
+              className="flex flex-col items-center gap-0.5 py-2 px-4 min-h-[52px] min-w-[52px]"
             >
-              <User className="w-6 h-6 text-gray-400" />
-              <span className="text-xs text-gray-400">
+              <User className="w-5 h-5" style={{ color: COLORS.textMuted }} />
+              <span className="text-[10px]" style={{ color: COLORS.textMuted }}>
                 {currentLanguage === "ko" ? "프로필" : "Profile"}
               </span>
             </button>
@@ -1564,7 +1530,7 @@ export default function AddPropertyPage() {
             className="w-full max-w-[480px] bg-white rounded-t-3xl p-6"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4 text-center">
               {currentLanguage === "ko"
                 ? "사진 추가 방법 선택"
                 : currentLanguage === "vi"
@@ -1575,7 +1541,7 @@ export default function AddPropertyPage() {
               <button
                 type="button"
                 onClick={handleSelectFromLibrary}
-                className="w-full py-4 px-4 rounded-2xl font-medium flex items-center justify-center gap-3 min-h-[56px] text-white"
+                className="w-full py-4 px-4 rounded-lg font-medium flex items-center justify-center gap-3 min-h-[56px] text-white"
                 style={{ backgroundColor: COLORS.primary }}
               >
                 <ImageIcon className="w-5 h-5" />
@@ -1590,7 +1556,7 @@ export default function AddPropertyPage() {
               <button
                 type="button"
                 onClick={handleTakePhoto}
-                className="w-full py-4 px-4 rounded-2xl font-medium flex items-center justify-center gap-3 min-h-[56px]"
+                className="w-full py-4 px-4 rounded-lg font-medium flex items-center justify-center gap-3 min-h-[56px]"
                 style={{ backgroundColor: COLORS.gray100, color: COLORS.gray900 }}
               >
                 <Camera className="w-5 h-5" />
@@ -1605,7 +1571,7 @@ export default function AddPropertyPage() {
               <button
                 type="button"
                 onClick={() => setShowImageSourceMenu(false)}
-                className="w-full py-3 px-4 text-gray-600 rounded-2xl font-medium min-h-[48px]"
+                className="w-full py-3 px-4 text-slate-600 rounded-lg font-medium min-h-[48px]"
               >
                 {currentLanguage === "ko" ? "취소" : "Cancel"}
               </button>
@@ -1617,7 +1583,7 @@ export default function AddPropertyPage() {
       {/* 사진첩 모달 */}
       {showPhotoLibrary && (
         <div className="fixed inset-0 bg-white z-50 flex flex-col">
-          <div className="flex items-center justify-between p-4 border-b border-gray-200">
+          <div className="flex items-center justify-between p-4 border-b border-slate-200">
             <button
               type="button"
               onClick={() => {
@@ -1632,7 +1598,7 @@ export default function AddPropertyPage() {
             >
               <X className="w-6 h-6 text-gray-700" />
             </button>
-            <h2 className="text-lg font-semibold text-gray-900">
+            <h2 className="text-lg font-semibold text-slate-900">
               {currentLanguage === "ko" ? "사진 선택" : "Select Photos"}
             </h2>
             <div className="w-10" />
@@ -1676,12 +1642,12 @@ export default function AddPropertyPage() {
             </div>
           </div>
 
-          <div className="p-4 border-t border-gray-200">
+          <div className="p-4 border-t border-slate-200">
             <button
               type="button"
               onClick={handleConfirmPhotoSelection}
               disabled={selectedLibraryIndices.size === 0}
-              className="w-full py-4 px-4 rounded-2xl font-medium disabled:opacity-50 disabled:cursor-not-allowed min-h-[56px] text-white"
+              className="w-full py-4 px-4 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed min-h-[56px] text-white"
               style={{ backgroundColor: COLORS.primary }}
             >
               {currentLanguage === "ko"
@@ -1703,7 +1669,7 @@ export default function AddPropertyPage() {
           <button
             type="button"
             onClick={handleBackToLibrary}
-            className="absolute bottom-6 right-6 bg-white/90 text-gray-900 rounded-full p-4 shadow-lg flex items-center gap-2 min-h-[56px]"
+            className="absolute bottom-6 right-6 bg-white/90 text-slate-900 rounded-full p-4 shadow-lg flex items-center gap-2 min-h-[56px]"
           >
             <ArrowLeft className="w-5 h-5" />
             <span className="font-medium">
@@ -1713,7 +1679,7 @@ export default function AddPropertyPage() {
           <button
             type="button"
             onClick={handleBackToLibrary}
-            className="absolute top-6 left-6 bg-white/90 text-gray-900 rounded-full p-2 min-h-[44px] min-w-[44px] flex items-center justify-center"
+            className="absolute top-6 left-6 bg-white/90 text-slate-900 rounded-full p-2 min-h-[44px] min-w-[44px] flex items-center justify-center"
           >
             <X className="w-6 h-6" />
           </button>
@@ -1764,10 +1730,10 @@ export default function AddPropertyPage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-xl"
+            className="bg-white rounded-xl p-6 max-w-sm w-full shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-bold text-gray-900 mb-4 text-center">
+            <h3 className="text-lg font-bold text-slate-900 mb-4 text-center">
               {currentLanguage === "ko"
                 ? "추천 사진 가이드라인"
                 : "Photo Guidelines"}
@@ -1786,14 +1752,14 @@ export default function AddPropertyPage() {
                 </div>
               ))}
             </div>
-            <p className="text-xs text-gray-500 text-center mb-4">
+            <p className="text-xs text-slate-500 text-center mb-4">
               {currentLanguage === "ko"
                 ? "아무 곳이나 터치하여 시작하세요"
                 : "Tap anywhere to start"}
             </p>
             <button
               onClick={handleGuidelinePopupClick}
-              className="w-full py-4 px-4 rounded-2xl font-medium min-h-[56px] text-white"
+              className="w-full py-4 px-4 rounded-lg font-medium min-h-[56px] text-white"
               style={{ backgroundColor: COLORS.primary }}
             >
               {currentLanguage === "ko" ? "확인" : "OK"}
