@@ -2451,7 +2451,11 @@ export default function AddPropertyPage() {
                 ? "📸 추천 사진 가이드라인"
                 : currentLanguage === "vi"
                   ? "📸 Hướng dẫn ảnh đề xuất"
-                  : "📸 Recommended Photo Guidelines"}
+                : currentLanguage === "ja"
+                  ? "📸 おすすめ写真ガイドライン"
+                : currentLanguage === "zh"
+                  ? "📸 推荐照片指南"
+                : "📸 Recommended Photo Guidelines"}
             </h3>
             <div className="space-y-3 mb-4">
               <div className="flex items-center gap-2 text-sm text-gray-700">
@@ -2461,7 +2465,11 @@ export default function AddPropertyPage() {
                     ? "침실"
                     : currentLanguage === "vi"
                       ? "Phòng ngủ"
-                      : "Bedroom"}
+                    : currentLanguage === "ja"
+                      ? "寝室"
+                    : currentLanguage === "zh"
+                      ? "卧室"
+                    : "Bedroom"}
                 </span>
               </div>
               <div className="flex items-center gap-2 text-sm text-gray-700">
@@ -2471,7 +2479,11 @@ export default function AddPropertyPage() {
                     ? "주방"
                     : currentLanguage === "vi"
                       ? "Bếp"
-                      : "Kitchen"}
+                    : currentLanguage === "ja"
+                      ? "キッチン"
+                    : currentLanguage === "zh"
+                      ? "厨房"
+                    : "Kitchen"}
                 </span>
               </div>
               <div className="flex items-center gap-2 text-sm text-gray-700">
@@ -2481,7 +2493,11 @@ export default function AddPropertyPage() {
                     ? "거실"
                     : currentLanguage === "vi"
                       ? "Phòng khách"
-                      : "Living Room"}
+                    : currentLanguage === "ja"
+                      ? "リビングルーム"
+                    : currentLanguage === "zh"
+                      ? "客厅"
+                    : "Living Room"}
                 </span>
               </div>
               <div className="flex items-center gap-2 text-sm text-gray-700">
@@ -2491,7 +2507,11 @@ export default function AddPropertyPage() {
                     ? "화장실"
                     : currentLanguage === "vi"
                       ? "Phòng tắm"
-                      : "Bathroom"}
+                    : currentLanguage === "ja"
+                      ? "バスルーム"
+                    : currentLanguage === "zh"
+                      ? "浴室"
+                    : "Bathroom"}
                 </span>
               </div>
               <div className="flex items-center gap-2 text-sm text-gray-700">
@@ -2501,7 +2521,11 @@ export default function AddPropertyPage() {
                     ? "창문뷰"
                     : currentLanguage === "vi"
                       ? "Cửa sổ"
-                      : "Window View"}
+                    : currentLanguage === "ja"
+                      ? "窓の景色"
+                    : currentLanguage === "zh"
+                      ? "窗户景观"
+                    : "Window View"}
                 </span>
               </div>
             </div>
@@ -2510,7 +2534,11 @@ export default function AddPropertyPage() {
                 ? "아무 곳이나 터치하여 카메라를 시작하세요"
                 : currentLanguage === "vi"
                   ? "Chạm vào bất kỳ đâu để bắt đầu camera"
-                  : "Tap anywhere to start camera"}
+                : currentLanguage === "ja"
+                  ? "どこかをタップしてカメラを開始"
+                : currentLanguage === "zh"
+                  ? "点击任意位置开始相机"
+                : "Tap anywhere to start camera"}
             </p>
             <button
               onClick={handleGuidelinePopupClick}
@@ -2520,7 +2548,11 @@ export default function AddPropertyPage() {
                 ? "동의"
                 : currentLanguage === "vi"
                   ? "Đồng ý"
-                  : "Agree"}
+                : currentLanguage === "ja"
+                  ? "同意"
+                : currentLanguage === "zh"
+                  ? "同意"
+                : "Agree"}
             </button>
           </motion.div>
         </div>
