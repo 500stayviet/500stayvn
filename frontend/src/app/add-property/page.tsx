@@ -442,7 +442,11 @@ export default function AddPropertyPage() {
           ? "주소를 입력해주세요."
           : currentLanguage === "vi"
             ? "Vui lòng nhập địa chỉ."
-            : "Please enter an address.",
+            : currentLanguage === "ja"
+              ? "住所を入力してください。"
+              : currentLanguage === "zh"
+                ? "请输入地址。"
+                : "Please enter an address.",
       );
       return;
     }
@@ -451,10 +455,14 @@ export default function AddPropertyPage() {
     if (!coordinates || !coordinates.lat || !coordinates.lng) {
       alert(
         currentLanguage === "ko"
-          ? "주소를 선택하여 좌표를 설정해주세요. 주소 입력 버튼을 클릭��여 주소를 확인해주세요."
+          ? "주소를 선택하여 좌표를 설정해주세요. 주소 입력 버튼을 클릭하여 주소를 확인해주세요."
           : currentLanguage === "vi"
             ? "Vui lòng chọn địa chỉ để thiết lập tọa độ. Vui lòng nhấp vào nút nhập địa chỉ để xác nhận địa chỉ."
-            : "Please select an address to set coordinates. Please click the address input button to verify the address.",
+            : currentLanguage === "ja"
+              ? "住所を選択して座標を設定してください。住所入力ボタンをクリックして住所を確認してください。"
+              : currentLanguage === "zh"
+                ? "请选择地址以设置坐标。请点击地址输入按钮确认地址。"
+                : "Please select an address to set coordinates. Please click the address input button to verify the address.",
       );
       return;
     }
@@ -465,7 +473,11 @@ export default function AddPropertyPage() {
           ? "최소 1장의 사진을 등록해주세요."
           : currentLanguage === "vi"
             ? "Vui lòng đăng ít nhất 1 ảnh."
-            : "Please upload at least 1 image.",
+            : currentLanguage === "ja"
+              ? "最低1枚の写真を登録してください。"
+              : currentLanguage === "zh"
+                ? "请至少上传1张照片。"
+                : "Please upload at least 1 image.",
       );
       return;
     }
@@ -476,7 +488,11 @@ export default function AddPropertyPage() {
           ? "1주일 임대료를 입력해주세요."
           : currentLanguage === "vi"
             ? "Vui lòng nhập giá thuê 1 tuần."
-            : "Please enter weekly rent.",
+            : currentLanguage === "ja"
+              ? "1週間の賃貸料を入力してください。"
+              : currentLanguage === "zh"
+                ? "请输入1周租金。"
+                : "Please enter weekly rent.",
       );
       return;
     }
@@ -488,7 +504,11 @@ export default function AddPropertyPage() {
           ? "유효한 임대료를 입력해주세요."
           : currentLanguage === "vi"
             ? "Vui lòng nhập giá thuê hợp lệ."
-            : "Please enter a valid rent amount.",
+            : currentLanguage === "ja"
+              ? "有効な賃貸料を入力してください。"
+              : currentLanguage === "zh"
+                ? "请输入有效的租金金额。"
+                : "Please enter a valid rent amount.",
       );
       return;
     }
@@ -499,7 +519,11 @@ export default function AddPropertyPage() {
           ? "매물 종류를 선택해주세요."
           : currentLanguage === "vi"
             ? "Vui lòng chọn loại bất động sản."
-            : "Please select property type.",
+            : currentLanguage === "ja"
+              ? "物件の種類を選択してください。"
+              : currentLanguage === "zh"
+                ? "请选择物业类型。"
+                : "Please select property type.",
       );
       return;
     }
@@ -511,7 +535,11 @@ export default function AddPropertyPage() {
           ? "매물명을 입력해주세요."
           : currentLanguage === "vi"
             ? "Vui lòng nhập tên bất động sản."
-            : "Please enter property name.",
+            : currentLanguage === "ja"
+              ? "物件名を入力してください。"
+              : currentLanguage === "zh"
+                ? "请输入物业名称。"
+                : "Please enter property name.",
       );
       return;
     }
@@ -522,7 +550,11 @@ export default function AddPropertyPage() {
           ? "로그인이 필요합니다."
           : currentLanguage === "vi"
             ? "Cần đăng nhập."
-            : "Please login.",
+            : currentLanguage === "ja"
+              ? "ログインが必要です。"
+              : currentLanguage === "zh"
+                ? "需要登录。"
+                : "Please login.",
       );
       return;
     }
@@ -533,7 +565,11 @@ export default function AddPropertyPage() {
           ? "임대 시작일과 종료일을 선택해주세요."
           : currentLanguage === "vi"
             ? "Vui lòng chọn ngày bắt đầu và kết thúc thuê."
-            : "Please select rental start and end dates.",
+            : currentLanguage === "ja"
+              ? "賃貸開始日と終了日を選択してください。"
+              : currentLanguage === "zh"
+                ? "请选择租赁开始和结束日期。"
+                : "Please select rental start and end dates.",
       );
       return;
     }
@@ -546,7 +582,11 @@ export default function AddPropertyPage() {
           ? "임대 기간은 7, 14, 21, 28일 단위여야 합니다."
           : currentLanguage === "vi"
             ? "Thời hạn thuê phải theo đơn vị 7, 14, 21, 28 ngày."
-            : "Rental period must be in units of 7, 14, 21, 28 days.",
+            : currentLanguage === "ja"
+              ? "賃貸期間は7、14、21、28日単位でなければなりません。"
+              : currentLanguage === "zh"
+                ? "租赁期限必须为7、14、21、28天单位。"
+                : "Rental period must be in units of 7, 14, 21, 28 days.",
       );
       return;
     }
@@ -565,6 +605,10 @@ export default function AddPropertyPage() {
             ? "매물을 등록하려면 KYC 인증 1~3단계를 모두 완료해야 합니다."
             : currentLanguage === "vi"
               ? "Bạn phải hoàn thành tất cả các bước xác thực KYC (1-3) để đăng bất động sản."
+              : currentLanguage === "ja"
+                ? "物件を登録するには、KYC認証1〜3段階をすべて完了する必要があります。"
+              : currentLanguage === "zh"
+                ? "要注册物业，必须完成KYC认证1-3阶段。"
               : "You must complete all KYC verification steps (1-3) to register a property.",
         );
         setLoading(false);
@@ -580,6 +624,10 @@ export default function AddPropertyPage() {
             ? "매물은 인당 최대 5개까지 등록할 수 있습니다."
             : currentLanguage === "vi"
               ? "Bạn chỉ có thể đăng tối đa 5 bất động sản."
+              : currentLanguage === "ja"
+                ? "物件は1人あたり最大5件まで登録できます。"
+              : currentLanguage === "zh"
+                ? "每人最多可注册5个物业。"
               : "You can only register up to 5 properties.",
         );
         setLoading(false);
@@ -680,14 +728,18 @@ export default function AddPropertyPage() {
           ? "매물이 성공적으로 등록되었습니다!"
           : currentLanguage === "vi"
             ? "Bất động sản đã được đăng ký thành công!"
+            : currentLanguage === "ja"
+              ? "物件が正常に登録されました！"
+            : currentLanguage === "zh"
+              ? "物业已成功注册！"
             : "Property registered successfully!",
       );
       router.replace("/profile/my-properties");
-    } catch (error: any) {
+      } catch (error: any) {
       // 중복 등록 등 예상된 비즈니스 로직 에러는 콘솔 에러를 남기지 않음 (개발 오버레이 방지)
       const knownErrors = ["OverlapDetected", "AlreadyBooked"];
       if (!knownErrors.includes(error.message)) {
-        console.error("매물 등록 중 예기치 못한 ��패:", error);
+        console.error("매물 등록 중 예기치 못한 패:", error);
       }
 
       if (
@@ -697,7 +749,13 @@ export default function AddPropertyPage() {
         alert(
           currentLanguage === "ko"
             ? "이미 동일한 주소와 날짜에 등록된 매물이 있습니다."
-            : "Đã có bất động sản được đăng ký với cùng địa chỉ và ngày.",
+            : currentLanguage === "vi"
+              ? "Đã có bất động sản được đăng ký với cùng địa chỉ và ngày."
+            : currentLanguage === "ja"
+              ? "同じ住所と日付に既に登録された物件があります。"
+            : currentLanguage === "zh"
+              ? "相同地址和日期已有注册的物业。"
+            : "A property has already been registered at the same address and date.",
         );
       } else {
         alert(
@@ -705,7 +763,11 @@ export default function AddPropertyPage() {
             ? "매물 등록 중 오류가 발생했습니다."
             : currentLanguage === "vi"
               ? "Đã xảy ra lỗi khi đăng ký bất động sản."
-              : "An error occurred while registering the property.",
+            : currentLanguage === "ja"
+              ? "物件登録中にエラーが発生しました。"
+            : currentLanguage === "zh"
+              ? "物业注册过程中发生错误。"
+            : "An error occurred while registering the property.",
         );
       }
     } finally {
@@ -1067,40 +1129,69 @@ export default function AddPropertyPage() {
                   [
                     {
                       value: "studio" as const,
-                      label: "스튜디오",
+                      ko: "스튜디오",
+                      vi: "Studio",
+                      en: "Studio",
+                      ja: "スタジオ",
+                      zh: "工作室",
                     },
                     {
                       value: "one_room" as const,
-                      label: "원룸(방·거실 분리)",
+                      ko: "원룸(방·거실 분리)",
+                      vi: "Phòng đơn (phòng ngủ & phòng khách riêng)",
+                      en: "One Room (bedroom & living room separate)",
+                      ja: "ワンルーム（寝室・リビング別）",
+                      zh: "一室（卧室与客厅分开）",
                     },
                     {
                       value: "two_room" as const,
-                      label: "2룸",
+                      ko: "2룸",
+                      vi: "2 phòng",
+                      en: "2 Rooms",
+                      ja: "2ルーム",
+                      zh: "2室",
                     },
                     {
                       value: "three_plus" as const,
-                      label: "3+룸",
+                      ko: "3+룸",
+                      vi: "3+ phòng",
+                      en: "3+ Rooms",
+                      ja: "3+ルーム",
+                      zh: "3+室",
                     },
                     {
                       value: "detached" as const,
-                      label: "독채",
+                      ko: "독채",
+                      vi: "Nhà riêng",
+                      en: "Detached House",
+                      ja: "一戸建て",
+                      zh: "独栋房屋",
                     },
                   ] as const
-                ).map(({ value, label }) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setPropertyType(value)}
-                    className="inline-flex items-center justify-center px-3 py-2 rounded-xl text-xs font-bold transition-all"
-                    style={{
-                      backgroundColor: propertyType === value ? COLORS.primary : COLORS.white,
-                      color: propertyType === value ? COLORS.white : COLORS.text,
-                      border: `1px solid ${propertyType === value ? COLORS.primary : COLORS.border}`,
-                    }}
-                  >
-                    {label}
-                  </button>
-                ))}
+                ).map(({ value, ko, vi, en, ja, zh }) => {
+                  const label = 
+                    currentLanguage === "ko" ? ko :
+                    currentLanguage === "vi" ? vi :
+                    currentLanguage === "ja" ? ja :
+                    currentLanguage === "zh" ? zh :
+                    en;
+                  
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setPropertyType(value)}
+                      className="inline-flex items-center justify-center px-3 py-2 rounded-xl text-xs font-bold transition-all"
+                      style={{
+                        backgroundColor: propertyType === value ? COLORS.primary : COLORS.white,
+                        color: propertyType === value ? COLORS.white : COLORS.text,
+                        border: `1px solid ${propertyType === value ? COLORS.primary : COLORS.border}`,
+                      }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
               </div>
 
               {propertyType && (
@@ -2465,7 +2556,10 @@ export default function AddPropertyPage() {
                   className="text-[10px]"
                   style={{ color: COLORS.textMuted }}
                 >
-                  {currentLanguage === "ko" ? "홈" : "Home"}
+                  {currentLanguage === "ko" ? "홈" : 
+                   currentLanguage === "vi" ? "Trang chủ" :
+                   currentLanguage === "ja" ? "ホーム" :
+                   currentLanguage === "zh" ? "首页" : "Home"}
                 </span>
               </button>
               <button
@@ -2477,7 +2571,10 @@ export default function AddPropertyPage() {
                   className="text-[10px] font-medium"
                   style={{ color: COLORS.primary }}
                 >
-                  {currentLanguage === "ko" ? "매물등록" : "Add"}
+                  {currentLanguage === "ko" ? "매물등록" : 
+                   currentLanguage === "vi" ? "Đăng ký" :
+                   currentLanguage === "ja" ? "物件登録" :
+                   currentLanguage === "zh" ? "物业注册" : "Add"}
                 </span>
               </button>
               <button
@@ -2492,7 +2589,10 @@ export default function AddPropertyPage() {
                   className="text-[10px]"
                   style={{ color: COLORS.textMuted }}
                 >
-                  {currentLanguage === "ko" ? "매물관리" : "Manage"}
+                  {currentLanguage === "ko" ? "매물관리" : 
+                   currentLanguage === "vi" ? "Quản lý" :
+                   currentLanguage === "ja" ? "物件管理" :
+                   currentLanguage === "zh" ? "物业管理" : "Manage"}
                 </span>
               </button>
               <button
@@ -2507,7 +2607,10 @@ export default function AddPropertyPage() {
                   className="text-[10px]"
                   style={{ color: COLORS.textMuted }}
                 >
-                  {currentLanguage === "ko" ? "채팅" : "Chat"}
+                  {currentLanguage === "ko" ? "채팅" : 
+                   currentLanguage === "vi" ? "Trò chuyện" :
+                   currentLanguage === "ja" ? "チャット" :
+                   currentLanguage === "zh" ? "聊天" : "Chat"}
                 </span>
               </button>
               <button
@@ -2519,7 +2622,10 @@ export default function AddPropertyPage() {
                   className="text-[10px]"
                   style={{ color: COLORS.textMuted }}
                 >
-                  {currentLanguage === "ko" ? "프로필" : "Profile"}
+                  {currentLanguage === "ko" ? "프로필" : 
+                   currentLanguage === "vi" ? "Hồ sơ" :
+                   currentLanguage === "ja" ? "プロフィール" :
+                   currentLanguage === "zh" ? "个人资料" : "Profile"}
                 </span>
               </button>
             </>
@@ -2535,7 +2641,10 @@ export default function AddPropertyPage() {
                   className="text-[10px]"
                   style={{ color: COLORS.textMuted }}
                 >
-                  {currentLanguage === "ko" ? "홈" : "Home"}
+                  {currentLanguage === "ko" ? "홈" : 
+                   currentLanguage === "vi" ? "Trang chủ" :
+                   currentLanguage === "ja" ? "ホーム" :
+                   currentLanguage === "zh" ? "首页" : "Home"}
                 </span>
               </button>
               <button
@@ -2547,7 +2656,10 @@ export default function AddPropertyPage() {
                   className="text-[10px]"
                   style={{ color: COLORS.textMuted }}
                 >
-                  {currentLanguage === "ko" ? "지도로 검색" : "Map Search"}
+                  {currentLanguage === "ko" ? "지도로 검색" : 
+                   currentLanguage === "vi" ? "Tìm kiếm bản đồ" :
+                   currentLanguage === "ja" ? "地図検索" :
+                   currentLanguage === "zh" ? "地图搜索" : "Map Search"}
                 </span>
               </button>
               <button
@@ -2562,7 +2674,10 @@ export default function AddPropertyPage() {
                   className="text-[10px]"
                   style={{ color: COLORS.textMuted }}
                 >
-                  {currentLanguage === "ko" ? "예약" : "Bookings"}
+                  {currentLanguage === "ko" ? "예약" : 
+                   currentLanguage === "vi" ? "Đặt chỗ" :
+                   currentLanguage === "ja" ? "予約" :
+                   currentLanguage === "zh" ? "预订" : "Bookings"}
                 </span>
               </button>
               <button
@@ -2577,7 +2692,10 @@ export default function AddPropertyPage() {
                   className="text-[10px]"
                   style={{ color: COLORS.textMuted }}
                 >
-                  {currentLanguage === "ko" ? "찜" : "Wishlist"}
+                  {currentLanguage === "ko" ? "찜" : 
+                   currentLanguage === "vi" ? "Yêu thích" :
+                   currentLanguage === "ja" ? "お気に入り" :
+                   currentLanguage === "zh" ? "收藏" : "Wishlist"}
                 </span>
               </button>
               <button
@@ -2589,7 +2707,10 @@ export default function AddPropertyPage() {
                   className="text-[10px]"
                   style={{ color: COLORS.textMuted }}
                 >
-                  {currentLanguage === "ko" ? "프로필" : "Profile"}
+                  {currentLanguage === "ko" ? "프로필" : 
+                   currentLanguage === "vi" ? "Hồ sơ" :
+                   currentLanguage === "ja" ? "プロフィール" :
+                   currentLanguage === "zh" ? "个人资料" : "Profile"}
                 </span>
               </button>
             </>
