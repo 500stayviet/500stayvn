@@ -25,15 +25,11 @@ import {
   User,
   Plus,
   Image as ImageIcon,
-  Heart,
-  MessageCircle,
-  Map,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import TopBar from "@/components/TopBar";
 import CalendarComponent from "@/components/CalendarComponent";
 import AddressVerificationModal from "@/components/AddressVerificationModal";
-// 기존 import들 사이에 추가
 import { uploadToS3 } from "@/lib/s3-client";
 import { FACILITY_OPTIONS, FACILITY_CATEGORIES, FULL_OPTION_KITCHEN_IDS, FULL_FURNITURE_IDS, FULL_ELECTRONICS_IDS } from "@/lib/constants/facilities";
 import {
@@ -69,14 +65,14 @@ export default function AddPropertyPage() {
   const [loading, setLoading] = useState(false);
   const [checkingAccess, setCheckingAccess] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
-  const [isOwnerMode, setIsOwnerMode] = useState(false); // 임대인 모드 여부
+  
   // 폼 상태
   const [images, setImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [address, setAddress] = useState("");
   const [apartmentName, setApartmentName] = useState("");
-  const [buildingNumber, setBuildingNumber] = useState(""); // 동
-  const [roomNumber, setRoomNumber] = useState(""); // 호실
+  const [buildingNumber, setBuildingNumber] = useState("");
+  const [roomNumber, setRoomNumber] = useState("");
   const [weeklyRent, setWeeklyRent] = useState("");
   const [selectedFacilities, setSelectedFacilities] = useState<string[]>([]);
   const [propertyType, setPropertyType] = useState<
@@ -95,9 +91,8 @@ export default function AddPropertyPage() {
   const [maxChildren, setMaxChildren] = useState(0);
   const [bedrooms, setBedrooms] = useState(0);
   const [bathrooms, setBathrooms] = useState(0);
-  const [propertyNickname, setPropertyNickname] = useState(""); // 매물명 (임대인용)
+  const [propertyNickname, setPropertyNickname] = useState("");
   const [propertyDescription, setPropertyDescription] = useState("");
-  // 체크인/체크아웃 시간
   const [checkInTime, setCheckInTime] = useState("14:00");
   const [checkOutTime, setCheckOutTime] = useState("12:00");
 
@@ -115,7 +110,7 @@ export default function AddPropertyPage() {
       setBedrooms(2);
       setBathrooms((b) => (b < 1 || b > 3 ? 1 : b));
     } else if (propertyType === "three_plus") {
-      setBedrooms((prev) => (prev >= 2 && prev <= 5 ? prev : 3));
+      setBedrooms((prev) => (prev >= 2 && prev <= 5 ? prev : 2));
       setBathrooms((b) => (b < 1 || b > 6 ? 1 : b));
     } else if (propertyType === "detached") {
       setBedrooms((b) => Math.min(10, Math.max(1, b || 1)));
@@ -133,13 +128,11 @@ export default function AddPropertyPage() {
 
   // 임대 희망 날짜
   const [showCalendar, setShowCalendar] = useState(false);
-  const [calendarMode, setCalendarMode] = useState<"checkin" | "checkout">(
-    "checkin",
-  );
+  const [calendarMode, setCalendarMode] = useState<"checkin" | "checkout">("checkin");
   const [checkInDate, setCheckInDate] = useState<Date | null>(null);
   const [checkOutDate, setCheckOutDate] = useState<Date | null>(null);
 
-  // 외부 캘린더(iCal) 가져오기
+  // 외부 캘린더(iCal)
   const [icalPlatform, setIcalPlatform] = useState<string>("");
   const [icalCalendarName, setIcalCalendarName] = useState("");
   const [icalUrl, setIcalUrl] = useState("");
@@ -148,15 +141,9 @@ export default function AddPropertyPage() {
   // 사진첩 모달 상태
   const [showPhotoLibrary, setShowPhotoLibrary] = useState(false);
   const [photoLibraryFiles, setPhotoLibraryFiles] = useState<File[]>([]);
-  const [photoLibraryPreviews, setPhotoLibraryPreviews] = useState<string[]>(
-    [],
-  );
-  const [selectedLibraryIndices, setSelectedLibraryIndices] = useState<
-    Set<number>
-  >(new Set());
-  const [fullScreenImageIndex, setFullScreenImageIndex] = useState<
-    number | null
-  >(null);
+  const [photoLibraryPreviews, setPhotoLibraryPreviews] = useState<string[]>([]);
+  const [selectedLibraryIndices, setSelectedLibraryIndices] = useState<Set<number>>(new Set());
+  const [fullScreenImageIndex, setFullScreenImageIndex] = useState<number | null>(null);
 
   // 이미지 소스 선택 메뉴 상태
   const [showImageSourceMenu, setShowImageSourceMenu] = useState(false);
@@ -167,9 +154,9 @@ export default function AddPropertyPage() {
   // 주소 확인 모달
   const [showAddressModal, setShowAddressModal] = useState(false);
 
-  // 접근 권한 확인 및 사용자 모드 설정
+  // 접근 권한 확인
   useEffect(() => {
-    const checkAccessAndMode = async () => {
+    const checkAccess = async () => {
       if (authLoading) return;
 
       if (!user) {
@@ -179,22 +166,12 @@ export default function AddPropertyPage() {
 
       try {
         const userData = await getCurrentUserData(user.uid);
-
-        // KYC 1~3단계 토큰이 모두 있어야 매물 등록 가능
-        // 사용자 요구��항: "코인3개가 되면 다 사용가능한거야"
         const kycSteps = userData?.kyc_steps || {};
-        const allStepsCompleted =
-          kycSteps.step1 && kycSteps.step2 && kycSteps.step3;
+        const allStepsCompleted = kycSteps.step1 && kycSteps.step2 && kycSteps.step3;
 
-        // 프로필 페이지와 동일한 조건: KYC 완료 또는 owner 권한
         if (allStepsCompleted || userData?.is_owner === true) {
           setHasAccess(true);
-          // 임대인 모드 설정 (KYC 완료 + 코인 3개 이상)
-          // 실제로는 userData.coins 또는 userData.owner_status 등을 확인해야 함
-          // 여기서는 KYC 완료 시 임대인 모드로 간주
-          setIsOwnerMode(true);
         } else {
-          // KYC 미완료 시 1~3단계 인증 페이지로 이동
           router.push("/kyc");
         }
       } catch (error) {
@@ -204,10 +181,10 @@ export default function AddPropertyPage() {
       }
     };
 
-    checkAccessAndMode();
+    checkAccess();
   }, [user, authLoading, router]);
 
-  // 주소 확인 모달에서 주소 확정 시 (도시·구 자동 설정)
+  // 주소 확인 모달에서 주소 확정 시
   const handleAddressConfirm = (data: {
     address: string;
     lat: number;
@@ -249,20 +226,11 @@ export default function AddPropertyPage() {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    // 사진첩에 파일 저장
     setPhotoLibraryFiles(files);
-
-    // 미리보기 생성
     const previews = files.map((file) => URL.createObjectURL(file));
     setPhotoLibraryPreviews(previews);
-
-    // 선택 초기화
     setSelectedLibraryIndices(new Set());
-
-    // 사진첩 모달 열기
     setShowPhotoLibrary(true);
-
-    // input 초기화
     e.target.value = "";
   };
 
@@ -295,11 +263,9 @@ export default function AddPropertyPage() {
     const newImages = [...images, ...selectedFiles];
     setImages(newImages);
 
-    // 미리보기 생성
     const newPreviews = selectedFiles.map((file) => URL.createObjectURL(file));
     setImagePreviews([...imagePreviews, ...newPreviews]);
 
-    // 사진첩 닫기 및 정리
     setShowPhotoLibrary(false);
     setPhotoLibraryFiles([]);
     photoLibraryPreviews.forEach((url) => URL.revokeObjectURL(url));
@@ -330,35 +296,27 @@ export default function AddPropertyPage() {
     const newImages = [...images, file];
     setImages(newImages);
 
-    // 미리보기 생성
     const preview = URL.createObjectURL(file);
     setImagePreviews([...imagePreviews, preview]);
-
-    // input 초기화
     e.target.value = "";
   };
-
-  // 이미지 추가 버튼 클릭 (사진첩 또는 카메라 선택) - ref는 이미 위에서 선언됨
 
   const handleAddImageClick = () => {
     if (images.length >= 5) return;
 
-    // 1시간에 한 번만 가이드라인 팝업 표시
     const GUIDELINE_STORAGE_KEY = "property_guideline_last_shown";
     const lastShownTime = localStorage.getItem(GUIDELINE_STORAGE_KEY);
     const now = Date.now();
-    const oneHour = 60 * 60 * 1000; // 1시간 (밀리초)
+    const oneHour = 60 * 60 * 1000;
 
     if (lastShownTime) {
       const timeSinceLastShown = now - parseInt(lastShownTime, 10);
       if (timeSinceLastShown < oneHour) {
-        // 1시간이 지나지 않았으면 팝업 없이 바로 이미지 소스 메뉴 표시
         setShowImageSourceMenu(true);
         return;
       }
     }
 
-    // 1시간이 지났거나 처음이면 가이드라인 팝업 표시
     setShowGuidelinePopup(true);
   };
 
@@ -374,22 +332,16 @@ export default function AddPropertyPage() {
 
   const handleGuidelinePopupClick = () => {
     setShowGuidelinePopup(false);
-
-    // 가이드라인을 본 시간을 localStorage에 저장
     const GUIDELINE_STORAGE_KEY = "property_guideline_last_shown";
     localStorage.setItem(GUIDELINE_STORAGE_KEY, Date.now().toString());
-
     setShowImageSourceMenu(true);
   };
 
-  // 이미지 삭제 핸들러
+  // 이미지 ���제 핸들러
   const handleImageRemove = (index: number) => {
     const newImages = images.filter((_, i) => i !== index);
     const newPreviews = imagePreviews.filter((_, i) => i !== index);
-
-    // URL 해제
     URL.revokeObjectURL(imagePreviews[index]);
-
     setImages(newImages);
     setImagePreviews(newPreviews);
   };
@@ -405,22 +357,22 @@ export default function AddPropertyPage() {
 
   const petAllowed = selectedFacilities.includes("pet");
 
-  // 방 개수 옵션 (매물종류별)
+  // 방 개수 옵션
   const bedroomOptions = (() => {
     if (!propertyType) return [];
     if (propertyType === "studio" || propertyType === "one_room") return [1];
     if (propertyType === "two_room") return [2];
-    if (propertyType === "three_plus") return [2, 3, 4, 5]; // 5 = 5+
+    if (propertyType === "three_plus") return [2, 3, 4, 5];
     if (propertyType === "detached") return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     return [];
   })();
 
-  // 화장실 개수 옵션 (매물종류별)
+  // 화장실 개수 옵션
   const bathroomOptions = (() => {
     if (!propertyType) return [];
     if (propertyType === "studio" || propertyType === "one_room") return [1, 2];
     if (propertyType === "two_room") return [1, 2, 3];
-    if (propertyType === "three_plus") return [1, 2, 3, 4, 5, 6]; // 6 = 5+
+    if (propertyType === "three_plus") return [1, 2, 3, 4, 5, 6];
     if (propertyType === "detached") return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     return [];
   })();
@@ -429,7 +381,6 @@ export default function AddPropertyPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // 필수 정보 검증
     if (!address || address.trim() === "") {
       alert(
         currentLanguage === "ko"
@@ -441,11 +392,10 @@ export default function AddPropertyPage() {
       return;
     }
 
-    // 좌표 검증
     if (!coordinates || !coordinates.lat || !coordinates.lng) {
       alert(
         currentLanguage === "ko"
-          ? "주소를 선택하여 좌표를 설정해주세요. 주소 입력 버튼을 클릭����여 주소를 확인해주세요."
+          ? "주소를 선택하여 좌표를 설정해주세요. 주소 입력 버튼을 클릭하여 주소를 확인해주세요."
           : currentLanguage === "vi"
             ? "Vui lòng chọn địa chỉ để thiết lập tọa độ. Vui lòng nhấp vào nút nhập địa chỉ để xác nhận địa chỉ."
             : "Please select an address to set coordinates. Please click the address input button to verify the address.",
@@ -498,7 +448,6 @@ export default function AddPropertyPage() {
       return;
     }
 
-    // 매물명 필수 검증
     if (!propertyNickname || propertyNickname.trim() === "") {
       alert(
         currentLanguage === "ko"
@@ -526,7 +475,7 @@ export default function AddPropertyPage() {
         currentLanguage === "ko"
           ? "임대 시작일과 종료일을 선택해주세요."
           : currentLanguage === "vi"
-            ? "Vui lòng chọn ngày bắt đầu và kết thúc thuê."
+            ? "Vui lòng chọn ngày bắt đ��u và kết thúc thuê."
             : "Please select rental start and end dates.",
       );
       return;
@@ -547,11 +496,9 @@ export default function AddPropertyPage() {
 
     setLoading(true);
     try {
-      // KYC 1~3단계 토큰 확인
       const userData = await getCurrentUserData(user.uid);
       const kycSteps = userData?.kyc_steps || {};
-      const allStepsCompleted =
-        kycSteps.step1 && kycSteps.step2 && kycSteps.step3;
+      const allStepsCompleted = kycSteps.step1 && kycSteps.step2 && kycSteps.step3;
 
       if (!allStepsCompleted) {
         alert(
@@ -566,7 +513,6 @@ export default function AddPropertyPage() {
         return;
       }
 
-      // 인당 매물 수 제한 확인 (최대 5개)
       const propertyCount = await getPropertyCountByOwner(user.uid);
       if (propertyCount >= 5) {
         alert(
@@ -580,8 +526,6 @@ export default function AddPropertyPage() {
         return;
       }
 
-      // 동호수 조합 (비공개 - 별도 필드로만 저장)
-      // 호실 번호는 4자리로 패딩 (예: 1호 → 0001호)
       const formatRoomNumber = (room: string) => {
         const num = parseInt(room.replace(/\D/g, ""));
         if (isNaN(num)) return room;
@@ -597,10 +541,8 @@ export default function AddPropertyPage() {
               ? `${formatRoomNumber(roomNumber)}호`
               : undefined;
 
-      // 주소와 설명에는 동호수 포함하지 않음 (비공개)
       const publicAddress = `${apartmentName ? `${apartmentName}, ` : ""}${address}`;
 
-      // 이미지 업로드
       let imageUrls: string[];
       try {
         imageUrls = await Promise.all(
@@ -608,9 +550,7 @@ export default function AddPropertyPage() {
         );
       } catch (error) {
         console.error("S3 업로드 실패:", error);
-        // 실제 에러 메시지를 사용자에게 표시
-        const errorMessage =
-          error instanceof Error ? error.message : "S3 업로드 실패";
+        const errorMessage = error instanceof Error ? error.message : "S3 업로드 실패";
         alert(
           currentLanguage === "ko"
             ? `사진 업로드 실패: ${errorMessage}`
@@ -622,31 +562,30 @@ export default function AddPropertyPage() {
         return;
       }
 
-      // 날짜를 Date 객체로 변환 (LocalStorage용)
       const checkInDateObj = checkInDate || undefined;
       const checkOutDateObj = checkOutDate || undefined;
 
       await addProperty({
         title: apartmentName || address,
-        propertyNickname: propertyNickname.trim(), // 매물명 (임대인용, 필수)
-        original_description: propertyDescription, // 매물 설명 (빈 문자열 허용)
-        translated_description: "", // 나중에 번역 서비스로 채움
+        propertyNickname: propertyNickname.trim(),
+        original_description: propertyDescription,
+        translated_description: "",
         price: parseInt(weeklyRent.replace(/\D/g, "")),
         priceUnit: "vnd",
-        area: 0, // 나중에 추가 가능
+        area: 0,
         bedrooms: bedrooms,
         bathrooms: bathrooms,
-        coordinates: coordinates, // 좌표는 필수 (위에서 검증됨)
-        address: publicAddress, // 동호수 제외
+        coordinates: coordinates,
+        address: publicAddress,
         images: imageUrls,
         amenities: selectedFacilities,
-        unitNumber: unitNumber, // 동호수 (예약 완료 후에만 표시, 비공개)
+        unitNumber: unitNumber,
         propertyType,
         cleaningPerWeek: selectedFacilities.includes("cleaning") ? cleaningPerWeek : 0,
         petAllowed,
         ...(petAllowed && { maxPets }),
         ...(petAllowed && petFeeAmount.trim() && { petFee: parseInt(petFeeAmount.replace(/\D/g, ""), 10) || undefined }),
-        ownerId: user.uid, // 임대인 사용자 ID 저장
+        ownerId: user.uid,
         checkInDate: checkInDateObj,
         checkOutDate: checkOutDateObj,
         checkInTime: checkInTime,
@@ -657,7 +596,6 @@ export default function AddPropertyPage() {
         ...(icalPlatform && { icalPlatform }),
         ...(icalCalendarName.trim() && { icalCalendarName: icalCalendarName.trim() }),
         ...(icalUrl.trim() && { icalUrl: icalUrl.trim() }),
-        // 도시와 구 정보 ��장
         ...(selectedCityId && { cityId: selectedCityId }),
         ...(selectedDistrictId && { districtId: selectedDistrictId }),
       });
@@ -671,16 +609,12 @@ export default function AddPropertyPage() {
       );
       router.replace("/profile/my-properties");
     } catch (error: any) {
-      // 중복 등록 등 예상된 비즈니스 로직 에러는 콘솔 에러를 남기지 않음 (개발 오버레이 방지)
       const knownErrors = ["OverlapDetected", "AlreadyBooked"];
       if (!knownErrors.includes(error.message)) {
-        console.error("매물 등록 중 예기치 못한 ��패:", error);
+        console.error("매물 등록 중 예기치 못한 실패:", error);
       }
 
-      if (
-        error.message === "OverlapDetected" ||
-        error.message === "AlreadyBooked"
-      ) {
+      if (error.message === "OverlapDetected" || error.message === "AlreadyBooked") {
         alert(
           currentLanguage === "ko"
             ? "이미 동일한 주소와 날짜에 등록된 매물이 있습니다."
@@ -703,13 +637,16 @@ export default function AddPropertyPage() {
   // 접근 권한 확인 중
   if (checkingAccess || authLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-500">
-          {currentLanguage === "ko"
-            ? "로딩 중..."
-            : currentLanguage === "vi"
-              ? "Đang tải..."
-              : "Loading..."}
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin" style={{ color: COLORS.primary }} />
+          <span className="text-slate-500 font-sans">
+            {currentLanguage === "ko"
+              ? "로딩 중..."
+              : currentLanguage === "vi"
+                ? "Đang tải..."
+                : "Loading..."}
+          </span>
         </div>
       </div>
     );
@@ -720,15 +657,16 @@ export default function AddPropertyPage() {
   }
 
   return (
-    <div className="min-h-screen flex justify-center" style={{ backgroundColor: COLORS.background }}>
-      <div className="w-full max-w-[430px] min-h-screen shadow-xl flex flex-col relative pb-20" style={{ backgroundColor: COLORS.surface }}>
+    <div className="min-h-screen flex justify-center font-sans" style={{ backgroundColor: COLORS.background }}>
+      {/* PWA 모바일 컨테이너 */}
+      <div className="w-full max-w-[480px] min-h-screen shadow-xl flex flex-col relative" style={{ backgroundColor: COLORS.surface }}>
         {/* 상단 바 */}
         <TopBar />
 
-        {/* 콘텐츠 */}
-        <div className="px-5 py-5">
-          {/* 헤더 */}
-          <div className="mb-5 pb-4" style={{ borderBottom: `1px solid ${COLORS.border}` }}>
+        {/* 스크롤 가능한 콘텐츠 영역 */}
+        <div className="flex-1 overflow-y-auto pb-40">
+          {/* 심플한 헤더 */}
+          <div className="px-5 pt-6 pb-4 border-b" style={{ borderColor: COLORS.border }}>
             <h1 className="text-xl font-bold" style={{ color: COLORS.text }}>
               {currentLanguage === "ko"
                 ? "새 매물 등록"
@@ -745,8 +683,8 @@ export default function AddPropertyPage() {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* 이미지 업로드 */}
+          <form onSubmit={handleSubmit} className="px-5 py-5 space-y-6">
+            {/* ===== 사진 등록 섹션 ===== */}
             <section 
               className="p-4 rounded-xl"
               style={{ backgroundColor: COLORS.surface, border: `1.5px dashed ${COLORS.border}` }}
@@ -765,11 +703,13 @@ export default function AddPropertyPage() {
                 </span>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              {/* 깔끔한 가로형 썸네일 리스트 */}
+              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
                 {imagePreviews.map((preview, index) => (
                   <div
                     key={index}
-                    className="relative aspect-square rounded-xl overflow-hidden border-2 border-gray-200"
+                    className="relative flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden"
+                    style={{ border: `1px solid ${COLORS.border}` }}
                   >
                     <img
                       src={preview}
@@ -779,238 +719,53 @@ export default function AddPropertyPage() {
                     <button
                       type="button"
                       onClick={() => handleImageRemove(index)}
-                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                      className="absolute top-1 right-1 rounded-full p-1 transition-colors min-h-[24px] min-w-[24px] flex items-center justify-center"
+                      style={{ backgroundColor: COLORS.error, color: COLORS.white }}
                     >
-                      <X className="w-4 h-4" />
+                      <X className="w-3 h-3" />
                     </button>
                   </div>
                 ))}
+                
                 {images.length < 5 && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={handleAddImageClick}
-                      className="aspect-square rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors"
-                    >
-                      <Camera className="w-8 h-8 text-gray-400 mb-1" />
-                      <span className="text-xs text-gray-500">
-                        {currentLanguage === "ko"
-                          ? "추가"
-                          : currentLanguage === "vi"
-                            ? "Thêm"
-                            : "Add"}
-                      </span>
-                    </button>
-
-                    {/* 숨겨진 input들 */}
-                    <input
-                      ref={photoLibraryInputRef}
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={handlePhotoLibrarySelect}
-                      className="hidden"
-                    />
-                    <input
-                      ref={cameraInputRef}
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      onChange={handleCameraCapture}
-                      className="hidden"
-                    />
-                  </>
+                  <button
+                    type="button"
+                    onClick={handleAddImageClick}
+                    className="flex-shrink-0 w-20 h-20 rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all hover:border-blue-400 hover:bg-blue-50"
+                    style={{ borderColor: COLORS.border }}
+                  >
+                    <Plus className="w-6 h-6 mb-1" style={{ color: COLORS.textMuted }} />
+                    <span className="text-xs" style={{ color: COLORS.textSecondary }}>
+                      {currentLanguage === "ko"
+                        ? "추가"
+                        : currentLanguage === "vi"
+                          ? "Thêm"
+                          : "Add"}
+                    </span>
+                  </button>
                 )}
               </div>
 
-              {/* 이미지 소스 선택 메뉴 */}
-              {showImageSourceMenu && (
-                <div
-                  className="fixed inset-0 bg-black/50 flex items-end z-50"
-                  onClick={() => setShowImageSourceMenu(false)}
-                >
-                  <div
-                    className="w-full bg-white rounded-t-2xl p-6"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">
-                      {currentLanguage === "ko"
-                        ? "사진 추가 방법 선택"
-                        : currentLanguage === "vi"
-                          ? "Chọn cách thêm ảnh"
-                          : "Select Photo Source"}
-                    </h3>
-                    <div className="space-y-3">
-                      <button
-                        type="button"
-                        onClick={handleSelectFromLibrary}
-                        className="w-full py-4 px-4 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-3"
-                      >
-                        <Camera className="w-5 h-5" />
-                        <span>
-                          {currentLanguage === "ko"
-                            ? "사진첩에서 선택"
-                            : currentLanguage === "vi"
-                              ? "Chọn từ thư viện ảnh"
-                              : "Select from Photo Library"}
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleTakePhoto}
-                        className="w-full py-4 px-4 bg-gray-100 text-gray-900 rounded-xl font-medium hover:bg-gray-200 transition-colors flex items-center justify-center gap-3"
-                      >
-                        <Camera className="w-5 h-5" />
-                        <span>
-                          {currentLanguage === "ko"
-                            ? "카메라로 촬영"
-                            : currentLanguage === "vi"
-                              ? "Chụp ảnh"
-                              : "Take Photo"}
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShowImageSourceMenu(false)}
-                        className="w-full py-3 px-4 text-gray-600 rounded-xl font-medium hover:bg-gray-100 transition-colors"
-                      >
-                        {currentLanguage === "ko"
-                          ? "취소"
-                          : currentLanguage === "vi"
-                            ? "Hủy"
-                            : "Cancel"}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* 사진첩 모달 (카톡 스타일) */}
-              {showPhotoLibrary && (
-                <div className="fixed inset-0 bg-white z-50 flex flex-col">
-                  {/* 헤더 */}
-                  <div className="flex items-center justify-between p-4 border-b border-gray-200">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowPhotoLibrary(false);
-                        setPhotoLibraryFiles([]);
-                        photoLibraryPreviews.forEach((url) =>
-                          URL.revokeObjectURL(url),
-                        );
-                        setPhotoLibraryPreviews([]);
-                        setSelectedLibraryIndices(new Set());
-                        setFullScreenImageIndex(null);
-                      }}
-                      className="text-gray-700"
-                    >
-                      <X className="w-6 h-6" />
-                    </button>
-                    <h2 className="text-lg font-semibold text-gray-900">
-                      {currentLanguage === "ko"
-                        ? "사진 선택"
-                        : currentLanguage === "vi"
-                          ? "Chọn ảnh"
-                          : "Select Photos"}
-                    </h2>
-                    <div className="w-6" /> {/* 공간 맞춤 */}
-                  </div>
-
-                  {/* 사진 그리드 */}
-                  <div className="flex-1 overflow-y-auto p-2">
-                    <div className="grid grid-cols-4 gap-1">
-                      {photoLibraryPreviews.map((preview, index) => {
-                        const isSelected = selectedLibraryIndices.has(index);
-                        return (
-                          <div
-                            key={index}
-                            className="relative aspect-square"
-                            onClick={() => togglePhotoSelection(index)}
-                          >
-                            <img
-                              src={preview}
-                              alt={`Photo ${index + 1}`}
-                              className={`w-full h-full object-cover rounded ${isSelected ? "opacity-50" : ""
-                                }`}
-                            />
-                            {isSelected && (
-                              <div className="absolute inset-0 flex items-center justify-center bg-blue-500/30 rounded">
-                                <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
-                                  <Check className="w-4 h-4 text-white" />
-                                </div>
-                              </div>
-                            )}
-                            {/* 전체화면 보기 버튼 (우측 하단) */}
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleViewFullScreen(index);
-                              }}
-                              className="absolute bottom-1 right-1 bg-black/50 text-white rounded-full p-1.5 hover:bg-black/70 transition-colors"
-                            >
-                              <Maximize2 className="w-3 h-3" />
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* 하단 버튼 */}
-                  <div className="p-4 border-t border-gray-200">
-                    <button
-                      type="button"
-                      onClick={handleConfirmPhotoSelection}
-                      disabled={selectedLibraryIndices.size === 0}
-                      className="w-full py-3 px-4 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {currentLanguage === "ko"
-                        ? `선택한 ${selectedLibraryIndices.size}장 추가`
-                        : currentLanguage === "vi"
-                          ? `Thêm ${selectedLibraryIndices.size} ảnh đã chọn`
-                          : `Add ${selectedLibraryIndices.size} selected`}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* 전체화면 이미지 보기 */}
-              {fullScreenImageIndex !== null && (
-                <div className="fixed inset-0 bg-black z-[60] flex items-center justify-center">
-                  <img
-                    src={photoLibraryPreviews[fullScreenImageIndex]}
-                    alt={`Full screen ${fullScreenImageIndex + 1}`}
-                    className="max-w-full max-h-full object-contain"
-                  />
-                  {/* 우측 하단: 사진첩으로 돌아가기 버튼 */}
-                  <button
-                    type="button"
-                    onClick={handleBackToLibrary}
-                    className="absolute bottom-6 right-6 bg-white/90 text-gray-900 rounded-full p-4 hover:bg-white transition-colors shadow-lg flex items-center gap-2"
-                  >
-                    <ArrowLeft className="w-5 h-5" />
-                    <span className="font-medium">
-                      {currentLanguage === "ko"
-                        ? "사진첩"
-                        : currentLanguage === "vi"
-                          ? "Thư viện ảnh"
-                          : "Library"}
-                    </span>
-                  </button>
-                  {/* 닫기 버튼 (좌측 상단) */}
-                  <button
-                    type="button"
-                    onClick={handleBackToLibrary}
-                    className="absolute top-6 left-6 bg-white/90 text-gray-900 rounded-full p-2 hover:bg-white transition-colors"
-                  >
-                    <X className="w-6 h-6" />
-                  </button>
-                </div>
-              )}
+              {/* 숨겨진 input들 */}
+              <input
+                ref={photoLibraryInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handlePhotoLibrarySelect}
+                className="hidden"
+              />
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleCameraCapture}
+                className="hidden"
+              />
             </section>
 
-            {/* 매물 종류 / 방 개수 / 화장실 수 */}
+            {/* ===== 매물 종류 섹션 ===== */}
             <section 
               className="p-4 rounded-xl"
               style={{ backgroundColor: COLORS.surface, border: `1.5px dashed ${COLORS.border}` }}
@@ -1023,6 +778,7 @@ export default function AddPropertyPage() {
                     : "Property Type"}
                 <span style={{ color: COLORS.error }} className="ml-1">*</span>
               </h2>
+
               {/* 깔끔한 칩 스타일 버튼 */}
               <div className="flex flex-wrap gap-2">
                 {(
@@ -1050,8 +806,9 @@ export default function AddPropertyPage() {
                 ))}
               </div>
 
+              {/* 방/화장실/최대인원 */}
               {propertyType && (
-                <div className="grid grid-cols-3 gap-2 mt-4 pt-4" style={{ borderTop: `1px solid ${COLORS.border}40` }}>
+                <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t" style={{ borderColor: `${COLORS.border}40` }}>
                   <div>
                     <label className="block text-[11px] font-medium mb-1.5" style={{ color: COLORS.textSecondary }}>
                       {currentLanguage === "ko" ? "방 개수" : currentLanguage === "vi" ? "Số phòng" : "Bedrooms"}
@@ -1069,22 +826,20 @@ export default function AddPropertyPage() {
                     >
                       {bedroomOptions.map((n) => (
                         <option key={n} value={n}>
-                          {n === 5 && (propertyType === "three_plus" || propertyType === "detached")
-                            ? "5+"
-                            : n}
+                          {n === 5 && (propertyType === "three_plus" || propertyType === "detached") ? "5+" : n}
                         </option>
                       ))}
                     </select>
                   </div>
                   <div>
                     <label className="block text-[11px] font-medium mb-1.5" style={{ color: COLORS.textSecondary }}>
-                      {currentLanguage === "ko" ? "화장실 수" : currentLanguage === "vi" ? "Số phòng tắm" : "Bathrooms"}
+                      {currentLanguage === "ko" ? "화장실" : currentLanguage === "vi" ? "Phòng tắm" : "Bathrooms"}
                     </label>
                     <select
                       value={bathrooms}
                       onChange={(e) => setBathrooms(Number(e.target.value))}
                       className="w-full px-2 py-2 rounded-md text-sm min-h-[36px] focus:outline-none transition-all"
-                      style={{
+                      style={{ 
                         backgroundColor: COLORS.white,
                         border: `1px solid ${COLORS.border}`,
                         color: COLORS.text,
@@ -1099,7 +854,7 @@ export default function AddPropertyPage() {
                   </div>
                   <div>
                     <label className="block text-[11px] font-medium mb-1.5" style={{ color: COLORS.textSecondary }}>
-                      {currentLanguage === "ko" ? "최대 인원" : currentLanguage === "vi" ? "Số người tối đa" : "Max Guests"}
+                      {currentLanguage === "ko" ? "최대인원" : currentLanguage === "vi" ? "Tối đa" : "Max"}
                     </label>
                     <select
                       value={maxAdults}
@@ -1117,7 +872,7 @@ export default function AddPropertyPage() {
                     >
                       {Array.from({ length: 20 }, (_, i) => i + 1).map((n) => (
                         <option key={n} value={n}>
-                          {n}{currentLanguage === "ko" ? "명" : currentLanguage === "vi" ? " người" : " guests"}
+                          {n}{currentLanguage === "ko" ? "명" : ""}
                         </option>
                       ))}
                     </select>
@@ -1126,7 +881,7 @@ export default function AddPropertyPage() {
               )}
             </section>
 
-            {/* 주소 */}
+            {/* ===== 주소 섹션 ===== */}
             <section 
               className="p-4 rounded-xl"
               style={{ backgroundColor: COLORS.surface, border: `1.5px dashed ${COLORS.border}` }}
@@ -1139,14 +894,18 @@ export default function AddPropertyPage() {
                     : "Address"}
                 <span style={{ color: COLORS.error }} className="ml-1">*</span>
               </h2>
+
               {(!address || !coordinates) && (
                 <button
                   type="button"
                   onClick={() => setShowAddressModal(true)}
-                  className="w-full px-4 py-3 rounded-lg transition-all flex items-center justify-center gap-2 font-medium active:scale-[0.98]"
-                  style={{ backgroundColor: COLORS.primary, color: COLORS.white }}
+                  className="w-full px-4 py-3 rounded-lg transition-all flex items-center justify-center gap-2 min-h-[48px] font-medium"
+                  style={{ 
+                    backgroundColor: COLORS.primary,
+                    color: COLORS.white,
+                  }}
                 >
-                  <MapPin className="w-5 h-5" />
+                  <MapPin className="w-4 h-4" />
                   <span>
                     {currentLanguage === "ko"
                       ? "주소 찾기"
@@ -1156,27 +915,26 @@ export default function AddPropertyPage() {
                   </span>
                 </button>
               )}
+
               {address && coordinates && (
                 <div
                   className="p-3 rounded-lg cursor-pointer transition-colors"
-                  style={{ backgroundColor: `${COLORS.success}15`, border: `1px solid ${COLORS.success}30` }}
+                  style={{ backgroundColor: `${COLORS.success}08`, border: `1px solid ${COLORS.success}` }}
                   onClick={() => setShowAddressModal(true)}
                 >
                   <div className="flex items-start gap-3">
-                    <div className="p-1.5 rounded-md flex-shrink-0" style={{ backgroundColor: `${COLORS.success}20` }}>
+                    <div className="p-1.5 rounded-md flex-shrink-0" style={{ backgroundColor: `${COLORS.success}15` }}>
                       <Check className="w-4 h-4" style={{ color: COLORS.success }} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <span className="text-[11px] font-medium" style={{ color: COLORS.success }}>
+                      <span className="text-xs font-medium" style={{ color: COLORS.success }}>
                         {currentLanguage === "ko"
-                          ? "확정된 주소 (클릭하여 수정)"
+                          ? "확정된 주소"
                           : currentLanguage === "vi"
                             ? "Địa chỉ đã xác nhận"
                             : "Confirmed Address"}
                       </span>
-                      <p className="text-sm font-medium mt-0.5" style={{ color: COLORS.text }}>
-                        {address}
-                      </p>
+                      <p className="text-sm font-medium mt-0.5" style={{ color: COLORS.text }}>{address}</p>
                     </div>
                     <button
                       type="button"
@@ -1187,8 +945,7 @@ export default function AddPropertyPage() {
                         setSelectedCityId("");
                         setSelectedDistrictId("");
                       }}
-                      className="p-1 rounded-full transition-colors flex-shrink-0"
-                      style={{ backgroundColor: `${COLORS.success}20` }}
+                      className="p-1.5 rounded-md transition-colors flex-shrink-0 min-h-[32px] min-w-[32px] flex items-center justify-center hover:bg-gray-100"
                     >
                       <X className="w-4 h-4" style={{ color: COLORS.textSecondary }} />
                     </button>
@@ -1196,7 +953,7 @@ export default function AddPropertyPage() {
                 </div>
               )}
 
-              {/* 도시·구 */}
+              {/* 도시/구 자동 표시 */}
               <div className="grid grid-cols-2 gap-2 mt-4">
                 <div>
                   <label className="block text-[11px] font-medium mb-1.5" style={{ color: COLORS.textSecondary }}>
@@ -1208,11 +965,11 @@ export default function AddPropertyPage() {
                   >
                     {address && coordinates && selectedCityId
                       ? (() => {
-                        const city = VIETNAM_CITIES.find((c) => c.id === selectedCityId);
-                        if (!city) return "—";
-                        const langMap: Record<string, string> = { ko: city.nameKo, vi: city.nameVi, en: city.name, ja: city.nameJa ?? city.name, zh: city.nameZh ?? city.name };
-                        return langMap[currentLanguage] ?? city.name;
-                      })()
+                          const city = VIETNAM_CITIES.find((c) => c.id === selectedCityId);
+                          if (!city) return "—";
+                          const langMap: Record<string, string> = { ko: city.nameKo, vi: city.nameVi, en: city.name, ja: city.nameJa ?? city.name, zh: city.nameZh ?? city.name };
+                          return langMap[currentLanguage] ?? city.name;
+                        })()
                       : <span style={{ color: COLORS.textMuted }}>{currentLanguage === "ko" ? "자동 입력" : "Auto"}</span>}
                   </div>
                 </div>
@@ -1231,7 +988,7 @@ export default function AddPropertyPage() {
                       color: COLORS.text,
                     }}
                   >
-                    <option value="">{currentLanguage === "ko" ? "선택" : currentLanguage === "vi" ? "Chọn" : "Select"}</option>
+                    <option value="">{currentLanguage === "ko" ? "선택" : "Select"}</option>
                     {getDistrictsByCityId(selectedCityId).map((d) => {
                       const langMap: Record<string, string> = { ko: d.nameKo, vi: d.nameVi, en: d.name, ja: d.nameJa ?? d.name, zh: d.nameZh ?? d.name };
                       return <option key={d.id} value={d.id}>{langMap[currentLanguage] ?? d.name}</option>;
@@ -1240,7 +997,7 @@ export default function AddPropertyPage() {
                 </div>
               </div>
 
-              {/* 동호수 입력 */}
+              {/* 동호수 */}
               <div className="mt-4 p-3 rounded-lg" style={{ backgroundColor: `${COLORS.border}20` }}>
                 <label className="block text-xs font-medium mb-2" style={{ color: COLORS.text }}>
                   {currentLanguage === "ko"
@@ -1296,7 +1053,7 @@ export default function AddPropertyPage() {
               </div>
             </section>
 
-            {/* 임대 희망 날짜 */}
+            {/* ===== 임대 희망 날짜 섹션 ===== */}
             <section 
               className="p-4 rounded-xl"
               style={{ backgroundColor: COLORS.surface, border: `1.5px dashed ${COLORS.border}` }}
@@ -1305,163 +1062,63 @@ export default function AddPropertyPage() {
                 {currentLanguage === "ko"
                   ? "임대 희망 날짜"
                   : currentLanguage === "vi"
-                    ? "Ngày cho thuê mong muốn"
-                    : "Desired Rental Dates"}
+                    ? "Ngày cho thuê"
+                    : "Rental Dates"}
               </h2>
-              <div className="grid grid-cols-2 gap-2">
-                {/* 체크인 날짜 */}
+              <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={() => {
                     setCalendarMode("checkin");
                     setShowCalendar(true);
                   }}
-                  className="flex items-center px-3 py-2 rounded-md transition-colors"
-                  style={{ backgroundColor: COLORS.white, border: `1px solid ${COLORS.border}` }}
+                  className="flex items-center gap-3 px-3 py-3 rounded-lg transition-colors min-h-[48px]"
+                  style={{ border: `1px solid ${COLORS.border}`, backgroundColor: COLORS.white }}
                 >
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-gray-600" />
-                    <div className="text-left">
-                      <div className="text-xs text-gray-500">
-                        {currentLanguage === "ko"
-                          ? "시작일"
-                          : currentLanguage === "vi"
-                            ? "Ngày bắt đầu"
-                            : "Start Date"}
-                      </div>
-                      <div className="text-sm font-medium text-gray-900">
-                        {checkInDate
-                          ? (() => {
-                            try {
-                              let date: Date | null = null;
-                              if (checkInDate instanceof Date) {
-                                date = checkInDate;
-                              } else if (typeof checkInDate === "string") {
-                                date = new Date(checkInDate);
-                              }
-                              if (!date || isNaN(date.getTime())) {
-                                return currentLanguage === "ko"
-                                  ? "날짜 선택"
-                                  : currentLanguage === "vi"
-                                    ? "Chọn ngày"
-                                    : "Select date";
-                              }
-                              const month = date.getMonth() + 1;
-                              const day = date.getDate();
-                              if (isNaN(month) || isNaN(day)) {
-                                return currentLanguage === "ko"
-                                  ? "날짜 선택"
-                                  : currentLanguage === "vi"
-                                    ? "Chọn ngày"
-                                    : "Select date";
-                              }
-                              return date.toLocaleDateString(
-                                currentLanguage === "ko"
-                                  ? "ko-KR"
-                                  : currentLanguage === "vi"
-                                    ? "vi-VN"
-                                    : "en-US",
-                                {
-                                  month: "short",
-                                  day: "numeric",
-                                },
-                              );
-                            } catch {
-                              return currentLanguage === "ko"
-                                ? "날짜 선택"
-                                : currentLanguage === "vi"
-                                  ? "Chọn ngày"
-                                  : "Select date";
-                            }
-                          })()
-                          : currentLanguage === "ko"
-                            ? "날짜 선택"
-                            : currentLanguage === "vi"
-                              ? "Chọn ngày"
-                              : "Select date"}
-                      </div>
+                  <Calendar className="w-4 h-4" style={{ color: COLORS.primary }} />
+                  <div className="text-left">
+                    <div className="text-xs" style={{ color: COLORS.textSecondary }}>
+                      {currentLanguage === "ko" ? "시작일" : "Start"}
+                    </div>
+                    <div className="text-sm font-medium" style={{ color: COLORS.text }}>
+                      {checkInDate
+                        ? checkInDate.toLocaleDateString(
+                            currentLanguage === "ko" ? "ko-KR" : currentLanguage === "vi" ? "vi-VN" : "en-US",
+                            { month: "short", day: "numeric" }
+                          )
+                        : currentLanguage === "ko" ? "선택" : "Select"}
                     </div>
                   </div>
                 </button>
 
-                {/* 체크아웃 날짜 */}
                 <button
                   type="button"
                   onClick={() => {
                     setCalendarMode("checkout");
                     setShowCalendar(true);
                   }}
-                  className="flex items-center px-3 py-2 rounded-md transition-colors"
-                  style={{ backgroundColor: COLORS.white, border: `1px solid ${COLORS.border}` }}
+                  className="flex items-center gap-3 px-3 py-3 rounded-lg transition-colors min-h-[48px]"
+                  style={{ border: `1px solid ${COLORS.border}`, backgroundColor: COLORS.white }}
                 >
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-gray-600" />
-                    <div className="text-left">
-                      <div className="text-xs text-gray-500">
-                        {currentLanguage === "ko"
-                          ? "종료일"
-                          : currentLanguage === "vi"
-                            ? "Ngày kết thúc"
-                            : "End Date"}
-                      </div>
-                      <div className="text-sm font-medium text-gray-900">
-                        {checkOutDate
-                          ? (() => {
-                            try {
-                              let date: Date | null = null;
-                              if (checkOutDate instanceof Date) {
-                                date = checkOutDate;
-                              } else if (typeof checkOutDate === "string") {
-                                date = new Date(checkOutDate);
-                              }
-                              if (!date || isNaN(date.getTime())) {
-                                return currentLanguage === "ko"
-                                  ? "날짜 선택"
-                                  : currentLanguage === "vi"
-                                    ? "Chọn ngày"
-                                    : "Select date";
-                              }
-                              const month = date.getMonth() + 1;
-                              const day = date.getDate();
-                              if (isNaN(month) || isNaN(day)) {
-                                return currentLanguage === "ko"
-                                  ? "날짜 선택"
-                                  : currentLanguage === "vi"
-                                    ? "Chọn ngày"
-                                    : "Select date";
-                              }
-                              return date.toLocaleDateString(
-                                currentLanguage === "ko"
-                                  ? "ko-KR"
-                                  : currentLanguage === "vi"
-                                    ? "vi-VN"
-                                    : "en-US",
-                                {
-                                  month: "short",
-                                  day: "numeric",
-                                },
-                              );
-                            } catch {
-                              return currentLanguage === "ko"
-                                ? "날짜 선택"
-                                : currentLanguage === "vi"
-                                  ? "Chọn ngày"
-                                  : "Select date";
-                            }
-                          })()
-                          : currentLanguage === "ko"
-                            ? "날짜 선택"
-                            : currentLanguage === "vi"
-                              ? "Chọn ngày"
-                              : "Select date"}
-                      </div>
+                  <Calendar className="w-4 h-4" style={{ color: COLORS.primary }} />
+                  <div className="text-left">
+                    <div className="text-xs" style={{ color: COLORS.textSecondary }}>
+                      {currentLanguage === "ko" ? "종료일" : "End"}
+                    </div>
+                    <div className="text-sm font-medium" style={{ color: COLORS.text }}>
+                      {checkOutDate
+                        ? checkOutDate.toLocaleDateString(
+                            currentLanguage === "ko" ? "ko-KR" : currentLanguage === "vi" ? "vi-VN" : "en-US",
+                            { month: "short", day: "numeric" }
+                          )
+                        : currentLanguage === "ko" ? "선택" : "Select"}
                     </div>
                   </div>
                 </button>
               </div>
             </section>
 
-            {/* 1주일 임대료 */}
+            {/* ===== 1주일 임대료 섹션 ===== */}
             <section 
               className="p-4 rounded-xl"
               style={{ backgroundColor: COLORS.surface, border: `1.5px dashed ${COLORS.border}` }}
@@ -1474,22 +1131,19 @@ export default function AddPropertyPage() {
                     : "Weekly Rent"}
                 <span style={{ color: COLORS.error }} className="ml-1">*</span>
               </h2>
-              <p className="text-[11px] mb-3" style={{ color: COLORS.textSecondary }}>
+              <p className="text-xs mb-3" style={{ color: COLORS.textSecondary }}>
                 {currentLanguage === "ko"
                   ? "공과금/관리비 포함"
                   : currentLanguage === "vi"
-                    ? "Bao gồm phí dịch vụ/quản lý"
-                    : "Utilities/Management fees included"}
+                    ? "Bao gồm phí dịch vụ"
+                    : "Utilities included"}
               </p>
               <div className="flex items-center gap-2">
                 <input
                   type="text"
                   value={
                     weeklyRent
-                      ? parseInt(
-                        weeklyRent.replace(/\D/g, "") || "0",
-                        10,
-                      ).toLocaleString()
+                      ? parseInt(weeklyRent.replace(/\D/g, "") || "0", 10).toLocaleString()
                       : ""
                   }
                   onChange={(e) => {
@@ -1497,15 +1151,15 @@ export default function AddPropertyPage() {
                     setWeeklyRent(value);
                   }}
                   placeholder="0"
-                  className="flex-1 px-3 py-2 rounded-md text-sm min-h-[36px] focus:outline-none transition-all"
-                  style={{ backgroundColor: COLORS.white, border: `1px solid ${COLORS.border}` }}
+                  className="flex-1 px-4 py-3 rounded-lg min-h-[48px] text-lg font-semibold focus:outline-none transition-all"
+                  style={{ border: `1px solid ${COLORS.border}`, backgroundColor: COLORS.white }}
                   required
                 />
-                <span className="text-sm font-medium" style={{ color: COLORS.textSecondary }}>VND</span>
+                <span className="font-medium" style={{ color: COLORS.textSecondary }}>VND</span>
               </div>
             </section>
 
-            {/* 숙소시설 및 정책 */}
+            {/* ===== 시설 및 정책 섹션 ===== */}
             <section 
               className="p-4 rounded-xl"
               style={{ backgroundColor: COLORS.surface, border: `1.5px dashed ${COLORS.border}` }}
@@ -1517,6 +1171,7 @@ export default function AddPropertyPage() {
                     ? "Tiện ích và chính sách"
                     : "Facilities & Policy"}
               </h2>
+
               <div className="space-y-4">
                 {FACILITY_CATEGORIES.map((cat) => {
                   const options = FACILITY_OPTIONS.filter((o) => o.category === cat.id);
@@ -1525,17 +1180,24 @@ export default function AddPropertyPage() {
                   const fullFurniture = cat.id === "furniture" && FULL_FURNITURE_IDS.every((id) => selectedFacilities.includes(id));
                   const fullElectronics = cat.id === "electronics" && FULL_ELECTRONICS_IDS.every((id) => selectedFacilities.includes(id));
                   const fullOptionKitchen = cat.id === "kitchen" && FULL_OPTION_KITCHEN_IDS.every((id) => selectedFacilities.includes(id));
+                  const hasBadge = fullFurniture || fullElectronics || fullOptionKitchen;
+
                   return (
-                    <div key={cat.id}>
-                      <div className="flex flex-wrap items-center gap-2 mb-2">
-                        <p className="text-xs font-medium text-gray-500">{catLabel}</p>
+                    <div key={cat.id} className="p-4 rounded-lg" style={{ backgroundColor: COLORS.background, border: `1px solid ${COLORS.border}` }}>
+                      <div className="flex flex-wrap items-center gap-2 mb-3">
+                        <p className="text-sm font-medium" style={{ color: COLORS.text }}>{catLabel}</p>
                         {isBadgeCategory && (
-                          <p className="text-[10px] text-gray-500">
-                            {currentLanguage === "ko"
-                              ? "모든 아이콘 선택시 뱃지 획득"
-                              : currentLanguage === "vi"
-                                ? "Ch���n đủ tất cả để nhận huy hiệu"
-                                : "Select all to earn badge"}
+                          <p className="text-xs" style={{ color: hasBadge ? COLORS.success : COLORS.textMuted }}>
+                            {hasBadge ? (
+                              <span className="flex items-center gap-1">
+                                <Sparkles className="w-3 h-3" />
+                                {currentLanguage === "ko" ? "뱃지 획득!" : "Badge earned!"}
+                              </span>
+                            ) : (
+                              currentLanguage === "ko"
+                                ? "모든 선택 시 뱃지 획득"
+                                : "Select all for badge"
+                            )}
                           </p>
                         )}
                       </div>
@@ -1544,6 +1206,8 @@ export default function AddPropertyPage() {
                           const Icon = opt.icon;
                           const isSelected = selectedFacilities.includes(opt.id);
                           const label = (opt.label as any)[currentLanguage] || opt.label.en;
+                          const isPet = opt.id === "pet";
+                          const isCleaning = opt.id === "cleaning";
 
                           return (
                             <div key={opt.id} className="flex flex-col items-center gap-1">
@@ -1629,7 +1293,7 @@ export default function AddPropertyPage() {
               </div>
             </section>
 
-            {/* 체크인/체크아웃 시간 */}
+            {/* ===== 체크인/체크아웃 시간 섹션 ===== */}
             <section 
               className="p-4 rounded-xl"
               style={{ backgroundColor: COLORS.surface, border: `1.5px dashed ${COLORS.border}` }}
@@ -1641,7 +1305,7 @@ export default function AddPropertyPage() {
                     ? "Giờ check-in/check-out"
                     : "Check-in/Check-out Time"}
               </h2>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-medium mb-1.5" style={{ color: COLORS.textSecondary }}>
                     {currentLanguage === "ko" ? "체크인" : "Check-in"}
@@ -1650,7 +1314,11 @@ export default function AddPropertyPage() {
                     value={checkInTime}
                     onChange={(e) => setCheckInTime(e.target.value)}
                     className="w-full px-2 py-2 rounded-md text-sm min-h-[36px] focus:outline-none transition-all"
-                    style={{ backgroundColor: COLORS.white, border: `1px solid ${COLORS.border}`, color: COLORS.text }}
+                    style={{ 
+                      backgroundColor: COLORS.white,
+                      border: `1px solid ${COLORS.border}`,
+                      color: COLORS.text,
+                    }}
                   >
                     {Array.from({ length: 24 }, (_, i) => {
                       const hour = i.toString().padStart(2, '0');
@@ -1668,7 +1336,11 @@ export default function AddPropertyPage() {
                     value={checkOutTime}
                     onChange={(e) => setCheckOutTime(e.target.value)}
                     className="w-full px-2 py-2 rounded-md text-sm min-h-[36px] focus:outline-none transition-all"
-                    style={{ backgroundColor: COLORS.white, border: `1px solid ${COLORS.border}`, color: COLORS.text }}
+                    style={{ 
+                      backgroundColor: COLORS.white,
+                      border: `1px solid ${COLORS.border}`,
+                      color: COLORS.text,
+                    }}
                   >
                     {Array.from({ length: 24 }, (_, i) => {
                       const hour = i.toString().padStart(2, '0');
@@ -1681,7 +1353,7 @@ export default function AddPropertyPage() {
               </div>
             </section>
 
-            {/* 매물명 */}
+            {/* ===== 매물명 섹션 ===== */}
             <section 
               className="p-4 rounded-xl"
               style={{ backgroundColor: COLORS.surface, border: `1.5px dashed ${COLORS.border}` }}
@@ -1696,12 +1368,15 @@ export default function AddPropertyPage() {
                 onChange={(e) => setPropertyNickname(e.target.value)}
                 placeholder={getUIText('propertyNicknamePlaceholder', currentLanguage)}
                 className="w-full px-3 py-2.5 rounded-lg text-sm min-h-[40px] focus:outline-none transition-all"
-                style={{ backgroundColor: COLORS.white, border: `1px solid ${COLORS.border}` }}
+                style={{ 
+                  backgroundColor: COLORS.white,
+                  border: `1px solid ${COLORS.border}`,
+                }}
                 required
               />
             </section>
 
-            {/* 매물 설명 */}
+            {/* ===== 매물 설명 섹션 ===== */}
             <section 
               className="p-4 rounded-xl"
               style={{ backgroundColor: COLORS.surface, border: `1.5px dashed ${COLORS.border}` }}
@@ -1726,7 +1401,10 @@ export default function AddPropertyPage() {
                 }
                 rows={4}
                 className="w-full px-3 py-2.5 rounded-lg resize-none text-sm min-h-[100px] focus:outline-none transition-all"
-                style={{ backgroundColor: COLORS.white, border: `1px solid ${COLORS.border}` }}
+                style={{ 
+                  backgroundColor: COLORS.white,
+                  border: `1px solid ${COLORS.border}`,
+                }}
                 required
               />
               <p className="text-[10px] mt-2 flex items-start gap-1" style={{ color: COLORS.success }}>
@@ -1741,7 +1419,7 @@ export default function AddPropertyPage() {
               </p>
             </section>
 
-            {/* 외부 캘린더 가져오기 */}
+            {/* ===== 외부 캘린더 섹션 ===== */}
             <section 
               className="rounded-xl overflow-hidden"
               style={{ backgroundColor: COLORS.surface, border: `1.5px dashed ${COLORS.border}` }}
@@ -1780,7 +1458,11 @@ export default function AddPropertyPage() {
                       value={icalPlatform}
                       onChange={(e) => setIcalPlatform(e.target.value)}
                       className="w-full px-2 py-2 text-sm rounded-md min-h-[36px] focus:outline-none"
-                      style={{ backgroundColor: COLORS.white, border: `1px solid ${COLORS.border}`, color: COLORS.text }}
+                      style={{ 
+                        backgroundColor: COLORS.white,
+                        border: `1px solid ${COLORS.border}`,
+                        color: COLORS.text,
+                      }}
                     >
                       <option value="">{currentLanguage === "ko" ? "선택 안 함" : "None"}</option>
                       <option value="airbnb">Airbnb</option>
@@ -1799,7 +1481,10 @@ export default function AddPropertyPage() {
                       onChange={(e) => setIcalCalendarName(e.target.value)}
                       placeholder={currentLanguage === "ko" ? "예: 에어비앤비 예약" : "e.g. Airbnb"}
                       className="w-full px-2 py-2 text-sm rounded-md min-h-[36px] focus:outline-none"
-                      style={{ backgroundColor: COLORS.white, border: `1px solid ${COLORS.border}` }}
+                      style={{ 
+                        backgroundColor: COLORS.white,
+                        border: `1px solid ${COLORS.border}`,
+                      }}
                     />
                   </div>
                   <div>
@@ -1810,52 +1495,277 @@ export default function AddPropertyPage() {
                       onChange={(e) => setIcalUrl(e.target.value)}
                       placeholder="https://..."
                       className="w-full px-2 py-2 text-sm rounded-md min-h-[36px] focus:outline-none"
-                      style={{ backgroundColor: COLORS.white, border: `1px solid ${COLORS.border}` }}
+                      style={{ 
+                        backgroundColor: COLORS.white,
+                        border: `1px solid ${COLORS.border}`,
+                      }}
                     />
                   </div>
                 </div>
               )}
             </section>
-
-            {/* 등록 버튼 */}
-            <button
-              type="submit"
-              disabled={
-                loading ||
-                imagePreviews.length === 0 ||
-                !weeklyRent ||
-                weeklyRent.replace(/\D/g, "") === "" ||
-                !propertyType ||
-                bedrooms === 0 ||
-                bathrooms === 0
-              }
-              className="w-full py-3.5 px-6 rounded-xl font-semibold text-base disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-              style={{ backgroundColor: COLORS.primary, color: COLORS.white }}
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>
-                    {currentLanguage === "ko"
-                      ? "등록 중..."
-                      : currentLanguage === "vi"
-                        ? "Đang đăng ký..."
-                        : "Registering..."}
-                  </span>
-                </>
-              ) : (
-                <span>
-                  {currentLanguage === "ko"
-                    ? "매물 등록하기"
-                    : currentLanguage === "vi"
-                      ? "Đăng ký bất động sản"
-                      : "Register Property"}
-                </span>
-              )}
-            </button>
           </form>
         </div>
+
+        {/* ===== 하단 고정 등록 버튼 ===== */}
+        <div 
+          className="sticky bottom-16 left-0 right-0 p-4 border-t"
+          style={{ backgroundColor: COLORS.surface, borderColor: COLORS.border }}
+        >
+          <button
+            type="submit"
+            onClick={handleSubmit}
+            disabled={
+              loading ||
+              imagePreviews.length === 0 ||
+              !weeklyRent ||
+              weeklyRent.replace(/\D/g, "") === "" ||
+              !propertyType ||
+              bedrooms === 0 ||
+              bathrooms === 0
+            }
+            className="w-full py-3.5 px-6 rounded-lg font-semibold text-base disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 min-h-[52px]"
+            style={{ 
+              backgroundColor: COLORS.primary,
+              color: COLORS.white,
+            }}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>
+                  {currentLanguage === "ko"
+                    ? "등록 중..."
+                    : currentLanguage === "vi"
+                      ? "Đang đăng ký..."
+                      : "Registering..."}
+                </span>
+              </>
+            ) : (
+              <span>
+                {currentLanguage === "ko"
+                  ? "매물 등록하기"
+                  : currentLanguage === "vi"
+                    ? "Đăng bất động sản"
+                    : "Register Property"}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* ===== 하단 네비게이션 바 ===== */}
+        <nav 
+          className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-[480px] px-2 py-2 z-50"
+          style={{ backgroundColor: COLORS.surface, borderTop: `1px solid ${COLORS.border}` }}
+        >
+          <div className="flex items-center justify-around">
+            <button
+              onClick={() => router.push("/")}
+              className="flex flex-col items-center gap-0.5 py-2 px-4 min-h-[52px] min-w-[52px]"
+            >
+              <Home className="w-5 h-5" style={{ color: COLORS.textMuted }} />
+              <span className="text-[10px]" style={{ color: COLORS.textMuted }}>
+                {currentLanguage === "ko" ? "홈" : "Home"}
+              </span>
+            </button>
+            <button
+              onClick={() => router.push("/search")}
+              className="flex flex-col items-center gap-0.5 py-2 px-4 min-h-[52px] min-w-[52px]"
+            >
+              <Search className="w-5 h-5" style={{ color: COLORS.textMuted }} />
+              <span className="text-[10px]" style={{ color: COLORS.textMuted }}>
+                {currentLanguage === "ko" ? "검색" : "Search"}
+              </span>
+            </button>
+            <button
+              onClick={() => router.push("/profile/my-properties")}
+              className="flex flex-col items-center gap-0.5 py-2 px-4 min-h-[52px] min-w-[52px]"
+            >
+              <Building className="w-5 h-5" style={{ color: COLORS.primary }} />
+              <span className="text-[10px] font-medium" style={{ color: COLORS.primary }}>
+                {currentLanguage === "ko" ? "내 매물" : "My"}
+              </span>
+            </button>
+            <button
+              onClick={() => router.push("/profile")}
+              className="flex flex-col items-center gap-0.5 py-2 px-4 min-h-[52px] min-w-[52px]"
+            >
+              <User className="w-5 h-5" style={{ color: COLORS.textMuted }} />
+              <span className="text-[10px]" style={{ color: COLORS.textMuted }}>
+                {currentLanguage === "ko" ? "프로필" : "Profile"}
+              </span>
+            </button>
+          </div>
+        </nav>
       </div>
+
+      {/* ===== 모달들 ===== */}
+
+      {/* 이미지 소스 선택 메뉴 */}
+      {showImageSourceMenu && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-end justify-center z-50"
+          onClick={() => setShowImageSourceMenu(false)}
+        >
+          <div
+            className="w-full max-w-[480px] bg-white rounded-t-3xl p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold text-slate-900 mb-4 text-center">
+              {currentLanguage === "ko"
+                ? "사진 추가 방법 선택"
+                : currentLanguage === "vi"
+                  ? "Chọn cách thêm ảnh"
+                  : "Select Photo Source"}
+            </h3>
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={handleSelectFromLibrary}
+                className="w-full py-4 px-4 rounded-lg font-medium flex items-center justify-center gap-3 min-h-[56px] text-white"
+                style={{ backgroundColor: COLORS.primary }}
+              >
+                <ImageIcon className="w-5 h-5" />
+                <span>
+                  {currentLanguage === "ko"
+                    ? "사진첩에서 선택"
+                    : currentLanguage === "vi"
+                      ? "Chọn từ thư viện ảnh"
+                      : "Select from Library"}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={handleTakePhoto}
+                className="w-full py-4 px-4 rounded-lg font-medium flex items-center justify-center gap-3 min-h-[56px]"
+                style={{ backgroundColor: COLORS.gray100, color: COLORS.gray900 }}
+              >
+                <Camera className="w-5 h-5" />
+                <span>
+                  {currentLanguage === "ko"
+                    ? "카메라로 촬영"
+                    : currentLanguage === "vi"
+                      ? "Chụp ảnh"
+                      : "Take Photo"}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowImageSourceMenu(false)}
+                className="w-full py-3 px-4 text-slate-600 rounded-lg font-medium min-h-[48px]"
+              >
+                {currentLanguage === "ko" ? "취소" : "Cancel"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 사진첩 모달 */}
+      {showPhotoLibrary && (
+        <div className="fixed inset-0 bg-white z-50 flex flex-col">
+          <div className="flex items-center justify-between p-4 border-b border-slate-200">
+            <button
+              type="button"
+              onClick={() => {
+                setShowPhotoLibrary(false);
+                setPhotoLibraryFiles([]);
+                photoLibraryPreviews.forEach((url) => URL.revokeObjectURL(url));
+                setPhotoLibraryPreviews([]);
+                setSelectedLibraryIndices(new Set());
+                setFullScreenImageIndex(null);
+              }}
+              className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center"
+            >
+              <X className="w-6 h-6 text-gray-700" />
+            </button>
+            <h2 className="text-lg font-semibold text-slate-900">
+              {currentLanguage === "ko" ? "사진 선택" : "Select Photos"}
+            </h2>
+            <div className="w-10" />
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-2">
+            <div className="grid grid-cols-4 gap-1">
+              {photoLibraryPreviews.map((preview, index) => {
+                const isSelected = selectedLibraryIndices.has(index);
+                return (
+                  <div
+                    key={index}
+                    className="relative aspect-square"
+                    onClick={() => togglePhotoSelection(index)}
+                  >
+                    <img
+                      src={preview}
+                      alt={`Photo ${index + 1}`}
+                      className={`w-full h-full object-cover rounded-lg ${isSelected ? "opacity-50" : ""}`}
+                    />
+                    {isSelected && (
+                      <div className="absolute inset-0 flex items-center justify-center rounded-lg" style={{ backgroundColor: `${COLORS.primary}30` }}>
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: COLORS.primary }}>
+                          <Check className="w-4 h-4 text-white" />
+                        </div>
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleViewFullScreen(index);
+                      }}
+                      className="absolute bottom-1 right-1 bg-black/50 text-white rounded-full p-1.5 min-h-[28px] min-w-[28px] flex items-center justify-center"
+                    >
+                      <Maximize2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="p-4 border-t border-slate-200">
+            <button
+              type="button"
+              onClick={handleConfirmPhotoSelection}
+              disabled={selectedLibraryIndices.size === 0}
+              className="w-full py-4 px-4 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed min-h-[56px] text-white"
+              style={{ backgroundColor: COLORS.primary }}
+            >
+              {currentLanguage === "ko"
+                ? `선택한 ${selectedLibraryIndices.size}장 추가`
+                : `Add ${selectedLibraryIndices.size} selected`}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 전체화면 이미지 */}
+      {fullScreenImageIndex !== null && (
+        <div className="fixed inset-0 bg-black z-[60] flex items-center justify-center">
+          <img
+            src={photoLibraryPreviews[fullScreenImageIndex]}
+            alt={`Full screen ${fullScreenImageIndex + 1}`}
+            className="max-w-full max-h-full object-contain"
+          />
+          <button
+            type="button"
+            onClick={handleBackToLibrary}
+            className="absolute bottom-6 right-6 bg-white/90 text-slate-900 rounded-full p-4 shadow-lg flex items-center gap-2 min-h-[56px]"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span className="font-medium">
+              {currentLanguage === "ko" ? "사진첩" : "Library"}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={handleBackToLibrary}
+            className="absolute top-6 left-6 bg-white/90 text-slate-900 rounded-full p-2 min-h-[44px] min-w-[44px] flex items-center justify-center"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+      )}
 
       {/* 달력 모달 */}
       {showCalendar && (
@@ -1901,84 +1811,39 @@ export default function AddPropertyPage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl"
+            className="bg-white rounded-xl p-6 max-w-sm w-full shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-bold text-gray-900 mb-4 text-center">
+            <h3 className="text-lg font-bold text-slate-900 mb-4 text-center">
               {currentLanguage === "ko"
-                ? "📸 추천 사진 가이드라인"
-                : currentLanguage === "vi"
-                  ? "📸 Hướng dẫn ảnh đề xuất"
-                  : "📸 Recommended Photo Guidelines"}
+                ? "추천 사진 가이드라인"
+                : "Photo Guidelines"}
             </h3>
             <div className="space-y-3 mb-4">
-              <div className="flex items-center gap-2 text-sm text-gray-700">
-                <span className="text-2xl">🛏️</span>
-                <span>
-                  {currentLanguage === "ko"
-                    ? "침실"
-                    : currentLanguage === "vi"
-                      ? "Phòng ngủ"
-                      : "Bedroom"}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-gray-700">
-                <span className="text-2xl">🍳</span>
-                <span>
-                  {currentLanguage === "ko"
-                    ? "주방"
-                    : currentLanguage === "vi"
-                      ? "Bếp"
-                      : "Kitchen"}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-gray-700">
-                <span className="text-2xl">🛋️</span>
-                <span>
-                  {currentLanguage === "ko"
-                    ? "거실"
-                    : currentLanguage === "vi"
-                      ? "Phòng khách"
-                      : "Living Room"}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-gray-700">
-                <span className="text-2xl">🚿</span>
-                <span>
-                  {currentLanguage === "ko"
-                    ? "화장실"
-                    : currentLanguage === "vi"
-                      ? "Phòng tắm"
-                      : "Bathroom"}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-gray-700">
-                <span className="text-2xl">🪟</span>
-                <span>
-                  {currentLanguage === "ko"
-                    ? "창문뷰"
-                    : currentLanguage === "vi"
-                      ? "Cửa sổ"
-                      : "Window View"}
-                </span>
-              </div>
+              {[
+                { icon: "🛏️", label: currentLanguage === "ko" ? "침실" : "Bedroom" },
+                { icon: "🍳", label: currentLanguage === "ko" ? "주방" : "Kitchen" },
+                { icon: "🛋️", label: currentLanguage === "ko" ? "거실" : "Living Room" },
+                { icon: "🚿", label: currentLanguage === "ko" ? "화장실" : "Bathroom" },
+                { icon: "🪟", label: currentLanguage === "ko" ? "창문뷰" : "Window View" },
+              ].map((item, i) => (
+                <div key={i} className="flex items-center gap-3 text-sm text-gray-700">
+                  <span className="text-2xl">{item.icon}</span>
+                  <span>{item.label}</span>
+                </div>
+              ))}
             </div>
-            <p className="text-xs text-gray-500 text-center mb-4">
+            <p className="text-xs text-slate-500 text-center mb-4">
               {currentLanguage === "ko"
-                ? "아무 곳이나 터치하여 카메라를 시작하세요"
-                : currentLanguage === "vi"
-                  ? "Chạm vào bất kỳ đâu để bắt đầu camera"
-                  : "Tap anywhere to start camera"}
+                ? "아무 곳이나 터치하여 시작하세요"
+                : "Tap anywhere to start"}
             </p>
             <button
               onClick={handleGuidelinePopupClick}
-              className="w-full py-3 px-4 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors"
+              className="w-full py-4 px-4 rounded-lg font-medium min-h-[56px] text-white"
+              style={{ backgroundColor: COLORS.primary }}
             >
-              {currentLanguage === "ko"
-                ? "동의"
-                : currentLanguage === "vi"
-                  ? "Đồng ý"
-                  : "Agree"}
+              {currentLanguage === "ko" ? "확인" : "OK"}
             </button>
           </motion.div>
         </div>
@@ -1992,114 +1857,6 @@ export default function AddPropertyPage() {
         currentLanguage={currentLanguage}
         initialAddress={address}
       />
-
-      {/* ===== 조건부 하단 네비게이션 바 ===== */}
-      <nav 
-        className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-[430px] z-40"
-        style={{ backgroundColor: COLORS.surface, borderTop: `1px solid ${COLORS.border}` }}
-      >
-        <div className="flex items-center justify-around py-2">
-          {isOwnerMode ? (
-            // 임대인 모드: 홈 / 매물 등록 / 매물관리 / 채팅 / 프로필
-            <>
-              <button
-                onClick={() => router.push("/")}
-                className="flex flex-col items-center gap-1 px-3 py-2 min-h-[52px] min-w-[52px]"
-              >
-                <Home className="w-5 h-5" style={{ color: COLORS.textMuted }} />
-                <span className="text-[10px]" style={{ color: COLORS.textMuted }}>
-                  {currentLanguage === "ko" ? "홈" : "Home"}
-                </span>
-              </button>
-              <button
-                onClick={() => router.push("/add-property")}
-                className="flex flex-col items-center gap-1 px-3 py-2 min-h-[52px] min-w-[52px]"
-              >
-                <Plus className="w-5 h-5" style={{ color: COLORS.primary }} />
-                <span className="text-[10px] font-medium" style={{ color: COLORS.primary }}>
-                  {currentLanguage === "ko" ? "매물등록" : "Add"}
-                </span>
-              </button>
-              <button
-                onClick={() => router.push("/profile/my-properties")}
-                className="flex flex-col items-center gap-1 px-3 py-2 min-h-[52px] min-w-[52px]"
-              >
-                <Building className="w-5 h-5" style={{ color: COLORS.textMuted }} />
-                <span className="text-[10px]" style={{ color: COLORS.textMuted }}>
-                  {currentLanguage === "ko" ? "매물관리" : "Manage"}
-                </span>
-              </button>
-              <button
-                onClick={() => router.push("/chat")}
-                className="flex flex-col items-center gap-1 px-3 py-2 min-h-[52px] min-w-[52px]"
-              >
-                <MessageCircle className="w-5 h-5" style={{ color: COLORS.textMuted }} />
-                <span className="text-[10px]" style={{ color: COLORS.textMuted }}>
-                  {currentLanguage === "ko" ? "채팅" : "Chat"}
-                </span>
-              </button>
-              <button
-                onClick={() => router.push("/profile")}
-                className="flex flex-col items-center gap-1 px-3 py-2 min-h-[52px] min-w-[52px]"
-              >
-                <User className="w-5 h-5" style={{ color: COLORS.textMuted }} />
-                <span className="text-[10px]" style={{ color: COLORS.textMuted }}>
-                  {currentLanguage === "ko" ? "프로필" : "Profile"}
-                </span>
-              </button>
-            </>
-          ) : (
-            // 임차인 모드: 홈 / 지도로 검색 / 찜 / 예약 / 프로필
-            <>
-              <button
-                onClick={() => router.push("/")}
-                className="flex flex-col items-center gap-1 px-3 py-2 min-h-[52px] min-w-[52px]"
-              >
-                <Home className="w-5 h-5" style={{ color: COLORS.textMuted }} />
-                <span className="text-[10px]" style={{ color: COLORS.textMuted }}>
-                  {currentLanguage === "ko" ? "홈" : "Home"}
-                </span>
-              </button>
-              <button
-                onClick={() => router.push("/map")}
-                className="flex flex-col items-center gap-1 px-3 py-2 min-h-[52px] min-w-[52px]"
-              >
-                <Map className="w-5 h-5" style={{ color: COLORS.textMuted }} />
-                <span className="text-[10px]" style={{ color: COLORS.textMuted }}>
-                  {currentLanguage === "ko" ? "지도검색" : "Map"}
-                </span>
-              </button>
-              <button
-                onClick={() => router.push("/wishlist")}
-                className="flex flex-col items-center gap-1 px-3 py-2 min-h-[52px] min-w-[52px]"
-              >
-                <Heart className="w-5 h-5" style={{ color: COLORS.textMuted }} />
-                <span className="text-[10px]" style={{ color: COLORS.textMuted }}>
-                  {currentLanguage === "ko" ? "찜" : "Wish"}
-                </span>
-              </button>
-              <button
-                onClick={() => router.push("/my-bookings")}
-                className="flex flex-col items-center gap-1 px-3 py-2 min-h-[52px] min-w-[52px]"
-              >
-                <Calendar className="w-5 h-5" style={{ color: COLORS.textMuted }} />
-                <span className="text-[10px]" style={{ color: COLORS.textMuted }}>
-                  {currentLanguage === "ko" ? "예약" : "Bookings"}
-                </span>
-              </button>
-              <button
-                onClick={() => router.push("/profile")}
-                className="flex flex-col items-center gap-1 px-3 py-2 min-h-[52px] min-w-[52px]"
-              >
-                <User className="w-5 h-5" style={{ color: COLORS.textMuted }} />
-                <span className="text-[10px]" style={{ color: COLORS.textMuted }}>
-                  {currentLanguage === "ko" ? "프로필" : "Profile"}
-                </span>
-              </button>
-            </>
-          )}
-        </div>
-      </nav>
     </div>
   );
 }
