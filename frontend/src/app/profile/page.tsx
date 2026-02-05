@@ -716,18 +716,22 @@ export default function ProfilePage() {
                     <div className="text-left flex-1">
                       <div className="flex items-center gap-6">
                         <p className="text-sm font-semibold text-gray-900">
-                          언어 변경
+                          {getUIText("languageChange", currentLanguage)}
                         </p>
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium text-blue-600">
                             {currentLanguage.toUpperCase()}
                           </span>
                           <span className="text-sm text-gray-700">
-                            {currentLanguage === "ko" ? "한국어" : 
-                             currentLanguage === "vi" ? "Tiếng Việt" : 
-                             currentLanguage === "ja" ? "日本語" : 
-                             currentLanguage === "zh" ? "中文" : 
-                             "English"}
+                            {currentLanguage === "ko"
+                              ? "한국어"
+                              : currentLanguage === "vi"
+                                ? "Tiếng Việt"
+                                : currentLanguage === "ja"
+                                  ? "日本語"
+                                  : currentLanguage === "zh"
+                                    ? "中文"
+                                    : "English"}
                           </span>
                         </div>
                       </div>
@@ -739,15 +743,14 @@ export default function ProfilePage() {
             </div>
           </div>
 
-
           <div className="pt-4 border-t border-gray-200">
             {/* 로그아웃 버튼 */}
-            <button 
+            <button
               onClick={() => setShowLogoutConfirm(true)}
               className="w-full py-3 px-6 bg-gray-100 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-200 flex items-center justify-center gap-2"
             >
               <LogOut className="w-4 h-4" />
-              {getUIText('logout', currentLanguage)}
+              {getUIText("logout", currentLanguage)}
             </button>
           </div>
         </div>
@@ -884,32 +887,61 @@ export default function ProfilePage() {
             className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl"
           >
             <h3 className="text-lg font-bold text-gray-900 mb-4 text-center">
-              언어 선택
+              {getUIText("selectLanguage", currentLanguage)}
             </h3>
             <p className="text-sm text-gray-600 mb-6 text-center">
-              5개 국어 중에서 선택하세요
+              {getUIText("selectLanguageDesc", currentLanguage)}
             </p>
             <div className="space-y-2">
               {[
-                { code: "ko", name: "한국어", flag: "🇰🇷", englishName: "Korean" },
-                { code: "vi", name: "Tiếng Việt", flag: "🇻🇳", englishName: "Vietnamese" },
-                { code: "en", name: "English", flag: "🇺🇸", englishName: "English" },
-                { code: "ja", name: "日本語", flag: "🇯🇵", englishName: "Japanese" },
-                { code: "zh", name: "中文", flag: "🇨🇳", englishName: "Chinese" }
+                {
+                  code: "ko",
+                  name: "한국어",
+                  flag: "🇰🇷",
+                  englishName: "Korean",
+                },
+                {
+                  code: "vi",
+                  name: "Tiếng Việt",
+                  flag: "🇻🇳",
+                  englishName: "Vietnamese",
+                },
+                {
+                  code: "en",
+                  name: "English",
+                  flag: "🇺🇸",
+                  englishName: "English",
+                },
+                {
+                  code: "ja",
+                  name: "日本語",
+                  flag: "🇯🇵",
+                  englishName: "Japanese",
+                },
+                {
+                  code: "zh",
+                  name: "中文",
+                  flag: "🇨🇳",
+                  englishName: "Chinese",
+                },
               ].map((lang) => (
                 <button
                   key={lang.code}
-                  onClick={() => handleLanguageChange(lang.code as SupportedLanguage)}
+                  onClick={() =>
+                    handleLanguageChange(lang.code as SupportedLanguage)
+                  }
                   className={`w-full text-left px-4 py-3 text-sm hover:bg-gray-50 flex items-center gap-3 transition-colors rounded-lg ${
-                    currentLanguage === lang.code 
-                      ? "bg-blue-50 text-blue-600 font-semibold border border-blue-200" 
+                    currentLanguage === lang.code
+                      ? "bg-blue-50 text-blue-600 font-semibold border border-blue-200"
                       : "text-gray-700 border border-transparent"
                   }`}
                 >
                   <span className="text-xl">{lang.flag}</span>
                   <div className="flex flex-col items-start">
                     <span className="font-medium">{lang.name}</span>
-                    <span className="text-xs text-gray-500">{lang.englishName}</span>
+                    <span className="text-xs text-gray-500">
+                      {lang.englishName}
+                    </span>
                   </div>
                   {currentLanguage === lang.code && (
                     <div className="ml-auto">
@@ -924,7 +956,7 @@ export default function ProfilePage() {
                 onClick={() => setIsLanguageMenuOpen(false)}
                 className="w-full py-3 px-6 bg-gray-100 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-200"
               >
-                닫기
+                {getUIText("close", currentLanguage)}
               </button>
             </div>
           </motion.div>

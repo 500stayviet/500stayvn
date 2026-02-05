@@ -258,7 +258,10 @@ export type UITextKey =
   | 'propertyDescription'
   | 'propertyDescriptionPlaceholder'
   | 'confirmLogout'
-  | 'logoutDesc';
+  | 'logoutDesc'
+  | 'languageChange'
+  | 'close'
+  | 'selectLanguageDesc';
 
 /**
  * 언어별 UI 텍스트 사전
@@ -511,6 +514,9 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     propertyDescriptionPlaceholder: '매물에 대한 상세 설명을 입력해주세요.',
     confirmLogout: '로그아웃 확인',
     logoutDesc: '정말 로그아웃 하시겠습니까?',
+    languageChange: '언어 변경',
+    close: '닫기',
+    selectLanguageDesc: '5개 국어 중에서 선택하세요',
   },
   vi: {
     login: 'Đăng nhập',
@@ -759,6 +765,9 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     propertyDescriptionPlaceholder: 'Nhập mô tả chi tiết về bất động sản.',
     confirmLogout: 'Xác nhận đăng xuất',
     logoutDesc: 'Bạn có chắc chắn muốn đăng xuất không?',
+    languageChange: 'Thay đổi ngôn ngữ',
+    close: 'Đóng',
+    selectLanguageDesc: 'Chọn từ 5 ngôn ngữ',
   },
   en: {
     login: 'Login',
@@ -1007,6 +1016,9 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     propertyDescriptionPlaceholder: 'Enter detailed description of the property.',
     confirmLogout: 'Confirm Logout',
     logoutDesc: 'Are you sure you want to logout?',
+    languageChange: 'Language Change',
+    close: 'Close',
+    selectLanguageDesc: 'Choose from 5 languages',
   },
   ja: {
     login: 'ログイン',
@@ -1255,6 +1267,9 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     propertyDescriptionPlaceholder: '物件の詳細な説明を入力してください。',
     confirmLogout: 'ログアウト確認',
     logoutDesc: '本当にログアウトしますか？',
+    languageChange: '言語変更',
+    close: '閉じる',
+    selectLanguageDesc: '5つの言語から選択してください',
   },
   zh: {
     login: '登录',
@@ -1503,6 +1518,9 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     propertyDescriptionPlaceholder: '请输入房源的详细描述。',
     confirmLogout: '确认登出',
     logoutDesc: '您确定要登出吗？',
+    languageChange: '语言更改',
+    close: '关闭',
+    selectLanguageDesc: '从5种语言中选择',
   },
 };
 
