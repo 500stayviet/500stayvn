@@ -1003,7 +1003,11 @@ export default function AddPropertyPage() {
                         ? "사진 선택"
                         : currentLanguage === "vi"
                           ? "Chọn ảnh"
-                          : "Select Photos"}
+                        : currentLanguage === "ja"
+                          ? "写真選択"
+                        : currentLanguage === "zh"
+                          ? "选择照片"
+                        : "Select Photos"}
                     </h2>
                     <div className="w-6" /> {/* 공간 맞춤 */}
                   </div>
@@ -1062,7 +1066,11 @@ export default function AddPropertyPage() {
                         ? `선택한 ${selectedLibraryIndices.size}장 추가`
                         : currentLanguage === "vi"
                           ? `Thêm ${selectedLibraryIndices.size} ảnh đã chọn`
-                          : `Add ${selectedLibraryIndices.size} selected`}
+                        : currentLanguage === "ja"
+                          ? `選択した ${selectedLibraryIndices.size}枚を追加`
+                        : currentLanguage === "zh"
+                          ? `添加选中的 ${selectedLibraryIndices.size}张`
+                        : `Add ${selectedLibraryIndices.size} selected`}
                     </button>
                   </div>
                 </div>
@@ -1088,7 +1096,11 @@ export default function AddPropertyPage() {
                         ? "사진첩"
                         : currentLanguage === "vi"
                           ? "Thư viện ảnh"
-                          : "Library"}
+                        : currentLanguage === "ja"
+                          ? "写真ライブラリ"
+                        : currentLanguage === "zh"
+                          ? "照片库"
+                        : "Library"}
                     </span>
                   </button>
                   {/* 닫기 버튼 (좌측 상단) */}
