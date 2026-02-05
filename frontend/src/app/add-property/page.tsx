@@ -687,7 +687,7 @@ export default function AddPropertyPage() {
             {/* ===== 사진 등록 섹션 ===== */}
             <section 
               className="p-4 rounded-xl"
-              style={{ backgroundColor: COLORS.surface, border: `1px dashed ${COLORS.border}40` }}
+              style={{ backgroundColor: COLORS.surface, border: `1.5px dashed ${COLORS.border}` }}
             >
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-bold" style={{ color: COLORS.text }}>
@@ -768,7 +768,7 @@ export default function AddPropertyPage() {
             {/* ===== 매물 종류 섹션 ===== */}
             <section 
               className="p-4 rounded-xl"
-              style={{ backgroundColor: COLORS.surface, border: `1px dashed ${COLORS.border}40` }}
+              style={{ backgroundColor: COLORS.surface, border: `1.5px dashed ${COLORS.border}` }}
             >
               <h2 className="text-sm font-bold mb-3" style={{ color: COLORS.text }}>
                 {currentLanguage === "ko"
@@ -819,8 +819,8 @@ export default function AddPropertyPage() {
                       disabled={propertyType === "studio" || propertyType === "one_room" || propertyType === "two_room"}
                       className="w-full px-2 py-2 rounded-md text-sm min-h-[36px] focus:outline-none transition-all"
                       style={{
-                        backgroundColor: `${COLORS.secondary}15`,
-                        border: `1px solid ${COLORS.secondary}30`,
+                        backgroundColor: COLORS.white,
+                        border: `1px solid ${COLORS.border}`,
                         color: COLORS.text,
                       }}
                     >
@@ -840,8 +840,8 @@ export default function AddPropertyPage() {
                       onChange={(e) => setBathrooms(Number(e.target.value))}
                       className="w-full px-2 py-2 rounded-md text-sm min-h-[36px] focus:outline-none transition-all"
                       style={{ 
-                        backgroundColor: `${COLORS.secondary}15`,
-                        border: `1px solid ${COLORS.secondary}30`,
+                        backgroundColor: COLORS.white,
+                        border: `1px solid ${COLORS.border}`,
                         color: COLORS.text,
                       }}
                     >
@@ -865,8 +865,8 @@ export default function AddPropertyPage() {
                       }}
                       className="w-full px-2 py-2 rounded-md text-sm min-h-[36px] focus:outline-none transition-all"
                       style={{
-                        backgroundColor: `${COLORS.secondary}15`,
-                        border: `1px solid ${COLORS.secondary}30`,
+                        backgroundColor: COLORS.white,
+                        border: `1px solid ${COLORS.border}`,
                         color: COLORS.text,
                       }}
                     >
@@ -884,7 +884,7 @@ export default function AddPropertyPage() {
             {/* ===== 주소 섹션 ===== */}
             <section 
               className="p-4 rounded-xl"
-              style={{ backgroundColor: COLORS.surface, border: `1px dashed ${COLORS.border}40` }}
+              style={{ backgroundColor: COLORS.surface, border: `1.5px dashed ${COLORS.border}` }}
             >
               <h2 className="text-sm font-bold mb-3" style={{ color: COLORS.text }}>
                 {currentLanguage === "ko"
@@ -961,7 +961,7 @@ export default function AddPropertyPage() {
                   </label>
                   <div 
                     className="w-full px-2 py-2 rounded-md text-sm min-h-[36px] flex items-center"
-                    style={{ backgroundColor: `${COLORS.accent}15`, border: `1px solid ${COLORS.accent}30`, color: COLORS.text }}
+                    style={{ backgroundColor: COLORS.white, border: `1px solid ${COLORS.border}`, color: COLORS.text }}
                   >
                     {address && coordinates && selectedCityId
                       ? (() => {
@@ -983,8 +983,8 @@ export default function AddPropertyPage() {
                     disabled={!address || !coordinates}
                     className="w-full px-2 py-2 rounded-md text-sm min-h-[36px] focus:outline-none transition-all"
                     style={{ 
-                      backgroundColor: `${COLORS.accent}15`,
-                      border: `1px solid ${COLORS.accent}30`,
+                      backgroundColor: COLORS.white,
+                      border: `1px solid ${COLORS.border}`,
                       color: COLORS.text,
                     }}
                   >
@@ -1019,7 +1019,7 @@ export default function AddPropertyPage() {
                       className="w-full px-2 py-2 rounded-md text-sm min-h-[36px] focus:outline-none transition-all"
                       style={{ 
                         backgroundColor: COLORS.white,
-                        border: `1px solid ${COLORS.accent}30`,
+                        border: `1px solid ${COLORS.border}`,
                       }}
                     />
                   </div>
@@ -1035,7 +1035,7 @@ export default function AddPropertyPage() {
                       className="w-full px-2 py-2 rounded-md text-sm min-h-[36px] focus:outline-none transition-all"
                       style={{ 
                         backgroundColor: COLORS.white,
-                        border: `1px solid ${COLORS.accent}30`,
+                        border: `1px solid ${COLORS.border}`,
                       }}
                     />
                   </div>
@@ -1056,7 +1056,7 @@ export default function AddPropertyPage() {
             {/* ===== 임대 희망 날짜 섹션 ===== */}
             <section 
               className="p-4 rounded-xl"
-              style={{ backgroundColor: COLORS.surface, border: `1px dashed ${COLORS.border}40` }}
+              style={{ backgroundColor: COLORS.surface, border: `1.5px dashed ${COLORS.border}` }}
             >
               <h2 className="text-sm font-bold mb-3" style={{ color: COLORS.text }}>
                 {currentLanguage === "ko"
@@ -1121,7 +1121,7 @@ export default function AddPropertyPage() {
             {/* ===== 1주일 임대료 섹션 ===== */}
             <section 
               className="p-4 rounded-xl"
-              style={{ backgroundColor: COLORS.surface, border: `1px dashed ${COLORS.border}40` }}
+              style={{ backgroundColor: COLORS.surface, border: `1.5px dashed ${COLORS.border}` }}
             >
               <h2 className="text-sm font-bold mb-1" style={{ color: COLORS.text }}>
                 {currentLanguage === "ko"
@@ -1162,7 +1162,7 @@ export default function AddPropertyPage() {
             {/* ===== 시설 및 정책 섹션 ===== */}
             <section 
               className="p-4 rounded-xl"
-              style={{ backgroundColor: COLORS.surface, border: `1px dashed ${COLORS.border}40` }}
+              style={{ backgroundColor: COLORS.surface, border: `1.5px dashed ${COLORS.border}` }}
             >
               <h2 className="text-sm font-bold mb-4" style={{ color: COLORS.text }}>
                 {currentLanguage === "ko"
@@ -1296,7 +1296,7 @@ export default function AddPropertyPage() {
             {/* ===== 체크인/체크아웃 시간 섹션 ===== */}
             <section 
               className="p-4 rounded-xl"
-              style={{ backgroundColor: COLORS.surface, border: `1px dashed ${COLORS.border}40` }}
+              style={{ backgroundColor: COLORS.surface, border: `1.5px dashed ${COLORS.border}` }}
             >
               <h2 className="text-sm font-bold mb-4" style={{ color: COLORS.text }}>
                 {currentLanguage === "ko"
@@ -1315,8 +1315,8 @@ export default function AddPropertyPage() {
                     onChange={(e) => setCheckInTime(e.target.value)}
                     className="w-full px-2 py-2 rounded-md text-sm min-h-[36px] focus:outline-none transition-all"
                     style={{ 
-                      backgroundColor: `${COLORS.secondary}15`,
-                      border: `1px solid ${COLORS.secondary}30`,
+                      backgroundColor: COLORS.white,
+                      border: `1px solid ${COLORS.border}`,
                       color: COLORS.text,
                     }}
                   >
@@ -1337,8 +1337,8 @@ export default function AddPropertyPage() {
                     onChange={(e) => setCheckOutTime(e.target.value)}
                     className="w-full px-2 py-2 rounded-md text-sm min-h-[36px] focus:outline-none transition-all"
                     style={{ 
-                      backgroundColor: `${COLORS.secondary}15`,
-                      border: `1px solid ${COLORS.secondary}30`,
+                      backgroundColor: COLORS.white,
+                      border: `1px solid ${COLORS.border}`,
                       color: COLORS.text,
                     }}
                   >
@@ -1356,7 +1356,7 @@ export default function AddPropertyPage() {
             {/* ===== 매물명 섹션 ===== */}
             <section 
               className="p-4 rounded-xl"
-              style={{ backgroundColor: COLORS.surface, border: `1px dashed ${COLORS.border}40` }}
+              style={{ backgroundColor: COLORS.surface, border: `1.5px dashed ${COLORS.border}` }}
             >
               <h2 className="text-sm font-bold mb-3" style={{ color: COLORS.text }}>
                 {getUIText('propertyNickname', currentLanguage)}
@@ -1369,8 +1369,8 @@ export default function AddPropertyPage() {
                 placeholder={getUIText('propertyNicknamePlaceholder', currentLanguage)}
                 className="w-full px-3 py-2.5 rounded-lg text-sm min-h-[40px] focus:outline-none transition-all"
                 style={{ 
-                  backgroundColor: `${COLORS.accent}08`,
-                  border: `1px solid ${COLORS.accent}30`,
+                  backgroundColor: COLORS.white,
+                  border: `1px solid ${COLORS.border}`,
                 }}
                 required
               />
@@ -1379,7 +1379,7 @@ export default function AddPropertyPage() {
             {/* ===== 매물 설명 섹션 ===== */}
             <section 
               className="p-4 rounded-xl"
-              style={{ backgroundColor: COLORS.surface, border: `1px dashed ${COLORS.border}40` }}
+              style={{ backgroundColor: COLORS.surface, border: `1.5px dashed ${COLORS.border}` }}
             >
               <h2 className="text-sm font-bold mb-3" style={{ color: COLORS.text }}>
                 {currentLanguage === "ko"
@@ -1402,8 +1402,8 @@ export default function AddPropertyPage() {
                 rows={4}
                 className="w-full px-3 py-2.5 rounded-lg resize-none text-sm min-h-[100px] focus:outline-none transition-all"
                 style={{ 
-                  backgroundColor: `${COLORS.accent}08`,
-                  border: `1px solid ${COLORS.accent}30`,
+                  backgroundColor: COLORS.white,
+                  border: `1px solid ${COLORS.border}`,
                 }}
                 required
               />
@@ -1422,7 +1422,7 @@ export default function AddPropertyPage() {
             {/* ===== 외부 캘린더 섹션 ===== */}
             <section 
               className="rounded-xl overflow-hidden"
-              style={{ backgroundColor: COLORS.surface, border: `1px dashed ${COLORS.border}40` }}
+              style={{ backgroundColor: COLORS.surface, border: `1.5px dashed ${COLORS.border}` }}
             >
               <button
                 type="button"
@@ -1459,8 +1459,8 @@ export default function AddPropertyPage() {
                       onChange={(e) => setIcalPlatform(e.target.value)}
                       className="w-full px-2 py-2 text-sm rounded-md min-h-[36px] focus:outline-none"
                       style={{ 
-                        backgroundColor: `${COLORS.secondary}15`,
-                        border: `1px solid ${COLORS.secondary}30`,
+                        backgroundColor: COLORS.white,
+                        border: `1px solid ${COLORS.border}`,
                         color: COLORS.text,
                       }}
                     >
@@ -1482,8 +1482,8 @@ export default function AddPropertyPage() {
                       placeholder={currentLanguage === "ko" ? "예: 에어비앤비 예약" : "e.g. Airbnb"}
                       className="w-full px-2 py-2 text-sm rounded-md min-h-[36px] focus:outline-none"
                       style={{ 
-                        backgroundColor: `${COLORS.accent}08`,
-                        border: `1px solid ${COLORS.accent}30`,
+                        backgroundColor: COLORS.white,
+                        border: `1px solid ${COLORS.border}`,
                       }}
                     />
                   </div>
@@ -1496,8 +1496,8 @@ export default function AddPropertyPage() {
                       placeholder="https://..."
                       className="w-full px-2 py-2 text-sm rounded-md min-h-[36px] focus:outline-none"
                       style={{ 
-                        backgroundColor: `${COLORS.accent}08`,
-                        border: `1px solid ${COLORS.accent}30`,
+                        backgroundColor: COLORS.white,
+                        border: `1px solid ${COLORS.border}`,
                       }}
                     />
                   </div>
