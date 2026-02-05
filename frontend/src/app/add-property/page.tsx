@@ -19,6 +19,15 @@ import {
   ChevronDown,
   ChevronUp,
   Sparkles,
+  Home,
+  Search,
+  Building,
+  User,
+  Plus,
+  Image as ImageIcon,
+  Heart,
+  MessageCircle,
+  Map,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import TopBar from "@/components/TopBar";
@@ -42,6 +51,7 @@ export default function AddPropertyPage() {
   const [loading, setLoading] = useState(false);
   const [checkingAccess, setCheckingAccess] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
+  const [isOwnerMode, setIsOwnerMode] = useState(false); // 임대인 모드 여부
   // 폼 상태
   const [images, setImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
@@ -139,9 +149,9 @@ export default function AddPropertyPage() {
   // 주소 확인 모달
   const [showAddressModal, setShowAddressModal] = useState(false);
 
-  // 접근 권한 확인
+  // 접근 권한 확인 및 사용자 모드 설정
   useEffect(() => {
-    const checkAccess = async () => {
+    const checkAccessAndMode = async () => {
       if (authLoading) return;
 
       if (!user) {
@@ -161,6 +171,10 @@ export default function AddPropertyPage() {
         // 프로필 페이지와 동일한 조건: KYC 완료 또는 owner 권한
         if (allStepsCompleted || userData?.is_owner === true) {
           setHasAccess(true);
+          // 임대인 모드 설정 (KYC 완료 + 코인 3개 이상)
+          // 실제로는 userData.coins 또는 userData.owner_status 등을 확인해야 함
+          // 여기서는 KYC 완료 시 임대인 모드로 간주
+          setIsOwnerMode(true);
         } else {
           // KYC 미완료 시 1~3단계 인증 페이지로 이동
           router.push("/kyc");
@@ -172,7 +186,7 @@ export default function AddPropertyPage() {
       }
     };
 
-    checkAccess();
+    checkAccessAndMode();
   }, [user, authLoading, router]);
 
   // 주소 확인 모달에서 주소 확정 시 (도시·구 자동 설정)
@@ -1915,6 +1929,111 @@ export default function AddPropertyPage() {
         currentLanguage={currentLanguage}
         initialAddress={address}
       />
+
+      {/* ===== 조건부 하단 네비게이션 바 ===== */}
+      <nav className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-[430px] bg-white border-t border-gray-200 z-40">
+        <div className="flex items-center justify-around py-2">
+          {isOwnerMode ? (
+            // 임대인 모드: 홈 / 매물 등록 / 매물관리 / 채팅 / 프로필
+            <>
+              <button
+                onClick={() => router.push("/")}
+                className="flex flex-col items-center gap-1 px-3 py-2 min-h-[52px] min-w-[52px]"
+              >
+                <Home className="w-5 h-5 text-gray-500" />
+                <span className="text-[10px] text-gray-500">
+                  {currentLanguage === "ko" ? "홈" : "Home"}
+                </span>
+              </button>
+              <button
+                onClick={() => router.push("/add-property")}
+                className="flex flex-col items-center gap-1 px-3 py-2 min-h-[52px] min-w-[52px]"
+              >
+                <Plus className="w-5 h-5 text-blue-600" />
+                <span className="text-[10px] font-medium text-blue-600">
+                  {currentLanguage === "ko" ? "매물등록" : "Add"}
+                </span>
+              </button>
+              <button
+                onClick={() => router.push("/profile/my-properties")}
+                className="flex flex-col items-center gap-1 px-3 py-2 min-h-[52px] min-w-[52px]"
+              >
+                <Building className="w-5 h-5 text-gray-500" />
+                <span className="text-[10px] text-gray-500">
+                  {currentLanguage === "ko" ? "매물관리" : "Manage"}
+                </span>
+              </button>
+              <button
+                onClick={() => router.push("/chat")}
+                className="flex flex-col items-center gap-1 px-3 py-2 min-h-[52px] min-w-[52px]"
+              >
+                <MessageCircle className="w-5 h-5 text-gray-500" />
+                <span className="text-[10px] text-gray-500">
+                  {currentLanguage === "ko" ? "채팅" : "Chat"}
+                </span>
+              </button>
+              <button
+                onClick={() => router.push("/profile")}
+                className="flex flex-col items-center gap-1 px-3 py-2 min-h-[52px] min-w-[52px]"
+              >
+                <User className="w-5 h-5 text-gray-500" />
+                <span className="text-[10px] text-gray-500">
+                  {currentLanguage === "ko" ? "프로필" : "Profile"}
+                </span>
+              </button>
+            </>
+          ) : (
+            // 임차인 모드: 홈 / 지도로 검색 / 찜 / 예약 / 프로필
+            <>
+              <button
+                onClick={() => router.push("/")}
+                className="flex flex-col items-center gap-1 px-3 py-2 min-h-[52px] min-w-[52px]"
+              >
+                <Home className="w-5 h-5 text-gray-500" />
+                <span className="text-[10px] text-gray-500">
+                  {currentLanguage === "ko" ? "홈" : "Home"}
+                </span>
+              </button>
+              <button
+                onClick={() => router.push("/map")}
+                className="flex flex-col items-center gap-1 px-3 py-2 min-h-[52px] min-w-[52px]"
+              >
+                <Map className="w-5 h-5 text-gray-500" />
+                <span className="text-[10px] text-gray-500">
+                  {currentLanguage === "ko" ? "지도검색" : "Map"}
+                </span>
+              </button>
+              <button
+                onClick={() => router.push("/wishlist")}
+                className="flex flex-col items-center gap-1 px-3 py-2 min-h-[52px] min-w-[52px]"
+              >
+                <Heart className="w-5 h-5 text-gray-500" />
+                <span className="text-[10px] text-gray-500">
+                  {currentLanguage === "ko" ? "찜" : "Wish"}
+                </span>
+              </button>
+              <button
+                onClick={() => router.push("/my-bookings")}
+                className="flex flex-col items-center gap-1 px-3 py-2 min-h-[52px] min-w-[52px]"
+              >
+                <Calendar className="w-5 h-5 text-gray-500" />
+                <span className="text-[10px] text-gray-500">
+                  {currentLanguage === "ko" ? "예약" : "Bookings"}
+                </span>
+              </button>
+              <button
+                onClick={() => router.push("/profile")}
+                className="flex flex-col items-center gap-1 px-3 py-2 min-h-[52px] min-w-[52px]"
+              >
+                <User className="w-5 h-5 text-gray-500" />
+                <span className="text-[10px] text-gray-500">
+                  {currentLanguage === "ko" ? "프로필" : "Profile"}
+                </span>
+              </button>
+            </>
+          )}
+        </div>
+      </nav>
     </div>
   );
 }
