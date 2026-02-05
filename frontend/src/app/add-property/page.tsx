@@ -930,7 +930,11 @@ export default function AddPropertyPage() {
                         ? "사진 추가 방법 선택"
                         : currentLanguage === "vi"
                           ? "Chọn cách thêm ảnh"
-                          : "Select Photo Source"}
+                        : currentLanguage === "ja"
+                          ? "写真追加方法の選択"
+                        : currentLanguage === "zh"
+                          ? "选择照片添加方式"
+                        : "Select Photo Source"}
                     </h3>
                     <div className="space-y-3">
                       <button
@@ -944,7 +948,11 @@ export default function AddPropertyPage() {
                             ? "사진첩에서 선택"
                             : currentLanguage === "vi"
                               ? "Chọn từ thư viện ảnh"
-                              : "Select from Photo Library"}
+                            : currentLanguage === "ja"
+                              ? "写真ライブラリから選択"
+                            : currentLanguage === "zh"
+                              ? "从照片库选择"
+                            : "Select from Photo Library"}
                         </span>
                       </button>
                       <button
@@ -958,7 +966,11 @@ export default function AddPropertyPage() {
                             ? "카메라로 촬영"
                             : currentLanguage === "vi"
                               ? "Chụp ảnh"
-                              : "Take Photo"}
+                            : currentLanguage === "ja"
+                              ? "カメラで撮影"
+                            : currentLanguage === "zh"
+                              ? "用相机拍摄"
+                            : "Take Photo"}
                         </span>
                       </button>
                       <button
@@ -970,7 +982,11 @@ export default function AddPropertyPage() {
                           ? "취소"
                           : currentLanguage === "vi"
                             ? "Hủy"
-                            : "Cancel"}
+                          : currentLanguage === "ja"
+                            ? "キャンセル"
+                          : currentLanguage === "zh"
+                            ? "取消"
+                          : "Cancel"}
                       </button>
                     </div>
                   </div>
