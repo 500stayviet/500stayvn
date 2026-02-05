@@ -4,6 +4,7 @@ import "./globals.css";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { TranslationProvider } from "@/contexts/TranslationProvider";
 import NextAuthProvider from "@/components/providers/NextAuthProvider";
+import BottomNavigation from "@/components/BottomNavigation";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -54,7 +55,12 @@ export default function RootLayout({
         <NextAuthProvider>
           <LanguageProvider>
             <TranslationProvider>
-              {children}
+              <div className="min-h-screen flex flex-col">
+                <main className="flex-1 pb-20">
+                  {children}
+                </main>
+                <BottomNavigation />
+              </div>
             </TranslationProvider>
           </LanguageProvider>
         </NextAuthProvider>
