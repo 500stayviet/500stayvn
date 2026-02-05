@@ -25,9 +25,6 @@ import {
   User,
   Plus,
   Image as ImageIcon,
-  MessageCircle,
-  Map,
-  Heart,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import TopBar from "@/components/TopBar";
