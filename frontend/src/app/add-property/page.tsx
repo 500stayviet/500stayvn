@@ -40,11 +40,14 @@ import {
   ALL_REGIONS,
 } from "@/lib/data/vietnam-regions";
 
-// 컬러 상수
+// 베트남 스타일 컬러 상수
 const COLORS = {
-  deepBlue: "#003366",
-  emeraldGreen: "#10B981",
+  primary: "#E63946",      // Coral Red - 메인 컬러
+  secondary: "#FF6B35",    // Golden Orange - 보조 컬러
+  accent: "#FFB627",       // Sunshine Yellow - 강조 컬러
+  success: "#10B981",      // Emerald Green - 성공/완료
   white: "#FFFFFF",
+  cream: "#FFF8F0",        // 따뜻한 크림색 배경
   gray50: "#F9FAFB",
   gray100: "#F3F4F6",
   gray200: "#E5E7EB",
@@ -474,7 +477,7 @@ export default function AddPropertyPage() {
         currentLanguage === "ko"
           ? "임대 시작일과 종료일을 선택해주세요."
           : currentLanguage === "vi"
-            ? "Vui lòng chọn ngày bắt đầu và kết thúc thuê."
+            ? "Vui lòng chọn ngày bắt đ��u và kết thúc thuê."
             : "Please select rental start and end dates.",
       );
       return;
@@ -638,7 +641,7 @@ export default function AddPropertyPage() {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin" style={{ color: COLORS.deepBlue }} />
+          <Loader2 className="w-8 h-8 animate-spin" style={{ color: COLORS.primary }} />
           <span className="text-gray-500 font-sans">
             {currentLanguage === "ko"
               ? "로딩 중..."
@@ -656,7 +659,7 @@ export default function AddPropertyPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex justify-center font-sans">
+    <div className="min-h-screen flex justify-center font-sans" style={{ backgroundColor: COLORS.cream }}>
       {/* PWA 모바일 컨테이너 */}
       <div className="w-full max-w-[480px] bg-white min-h-screen shadow-2xl flex flex-col relative">
         {/* 상단 바 */}
@@ -664,15 +667,25 @@ export default function AddPropertyPage() {
 
         {/* 스크롤 가능한 콘텐츠 영역 */}
         <div className="flex-1 overflow-y-auto pb-40">
-          {/* 헤더 */}
-          <div className="px-6 pt-6 pb-4">
-            <h1 className="text-2xl font-bold text-gray-900">
+          {/* 그라데이션 헤더 */}
+          <div 
+            className="px-6 pt-8 pb-6 rounded-b-3xl"
+            style={{ background: `linear-gradient(135deg, ${COLORS.primary} 0%, ${COLORS.secondary} 100%)` }}
+          >
+            <h1 className="text-2xl font-bold text-white">
               {currentLanguage === "ko"
                 ? "새 매물 등록"
                 : currentLanguage === "vi"
                   ? "Đăng ký bất động sản mới"
                   : "Register New Property"}
             </h1>
+            <p className="text-white/80 text-sm mt-1">
+              {currentLanguage === "ko"
+                ? "매물 정보를 입력해주세요"
+                : currentLanguage === "vi"
+                  ? "Vui lòng nhập thông tin bất động sản"
+                  : "Please enter property information"}
+            </p>
           </div>
 
           <form onSubmit={handleSubmit} className="px-6 space-y-6">
@@ -782,7 +795,7 @@ export default function AddPropertyPage() {
                     onClick={() => setPropertyType(value)}
                     className="px-4 py-2.5 rounded-full text-sm font-medium transition-all min-h-[44px]"
                     style={{
-                      backgroundColor: propertyType === value ? COLORS.deepBlue : COLORS.gray100,
+                      backgroundColor: propertyType === value ? COLORS.primary : COLORS.gray100,
                       color: propertyType === value ? COLORS.white : COLORS.gray700,
                     }}
                   >
@@ -873,7 +886,7 @@ export default function AddPropertyPage() {
                   type="button"
                   onClick={() => setShowAddressModal(true)}
                   className="w-full px-4 py-4 rounded-2xl transition-all flex items-center justify-center gap-3 min-h-[56px] text-white font-medium"
-                  style={{ backgroundColor: COLORS.deepBlue }}
+                  style={{ backgroundColor: COLORS.primary }}
                 >
                   <MapPin className="w-5 h-5" />
                   <span>
@@ -889,15 +902,15 @@ export default function AddPropertyPage() {
               {address && coordinates && (
                 <div
                   className="p-4 rounded-2xl cursor-pointer transition-colors"
-                  style={{ backgroundColor: `${COLORS.emeraldGreen}10`, border: `2px solid ${COLORS.emeraldGreen}30` }}
+                  style={{ backgroundColor: `${COLORS.success}10`, border: `2px solid ${COLORS.success}30` }}
                   onClick={() => setShowAddressModal(true)}
                 >
                   <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-xl flex-shrink-0" style={{ backgroundColor: `${COLORS.emeraldGreen}20` }}>
-                      <Check className="w-5 h-5" style={{ color: COLORS.emeraldGreen }} />
+                    <div className="p-2 rounded-xl flex-shrink-0" style={{ backgroundColor: `${COLORS.success}20` }}>
+                      <Check className="w-5 h-5" style={{ color: COLORS.success }} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <span className="text-xs font-medium" style={{ color: COLORS.emeraldGreen }}>
+                      <span className="text-xs font-medium" style={{ color: COLORS.success }}>
                         {currentLanguage === "ko"
                           ? "확정된 주소 (클릭하여 수정)"
                           : currentLanguage === "vi"
@@ -916,7 +929,7 @@ export default function AddPropertyPage() {
                         setSelectedDistrictId("");
                       }}
                       className="p-2 rounded-full transition-colors flex-shrink-0 min-h-[36px] min-w-[36px] flex items-center justify-center"
-                      style={{ backgroundColor: `${COLORS.emeraldGreen}20` }}
+                      style={{ backgroundColor: `${COLORS.success}20` }}
                     >
                       <X className="w-4 h-4 text-gray-500" />
                     </button>
@@ -998,7 +1011,7 @@ export default function AddPropertyPage() {
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 mt-3 flex items-start gap-1">
-                  <span style={{ color: COLORS.deepBlue }}>i</span>
+                  <span style={{ color: COLORS.primary }}>i</span>
                   <span>
                     {currentLanguage === "ko"
                       ? "동호수는 예약이 완료된 이후에 임차인에게만 표시됩니다."
@@ -1029,7 +1042,7 @@ export default function AddPropertyPage() {
                   className="flex items-center gap-3 px-4 py-3 rounded-2xl transition-colors min-h-[56px] border-2"
                   style={{ borderColor: COLORS.gray200, backgroundColor: COLORS.gray50 }}
                 >
-                  <Calendar className="w-5 h-5" style={{ color: COLORS.deepBlue }} />
+                  <Calendar className="w-5 h-5" style={{ color: COLORS.primary }} />
                   <div className="text-left">
                     <div className="text-xs text-gray-500">
                       {currentLanguage === "ko" ? "시작일" : "Start"}
@@ -1054,7 +1067,7 @@ export default function AddPropertyPage() {
                   className="flex items-center gap-3 px-4 py-3 rounded-2xl transition-colors min-h-[56px] border-2"
                   style={{ borderColor: COLORS.gray200, backgroundColor: COLORS.gray50 }}
                 >
-                  <Calendar className="w-5 h-5" style={{ color: COLORS.deepBlue }} />
+                  <Calendar className="w-5 h-5" style={{ color: COLORS.primary }} />
                   <div className="text-left">
                     <div className="text-xs text-gray-500">
                       {currentLanguage === "ko" ? "종료일" : "End"}
@@ -1135,7 +1148,7 @@ export default function AddPropertyPage() {
                       <div className="flex flex-wrap items-center gap-2 mb-3">
                         <p className="text-sm font-medium text-gray-700">{catLabel}</p>
                         {isBadgeCategory && (
-                          <p className="text-xs" style={{ color: hasBadge ? COLORS.emeraldGreen : COLORS.gray400 }}>
+                          <p className="text-xs" style={{ color: hasBadge ? COLORS.success : COLORS.gray400 }}>
                             {hasBadge ? (
                               <span className="flex items-center gap-1">
                                 <Sparkles className="w-3 h-3" />
@@ -1164,8 +1177,8 @@ export default function AddPropertyPage() {
                                 onClick={() => toggleFacility(opt.id)}
                                 className="w-14 h-14 rounded-2xl flex items-center justify-center transition-all min-h-[56px] min-w-[56px]"
                                 style={{
-                                  backgroundColor: isSelected ? COLORS.deepBlue : COLORS.white,
-                                  border: `2px solid ${isSelected ? COLORS.deepBlue : COLORS.gray200}`,
+                                  backgroundColor: isSelected ? COLORS.primary : COLORS.white,
+                                  border: `2px solid ${isSelected ? COLORS.primary : COLORS.gray200}`,
                                 }}
                               >
                                 <Icon
@@ -1332,7 +1345,7 @@ export default function AddPropertyPage() {
                 style={{ borderColor: COLORS.gray200 }}
                 required
               />
-              <p className="text-xs mt-3 flex items-start gap-2" style={{ color: COLORS.emeraldGreen }}>
+              <p className="text-xs mt-3 flex items-start gap-2" style={{ color: COLORS.success }}>
                 <span>i</span>
                 <span>
                   {currentLanguage === "ko"
@@ -1431,7 +1444,7 @@ export default function AddPropertyPage() {
               bathrooms === 0
             }
             className="w-full py-4 px-6 rounded-2xl font-semibold text-base disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center justify-center gap-2 min-h-[56px] text-white"
-            style={{ backgroundColor: COLORS.deepBlue }}
+            style={{ backgroundColor: COLORS.primary }}
           >
             {loading ? (
               <>
@@ -1481,8 +1494,8 @@ export default function AddPropertyPage() {
               onClick={() => router.push("/profile/my-properties")}
               className="flex flex-col items-center gap-1 py-2 px-4 min-h-[56px] min-w-[56px]"
             >
-              <Building className="w-6 h-6" style={{ color: COLORS.deepBlue }} />
-              <span className="text-xs font-medium" style={{ color: COLORS.deepBlue }}>
+              <Building className="w-6 h-6" style={{ color: COLORS.primary }} />
+              <span className="text-xs font-medium" style={{ color: COLORS.primary }}>
                 {currentLanguage === "ko" ? "내 매물" : "My"}
               </span>
             </button>
@@ -1523,7 +1536,7 @@ export default function AddPropertyPage() {
                 type="button"
                 onClick={handleSelectFromLibrary}
                 className="w-full py-4 px-4 rounded-2xl font-medium flex items-center justify-center gap-3 min-h-[56px] text-white"
-                style={{ backgroundColor: COLORS.deepBlue }}
+                style={{ backgroundColor: COLORS.primary }}
               >
                 <ImageIcon className="w-5 h-5" />
                 <span>
@@ -1601,8 +1614,8 @@ export default function AddPropertyPage() {
                       className={`w-full h-full object-cover rounded-lg ${isSelected ? "opacity-50" : ""}`}
                     />
                     {isSelected && (
-                      <div className="absolute inset-0 flex items-center justify-center rounded-lg" style={{ backgroundColor: `${COLORS.deepBlue}30` }}>
-                        <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: COLORS.deepBlue }}>
+                      <div className="absolute inset-0 flex items-center justify-center rounded-lg" style={{ backgroundColor: `${COLORS.primary}30` }}>
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: COLORS.primary }}>
                           <Check className="w-4 h-4 text-white" />
                         </div>
                       </div>
@@ -1629,7 +1642,7 @@ export default function AddPropertyPage() {
               onClick={handleConfirmPhotoSelection}
               disabled={selectedLibraryIndices.size === 0}
               className="w-full py-4 px-4 rounded-2xl font-medium disabled:opacity-50 disabled:cursor-not-allowed min-h-[56px] text-white"
-              style={{ backgroundColor: COLORS.deepBlue }}
+              style={{ backgroundColor: COLORS.primary }}
             >
               {currentLanguage === "ko"
                 ? `선택한 ${selectedLibraryIndices.size}장 추가`
@@ -1741,7 +1754,7 @@ export default function AddPropertyPage() {
             <button
               onClick={handleGuidelinePopupClick}
               className="w-full py-4 px-4 rounded-2xl font-medium min-h-[56px] text-white"
-              style={{ backgroundColor: COLORS.deepBlue }}
+              style={{ backgroundColor: COLORS.primary }}
             >
               {currentLanguage === "ko" ? "확인" : "OK"}
             </button>
