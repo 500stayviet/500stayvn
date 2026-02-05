@@ -2,758 +2,762 @@
 
 import { useState } from "react";
 import {
-  Camera,
-  MapPin,
-  X,
-  Check,
-  Calendar,
-  ChevronDown,
-  ChevronUp,
   Home,
   Search,
-  Building,
+  Building2,
   User,
-  Plus,
+  Camera,
+  X,
+  ChevronRight,
+  Check,
   Wifi,
-  Wind,
-  Tv,
   Car,
   Waves,
-  Dumbbell,
-  Coffee,
-  Utensils,
+  Wind,
+  Tv,
+  UtensilsCrossed,
   ShieldCheck,
-  Baby,
-  PawPrint,
-  Clock,
   Sparkles,
+  Clock,
+  Dog,
+  Music,
+  Cigarette,
+  Users,
+  ArrowLeft,
+  Plus,
+  MapPin,
+  DollarSign,
+  FileText,
+  ImageIcon,
+  Settings,
+  Star,
 } from "lucide-react";
 
-// Color constants
-const COLORS = {
-  deepBlue: "#003366",
-  emeraldGreen: "#10B981",
-  white: "#FFFFFF",
-  gray50: "#F9FAFB",
-  gray100: "#F3F4F6",
-  gray200: "#E5E7EB",
-  gray300: "#D1D5DB",
-  gray400: "#9CA3AF",
-  gray500: "#6B7280",
-  gray600: "#4B5563",
-  gray700: "#374151",
-  gray800: "#1F2937",
-  gray900: "#111827",
-};
+// Property types with icons
+const propertyTypes = [
+  { id: "apartment", label: "Căn hộ", icon: Building2 },
+  { id: "house", label: "Nhà phố", icon: Home },
+  { id: "villa", label: "Biệt thự", icon: Sparkles },
+  { id: "studio", label: "Studio", icon: Tv },
+  { id: "homestay", label: "Homestay", icon: Users },
+];
 
-// Facility categories
-const FACILITY_CATEGORIES = [
-  {
-    id: "basic",
-    name: "기본 시설",
-    icon: Home,
-    items: [
-      { id: "wifi", name: "와이파이", icon: Wifi },
-      { id: "aircon", name: "에어컨", icon: Wind },
-      { id: "tv", name: "TV", icon: Tv },
-      { id: "parking", name: "주차장", icon: Car },
-    ],
-  },
-  {
-    id: "amenities",
-    name: "부대시설",
-    icon: Dumbbell,
-    items: [
-      { id: "pool", name: "수영장", icon: Waves },
-      { id: "gym", name: "헬스장", icon: Dumbbell },
-      { id: "cafe", name: "카페", icon: Coffee },
-      { id: "kitchen", name: "공용주방", icon: Utensils },
-    ],
-  },
-  {
-    id: "policy",
-    name: "정책",
-    icon: ShieldCheck,
-    items: [
-      { id: "pet", name: "반려동물", icon: PawPrint },
-      { id: "kids", name: "아동 동반", icon: Baby },
-      { id: "cleaning", name: "청소 서비스", icon: Sparkles },
-      { id: "security", name: "24시 보안", icon: ShieldCheck },
-    ],
-  },
+// Facilities with icons
+const facilities = [
+  { id: "wifi", label: "WiFi miễn phí", icon: Wifi },
+  { id: "parking", label: "Bãi đỗ xe", icon: Car },
+  { id: "pool", label: "Hồ bơi", icon: Waves },
+  { id: "ac", label: "Điều hòa", icon: Wind },
+  { id: "tv", label: "Smart TV", icon: Tv },
+  { id: "kitchen", label: "Bếp đầy đủ", icon: UtensilsCrossed },
+  { id: "security", label: "An ninh 24/7", icon: ShieldCheck },
+  { id: "cleaning", label: "Dọn dẹp", icon: Sparkles },
+];
+
+// Policies with icons
+const policies = [
+  { id: "no_smoking", label: "Cấm hút thuốc", icon: Cigarette },
+  { id: "no_pets", label: "Không thú cưng", icon: Dog },
+  { id: "no_party", label: "Cấm tiệc tùng", icon: Music },
+  { id: "quiet_hours", label: "Giờ yên tĩnh", icon: Clock },
 ];
 
 // Time options
-const TIME_OPTIONS = [
-  "00:00", "01:00", "02:00", "03:00", "04:00", "05:00",
+const timeOptions = [
   "06:00", "07:00", "08:00", "09:00", "10:00", "11:00",
   "12:00", "13:00", "14:00", "15:00", "16:00", "17:00",
   "18:00", "19:00", "20:00", "21:00", "22:00", "23:00",
 ];
 
+// Vietnamese cities
+const cities = [
+  "Hồ Chí Minh", "Hà Nội", "Đà Nẵng", "Nha Trang", "Đà Lạt", 
+  "Phú Quốc", "Vũng Tàu", "Hội An", "Huế", "Cần Thơ"
+];
+
+// Steps configuration
+const steps = [
+  { id: 1, title: "Thông tin", icon: FileText },
+  { id: 2, title: "Hình ảnh", icon: ImageIcon },
+  { id: 3, title: "Tiện ích", icon: Settings },
+  { id: 4, title: "Hoàn tất", icon: Check },
+];
+
 export default function AddPropertyPage() {
-  const [images, setImages] = useState<string[]>([]);
-  const [propertyType, setPropertyType] = useState<string>("");
-  const [address, setAddress] = useState("");
-  const [isAddressConfirmed, setIsAddressConfirmed] = useState(false);
-  const [buildingNumber, setBuildingNumber] = useState("");
-  const [roomNumber, setRoomNumber] = useState("");
-  const [weeklyRent, setWeeklyRent] = useState("");
-  const [selectedFacilities, setSelectedFacilities] = useState<string[]>([]);
-  const [propertyName, setPropertyName] = useState("");
-  const [description, setDescription] = useState("");
-  const [checkInTime, setCheckInTime] = useState("14:00");
-  const [checkOutTime, setCheckOutTime] = useState("12:00");
-  const [checkInDate, setCheckInDate] = useState<string>("");
-  const [checkOutDate, setCheckOutDate] = useState<string>("");
-  const [bedrooms, setBedrooms] = useState(1);
-  const [bathrooms, setBathrooms] = useState(1);
-  const [maxGuests, setMaxGuests] = useState(2);
-  const [expandedCategory, setExpandedCategory] = useState<string | null>("basic");
+  const [currentStep, setCurrentStep] = useState(1);
+  const [formData, setFormData] = useState({
+    title: "",
+    propertyType: "",
+    address: "",
+    city: "",
+    district: "",
+    pricePerNight: "",
+    description: "",
+    maxGuests: "2",
+    bedrooms: "1",
+    bathrooms: "1",
+    checkInTime: "14:00",
+    checkOutTime: "12:00",
+    facilities: [] as string[],
+    policies: [] as string[],
+    images: [] as string[],
+  });
 
-  // Handle image upload simulation
-  const handleImageAdd = () => {
-    if (images.length >= 5) return;
-    // Simulate adding a placeholder image
-    const placeholders = [
-      "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1484154218962-a197022b5858?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=400&h=300&fit=crop",
-    ];
-    setImages([...images, placeholders[images.length]]);
+  const [previewImages, setPreviewImages] = useState<string[]>([]);
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleImageRemove = (index: number) => {
-    setImages(images.filter((_, i) => i !== index));
+  const toggleArrayItem = (field: "facilities" | "policies", itemId: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: prev[field].includes(itemId)
+        ? prev[field].filter((id) => id !== itemId)
+        : [...prev[field], itemId],
+    }));
   };
 
-  const toggleFacility = (facilityId: string) => {
-    setSelectedFacilities((prev) =>
-      prev.includes(facilityId)
-        ? prev.filter((id) => id !== facilityId)
-        : [...prev, facilityId]
-    );
+  const handleImageUpload = () => {
+    const newImage = `https://picsum.photos/400/300?random=${Date.now()}`;
+    setPreviewImages((prev) => [...prev, newImage]);
+    setFormData((prev) => ({ ...prev, images: [...prev.images, newImage] }));
   };
 
-  const handleAddressSearch = () => {
-    // Simulate address search
-    setAddress("123 Nguyen Hue, District 1, Ho Chi Minh City");
-    setIsAddressConfirmed(true);
+  const removeImage = (index: number) => {
+    setPreviewImages((prev) => prev.filter((_, i) => i !== index));
+    setFormData((prev) => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index),
+    }));
   };
 
-  // Check if all facilities in a category are selected
-  const isCategoryComplete = (categoryId: string) => {
-    const category = FACILITY_CATEGORIES.find((c) => c.id === categoryId);
-    if (!category) return false;
-    return category.items.every((item) => selectedFacilities.includes(item.id));
+  const nextStep = () => {
+    if (currentStep < 4) setCurrentStep(currentStep + 1);
+  };
+
+  const prevStep = () => {
+    if (currentStep > 1) setCurrentStep(currentStep - 1);
+  };
+
+  const handleSubmit = () => {
+    alert("Đăng ký thành công! Chúng tôi sẽ xem xét và phê duyệt trong 24h.");
+  };
+
+  const getStepProgress = () => {
+    return (currentStep / 4) * 100;
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex justify-center font-sans">
-      {/* PWA Mobile Container */}
-      <div className="w-full max-w-[480px] bg-white min-h-screen shadow-2xl flex flex-col relative">
-        {/* Top Bar */}
-        <header
-          className="sticky top-0 z-50 px-4 py-3 flex items-center justify-between"
-          style={{ backgroundColor: COLORS.deepBlue }}
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
-              <Building className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-white font-bold text-lg">500stay</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button className="px-3 py-1.5 rounded-full bg-white/20 text-white text-sm font-medium">
-              KO
+    <div className="min-h-screen bg-[#FAFAFA] flex flex-col">
+      {/* App Container - Mobile-first centered view */}
+      <div className="flex-1 w-full max-w-[480px] mx-auto bg-white min-h-screen flex flex-col shadow-xl">
+        
+        {/* Header with gradient */}
+        <header className="bg-gradient-to-r from-[#E63946] to-[#FF6B35] px-4 pt-12 pb-6 text-white">
+          <div className="flex items-center gap-3 mb-4">
+            <button 
+              onClick={prevStep}
+              className="w-10 h-10 flex items-center justify-center rounded-full bg-white/20 backdrop-blur-sm"
+            >
+              <ArrowLeft className="w-5 h-5" />
             </button>
+            <div className="flex-1">
+              <h1 className="text-xl font-bold">Đăng ký căn hộ</h1>
+              <p className="text-white/80 text-sm">Bước {currentStep} / 4</p>
+            </div>
+          </div>
+
+          {/* Step Indicators */}
+          <div className="flex items-center justify-between px-2">
+            {steps.map((step, index) => {
+              const StepIcon = step.icon;
+              const isActive = currentStep === step.id;
+              const isCompleted = currentStep > step.id;
+              
+              return (
+                <div key={step.id} className="flex items-center">
+                  <div className="flex flex-col items-center">
+                    <div
+                      className={`relative w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                        isCompleted
+                          ? "bg-white text-[#E63946]"
+                          : isActive
+                          ? "bg-white text-[#E63946] shadow-lg scale-110"
+                          : "bg-white/30 text-white"
+                      }`}
+                    >
+                      {isCompleted ? (
+                        <Check className="w-5 h-5" />
+                      ) : (
+                        <StepIcon className="w-5 h-5" />
+                      )}
+                    </div>
+                    <span className={`text-xs mt-1 ${isActive ? "font-semibold" : "opacity-80"}`}>
+                      {step.title}
+                    </span>
+                  </div>
+                  {index < steps.length - 1 && (
+                    <div
+                      className={`w-8 h-0.5 mx-1 mb-5 ${
+                        isCompleted ? "bg-white" : "bg-white/30"
+                      }`}
+                    />
+                  )}
+                </div>
+              );
+            })}
           </div>
         </header>
 
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto pb-40">
-          {/* Page Header */}
-          <div className="px-6 pt-6 pb-4">
-            <h1 className="text-2xl font-bold text-gray-900">새 매물 등록</h1>
-            <p className="text-sm text-gray-500 mt-1">
-              숙소 정보를 입력하여 매물을 등록하세요
-            </p>
-          </div>
-
-          <form className="px-6 space-y-6">
-            {/* Photo Section */}
-            <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-base font-semibold text-gray-900">
-                  사진 등록
-                  <span className="text-red-500 ml-1">*</span>
-                </h2>
-                <span className="text-sm text-gray-500">({images.length}/5)</span>
-              </div>
-
-              {/* Horizontal Thumbnail List */}
-              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                {images.map((src, index) => (
-                  <div
-                    key={index}
-                    className="relative flex-shrink-0 w-24 h-24 rounded-2xl overflow-hidden border-2 border-gray-200"
-                  >
-                    <img
-                      src={src}
-                      alt={`Preview ${index + 1}`}
-                      className="w-full h-full object-cover"
-                      crossOrigin="anonymous"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleImageRemove(index)}
-                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors min-h-[28px] min-w-[28px] flex items-center justify-center"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                    {index === 0 && (
-                      <div
-                        className="absolute bottom-0 left-0 right-0 text-center text-xs py-1 text-white font-medium"
-                        style={{ backgroundColor: COLORS.deepBlue }}
-                      >
-                        대표
-                      </div>
-                    )}
-                  </div>
-                ))}
-
-                {images.length < 5 && (
-                  <button
-                    type="button"
-                    onClick={handleImageAdd}
-                    className="flex-shrink-0 w-24 h-24 rounded-2xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer transition-all hover:border-gray-400 min-h-[96px]"
-                  >
-                    <Plus className="w-8 h-8 text-gray-400 mb-1" />
-                    <span className="text-xs text-gray-500">추가</span>
-                  </button>
-                )}
-              </div>
-            </section>
-
-            {/* Property Type Section */}
-            <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-              <h2 className="text-base font-semibold text-gray-900 mb-4">
-                매물 종류
-                <span className="text-red-500 ml-1">*</span>
-              </h2>
-
-              {/* Chip Style Buttons */}
-              <div className="flex flex-wrap gap-2">
-                {[
-                  { value: "studio", label: "스튜디오" },
-                  { value: "one_room", label: "원룸" },
-                  { value: "two_room", label: "2룸" },
-                  { value: "three_plus", label: "3+룸" },
-                  { value: "detached", label: "독채" },
-                ].map(({ value, label }) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setPropertyType(value)}
-                    className="px-4 py-2.5 rounded-full text-sm font-medium transition-all min-h-[44px]"
-                    style={{
-                      backgroundColor:
-                        propertyType === value ? COLORS.deepBlue : COLORS.gray100,
-                      color: propertyType === value ? COLORS.white : COLORS.gray700,
-                    }}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Room Details */}
-              {propertyType && (
-                <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-gray-100">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-2">
-                      방 개수
-                    </label>
-                    <select
-                      value={bedrooms}
-                      onChange={(e) => setBedrooms(Number(e.target.value))}
-                      className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm min-h-[44px] focus:outline-none"
-                    >
-                      {[1, 2, 3, 4, 5].map((n) => (
-                        <option key={n} value={n}>
-                          {n}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-2">
-                      화장실
-                    </label>
-                    <select
-                      value={bathrooms}
-                      onChange={(e) => setBathrooms(Number(e.target.value))}
-                      className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm min-h-[44px] focus:outline-none"
-                    >
-                      {[1, 2, 3, 4].map((n) => (
-                        <option key={n} value={n}>
-                          {n}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-2">
-                      최대인원
-                    </label>
-                    <select
-                      value={maxGuests}
-                      onChange={(e) => setMaxGuests(Number(e.target.value))}
-                      className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-xl text-sm min-h-[44px] focus:outline-none"
-                    >
-                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-                        <option key={n} value={n}>
-                          {n}명
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              )}
-            </section>
-
-            {/* Address Section */}
-            <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-              <h2 className="text-base font-semibold text-gray-900 mb-4">
-                주소
-                <span className="text-red-500 ml-1">*</span>
-              </h2>
-
-              {!isAddressConfirmed ? (
-                <button
-                  type="button"
-                  onClick={handleAddressSearch}
-                  className="w-full px-4 py-4 rounded-2xl transition-all flex items-center justify-center gap-3 min-h-[56px] text-white font-medium"
-                  style={{ backgroundColor: COLORS.deepBlue }}
-                >
-                  <MapPin className="w-5 h-5" />
-                  <span>주소 찾기</span>
-                </button>
-              ) : (
-                <div
-                  className="p-4 rounded-2xl cursor-pointer transition-colors"
-                  style={{
-                    backgroundColor: `${COLORS.emeraldGreen}10`,
-                    border: `2px solid ${COLORS.emeraldGreen}30`,
-                  }}
-                  onClick={() => setIsAddressConfirmed(false)}
-                >
-                  <div className="flex items-start gap-3">
-                    <div
-                      className="p-2 rounded-xl flex-shrink-0"
-                      style={{ backgroundColor: `${COLORS.emeraldGreen}20` }}
-                    >
-                      <Check className="w-5 h-5" style={{ color: COLORS.emeraldGreen }} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <span
-                        className="text-xs font-medium"
-                        style={{ color: COLORS.emeraldGreen }}
-                      >
-                        확정된 주소 (클릭하여 수정)
-                      </span>
-                      <p className="text-sm font-semibold text-gray-900 mt-1">
-                        {address}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setAddress("");
-                        setIsAddressConfirmed(false);
-                      }}
-                      className="p-2 rounded-full transition-colors flex-shrink-0 min-h-[36px] min-w-[36px] flex items-center justify-center"
-                      style={{ backgroundColor: `${COLORS.emeraldGreen}20` }}
-                    >
-                      <X className="w-4 h-4 text-gray-500" />
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Unit Number */}
-              <div className="mt-4 p-4 rounded-2xl" style={{ backgroundColor: COLORS.gray50 }}>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  동호수 (선택)
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-2">
-                      동
-                    </label>
-                    <input
-                      type="text"
-                      value={buildingNumber}
-                      onChange={(e) => setBuildingNumber(e.target.value)}
-                      placeholder="예: A, 1"
-                      className="w-full px-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl text-sm min-h-[44px] focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-2">
-                      호실
-                    </label>
-                    <input
-                      type="text"
-                      value={roomNumber}
-                      onChange={(e) => setRoomNumber(e.target.value)}
-                      placeholder="예: 101"
-                      className="w-full px-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl text-sm min-h-[44px] focus:outline-none"
-                    />
-                  </div>
-                </div>
-                <p
-                  className="text-xs mt-3 flex items-start gap-1"
-                  style={{ color: COLORS.gray500 }}
-                >
-                  <span style={{ color: COLORS.deepBlue }}>i</span>
-                  <span>
-                    동호수는 예약이 완료된 이후에 임차인에게만 표시됩니다.
-                  </span>
-                </p>
-              </div>
-            </section>
-
-            {/* Rental Period Section */}
-            <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-              <h2 className="text-base font-semibold text-gray-900 mb-4">
-                임대 희망 날짜
-              </h2>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-2">
-                    시작일
-                  </label>
-                  <div
-                    className="flex items-center gap-2 px-4 py-3 rounded-2xl border-2 min-h-[56px]"
-                    style={{ borderColor: COLORS.gray200, backgroundColor: COLORS.gray50 }}
-                  >
-                    <Calendar className="w-5 h-5" style={{ color: COLORS.deepBlue }} />
-                    <input
-                      type="date"
-                      value={checkInDate}
-                      onChange={(e) => setCheckInDate(e.target.value)}
-                      className="flex-1 bg-transparent text-sm focus:outline-none"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-2">
-                    종료일
-                  </label>
-                  <div
-                    className="flex items-center gap-2 px-4 py-3 rounded-2xl border-2 min-h-[56px]"
-                    style={{ borderColor: COLORS.gray200, backgroundColor: COLORS.gray50 }}
-                  >
-                    <Calendar className="w-5 h-5" style={{ color: COLORS.deepBlue }} />
-                    <input
-                      type="date"
-                      value={checkOutDate}
-                      onChange={(e) => setCheckOutDate(e.target.value)}
-                      className="flex-1 bg-transparent text-sm focus:outline-none"
-                    />
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* Check-in/out Time Section */}
-            <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-              <h2 className="text-base font-semibold text-gray-900 mb-4">
-                체크인/체크아웃 시간
-              </h2>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-2">
-                    <Clock className="w-3 h-3 inline mr-1" />
-                    체크인
-                  </label>
-                  <select
-                    value={checkInTime}
-                    onChange={(e) => setCheckInTime(e.target.value)}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm min-h-[48px] focus:outline-none"
-                  >
-                    {TIME_OPTIONS.map((time) => (
-                      <option key={time} value={time}>
-                        {time}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-2">
-                    <Clock className="w-3 h-3 inline mr-1" />
-                    체크아웃
-                  </label>
-                  <select
-                    value={checkOutTime}
-                    onChange={(e) => setCheckOutTime(e.target.value)}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm min-h-[48px] focus:outline-none"
-                  >
-                    {TIME_OPTIONS.map((time) => (
-                      <option key={time} value={time}>
-                        {time}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </section>
-
-            {/* Price Section */}
-            <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-              <h2 className="text-base font-semibold text-gray-900 mb-4">
-                1주일 임대료
-                <span className="text-red-500 ml-1">*</span>
-              </h2>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={weeklyRent}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, "");
-                    const formatted = value ? Number(value).toLocaleString() : "";
-                    setWeeklyRent(formatted);
-                  }}
-                  placeholder="0"
-                  className="w-full px-4 py-4 border-2 border-gray-200 rounded-2xl text-xl font-bold text-right pr-16 min-h-[60px] focus:outline-none"
-                  style={{ borderColor: weeklyRent ? COLORS.deepBlue : COLORS.gray200 }}
-                />
-                <span
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-base font-semibold"
-                  style={{ color: COLORS.deepBlue }}
-                >
-                  VND
-                </span>
-              </div>
-              {weeklyRent && (
-                <p className="text-sm text-gray-500 mt-2 text-right">
-                  월 약{" "}
-                  <span className="font-semibold" style={{ color: COLORS.deepBlue }}>
-                    {(Number(weeklyRent.replace(/,/g, "")) * 4).toLocaleString()}
-                  </span>{" "}
-                  VND
-                </p>
-              )}
-            </section>
-
-            {/* Property Name Section */}
-            <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-              <h2 className="text-base font-semibold text-gray-900 mb-4">
-                매물명
-                <span className="text-red-500 ml-1">*</span>
-              </h2>
-              <input
-                type="text"
-                value={propertyName}
-                onChange={(e) => setPropertyName(e.target.value)}
-                placeholder="예: 호치민 1군 럭셔리 원룸"
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-2xl text-sm min-h-[52px] focus:outline-none"
-                maxLength={50}
-              />
-              <p className="text-xs text-gray-400 mt-2 text-right">
-                {propertyName.length}/50
-              </p>
-            </section>
-
-            {/* Description Section */}
-            <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-              <h2 className="text-base font-semibold text-gray-900 mb-4">
-                소개글 (선택)
-              </h2>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="숙소에 대한 간단한 소개를 작성해주세요..."
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-2xl text-sm min-h-[120px] resize-none focus:outline-none"
-                maxLength={500}
-              />
-              <p className="text-xs text-gray-400 mt-2 text-right">
-                {description.length}/500
-              </p>
-            </section>
-
-            {/* Facilities Section */}
-            <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-              <h2 className="text-base font-semibold text-gray-900 mb-4">
-                숙소시설 및 정책
-              </h2>
-
-              <div className="space-y-3">
-                {FACILITY_CATEGORIES.map((category) => {
-                  const CategoryIcon = category.icon;
-                  const isExpanded = expandedCategory === category.id;
-                  const isComplete = isCategoryComplete(category.id);
-
-                  return (
-                    <div
-                      key={category.id}
-                      className="border-2 rounded-2xl overflow-hidden transition-all"
-                      style={{
-                        borderColor: isComplete
-                          ? COLORS.emeraldGreen
-                          : COLORS.gray200,
-                      }}
-                    >
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setExpandedCategory(isExpanded ? null : category.id)
-                        }
-                        className="w-full px-4 py-4 flex items-center justify-between min-h-[56px]"
-                        style={{
-                          backgroundColor: isComplete
-                            ? `${COLORS.emeraldGreen}10`
-                            : COLORS.white,
-                        }}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div
-                            className="w-10 h-10 rounded-xl flex items-center justify-center"
-                            style={{
-                              backgroundColor: isComplete
-                                ? `${COLORS.emeraldGreen}20`
-                                : COLORS.gray100,
-                            }}
-                          >
-                            <CategoryIcon
-                              className="w-5 h-5"
-                              style={{
-                                color: isComplete
-                                  ? COLORS.emeraldGreen
-                                  : COLORS.gray600,
-                              }}
-                            />
-                          </div>
-                          <div className="text-left">
-                            <span className="font-medium text-gray-900">
-                              {category.name}
-                            </span>
-                            {isComplete && (
-                              <span
-                                className="ml-2 text-xs font-semibold"
-                                style={{ color: COLORS.emeraldGreen }}
-                              >
-                                뱃지 획득!
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        {isExpanded ? (
-                          <ChevronUp className="w-5 h-5 text-gray-400" />
-                        ) : (
-                          <ChevronDown className="w-5 h-5 text-gray-400" />
-                        )}
-                      </button>
-
-                      {isExpanded && (
-                        <div className="px-4 pb-4">
-                          <div className="grid grid-cols-2 gap-2">
-                            {category.items.map((item) => {
-                              const ItemIcon = item.icon;
-                              const isSelected = selectedFacilities.includes(
-                                item.id
-                              );
-
-                              return (
-                                <button
-                                  key={item.id}
-                                  type="button"
-                                  onClick={() => toggleFacility(item.id)}
-                                  className="flex items-center gap-2 px-3 py-3 rounded-xl transition-all min-h-[48px]"
-                                  style={{
-                                    backgroundColor: isSelected
-                                      ? COLORS.deepBlue
-                                      : COLORS.gray100,
-                                    color: isSelected
-                                      ? COLORS.white
-                                      : COLORS.gray700,
-                                  }}
-                                >
-                                  <ItemIcon className="w-4 h-4" />
-                                  <span className="text-sm font-medium">
-                                    {item.name}
-                                  </span>
-                                  {isSelected && (
-                                    <Check className="w-4 h-4 ml-auto" />
-                                  )}
-                                </button>
-                              );
-                            })}
-                          </div>
-                          {!isComplete && (
-                            <p
-                              className="text-xs mt-3 text-center"
-                              style={{ color: COLORS.emeraldGreen }}
-                            >
-                              모든 항목 선택 시 뱃지 획득!
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          </form>
+        {/* Progress Bar */}
+        <div className="h-1 bg-gray-100">
+          <div 
+            className="h-full bg-gradient-to-r from-[#E63946] to-[#FF6B35] transition-all duration-500"
+            style={{ width: `${getStepProgress()}%` }}
+          />
         </div>
 
-        {/* Fixed Bottom Submit Button */}
-        <div
-          className="fixed bottom-16 left-1/2 -translate-x-1/2 w-full max-w-[480px] p-4 bg-white border-t border-gray-100"
-          style={{ boxShadow: "0 -4px 20px rgba(0,0,0,0.08)" }}
-        >
+        {/* Content Area */}
+        <div className="flex-1 overflow-y-auto pb-32">
+          
+          {/* Step 1: Basic Info */}
+          {currentStep === 1 && (
+            <div className="p-5 space-y-6">
+              {/* Property Type Selection */}
+              <section>
+                <h2 className="text-lg font-bold text-[#1A1A2E] mb-3 flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-[#E63946] text-white text-xs flex items-center justify-center">1</span>
+                  Loại hình căn hộ
+                </h2>
+                <div className="grid grid-cols-3 gap-3">
+                  {propertyTypes.map((type) => {
+                    const TypeIcon = type.icon;
+                    const isSelected = formData.propertyType === type.id;
+                    return (
+                      <button
+                        key={type.id}
+                        type="button"
+                        onClick={() => handleInputChange("propertyType", type.id)}
+                        className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all min-h-[88px] ${
+                          isSelected
+                            ? "border-[#E63946] bg-[#FFF5F5] text-[#E63946]"
+                            : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
+                        }`}
+                      >
+                        <TypeIcon className={`w-6 h-6 mb-2 ${isSelected ? "text-[#E63946]" : ""}`} />
+                        <span className="text-sm font-medium">{type.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+
+              {/* Title Input */}
+              <section>
+                <h2 className="text-lg font-bold text-[#1A1A2E] mb-3 flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-[#FF6B35] text-white text-xs flex items-center justify-center">2</span>
+                  Tên căn hộ
+                </h2>
+                <input
+                  type="text"
+                  value={formData.title}
+                  onChange={(e) => handleInputChange("title", e.target.value)}
+                  placeholder="Ví dụ: Căn hộ view sông Sài Gòn"
+                  className="w-full px-4 py-4 rounded-xl border-2 border-gray-200 text-base focus:border-[#E63946] focus:outline-none bg-white"
+                />
+              </section>
+
+              {/* Location */}
+              <section>
+                <h2 className="text-lg font-bold text-[#1A1A2E] mb-3 flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-[#FFB627] text-white text-xs flex items-center justify-center">3</span>
+                  Địa điểm
+                </h2>
+                <div className="space-y-3">
+                  <div className="relative">
+                    <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <select
+                      value={formData.city}
+                      onChange={(e) => handleInputChange("city", e.target.value)}
+                      className="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-gray-200 text-base focus:border-[#E63946] focus:outline-none bg-white appearance-none"
+                    >
+                      <option value="">Chọn thành phố</option>
+                      {cities.map((city) => (
+                        <option key={city} value={city}>{city}</option>
+                      ))}
+                    </select>
+                    <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 rotate-90" />
+                  </div>
+                  <input
+                    type="text"
+                    value={formData.district}
+                    onChange={(e) => handleInputChange("district", e.target.value)}
+                    placeholder="Quận/Huyện"
+                    className="w-full px-4 py-4 rounded-xl border-2 border-gray-200 text-base focus:border-[#E63946] focus:outline-none bg-white"
+                  />
+                  <input
+                    type="text"
+                    value={formData.address}
+                    onChange={(e) => handleInputChange("address", e.target.value)}
+                    placeholder="Địa chỉ chi tiết"
+                    className="w-full px-4 py-4 rounded-xl border-2 border-gray-200 text-base focus:border-[#E63946] focus:outline-none bg-white"
+                  />
+                </div>
+              </section>
+
+              {/* Price */}
+              <section>
+                <h2 className="text-lg font-bold text-[#1A1A2E] mb-3 flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-[#E63946] text-white text-xs flex items-center justify-center">4</span>
+                  Giá thuê
+                </h2>
+                <div className="relative">
+                  <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="number"
+                    value={formData.pricePerNight}
+                    onChange={(e) => handleInputChange("pricePerNight", e.target.value)}
+                    placeholder="500000"
+                    className="w-full pl-12 pr-24 py-4 rounded-xl border-2 border-gray-200 text-base focus:border-[#E63946] focus:outline-none bg-white"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">
+                    VNĐ/đêm
+                  </span>
+                </div>
+              </section>
+
+              {/* Room Details */}
+              <section>
+                <h2 className="text-lg font-bold text-[#1A1A2E] mb-3 flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-[#FF6B35] text-white text-xs flex items-center justify-center">5</span>
+                  Chi tiết phòng
+                </h2>
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { label: "Khách tối đa", field: "maxGuests", max: 20 },
+                    { label: "Phòng ngủ", field: "bedrooms", max: 10 },
+                    { label: "Phòng tắm", field: "bathrooms", max: 10 },
+                  ].map((item) => (
+                    <div key={item.field} className="bg-gray-50 rounded-xl p-3">
+                      <label className="text-xs text-gray-500 block mb-2">{item.label}</label>
+                      <div className="flex items-center justify-between">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const current = parseInt(formData[item.field as keyof typeof formData] as string) || 1;
+                            if (current > 1) handleInputChange(item.field, String(current - 1));
+                          }}
+                          className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center text-lg font-bold text-gray-600"
+                        >
+                          -
+                        </button>
+                        <span className="text-lg font-bold text-[#1A1A2E]">{formData[item.field as keyof typeof formData]}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const current = parseInt(formData[item.field as keyof typeof formData] as string) || 1;
+                            if (current < item.max) handleInputChange(item.field, String(current + 1));
+                          }}
+                          className="w-8 h-8 rounded-full bg-[#E63946] text-white flex items-center justify-center text-lg font-bold"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </div>
+          )}
+
+          {/* Step 2: Images */}
+          {currentStep === 2 && (
+            <div className="p-5 space-y-6">
+              <section>
+                <h2 className="text-lg font-bold text-[#1A1A2E] mb-2">Hình ảnh căn hộ</h2>
+                <p className="text-gray-500 text-sm mb-4">
+                  Thêm ít nhất 5 hình ảnh chất lượng cao để thu hút khách hàng
+                </p>
+
+                {/* Image Upload Area */}
+                <button
+                  type="button"
+                  onClick={handleImageUpload}
+                  className="w-full aspect-video rounded-2xl border-2 border-dashed border-[#E63946] bg-[#FFF5F5] flex flex-col items-center justify-center gap-3 hover:bg-[#FFEBEE] transition-colors"
+                >
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#E63946] to-[#FF6B35] flex items-center justify-center">
+                    <Camera className="w-8 h-8 text-white" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-[#E63946] font-semibold">Thêm hình ảnh</p>
+                    <p className="text-gray-400 text-sm">JPG, PNG (tối đa 10MB)</p>
+                  </div>
+                </button>
+
+                {/* Preview Images */}
+                {previewImages.length > 0 && (
+                  <div className="mt-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm font-medium text-gray-700">
+                        Đã tải lên ({previewImages.length}/10)
+                      </span>
+                      {previewImages.length >= 5 && (
+                        <span className="flex items-center gap-1 text-sm text-green-600">
+                          <Check className="w-4 h-4" />
+                          Đủ điều kiện
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-hide">
+                      {previewImages.map((img, index) => (
+                        <div key={index} className="relative flex-shrink-0">
+                          <img
+                            src={img}
+                            alt={`Preview ${index + 1}`}
+                            className="w-24 h-24 object-cover rounded-xl"
+                            crossOrigin="anonymous"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeImage(index)}
+                            className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-[#E63946] text-white flex items-center justify-center shadow-lg"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                          {index === 0 && (
+                            <span className="absolute bottom-1 left-1 px-2 py-0.5 bg-[#FFB627] text-xs font-medium rounded text-white">
+                              Ảnh bìa
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={handleImageUpload}
+                        className="w-24 h-24 flex-shrink-0 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center hover:border-[#E63946] hover:bg-[#FFF5F5] transition-colors"
+                      >
+                        <Plus className="w-6 h-6 text-gray-400" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Tips Card */}
+                <div className="mt-6 p-4 bg-gradient-to-r from-[#FFF8F0] to-[#FFFBEB] rounded-2xl border border-[#FFB627]/30">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-full bg-[#FFB627] flex items-center justify-center flex-shrink-0">
+                      <Star className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-[#1A1A2E] mb-1">Mẹo chụp ảnh đẹp</h3>
+                      <ul className="text-sm text-gray-600 space-y-1">
+                        <li>- Chụp vào ban ngày với ánh sáng tự nhiên</li>
+                        <li>- Dọn dẹp gọn gàng trước khi chụp</li>
+                        <li>- Chụp từ góc rộng để thấy toàn cảnh</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+          )}
+
+          {/* Step 3: Facilities & Policies */}
+          {currentStep === 3 && (
+            <div className="p-5 space-y-6">
+              {/* Facilities */}
+              <section>
+                <h2 className="text-lg font-bold text-[#1A1A2E] mb-2">Tiện nghi</h2>
+                <p className="text-gray-500 text-sm mb-4">
+                  Chọn các tiện nghi có sẵn tại căn hộ của bạn
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  {facilities.map((facility) => {
+                    const FacilityIcon = facility.icon;
+                    const isSelected = formData.facilities.includes(facility.id);
+                    return (
+                      <button
+                        key={facility.id}
+                        type="button"
+                        onClick={() => toggleArrayItem("facilities", facility.id)}
+                        className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all min-h-[56px] ${
+                          isSelected
+                            ? "border-[#E63946] bg-[#FFF5F5]"
+                            : "border-gray-200 bg-white hover:border-gray-300"
+                        }`}
+                      >
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                          isSelected ? "bg-[#E63946] text-white" : "bg-gray-100 text-gray-500"
+                        }`}>
+                          <FacilityIcon className="w-5 h-5" />
+                        </div>
+                        <span className={`text-sm font-medium ${
+                          isSelected ? "text-[#E63946]" : "text-gray-700"
+                        }`}>
+                          {facility.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Badge Achievement */}
+                {formData.facilities.length === facilities.length && (
+                  <div className="mt-4 p-3 bg-gradient-to-r from-[#E63946] to-[#FF6B35] rounded-xl text-white flex items-center gap-3">
+                    <Sparkles className="w-6 h-6" />
+                    <div>
+                      <p className="font-bold">Tuyệt vời!</p>
+                      <p className="text-sm opacity-90">Bạn đã nhận được huy hiệu Tiện nghi đầy đủ</p>
+                    </div>
+                  </div>
+                )}
+              </section>
+
+              {/* Policies */}
+              <section>
+                <h2 className="text-lg font-bold text-[#1A1A2E] mb-2">Quy định</h2>
+                <p className="text-gray-500 text-sm mb-4">
+                  Thiết lập các quy định cho căn hộ của bạn
+                </p>
+                <div className="space-y-3">
+                  {policies.map((policy) => {
+                    const PolicyIcon = policy.icon;
+                    const isSelected = formData.policies.includes(policy.id);
+                    return (
+                      <button
+                        key={policy.id}
+                        type="button"
+                        onClick={() => toggleArrayItem("policies", policy.id)}
+                        className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all min-h-[56px] ${
+                          isSelected
+                            ? "border-[#E63946] bg-[#FFF5F5]"
+                            : "border-gray-200 bg-white hover:border-gray-300"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                            isSelected ? "bg-[#E63946] text-white" : "bg-gray-100 text-gray-500"
+                          }`}>
+                            <PolicyIcon className="w-5 h-5" />
+                          </div>
+                          <span className={`font-medium ${
+                            isSelected ? "text-[#E63946]" : "text-gray-700"
+                          }`}>
+                            {policy.label}
+                          </span>
+                        </div>
+                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                          isSelected
+                            ? "border-[#E63946] bg-[#E63946] text-white"
+                            : "border-gray-300"
+                        }`}>
+                          {isSelected && <Check className="w-4 h-4" />}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+
+              {/* Check-in/Check-out Times */}
+              <section>
+                <h2 className="text-lg font-bold text-[#1A1A2E] mb-2">Thời gian nhận/trả phòng</h2>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <label className="text-sm text-gray-500 block mb-2">Nhận phòng</label>
+                    <div className="relative">
+                      <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#E63946]" />
+                      <select
+                        value={formData.checkInTime}
+                        onChange={(e) => handleInputChange("checkInTime", e.target.value)}
+                        className="w-full pl-10 pr-3 py-3 rounded-lg border border-gray-200 bg-white text-base appearance-none focus:outline-none"
+                      >
+                        {timeOptions.map((time) => (
+                          <option key={time} value={time}>{time}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <label className="text-sm text-gray-500 block mb-2">Trả phòng</label>
+                    <div className="relative">
+                      <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#FF6B35]" />
+                      <select
+                        value={formData.checkOutTime}
+                        onChange={(e) => handleInputChange("checkOutTime", e.target.value)}
+                        className="w-full pl-10 pr-3 py-3 rounded-lg border border-gray-200 bg-white text-base appearance-none focus:outline-none"
+                      >
+                        {timeOptions.map((time) => (
+                          <option key={time} value={time}>{time}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+          )}
+
+          {/* Step 4: Review & Submit */}
+          {currentStep === 4 && (
+            <div className="p-5 space-y-6">
+              <section>
+                <div className="text-center mb-6">
+                  <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-[#E63946] to-[#FF6B35] flex items-center justify-center mb-4">
+                    <Check className="w-10 h-10 text-white" />
+                  </div>
+                  <h2 className="text-xl font-bold text-[#1A1A2E]">Xác nhận thông tin</h2>
+                  <p className="text-gray-500 mt-1">Kiểm tra lại thông tin trước khi đăng ký</p>
+                </div>
+
+                {/* Summary Cards */}
+                <div className="space-y-4">
+                  {/* Property Info Card */}
+                  <div className="bg-gray-50 rounded-2xl p-4">
+                    <h3 className="font-bold text-[#1A1A2E] mb-3 flex items-center gap-2">
+                      <Building2 className="w-5 h-5 text-[#E63946]" />
+                      Thông tin căn hộ
+                    </h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Loại hình</span>
+                        <span className="font-medium">{propertyTypes.find(t => t.id === formData.propertyType)?.label || "Chưa chọn"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Tên</span>
+                        <span className="font-medium">{formData.title || "Chưa nhập"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Địa điểm</span>
+                        <span className="font-medium">{formData.city || "Chưa chọn"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Giá/đêm</span>
+                        <span className="font-bold text-[#E63946]">
+                          {formData.pricePerNight ? `${parseInt(formData.pricePerNight).toLocaleString()} VNĐ` : "Chưa nhập"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Room Details Card */}
+                  <div className="bg-gray-50 rounded-2xl p-4">
+                    <h3 className="font-bold text-[#1A1A2E] mb-3 flex items-center gap-2">
+                      <Users className="w-5 h-5 text-[#FF6B35]" />
+                      Chi tiết phòng
+                    </h3>
+                    <div className="flex justify-between text-sm">
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-[#1A1A2E]">{formData.maxGuests}</p>
+                        <p className="text-gray-500">Khách</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-[#1A1A2E]">{formData.bedrooms}</p>
+                        <p className="text-gray-500">Phòng ngủ</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-[#1A1A2E]">{formData.bathrooms}</p>
+                        <p className="text-gray-500">Phòng tắm</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Facilities Card */}
+                  <div className="bg-gray-50 rounded-2xl p-4">
+                    <h3 className="font-bold text-[#1A1A2E] mb-3 flex items-center gap-2">
+                      <Sparkles className="w-5 h-5 text-[#FFB627]" />
+                      Tiện nghi ({formData.facilities.length})
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {formData.facilities.map((id) => {
+                        const facility = facilities.find((f) => f.id === id);
+                        return facility ? (
+                          <span
+                            key={id}
+                            className="px-3 py-1.5 bg-white rounded-full text-sm font-medium text-gray-700 border"
+                          >
+                            {facility.label}
+                          </span>
+                        ) : null;
+                      })}
+                      {formData.facilities.length === 0 && (
+                        <span className="text-gray-400 text-sm">Chưa chọn tiện nghi nào</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Images Card */}
+                  <div className="bg-gray-50 rounded-2xl p-4">
+                    <h3 className="font-bold text-[#1A1A2E] mb-3 flex items-center gap-2">
+                      <ImageIcon className="w-5 h-5 text-[#E63946]" />
+                      Hình ảnh ({previewImages.length})
+                    </h3>
+                    {previewImages.length > 0 ? (
+                      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                        {previewImages.slice(0, 4).map((img, index) => (
+                          <img
+                            key={index}
+                            src={img}
+                            alt={`Preview ${index + 1}`}
+                            className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
+                            crossOrigin="anonymous"
+                          />
+                        ))}
+                        {previewImages.length > 4 && (
+                          <div className="w-16 h-16 rounded-lg bg-gray-200 flex items-center justify-center flex-shrink-0">
+                            <span className="text-sm font-bold text-gray-600">+{previewImages.length - 4}</span>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-gray-400 text-sm">Chưa tải hình ảnh nào</span>
+                    )}
+                  </div>
+                </div>
+              </section>
+            </div>
+          )}
+        </div>
+
+        {/* Fixed Bottom Action Button */}
+        <div className="fixed bottom-16 left-1/2 -translate-x-1/2 w-full max-w-[480px] px-5 py-4 bg-white border-t border-gray-100">
           <button
-            type="submit"
-            className="w-full py-4 rounded-2xl font-bold text-lg transition-all min-h-[56px] text-white"
-            style={{ backgroundColor: COLORS.deepBlue }}
+            type="button"
+            onClick={currentStep === 4 ? handleSubmit : nextStep}
+            className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#E63946] to-[#FF6B35] text-white font-bold text-lg shadow-lg shadow-[#E63946]/30 active:scale-[0.98] transition-transform"
           >
-            매물 등록하기
+            {currentStep === 4 ? "Đăng ký căn hộ" : "Tiếp tục"}
           </button>
         </div>
 
-        {/* Bottom Navigation */}
-        <nav
-          className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-white border-t border-gray-200 z-50"
-          style={{ boxShadow: "0 -2px 10px rgba(0,0,0,0.05)" }}
-        >
-          <div className="flex items-center justify-around py-2">
+        {/* Bottom Navigation Bar */}
+        <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-white border-t border-gray-200 px-2 py-2">
+          <div className="flex items-center justify-around">
             {[
-              { icon: Home, label: "홈", active: false },
-              { icon: Search, label: "검색", active: false },
-              { icon: Building, label: "내 매물", active: true },
-              { icon: User, label: "프로필", active: false },
-            ].map(({ icon: Icon, label, active }) => (
-              <button
-                key={label}
-                className="flex flex-col items-center gap-1 px-4 py-2 min-w-[64px] min-h-[56px]"
-              >
-                <Icon
-                  className="w-6 h-6"
-                  style={{ color: active ? COLORS.deepBlue : COLORS.gray400 }}
-                />
-                <span
-                  className="text-xs font-medium"
-                  style={{ color: active ? COLORS.deepBlue : COLORS.gray500 }}
+              { icon: Home, label: "Trang chủ", active: false },
+              { icon: Search, label: "Tìm kiếm", active: false },
+              { icon: Building2, label: "Đăng tin", active: true },
+              { icon: User, label: "Tài khoản", active: false },
+            ].map((item, index) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={index}
+                  type="button"
+                  className={`flex flex-col items-center justify-center py-2 px-4 rounded-xl min-w-[64px] min-h-[56px] transition-colors ${
+                    item.active
+                      ? "text-[#E63946]"
+                      : "text-gray-400 hover:text-gray-600"
+                  }`}
                 >
-                  {label}
-                </span>
-              </button>
-            ))}
+                  <Icon className={`w-6 h-6 ${item.active ? "text-[#E63946]" : ""}`} />
+                  <span className={`text-xs mt-1 ${item.active ? "font-semibold" : ""}`}>
+                    {item.label}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </nav>
       </div>

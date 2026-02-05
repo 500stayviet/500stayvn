@@ -3,14 +3,34 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #111827;
-  --deep-blue: #003366;
-  --emerald-green: #10B981;
+  --background: #FAFAFA;
+  --foreground: #1A1A2E;
+  --card: #FFFFFF;
+  --card-foreground: #1A1A2E;
+  --primary: #E63946;
+  --primary-foreground: #FFFFFF;
+  --secondary: #FF6B35;
+  --secondary-foreground: #FFFFFF;
+  --accent: #FFB627;
+  --accent-foreground: #1A1A2E;
+  --muted: #F5F5F5;
+  --muted-foreground: #6B7280;
+  --border: #E5E7EB;
+  --input: #FFFFFF;
+  --ring: #E63946;
+  --radius: 1rem;
+  
+  /* Vietnamese-inspired warm palette */
+  --coral-red: #E63946;
+  --golden-orange: #FF6B35;
+  --sunshine-yellow: #FFB627;
+  --soft-cream: #FFF8F0;
+  --deep-charcoal: #1A1A2E;
 }
 
 body {
-  font-family: var(--font-noto-kr), var(--font-be-vietnam), var(--font-geist-sans), sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--background);
 }
 
 /* Hide scrollbar for horizontal scroll */
@@ -23,9 +43,37 @@ body {
 }
 
 /* Custom focus styles */
-input:focus, select:focus, textarea:focus, button:focus {
+input:focus, select:focus, textarea:focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(0, 51, 102, 0.2);
+  box-shadow: 0 0 0 3px rgba(230, 57, 70, 0.15);
+  border-color: var(--primary);
+}
+
+/* Smooth transitions */
+* {
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Step indicator animation */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.3);
+    opacity: 0;
+  }
+}
+
+.step-active::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: var(--primary);
+  animation: pulse-ring 1.5s ease-out infinite;
+  z-index: -1;
 }
 
 @layer base {
