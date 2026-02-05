@@ -40,18 +40,19 @@ import {
   ALL_REGIONS,
 } from "@/lib/data/vietnam-regions";
 
-// 최초 요청 컬러: Deep Blue + Emerald Green (깔끔한 스타일)
+// 베트남 스타일 컬러: Coral Red + Golden Orange + Sunshine Yellow
 const COLORS = {
-  primary: "#003366",      // Deep Blue - 메인 컬러
-  primaryLight: "#004080", // Light Deep Blue
-  accent: "#10B981",       // Emerald Green - 강조/성공
+  primary: "#E63946",      // Coral Red - 메인 컬러
+  primaryLight: "#FF6B6B", // Light Coral
+  secondary: "#FF6B35",    // Golden Orange - 보조 컬러
+  accent: "#FFB627",       // Sunshine Yellow - 강조
   success: "#10B981",      // Emerald Green - 성공/완료
   error: "#DC2626",        // Red - 에러
   white: "#FFFFFF",
-  background: "#F9FAFB",   // 깔끔한 밝은 회색 배경
+  background: "#FFF8F0",   // 따뜻한 크림색 배경
   surface: "#FFFFFF",      // 카드 배경
-  border: "#E5E7EB",       // 테두리
-  borderFocus: "#003366",  // 포커스 테두리
+  border: "#FED7AA",       // 따뜻한 오렌지 테두리
+  borderFocus: "#E63946",  // 포커스 테두리
   text: "#1F2937",         // 메인 텍스트
   textSecondary: "#6B7280", // 보조 텍스트
   textMuted: "#9CA3AF",    // 희미한 텍스트
