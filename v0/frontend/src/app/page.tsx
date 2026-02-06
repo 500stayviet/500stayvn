@@ -47,7 +47,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen flex justify-center" style={{ backgroundColor: '#F9FAFB' }}>
-      <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative app-box">
+      <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative">
         <TopBar 
           currentLanguage={currentLanguage}
           onLanguageChange={setCurrentLanguage}
