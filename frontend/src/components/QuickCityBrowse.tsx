@@ -19,14 +19,14 @@ interface QuickCityBrowseProps {
 // 홈화면에 표시할 인기 도시 (순서대로)
 const FEATURED_CITY_IDS = ['hcmc', 'hanoi', 'danang', 'nhatrang', 'dalat', 'hoian', 'phuquoc', 'vungtau'];
 
-// 도시별 대표 이미지
+// 도시별 대표 이미지 (유효한 Unsplash URL로 교체)
 const CITY_IMAGES: Record<string, string> = {
   hcmc: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=300&h=200&fit=crop',
   hanoi: 'https://images.unsplash.com/photo-1509030450996-dd1a26dda07a?w=300&h=200&fit=crop',
   danang: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=300&h=200&fit=crop',
   nhatrang: 'https://images.unsplash.com/photo-1573790387438-4da905039392?w=300&h=200&fit=crop',
   dalat: 'https://images.unsplash.com/photo-1555921015-5532091f6026?w=300&h=200&fit=crop',
-  hoian: 'https://images.unsplash.com/photo-1536086845220-f5f87e4e92ec?w=300&h=200&fit=crop',
+  hoian: 'https://images.unsplash.com/photo-1536086845220-f5f87e4e92ec?w=300&h=200&fit=crop&auto=format',
   phuquoc: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=300&h=200&fit=crop',
   vungtau: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=300&h=200&fit=crop',
 };

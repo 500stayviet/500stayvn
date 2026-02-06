@@ -284,12 +284,9 @@ export default function BottomNavigation({ hideOnPaths = [] }: BottomNavigationP
       className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-[430px] z-40"
       style={{
         backgroundColor: COLORS.surface,
-        borderTop: `4px solid #FF6B35`, // 더 두꺼운 시그니처 주황색 선
+        borderTop: `3px solid #FF6B35`,
       }}
     >
-      {/* 상단 시그니처 주황색 선 강조 */}
-      <div className="h-1 bg-gradient-to-r from-transparent via-#FF6B35 to-transparent"></div>
-      
       <div className="flex items-center justify-around py-1">
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -300,14 +297,14 @@ export default function BottomNavigation({ hideOnPaths = [] }: BottomNavigationP
             <button
               key={item.id}
               onClick={() => handleNavigation(item.id)}
-              className="flex flex-col items-center justify-center gap-0.5 px-2 py-1.5 min-h-[48px] min-w-[48px] rounded-lg transition-all duration-200 flex-1"
+              className="flex flex-col items-center justify-center gap-0.5 px-2 py-1.5 min-h-[44px] min-w-[44px] rounded-lg transition-all duration-200 flex-1"
               aria-label={item.label}
               style={{
                 backgroundColor: isActive ? `${COLORS.primary}15` : 'transparent',
               }}
             >
               <Icon 
-                className="w-6 h-6" 
+                className="w-[22px] h-[22px]" 
                 style={{ 
                   color: isActive ? COLORS.primary : COLORS.textMuted,
                 }} 
@@ -326,7 +323,6 @@ export default function BottomNavigation({ hideOnPaths = [] }: BottomNavigationP
         })}
       </div>
       
-      {/* 안전 영역 (iPhone 노치 대응) */}
       <div className="h-1 bg-white" />
     </nav>
   );
