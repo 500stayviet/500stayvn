@@ -61,3 +61,80 @@ html[lang="en"] body {
 @utility page-background {
   @apply min-h-screen bg-gray-100 flex justify-center;
 }
+
+/* 앱 전용 커스텀 스크롤바 (430px 앱 프레임 내에서만 적용) */
+.app-scroll-container {
+  overflow-y: auto; /* 콘텐츠가 넘칠 때만 스크롤 활성화 */
+  scrollbar-width: thin; /* Firefox용 얇은 스크롤바 */
+  scrollbar-color: #FF6B35 transparent; /* 주황색 스크롤바 */
+}
+
+/* Webkit 브라우저용 커스텀 스크롤바 */
+.app-scroll-container::-webkit-scrollbar {
+  width: 8px; /* 두꺼운 스크롤바 (8px) */
+  height: 8px;
+}
+
+.app-scroll-container::-webkit-scrollbar-track {
+  background: #f1f1f1; /* 밝은 회색 트랙 */
+  border-radius: 4px;
+  margin: 4px 0;
+}
+
+.app-scroll-container::-webkit-scrollbar-thumb {
+  background: #FF6B35; /* 시그니처 주황색 */
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  border: 2px solid #f1f1f1; /* 트랙과 구분되는 테두리 */
+}
+
+/* 스크롤 중일 때만 스크롤바 표시 */
+.app-scroll-container:hover::-webkit-scrollbar-thumb,
+.app-scroll-container:active::-webkit-scrollbar-thumb,
+.app-scroll-container.scrolling::-webkit-scrollbar-thumb {
+  background: #FF6B35; /* 주황색 유지 */
+  border: 2px solid #e0e0e0;
+}
+
+/* 스크롤바 호버 시 강조 */
+.app-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: #FF4500; /* 더 진한 주황색 */
+  transform: scaleX(1.1);
+}
+
+/* 430px 앱 프레임 내에서만 스크롤바 적용 */
+.w-full.max-w-\[430px\] .app-scroll-container {
+  overflow-y: auto;
+}
+
+/* 전체 페이지 레이아웃에 적용 */
+.min-h-screen.flex.flex-col .flex-1 {
+  overflow-y: auto;
+}
+
+/* 앱 컨테이너 내부 스크롤 최적화 */
+.w-full.max-w-\[430px\] .flex-1 {
+  overflow-y: auto;
+}
+
+/* 스크롤바가 필요할 때만 표시되도록 */
+@media (hover: hover) {
+  .app-scroll-container {
+    scrollbar-color: rgba(0, 0, 0, 0.1) transparent;
+  }
+  
+  .app-scroll-container:hover {
+    scrollbar-color: rgba(0, 0, 0, 0.3) transparent;
+  }
+}
+
+/* 모바일 터치 최적화 */
+@media (pointer: coarse) {
+  .app-scroll-container::-webkit-scrollbar {
+    width: 6px; /* 터치 디바이스에서 조금 더 두껍게 */
+  }
+  
+  .app-scroll-container::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2); /* 모바일에서 더 잘 보이게 */
+  }
+}

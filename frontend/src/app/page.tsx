@@ -45,14 +45,14 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gray-100 flex justify-center">
-      <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative">
+      <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col">
         <TopBar 
           currentLanguage={currentLanguage}
           onLanguageChange={setCurrentLanguage}
           hideLanguageSelector={!shouldShowLanguageSelector}
         />
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto pb-4 app-scroll-container">
           <HeroSection currentLanguage={currentLanguage} />
           <PopularStays currentLanguage={currentLanguage} />
         </div>

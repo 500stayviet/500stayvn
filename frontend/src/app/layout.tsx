@@ -56,7 +56,7 @@ export default function RootLayout({
           <LanguageProvider>
             <TranslationProvider>
               <div className="min-h-screen flex flex-col">
-                <main className="flex-1 pb-20">
+                <main className="flex-1 pb-14 app-scroll-container">
                   {children}
                 </main>
                 <BottomNavigation />

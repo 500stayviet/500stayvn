@@ -166,7 +166,7 @@ export default function PopularStays({ currentLanguage }: PopularStaysProps) {
                 <div
                   key={property.id}
                   onClick={() => openPropertyModal(property)}
-                  className="relative h-[280px] w-[calc(100vw-2rem)] sm:w-[350px] flex-shrink-0 cursor-pointer rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 active:scale-[0.98]"
+                  className="relative h-[260px] w-[calc(100vw-2rem)] sm:w-[350px] flex-shrink-0 cursor-pointer rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 active:scale-[0.98]"
                   style={{ scrollSnapAlign: 'start' }}
                 >
                 {/* 이미지 */}
