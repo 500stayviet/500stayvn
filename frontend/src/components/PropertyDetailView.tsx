@@ -1,5 +1,12 @@
 'use client';
 
+/**
+ * PropertyDetailView — 매물 상세 공통 UI (AddProperty 페이지 테마 동일)
+ * - mode="tenant": 예약하는 개념 — 날짜/인원 선택 + 예약하기 버튼 (본문 삭제 없음)
+ * - mode="owner": 내 매물 확인 개념 — 수정 버튼, 전체화면 사진 등 (본문 삭제 없음)
+ * tenant/owner 동일 디자인(섹션·폰트·여백), 상단바는 수정하지 않음.
+ */
+
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -307,13 +314,21 @@ export default function PropertyDetailView({
               </span>
             </button>
           )}
-          {mode === 'tenant' && onClose && (
-            <button
-              onClick={onClose}
-              className="p-2 text-gray-600 hover:text-gray-900 rounded-lg transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
+          {mode === 'tenant' && (
+            <div className="flex items-center gap-2">
+              {onClose && (
+                <button
+                  onClick={onClose}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-gray-700 hover:text-gray-900 transition-colors border"
+                  style={{ borderColor: COLORS.border }}
+                >
+                  <X className="w-4 h-4" />
+                  <span className="text-sm font-medium">
+                    {t('닫기', 'Đóng', 'Close', '閉じる', '关闭')}
+                  </span>
+                </button>
+              )}
+            </div>
           )}
         </div>
 
@@ -483,60 +498,98 @@ export default function PropertyDetailView({
             <p className="text-sm leading-relaxed" style={{ color: COLORS.text }}>{displayTitle}</p>
           </section>
 
-          {/* 임차인 — 매물등록과 동일 순서·글자크기 */}
+          {/* 임차인(예약): 임대인과 동일 순서·간격·모양 — 매물종류 → 방|화장실|인원 → 주소 → 도시·구 → 이용기간 → 임대료 → 숙소시설 → 체크인/아웃 → 설명 → 날짜·인원·예약하기 */}
           {mode === 'tenant' && (
             <>
+              {property.propertyType && (
+                <section className="py-3 text-left" style={SECTION_DASHED}>
+                  <p className="text-base font-bold mb-1.5" style={{ color: COLORS.text }}>{t('매물 종류', 'Loại BĐS', 'Property Type', '物件タイプ', '房源类型')}</p>
+                  <p className="text-sm" style={{ color: COLORS.text }}>{getPropertyTypeDisplay()}</p>
+                </section>
+              )}
+              {(property.bedrooms !== undefined || property.bathrooms !== undefined || (property.maxAdults != null || property.maxChildren != null)) && (
+                <section className="py-3 text-left" style={SECTION_DASHED}>
+                  <div className="grid grid-cols-3 gap-2">
+                    {property.bedrooms !== undefined && (
+                      <div>
+                        <p className="text-xs font-bold mb-1" style={{ color: COLORS.text }}>{t('방 개수', 'Số phòng', 'Bedrooms', '寝室数', '卧室数')}</p>
+                        <p className="text-sm" style={{ color: COLORS.text }}>{property.bedrooms}</p>
+                      </div>
+                    )}
+                    {property.bathrooms !== undefined && (
+                      <div>
+                        <p className="text-xs font-bold mb-1" style={{ color: COLORS.text }}>{t('화장실 수', 'Số phòng tắm', 'Bathrooms', '浴室数', '浴室数')}</p>
+                        <p className="text-sm" style={{ color: COLORS.text }}>{property.bathrooms}</p>
+                      </div>
+                    )}
+                    {(property.maxAdults != null || property.maxChildren != null) && (
+                      <div>
+                        <p className="text-xs font-bold mb-1" style={{ color: COLORS.text }}>{t('최대 인원', 'Số người tối đa', 'Max Guests', '最大人数', '最多人数')}</p>
+                        <p className="text-sm" style={{ color: COLORS.text }}>
+                          {(property.maxAdults || 0) + (property.maxChildren || 0)}
+                          {currentLanguage === 'ko' ? '명' : currentLanguage === 'vi' ? ' người' : currentLanguage === 'ja' ? '名' : currentLanguage === 'zh' ? '人' : ' guests'}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </section>
+              )}
               <section className="py-3 text-left" style={SECTION_DASHED}>
-                <p className="text-base font-bold mb-1.5" style={{ color: COLORS.text }}>
-                  {getUIText('weeklyRent', currentLanguage)}
-                </p>
-                <p className="text-base font-semibold" style={{ color: COLORS.text }}>
+                <p className="text-base font-bold mb-1.5" style={{ color: COLORS.text }}>{t('주소', 'Địa chỉ', 'Address', '住所', '地址')}</p>
+                <p className="text-sm break-words leading-relaxed" style={{ color: COLORS.text }}>{property.address || '—'}</p>
+              </section>
+              <section className="py-3 text-left" style={SECTION_DASHED}>
+                <p className="text-base font-bold mb-1.5" style={{ color: COLORS.text }}>{t('도시·구', 'Thành phố·Quận', 'City·District', '都市・区', '城市・区')}</p>
+                <p className="text-sm" style={{ color: COLORS.text }}>{getCityName() || cityName || '—'} / {getDistrictName() || districtName || '—'}</p>
+              </section>
+              {(property.checkInDate || property.checkOutDate) && (
+                <section className="py-3 text-left" style={SECTION_DASHED}>
+                  <p className="text-base font-bold mb-1.5" style={{ color: COLORS.text }}>{t('이용 가능 기간', 'Khoảng trống', 'Available period', '利用可能期間', '可用期间')}</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-sm font-bold mb-1" style={{ color: COLORS.text }}>{t('시작일', 'Ngày bắt đầu', 'Start Date', '開始日', '开始日期')}</p>
+                      <p className="text-sm" style={{ color: COLORS.text }}>
+                        {property.checkInDate && property.checkOutDate
+                          ? (() => {
+                              const segments = getBookableDateSegments(property.checkInDate!, property.checkOutDate!, bookedRanges);
+                              return segments.length > 0
+                                ? segments.length === 1
+                                  ? formatDate(segments[0].start, currentLanguage)
+                                  : formatDate(segments[0].start, currentLanguage) + ' ~'
+                                : '—';
+                            })()
+                          : '—'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold mb-1" style={{ color: COLORS.text }}>{t('종료일', 'Ngày kết thúc', 'End Date', '終了日', '结束日期')}</p>
+                      <p className="text-sm" style={{ color: COLORS.text }}>
+                        {property.checkInDate && property.checkOutDate
+                          ? (() => {
+                              const segments = getBookableDateSegments(property.checkInDate!, property.checkOutDate!, bookedRanges);
+                              return segments.length > 0
+                                ? segments.length === 1
+                                  ? formatDate(segments[0].end, currentLanguage)
+                                  : formatDate(segments[segments.length - 1].end, currentLanguage)
+                                : '—';
+                            })()
+                          : '—'}
+                      </p>
+                    </div>
+                  </div>
+                </section>
+              )}
+              <section className="py-3 text-left" style={SECTION_DASHED}>
+                <p className="text-base font-bold mb-1.5" style={{ color: COLORS.text }}>{t('1주일 임대료', 'Giá thuê 1 tuần', 'Weekly Rent', '1週間賃貸料', '1周租金')}</p>
+                <p className="text-lg font-bold" style={{ color: COLORS.text }}>
                   {formatFullPrice(property.price, property.priceUnit)}
                   <span className="text-sm font-normal ml-1.5" style={{ color: COLORS.textMuted }}>
-                    {getUIText('utilitiesIncluded', currentLanguage)}
-                    {(property.checkInTime || property.checkOutTime) && ` · ${property.checkInTime || '14:00'}/${property.checkOutTime || '12:00'}`}
+                    {t('공과금/관리비 포함', 'Bao gồm phí', 'incl. utilities', '光熱・管理費込み', '含水电')}
                   </span>
                 </p>
               </section>
 
-              {(property.checkInDate || property.checkOutDate) && (() => {
-                const segments =
-                  property.checkInDate && property.checkOutDate
-                    ? getBookableDateSegments(
-                        property.checkInDate,
-                        property.checkOutDate,
-                        bookedRanges
-                      )
-                    : [];
-                return (
-                  <section className="py-3 text-left" style={SECTION_DASHED}>
-                    <p className="text-base font-bold mb-1.5" style={{ color: COLORS.text }}>
-                      {getUIText('availableDates', currentLanguage)}
-                    </p>
-                    <p className="text-sm leading-relaxed" style={{ color: COLORS.text }}>
-                      {segments.length > 0
-                        ? segments.length === 1
-                          ? `${formatDate(segments[0].start, currentLanguage)} ~ ${formatDate(segments[0].end, currentLanguage)}`
-                          : segments.map((seg, i) => `${formatDate(seg.start, currentLanguage)} ~ ${formatDate(seg.end, currentLanguage)}`).join(' · ')
-                        : t('예약 가능한 구간 없음', 'Không còn khoảng trống', 'No available periods', '予約可能期間なし', '无可用时段')}
-                    </p>
-                  </section>
-                );
-              })()}
-
-              {/* 방·화장실·인원 (한 줄) */}
-              {(property.maxAdults || property.maxChildren) && (
-                <section className="py-3 text-left" style={SECTION_DASHED}>
-                  <p className="text-base font-bold mb-1.5" style={{ color: COLORS.text }}>
-                    {getUIText('maxGuests', currentLanguage)}
-                  </p>
-                  <p className="text-sm leading-relaxed" style={{ color: COLORS.text }}>
-                    {[property.bedrooms != null && `${property.bedrooms} ${t('방', 'Phòng', 'Rooms', '部屋', '房间')}`, property.bathrooms != null && `${property.bathrooms} ${t('화장실', 'Phòng tắm', 'Bathrooms', '浴室', '浴室')}`, (property.maxAdults != null || property.maxChildren != null) && `${(property.maxAdults || 0) + (property.maxChildren || 0)} ${t('인원', 'Người', 'Guests', '人数', '人数')}`].filter(Boolean).join(' · ')}
-                  </p>
-                </section>
-              )}
-
-              {/* 숙소시설 및 정책 */}
+              {/* 숙소시설 및 정책 (임대인과 동일 블록 스타일) */}
               <section
                 className="p-5 rounded-2xl text-left"
                 style={{
@@ -618,6 +671,22 @@ export default function PropertyDetailView({
                 )}
               </section>
 
+              {(property.checkInTime || property.checkOutTime) && (
+                <section className="py-3 text-left" style={SECTION_DASHED}>
+                  <p className="text-base font-bold mb-1.5" style={{ color: COLORS.text }}>{t('체크인/체크아웃 시간', 'Giờ check-in/out', 'Check-in/out time', 'チェックイン・アウト', '入住/退房时间')}</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-sm font-bold mb-1" style={{ color: COLORS.text }}>{t('체크인', 'Check-in', 'Check-in', 'チェックイン', '入住')}</p>
+                      <p className="text-base" style={{ color: COLORS.text }}>{property.checkInTime || '14:00'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold mb-1" style={{ color: COLORS.text }}>{t('체크아웃', 'Check-out', 'Check-out', 'チェックアウト', '退房')}</p>
+                      <p className="text-base" style={{ color: COLORS.text }}>{property.checkOutTime || '12:00'}</p>
+                    </div>
+                  </div>
+                </section>
+              )}
+
               {property.original_description && (
                 <section className="py-3 text-left" style={SECTION_DASHED}>
                   <p className="text-base font-bold mb-1.5" style={{ color: COLORS.text }}>
@@ -646,10 +715,10 @@ export default function PropertyDetailView({
                       setShowCalendar(true);
                       setShowGuestDropdown(false);
                     }}
-                    className={`flex flex-col items-center px-1.5 py-2 rounded-none border-b border-solid transition-all ${
-                      checkInDate ? 'border-orange-400' : 'border-transparent hover:border-orange-200'
+                    className={`flex flex-col items-center justify-center min-h-[52px] px-2 py-2 rounded-lg border-2 border-solid transition-all ${
+                      checkInDate ? 'bg-orange-50/50' : 'bg-white'
                     }`}
-                    style={checkInDate ? undefined : ROW_LINE}
+                    style={{ borderColor: checkInDate ? COLORS.secondary : '#d1d5db' }}
                   >
                     <span className="text-[9px] text-gray-500 mb-0.5">
                       {getUIText('checkIn', currentLanguage)}
@@ -675,10 +744,10 @@ export default function PropertyDetailView({
                       setShowCalendar(true);
                       setShowGuestDropdown(false);
                     }}
-                    className={`flex flex-col items-center px-1.5 py-2 rounded-none border-b border-solid transition-all ${
-                      checkOutDate ? 'border-orange-400' : 'border-transparent hover:border-orange-200'
+                    className={`flex flex-col items-center justify-center min-h-[52px] px-2 py-2 rounded-lg border-2 border-solid transition-all ${
+                      checkOutDate ? 'bg-orange-50/50' : 'bg-white'
                     }`}
-                    style={checkOutDate ? undefined : ROW_LINE}
+                    style={{ borderColor: checkOutDate ? COLORS.secondary : '#d1d5db' }}
                   >
                     <span className="text-[9px] text-gray-500 mb-0.5">
                       {getUIText('checkOut', currentLanguage)}
@@ -705,10 +774,10 @@ export default function PropertyDetailView({
                         setShowGuestDropdown(!showGuestDropdown);
                         setShowCalendar(false);
                       }}
-                      className={`w-full min-h-[44px] flex flex-col items-center justify-center px-1.5 py-2 rounded-none border-b border-solid transition-all ${
-                        showGuestDropdown ? 'border-orange-400' : 'border-transparent hover:border-orange-200'
+                      className={`w-full min-h-[52px] flex flex-col items-center justify-center px-2 py-2 rounded-lg border-2 border-solid transition-all ${
+                        showGuestDropdown ? 'bg-orange-50/50' : 'bg-white'
                       }`}
-                      style={showGuestDropdown ? undefined : ROW_LINE}
+                      style={{ borderColor: showGuestDropdown ? COLORS.secondary : '#d1d5db' }}
                     >
                       <span className="text-[9px] text-gray-500 mb-0.5">
                         {getUIText('guestSelect', currentLanguage)}
@@ -872,7 +941,7 @@ export default function PropertyDetailView({
             </>
           )}
 
-          {/* 임대인 — 정렬만 이전처럼(여백 축소), 사이즈 유지 */}
+          {/* 임대인(내 매물 확인): 동일 디자인 유지, 수정·전체화면 등 */}
           {mode === 'owner' && (
             <>
               {property.propertyType && (
@@ -886,19 +955,19 @@ export default function PropertyDetailView({
                   <div className="grid grid-cols-3 gap-2">
                     {property.bedrooms !== undefined && (
                       <div>
-                        <p className="text-base font-bold mb-1" style={{ color: COLORS.text }}>{t('방 개수', 'Số phòng', 'Bedrooms', '寝室数', '卧室数')}</p>
+                        <p className="text-xs font-bold mb-1" style={{ color: COLORS.text }}>{t('방 개수', 'Số phòng', 'Bedrooms', '寝室数', '卧室数')}</p>
                         <p className="text-sm" style={{ color: COLORS.text }}>{property.bedrooms}</p>
                       </div>
                     )}
                     {property.bathrooms !== undefined && (
                       <div>
-                        <p className="text-base font-bold mb-1" style={{ color: COLORS.text }}>{t('화장실 수', 'Số phòng tắm', 'Bathrooms', '浴室数', '浴室数')}</p>
+                        <p className="text-xs font-bold mb-1" style={{ color: COLORS.text }}>{t('화장실 수', 'Số phòng tắm', 'Bathrooms', '浴室数', '浴室数')}</p>
                         <p className="text-sm" style={{ color: COLORS.text }}>{property.bathrooms}</p>
                       </div>
                     )}
                     {(property.maxAdults != null || property.maxChildren != null) && (
                       <div>
-                        <p className="text-base font-bold mb-1" style={{ color: COLORS.text }}>{t('최대 인원', 'Số người tối đa', 'Max Guests', '最大人数', '最多人数')}</p>
+                        <p className="text-xs font-bold mb-1" style={{ color: COLORS.text }}>{t('최대 인원', 'Số người tối đa', 'Max Guests', '最大人数', '最多人数')}</p>
                         <p className="text-sm" style={{ color: COLORS.text }}>
                           {(property.maxAdults || 0) + (property.maxChildren || 0)}
                           {currentLanguage === 'ko' ? '명' : currentLanguage === 'vi' ? ' người' : currentLanguage === 'ja' ? '名' : currentLanguage === 'zh' ? '人' : ' guests'}
