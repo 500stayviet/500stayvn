@@ -800,14 +800,14 @@ export default function AddPropertyPage() {
       style={{ backgroundColor: COLORS.background }}
     >
       <div
-        className="w-full max-w-[430px] min-h-screen shadow-xl flex flex-col relative pb-20"
+        className="w-full max-w-[430px] min-h-screen shadow-xl flex flex-col relative"
         style={{ backgroundColor: COLORS.surface }}
       >
         {/* 상단 바 */}
         <TopBar />
 
-        {/* 콘텐츠 */}
-        <div className="px-5 py-5">
+        {/* 콘텐츠 - 스크롤 가능한 영역 */}
+        <div className="flex-1 overflow-y-auto px-5 py-4 pb-4">
           {/* 헤더 */}
           <div
             className="mb-5 pb-4"

@@ -43,6 +43,24 @@ import {
 } from "@/lib/data/vietnam-regions";
 import { uploadToS3 } from "@/lib/s3-client";
 
+// 베트남 스타일 컬러: Coral Red + Golden Orange + Sunshine Yellow (add-property와 동일)
+const COLORS = {
+  primary: "#E63946", // Coral Red - 메인 컬러
+  primaryLight: "#FF6B6B", // Light Coral
+  secondary: "#FF6B35", // Golden Orange - 보조 컬러
+  accent: "#FFB627", // Sunshine Yellow - 강조
+  success: "#10B981", // Emerald Green - 성공/완료
+  error: "#DC2626", // Red - 에러
+  white: "#FFFFFF",
+  background: "#FFF8F0", // 따뜻한 크림색 배경
+  surface: "#FFFFFF", // 카드 배경
+  border: "#FED7AA", // 따뜻한 오렌지 테두리
+  borderFocus: "#E63946", // 포커스 테두리
+  text: "#1F2937", // 메인 텍스트
+  textSecondary: "#6B7280", // 보조 텍스트
+  textMuted: "#9CA3AF", // 희미한 텍스트
+};
+
 // 1. 모든 비즈니스 로직을 담은 내부 컴포넌트
 function EditPropertyContent() {
   const router = useRouter();
@@ -403,58 +421,97 @@ function EditPropertyContent() {
 
   if (authLoading || loadingProperty)
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="animate-spin" />
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-gray-500">
+          {currentLanguage === "ko"
+            ? "로딩 중..."
+            : currentLanguage === "vi"
+              ? "Đang tải..."
+              : "Loading..."}
+        </div>
       </div>
     );
 
   return (
-    <div className="min-h-screen bg-gray-100 flex justify-center">
-      <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative">
-        <TopBar
-          currentLanguage={currentLanguage}
-          onLanguageChange={setCurrentLanguage}
-        />
-        <div className="p-6 overflow-y-auto">
-          <button
-            onClick={() => {
-              // 모달 상세에서 들어온 경우: 뒤로 시 my-properties + 해당 매물 모달 다시 열기
-              if (fromModal && propertyId) {
-                router.push(`/profile/my-properties?open=${propertyId}`);
-                return;
-              }
-              router.back();
-            }}
-            className="flex items-center gap-2 mb-4 text-gray-600"
-          >
-            <ArrowLeft size={20} /> {getUIText("back", currentLanguage)}
-          </button>
-          <h1 className="text-2xl font-bold mb-6">
-            {currentLanguage === "ko"
-              ? "매물 수정"
-              : currentLanguage === "zh"
-                ? "编辑房产"
-                : currentLanguage === "vi"
-                  ? "Chỉnh sửa bất động sản"
-                  : currentLanguage === "ja"
-                    ? "物件編集"
-                    : "Edit Property"}
-          </h1>
+    <div
+      className="min-h-screen flex justify-center"
+      style={{ backgroundColor: COLORS.background }}
+    >
+      <div
+        className="w-full max-w-[430px] min-h-screen shadow-xl flex flex-col relative"
+        style={{ backgroundColor: COLORS.surface }}
+      >
+        {/* 상단 바 */}
+        <TopBar />
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* 사진 등록 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {currentLanguage === "ko"
-                  ? "사진 등록"
+        {/* 콘텐츠 - 스크롤 가능한 영역 */}
+        <div className="flex-1 overflow-y-auto px-5 py-4 pb-4">
+          {/* 헤더 */}
+          <div
+            className="mb-5 pb-4"
+            style={{ borderBottom: `1px solid ${COLORS.border}` }}
+          >
+            <button
+              onClick={() => {
+                // 모달 상세에서 들어온 경우: 뒤로 시 my-properties + 해당 매물 모달 다시 열기
+                if (fromModal && propertyId) {
+                  router.push(`/profile/my-properties?open=${propertyId}`);
+                  return;
+                }
+                router.back();
+              }}
+              className="flex items-center gap-2 mb-2 text-gray-600"
+            >
+              <ArrowLeft size={20} /> {getUIText("back", currentLanguage)}
+            </button>
+            <h1 className="text-xl font-bold" style={{ color: COLORS.text }}>
+              {currentLanguage === "ko"
+                ? "매물 수정"
+                : currentLanguage === "zh"
+                  ? "编辑房产"
                   : currentLanguage === "vi"
-                    ? "Đăng ảnh"
-                    : "Upload Photos"}
-                <span className="text-red-500 text-xs ml-1">*</span>
-                <span className="text-gray-500 text-xs ml-2">
-                  ({imagePreviews.length}/5)
+                    ? "Chỉnh sửa bất động sản"
+                    : currentLanguage === "ja"
+                      ? "物件編集"
+                      : "Edit Property"}
+            </h1>
+            <p className="text-sm mt-1" style={{ color: COLORS.textSecondary }}>
+              {currentLanguage === "ko"
+                ? "매물 정보를 수정해주세요"
+                : currentLanguage === "vi"
+                  ? "Vui lòng chỉnh sửa thông tin bất động sản"
+                  : "Please edit property information"}
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* 이미지 업로드 */}
+            <section
+              className="p-5 rounded-2xl"
+              style={{
+                backgroundColor: COLORS.surface,
+                border: `1.5px dashed ${COLORS.border}`,
+              }}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <h2
+                  className="text-sm font-bold"
+                  style={{ color: COLORS.text }}
+                >
+                  {currentLanguage === "ko"
+                    ? "사진 등록"
+                    : currentLanguage === "vi"
+                      ? "Đăng ảnh"
+                      : "Upload Photos"}
+                  <span style={{ color: COLORS.error }} className="ml-1">
+                    *
+                  </span>
+                </h2>
+                <span className="text-xs" style={{ color: COLORS.textMuted }}>
+                  {imagePreviews.length}/5
                 </span>
-              </label>
+              </div>
+
               <div className="grid grid-cols-3 gap-3">
                 {imagePreviews.map((preview, index) => (
                   <div
@@ -482,98 +539,233 @@ function EditPropertyContent() {
                           );
                         }
                       }}
-                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
                     >
                       <X className="w-4 h-4" />
                     </button>
                   </div>
                 ))}
                 {imagePreviews.length < 5 && (
-                  <button
-                    type="button"
-                    onClick={() => setShowImageSourceMenu(true)}
-                    className="aspect-square rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors"
-                  >
-                    <Camera className="w-8 h-8 text-gray-400 mb-1" />
-                    <span className="text-xs text-gray-500">
-                      {currentLanguage === "ko"
-                        ? "추가"
-                        : currentLanguage === "vi"
-                          ? "Thêm"
-                          : "Add"}
-                    </span>
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setShowImageSourceMenu(true)}
+                      className="aspect-square rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors"
+                    >
+                      <Camera className="w-8 h-8 text-gray-400 mb-1" />
+                      <span className="text-xs text-gray-500">
+                        {currentLanguage === "ko"
+                          ? "추가"
+                          : currentLanguage === "vi"
+                            ? "Thêm"
+                            : "Add"}
+                      </span>
+                    </button>
+
+                    {/* 숨겨진 input들 */}
+                    <input
+                      ref={photoLibraryInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files || []);
+                        setImages((prev) => [...prev, ...files]);
+                        setImagePreviews((prev) => [
+                          ...prev,
+                          ...files.map((f) => URL.createObjectURL(f)),
+                        ]);
+                      }}
+                      className="hidden"
+                    />
+                    <input
+                      ref={cameraInputRef}
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setImages((prev) => [...prev, file]);
+                          setImagePreviews((prev) => [...prev, URL.createObjectURL(file)]);
+                        }
+                      }}
+                      className="hidden"
+                    />
+                  </>
                 )}
               </div>
-            </div>
 
-            {/* 매물 종류 */}
-            <div className="space-y-4">
-              <label className="block text-sm font-medium text-gray-700">
+              {/* 이미지 소스 선택 메뉴 */}
+              {showImageSourceMenu && (
+                <div
+                  className="fixed inset-0 bg-black/50 flex items-end z-50"
+                  onClick={() => setShowImageSourceMenu(false)}
+                >
+                  <div
+                    className="w-full bg-white rounded-t-2xl p-6"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">
+                      {currentLanguage === "ko"
+                        ? "사진 추가 방법 선택"
+                        : currentLanguage === "vi"
+                          ? "Chọn cách thêm ảnh"
+                          : "Select Photo Source"}
+                    </h3>
+                    <div className="space-y-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowImageSourceMenu(false);
+                          photoLibraryInputRef.current?.click();
+                        }}
+                        className="w-full py-4 px-4 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-3"
+                      >
+                        <Camera className="w-5 h-5" />
+                        <span>
+                          {currentLanguage === "ko"
+                            ? "사진첩에서 선택"
+                            : currentLanguage === "vi"
+                              ? "Chọn từ thư viện ảnh"
+                              : "Select from Photo Library"}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowImageSourceMenu(false);
+                          cameraInputRef.current?.click();
+                        }}
+                        className="w-full py-4 px-4 bg-gray-100 text-gray-900 rounded-xl font-medium hover:bg-gray-200 transition-colors flex items-center justify-center gap-3"
+                      >
+                        <Camera className="w-5 h-5" />
+                        <span>
+                          {currentLanguage === "ko"
+                            ? "카메라로 촬영"
+                            : currentLanguage === "vi"
+                              ? "Chụp ảnh"
+                              : "Take Photo"}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowImageSourceMenu(false)}
+                        className="w-full py-3 px-4 text-gray-600 rounded-xl font-medium hover:bg-gray-100 transition-colors"
+                      >
+                        {currentLanguage === "ko"
+                          ? "취소"
+                          : currentLanguage === "vi"
+                            ? "Hủy"
+                            : "Cancel"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </section>
+
+            {/* 매물 종류 / 방 개수 / 화장실 수 */}
+            <section
+              className="p-5 rounded-2xl"
+              style={{
+                backgroundColor: `${COLORS.border}20`,
+                border: `1.5px dashed ${COLORS.border}`,
+              }}
+            >
+              <h2
+                className="text-sm font-bold mb-4"
+                style={{ color: COLORS.text }}
+              >
                 {currentLanguage === "ko"
                   ? "매물 종류"
                   : currentLanguage === "vi"
                     ? "Loại bất động sản"
                     : "Property Type"}
-                <span className="text-red-500 text-xs ml-1">*</span>
-              </label>
-              <div className="grid grid-cols-2 gap-2">
+                <span style={{ color: COLORS.error }} className="ml-1">
+                  *
+                </span>
+              </h2>
+              <div className="flex flex-wrap gap-2">
                 {(
                   [
                     {
-                      value: "studio",
+                      value: "studio" as const,
                       ko: "스튜디오",
                       vi: "Studio",
                       en: "Studio",
+                      ja: "スタジオ",
+                      zh: "工作室",
                     },
                     {
-                      value: "one_room",
+                      value: "one_room" as const,
                       ko: "원룸(방·거실 분리)",
-                      vi: "1 phòng",
-                      en: "1 Room",
+                      vi: "Phòng đơn (phòng ngủ & phòng khách riêng)",
+                      en: "One Room (bedroom & living room separate)",
+                      ja: "ワンルーム（寝室・リビング別）",
+                      zh: "一室（卧室与客厅分开）",
                     },
                     {
-                      value: "two_room",
+                      value: "two_room" as const,
                       ko: "2룸",
                       vi: "2 phòng",
                       en: "2 Rooms",
+                      ja: "2ルーム",
+                      zh: "2室",
                     },
                     {
-                      value: "three_plus",
+                      value: "three_plus" as const,
                       ko: "3+룸",
                       vi: "3+ phòng",
                       en: "3+ Rooms",
+                      ja: "3+ルーム",
+                      zh: "3+室",
                     },
                     {
-                      value: "detached",
+                      value: "detached" as const,
                       ko: "독채",
                       vi: "Nhà riêng",
-                      en: "Detached",
+                      en: "Detached House",
+                      ja: "一戸建て",
+                      zh: "独栋房屋",
                     },
                   ] as const
-                ).map(({ value, ko, vi, en }) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setPropertyType(value)}
-                    className={`px-4 py-2.5 rounded-xl border-2 text-sm font-medium transition-all ${
-                      propertyType === value
-                        ? "border-blue-500 bg-blue-50 text-blue-700"
-                        : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
-                    }`}
-                  >
-                    {currentLanguage === "ko"
-                      ? ko
-                      : currentLanguage === "vi"
-                        ? vi
-                        : en}
-                  </button>
-                ))}
+                ).map(({ value, ko, vi, en, ja, zh }) => {
+                  const label = 
+                    currentLanguage === "ko" ? ko :
+                    currentLanguage === "vi" ? vi :
+                    currentLanguage === "ja" ? ja :
+                    currentLanguage === "zh" ? zh :
+                    en;
+                  
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setPropertyType(value)}
+                      className="inline-flex items-center justify-center px-3 py-2 rounded-xl text-xs font-bold transition-all"
+                      style={{
+                        backgroundColor: propertyType === value ? COLORS.primary : COLORS.white,
+                        color: propertyType === value ? COLORS.white : COLORS.text,
+                        border: `1px solid ${propertyType === value ? COLORS.primary : COLORS.border}`,
+                      }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
               </div>
+
               {propertyType && (
-                <div className="grid grid-cols-3 gap-3 pt-2">
+                <div
+                  className="grid grid-cols-3 gap-2 mt-4 pt-4"
+                  style={{ borderTop: `1px solid ${COLORS.border}40` }}
+                >
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                    <label
+                      className="block text-[11px] font-medium mb-1.5"
+                      style={{ color: COLORS.textSecondary }}
+                    >
                       {currentLanguage === "ko"
                         ? "방 개수"
                         : currentLanguage === "vi"
@@ -588,13 +780,12 @@ function EditPropertyContent() {
                         propertyType === "one_room" ||
                         propertyType === "two_room"
                       }
-                      className={`w-full px-4 py-2.5 border-2 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 ${
-                        propertyType === "studio" ||
-                        propertyType === "one_room" ||
-                        propertyType === "two_room"
-                          ? "bg-gray-200 border-gray-300 text-gray-500 cursor-not-allowed"
-                          : "bg-gray-50 border-gray-200"
-                      }`}
+                      className="w-full px-2 py-2 rounded-md text-sm min-h-[36px] focus:outline-none transition-all"
+                      style={{
+                        backgroundColor: COLORS.white,
+                        border: `1px solid ${COLORS.border}`,
+                        color: COLORS.text,
+                      }}
                     >
                       {(() => {
                         const opts =
@@ -619,7 +810,10 @@ function EditPropertyContent() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                    <label
+                      className="block text-[11px] font-medium mb-1.5"
+                      style={{ color: COLORS.textSecondary }}
+                    >
                       {currentLanguage === "ko"
                         ? "화장실 수"
                         : currentLanguage === "vi"
@@ -629,7 +823,12 @@ function EditPropertyContent() {
                     <select
                       value={bathrooms}
                       onChange={(e) => setBathrooms(Number(e.target.value))}
-                      className="w-full px-4 py-2.5 bg-gray-50 border-2 border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-2 py-2 rounded-md text-sm min-h-[36px] focus:outline-none transition-all"
+                      style={{
+                        backgroundColor: COLORS.white,
+                        border: `1px solid ${COLORS.border}`,
+                        color: COLORS.text,
+                      }}
                     >
                       {(() => {
                         const opts =
@@ -654,7 +853,10 @@ function EditPropertyContent() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                    <label
+                      className="block text-[11px] font-medium mb-1.5"
+                      style={{ color: COLORS.textSecondary }}
+                    >
                       {currentLanguage === "ko"
                         ? "최대 인원"
                         : currentLanguage === "vi"
@@ -668,7 +870,12 @@ function EditPropertyContent() {
                         setMaxAdults(v);
                         setMaxChildren(0);
                       }}
-                      className="w-full px-4 py-2.5 bg-gray-50 border-2 border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-2 py-2 rounded-md text-sm min-h-[36px] focus:outline-none transition-all"
+                      style={{
+                        backgroundColor: COLORS.white,
+                        border: `1px solid ${COLORS.border}`,
+                        color: COLORS.text,
+                      }}
                     >
                       {Array.from({ length: 20 }, (_, i) => i + 1).map((n) => (
                         <option key={n} value={n}>
@@ -684,7 +891,7 @@ function EditPropertyContent() {
                   </div>
                 </div>
               )}
-            </div>
+            </section>
 
             {/* 주소 */}
             <div>
@@ -1569,13 +1776,24 @@ function EditPropertyContent() {
               )}
             </div>
 
+            {/* 수정 버튼 */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all"
+              className="w-full py-3.5 px-6 rounded-xl font-semibold text-base disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+              style={{ backgroundColor: COLORS.primary, color: COLORS.white }}
             >
               {loading ? (
-                <Loader2 className="animate-spin" />
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>
+                    {currentLanguage === "ko"
+                      ? "수정 중..."
+                      : currentLanguage === "vi"
+                        ? "Đang chỉnh sửa..."
+                        : "Updating..."}
+                  </span>
+                </>
               ) : isDeleted ? (
                 currentLanguage === "ko" ? (
                   "재등록"
