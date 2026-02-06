@@ -1909,16 +1909,16 @@ export default function AddPropertyPage() {
               </div>
             </section>
 
-            {/* 숙소시설 및 정책 */}
+            {/* 숙소시설 및 정책 — 편지지: 상단 제목, 하단 내용, 왼쪽 정렬 */}
             <section
-              className="p-5 rounded-2xl"
+              className="p-5 rounded-2xl text-left"
               style={{
                 backgroundColor: `${COLORS.border}20`,
                 border: `1.5px dashed ${COLORS.border}`,
               }}
             >
               <h2
-                className="text-sm font-bold mb-4"
+                className="text-sm font-bold mb-4 text-left"
                 style={{ color: COLORS.text }}
               >
                 {currentLanguage === "ko"
@@ -1931,7 +1931,7 @@ export default function AddPropertyPage() {
                     ? "设施与政策"
                     : "Facilities & Policy"}
               </h2>
-              <div className="space-y-6">
+              <div className="space-y-6 text-left">
                 {FACILITY_CATEGORIES.map((cat) => {
                   const isBadgeCategory = ["furniture", "electronics", "kitchen"].includes(cat.id);
                   const fullFurniture =
@@ -1950,15 +1950,15 @@ export default function AddPropertyPage() {
                       selectedFacilities.includes(id),
                     );
                   return (
-                    <div 
+                    <div
                       key={cat.id}
-                      className="pt-4 pb-2"
+                      className="pt-4 pb-2 text-left"
                       style={{
                         borderTop: `1.5px dashed ${COLORS.border}`,
                       }}
                     >
-                      <div className="flex items-center gap-2 mb-2">
-                        <p className="text-xs font-bold text-gray-500">{(cat.label as any)[currentLanguage]}</p>
+                      <div className="flex items-center gap-2 mb-2 justify-start text-left">
+                        <p className="text-xs font-bold text-gray-500 text-left">{(cat.label as any)[currentLanguage]}</p>
                         {/* 뱃지 획득 안내 문구 추가 */}
                         {isBadgeCategory && (
                           <div className="flex items-center gap-1 bg-orange-50 px-2 py-0.5 rounded-full">
@@ -1968,8 +1968,8 @@ export default function AddPropertyPage() {
                         )}
                       </div>
                       
-                      {/* 시설 아이콘 그리드 */}
-                      <div className="grid grid-cols-4 gap-3">
+                      {/* 시설 아이콘 그리드 — 왼쪽 정렬 */}
+                      <div className="grid grid-cols-4 gap-3 justify-items-start">
                         {FACILITY_OPTIONS.filter(o => o.category === cat.id).map(opt => {
                           const Icon = opt.icon;
                           const isSelected = selectedFacilities.includes(opt.id);
@@ -1977,7 +1977,7 @@ export default function AddPropertyPage() {
                           const isPet = opt.id === "pet";
                           const isCleaning = opt.id === "cleaning";
                           return (
-                            <div key={opt.id} className="flex flex-col items-center gap-1.5">
+                            <div key={opt.id} className="flex flex-col items-center gap-1.5 text-left">
                               <button
                                 type="button"
                                 onClick={() => toggleFacility(opt.id)}

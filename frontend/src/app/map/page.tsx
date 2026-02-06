@@ -6,11 +6,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
 import TopBar from "@/components/TopBar";
-import MyPropertyDetailContent from "@/components/MyPropertyDetailContent";
 import GrabMapComponent from "@/components/GrabMapComponent";
-import { getProperty } from "@/lib/api/properties";
 import { PropertyData } from "@/types/property";
-import PropertyModal from "@/components/map/PropertyModal";
 import { formatPrice, getCityName } from "@/lib/utils/propertyUtils";
 import { isAvailableNow, formatDateForBadge } from "@/lib/utils/dateUtils";
 import Image from "next/image";
@@ -51,11 +48,6 @@ function MapContent() {
   const cardSliderRef = useRef<HTMLDivElement>(null);
   const programmaticScrollTargetRef = useRef<number | null>(null);
 
-  const [showDetailModal, setShowDetailModal] = useState(false);
-  const [detailProperty, setDetailProperty] = useState<PropertyData | null>(
-    null,
-  );
-  const [detailLoading, setDetailLoading] = useState(false);
 
   // 검색어 입력 — 홈과 동일 로직 (보기 드롭다운)
   const [searchValue, setSearchValue] = useState("");
@@ -222,18 +214,6 @@ function MapContent() {
     if (currentIndex !== -1) handlePropertySelect(currentIndex, property);
   };
 
-  const handleOpenDetailModal = async (propertyId: string) => {
-    setDetailLoading(true);
-    setShowDetailModal(true);
-    try {
-      const data = await getProperty(propertyId);
-      setDetailProperty(data);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setDetailLoading(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gray-100 flex justify-center">
@@ -283,7 +263,7 @@ function MapContent() {
                     key={property.id}
                     onClick={() => {
                       handlePropertySelect(index, property);
-                      handleOpenDetailModal(property.id);
+                      router.push(`/properties/${property.id}`);
                     }}
                     className={`relative h-[250px] w-[calc(100vw-4rem)] max-w-[320px] flex-shrink-0 cursor-pointer rounded-2xl overflow-hidden shadow-lg snap-start transition-all border-4 ${selectedPropertyIndex === index ? "border-blue-600" : "border-transparent"}`}
                   >
@@ -326,44 +306,6 @@ function MapContent() {
             </div>
           </div>
         </main>
-        {showDetailModal && detailProperty && (
-          user && detailProperty.ownerId === user.uid ? (
-            <div
-              className="fixed inset-0 z-[90] bg-black/50 flex items-center justify-center p-4"
-              onClick={() => setShowDetailModal(false)}
-            >
-              <div
-                className="bg-white rounded-2xl w-full max-w-[430px] max-h-[90vh] overflow-y-auto shadow-2xl"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <MyPropertyDetailContent
-                  property={detailProperty}
-                  currentLanguage={currentLanguage}
-                  onBack={() => setShowDetailModal(false)}
-                  onEdit={() => {
-                    setShowDetailModal(false);
-                    if (detailProperty?.id)
-                      router.push(`/profile/my-properties/${detailProperty.id}/edit`);
-                  }}
-                />
-              </div>
-            </div>
-          ) : (
-            <PropertyModal
-              propertyData={detailProperty}
-              currentLanguage={currentLanguage}
-              onClose={() => setShowDetailModal(false)}
-            />
-          )
-        )}
-        {detailLoading && (
-          <div className="absolute inset-0 z-[110] bg-black/20 flex items-center justify-center">
-            <div className="bg-white p-4 rounded-2xl flex items-center gap-3">
-              <Loader2 className="animate-spin text-blue-600" />
-              <span>{getUIText('loading', currentLanguage)}</span>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

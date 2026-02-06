@@ -18,8 +18,6 @@ import { useProperties } from '@/hooks/useProperties';
 import { useAuth } from '@/hooks/useAuth';
 import { getUIText } from '@/utils/i18n';
 import { PropertyData } from '@/types/property';
-import PropertyModal from '@/components/map/PropertyModal';
-import MyPropertyDetailContent from '@/components/MyPropertyDetailContent';
 import { 
   formatPrice, 
   getCityName, 
@@ -42,7 +40,6 @@ export default function PopularStays({ currentLanguage }: PopularStaysProps) {
   const [isClient, setIsClient] = useState(false);
 
   // 모달 상태
-  const [selectedProperty, setSelectedProperty] = useState<PropertyData | null>(null);
 
   // 클라이언트 사이드에서만 렌더링 (SSR 방지)
   useEffect(() => {
@@ -107,14 +104,9 @@ export default function PopularStays({ currentLanguage }: PopularStaysProps) {
     }
   };
 
-  // 모달 열기
+  // 매물 클릭 시 /properties/[id] 로 이동 (인터셉팅 라우트에서 모달처럼 표시)
   const openPropertyModal = (property: PropertyData) => {
-    setSelectedProperty(property);
-  };
-
-  // 모달 닫기
-  const closePropertyModal = () => {
-    setSelectedProperty(null);
+    router.push(`/properties/${property.id}`);
   };
 
   // 서버 사이드에서는 아무것도 렌더링하지 않음
@@ -273,28 +265,6 @@ export default function PopularStays({ currentLanguage }: PopularStaysProps) {
         )}
       </div>
 
-      {/* 상세 모달 — 본인 매물이면 임대인용(my-properties) 모달, 아니면 임차인용 모달 */}
-      {selectedProperty && (user && selectedProperty.ownerId === user.uid ? (
-        <div className="fixed inset-0 z-[90] bg-black/50 flex items-center justify-center p-4" onClick={closePropertyModal}>
-          <div className="bg-white rounded-2xl w-full max-w-[430px] max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <MyPropertyDetailContent
-              property={selectedProperty}
-              currentLanguage={currentLanguage}
-              onBack={closePropertyModal}
-              onEdit={() => {
-                closePropertyModal();
-                if (selectedProperty?.id) router.push(`/profile/my-properties/${selectedProperty.id}/edit`);
-              }}
-            />
-          </div>
-        </div>
-      ) : (
-        <PropertyModal
-          propertyData={selectedProperty}
-          onClose={closePropertyModal}
-          currentLanguage={currentLanguage}
-        />
-      ))}
     </section>
   );
 }

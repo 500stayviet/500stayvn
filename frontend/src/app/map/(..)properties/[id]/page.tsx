@@ -1,6 +1,5 @@
 /**
- * 매물 상세 페이지 - /properties/[id]
- * 직접 접근 시 전체 페이지로 PropertyDetailView 표시
+ * 인터셉팅 라우트: /map 에서 /properties/[id] 로 이동 시 모달처럼 표시
  */
 
 'use client';
@@ -11,16 +10,15 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getProperty } from '@/lib/api/properties';
 import { PropertyData } from '@/types/property';
-import TopBar from '@/components/TopBar';
 import PropertyDetailView from '@/components/PropertyDetailView';
 import type { SupportedLanguage } from '@/lib/api/translation';
 
-export default function PropertyDetailPage() {
+export default function InterceptedPropertyPage() {
   const router = useRouter();
   const params = useParams();
   const propertyId = params.id as string;
   const { user } = useAuth();
-  const { currentLanguage, setCurrentLanguage } = useLanguage();
+  const { currentLanguage } = useLanguage();
   const [property, setProperty] = useState<PropertyData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -42,10 +40,13 @@ export default function PropertyDetailPage() {
     fetchProperty();
   }, [propertyId]);
 
+  const handleBack = () => router.back();
+  const isOwner = user && property?.ownerId === user.uid;
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#FFF8F0' }}>
-        <div className="text-gray-500">
+      <div className="fixed inset-0 z-[90] bg-black/50 flex items-center justify-center p-4" onClick={handleBack}>
+        <div className="text-white" onClick={(e) => e.stopPropagation()}>
           {currentLanguage === 'ko' ? '로딩 중...' : currentLanguage === 'vi' ? 'Đang tải...' : 'Loading...'}
         </div>
       </div>
@@ -54,16 +55,12 @@ export default function PropertyDetailPage() {
 
   if (!property) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#FFF8F0' }}>
-        <div className="text-center">
+      <div className="fixed inset-0 z-[90] bg-black/50 flex items-center justify-center p-4" onClick={handleBack}>
+        <div className="bg-white rounded-2xl p-6 max-w-[430px] text-center" onClick={(e) => e.stopPropagation()}>
           <p className="text-gray-500 mb-4">
-            {currentLanguage === 'ko' ? '매물을 찾을 수 없습니다.' : currentLanguage === 'vi' ? 'Không tìm thấy bất động sản.' : 'Property not found.'}
+            {currentLanguage === 'ko' ? '매물을 찾을 수 없습니다.' : currentLanguage === 'vi' ? 'Không tìm thấy.' : 'Not found.'}
           </p>
-          <button
-            onClick={() => router.back()}
-            className="px-4 py-2 rounded-lg text-white hover:opacity-90"
-            style={{ backgroundColor: '#E63946' }}
-          >
+          <button onClick={handleBack} className="px-4 py-2 rounded-lg text-white" style={{ backgroundColor: '#E63946' }}>
             {currentLanguage === 'ko' ? '뒤로' : currentLanguage === 'vi' ? 'Quay lại' : 'Back'}
           </button>
         </div>
@@ -71,21 +68,18 @@ export default function PropertyDetailPage() {
     );
   }
 
-  const isOwner = user && property.ownerId === user.uid;
-
   return (
-    <div className="min-h-screen flex justify-center" style={{ backgroundColor: '#FFF8F0' }}>
-      <div className="w-full max-w-[430px] min-h-screen shadow-2xl flex flex-col relative">
-        <TopBar
-          currentLanguage={currentLanguage}
-          onLanguageChange={setCurrentLanguage}
-          hideLanguageSelector={false}
-        />
+    <div className="fixed inset-0 z-[90] bg-black/50 flex items-center justify-center p-4" onClick={handleBack}>
+      <div
+        className="w-full max-w-[430px] max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         <PropertyDetailView
           property={property}
           currentLanguage={currentLanguage as SupportedLanguage}
           mode={isOwner ? 'owner' : 'tenant'}
-          onBack={() => router.back()}
+          onBack={handleBack}
+          onClose={handleBack}
           onEdit={
             isOwner && property.id
               ? () => router.push(`/profile/my-properties/${property.id}/edit`)

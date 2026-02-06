@@ -316,27 +316,43 @@ export default function PropertyDetailView({
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 py-4 pb-6" style={{ backgroundColor: COLORS.background }}>
-          {/* 이미지 슬라이더: 박스 없음, 아래 점선으로 구분 */}
-          <section className="overflow-hidden mb-0">
-            <div className="relative w-full h-52 overflow-hidden bg-gray-100">
-              <div
-                className="flex h-full transition-transform duration-300 ease-out"
-                style={{ transform: `translateX(-${imageIndex * 100}%)` }}
-              >
-                {images.map((src, idx) => (
-                  <div key={idx} className="relative shrink-0 w-full h-full">
-                    <Image
-                      src={src}
-                      alt={`${property.title || ''} ${idx + 1}`}
-                      fill
-                      className="object-cover"
-                      sizes="(max-width: 430px) 100vw, 430px"
-                    />
-                  </div>
-                ))}
-              </div>
-              
+        <div className="flex-1 overflow-y-auto px-0 py-0 pb-6" style={{ backgroundColor: COLORS.background }}>
+          {/* 이미지 슬라이더: 모달 폭 꽉 차게, 좌측 현재 사진 + 우측 다음 사진 살짝 보이게, 1/N 표시, 이전/다음 버튼 */}
+          <section className="overflow-hidden mb-0 w-full">
+            <div className="relative w-full overflow-hidden bg-gray-100" style={{ aspectRatio: '4/3' }}>
+              {/* 좌측 현재 사진 꽉 차고 우측에 다음 사진 살짝 보이게 (88% + 12% 간격, 컨테이너 기준) */}
+              {images.length > 1 ? (
+                <div
+                  className="flex h-full transition-transform duration-300 ease-out"
+                  style={{
+                    width: `${images.length * 100}%`,
+                    transform: `translateX(-${imageIndex * (100 / images.length)}%)`,
+                  }}
+                >
+                  {images.map((src, idx) => (
+                    <div key={idx} className="relative shrink-0 h-full" style={{ width: `${88 / images.length}%`, marginRight: `${12 / images.length}%` }}>
+                      <Image
+                        src={src}
+                        alt={`${property.title || ''} ${idx + 1}`}
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 430px) 100vw, 430px"
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : images.length === 1 ? (
+                <div className="relative w-full h-full">
+                  <Image
+                    src={images[0]}
+                    alt={property.title || ''}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 430px) 100vw, 430px"
+                  />
+                </div>
+              ) : null}
+
               {/* 즉시 입주 가능 뱃지 */}
               {isAvailableNow(property.checkInDate) ? (
                 <div className="absolute top-1.5 left-1.5 bg-green-600 text-white px-1.5 py-0.5 rounded-sm z-20 flex items-center gap-0.5">
@@ -354,35 +370,34 @@ export default function PropertyDetailView({
                 </div>
               ) : null}
 
-              {/* 이미지 네비게이션 */}
+              {/* 이미지 개수 표시 (1 / N) */}
+              {images.length > 0 && (
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/70 text-white px-2 py-1 rounded-md z-10 flex items-center gap-1">
+                  <span className="text-xs font-medium">{imageIndex + 1} / {images.length}</span>
+                </div>
+              )}
+
+              {/* 이전/다음 버튼 */}
               {images.length > 1 && (
                 <>
                   <button
+                    type="button"
                     onClick={() =>
                       setImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1))
                     }
-                    className="absolute left-1 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white p-1 rounded-full transition-all z-10"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-all z-10"
                   >
-                    <ChevronLeft className="w-3.5 h-3.5" />
+                    <ChevronLeft className="w-4 h-4" />
                   </button>
                   <button
+                    type="button"
                     onClick={() =>
                       setImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1))
                     }
-                    className="absolute right-1 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white p-1 rounded-full transition-all z-10"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-all z-10"
                   >
-                    <ChevronRight className="w-3.5 h-3.5" />
+                    <ChevronRight className="w-4 h-4" />
                   </button>
-                  <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex gap-0.5 z-10">
-                    {images.map((_, idx) => (
-                      <div
-                        key={idx}
-                        className={`w-1 h-1 rounded-full transition-colors ${
-                          idx === imageIndex ? 'bg-white' : 'bg-white/40'
-                        }`}
-                      />
-                    ))}
-                  </div>
                 </>
               )}
 
@@ -396,8 +411,8 @@ export default function PropertyDetailView({
                 </p>
               </div>
 
-              {/* 방/욕실 정보 - 우측 하단 */}
-              <div className="absolute bottom-1.5 right-1.5 bg-black/80 text-white px-1.5 py-0.5 rounded-sm z-10 flex items-center gap-1">
+              {/* 방/욕실 정보 - 우측 하단 (개수 표시와 겹치지 않게 왼쪽으로) */}
+              <div className="absolute bottom-2 right-2 bg-black/80 text-white px-1.5 py-0.5 rounded-sm z-10 flex items-center gap-1">
                 {property.bedrooms !== undefined && (
                   <div className="flex items-center gap-0.5">
                     <Bed className="w-3 h-3" />
@@ -415,15 +430,16 @@ export default function PropertyDetailView({
               {/* 전체화면 버튼 (임대인용) */}
               {mode === 'owner' && (
                 <button
+                  type="button"
                   onClick={() => setFullScreenImageIndex(imageIndex)}
-                  className="absolute bottom-1.5 left-1.5 bg-black/60 text-white p-1 rounded-full hover:bg-black/80 transition-colors z-10"
+                  className="absolute bottom-2 left-2 bg-black/60 text-white p-1.5 rounded-full hover:bg-black/80 transition-colors z-10"
                 >
-                  <Maximize2 className="w-3 h-3" />
+                  <Maximize2 className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
             {/* 사진 아래: 점선 위에 뱃지 깔끔하게 (박스 없음) */}
-            <div className="py-2 px-0 border-b border-dashed" style={{ borderColor: COLORS.border, borderBottomWidth: '1.5px' }}>
+            <div className="py-2 px-4 border-b border-dashed" style={{ borderColor: COLORS.border, borderBottomWidth: '1.5px' }}>
               {(hasFullFurniture || hasFullElectronics || hasFullKitchen) && (
                 <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                   {hasFullFurniture && (
@@ -446,26 +462,27 @@ export default function PropertyDetailView({
             </div>
           </section>
 
-          {/* 제목·주소 — 편지지: 상단 제목, 하단 내용, 왼쪽 정렬 */}
-          <section className="py-4 pb-4 text-left" style={SECTION_DASHED}>
-            <p className="text-xs font-medium mb-1.5" style={{ color: LABEL_COLOR }}>
+          <div className="px-4">
+          {/* 제목·주소 — 매물등록과 동일: 상단 제목, 하단 내용 */}
+          <section className="py-3 pb-3 text-left" style={SECTION_DASHED}>
+            <p className="text-sm font-bold mb-1.5" style={{ color: COLORS.text }}>
               {mode === 'owner'
                 ? t('매물명', 'Tên BĐS', 'Property', '物件名', '房源')
                 : getUIText('address', currentLanguage)}
             </p>
-            <p className="text-sm font-medium leading-snug" style={{ color: COLORS.text }}>{displayTitle}</p>
+            <p className="text-[11px] leading-snug" style={{ color: COLORS.textSecondary }}>{displayTitle}</p>
           </section>
 
-          {/* 임차인 — 편지지: 제목 상단, 내용 하단, 왼쪽 정렬, 공간 활용 */}
+          {/* 임차인 — 매물등록과 동일 순서·글자크기 */}
           {mode === 'tenant' && (
             <>
-              <section className="py-4 pb-4 text-left" style={SECTION_DASHED}>
-                <p className="text-xs font-medium mb-1.5" style={{ color: LABEL_COLOR }}>
+              <section className="py-3 pb-3 text-left" style={SECTION_DASHED}>
+                <p className="text-sm font-bold mb-1.5" style={{ color: COLORS.text }}>
                   {getUIText('weeklyRent', currentLanguage)}
                 </p>
-                <p className="text-sm font-bold" style={{ color: COLORS.text }}>
+                <p className="text-[11px]" style={{ color: COLORS.textSecondary }}>
                   {formatFullPrice(property.price, property.priceUnit)}
-                  <span className="text-xs font-normal ml-1.5" style={{ color: COLORS.textMuted }}>
+                  <span className="ml-1.5" style={{ color: COLORS.textMuted }}>
                     {getUIText('utilitiesIncluded', currentLanguage)}
                     {(property.checkInTime || property.checkOutTime) && ` · ${property.checkInTime || '14:00'}/${property.checkOutTime || '12:00'}`}
                   </span>
@@ -482,11 +499,11 @@ export default function PropertyDetailView({
                       )
                     : [];
                 return (
-                  <section className="py-4 pb-4 text-left" style={SECTION_DASHED}>
-                    <p className="text-xs font-medium mb-1.5" style={{ color: LABEL_COLOR }}>
+                  <section className="py-3 pb-3 text-left" style={SECTION_DASHED}>
+                    <p className="text-sm font-bold mb-1.5" style={{ color: COLORS.text }}>
                       {getUIText('availableDates', currentLanguage)}
                     </p>
-                    <p className="text-sm leading-relaxed" style={{ color: COLORS.text }}>
+                    <p className="text-[11px] leading-relaxed" style={{ color: COLORS.textSecondary }}>
                       {segments.length > 0
                         ? segments.length === 1
                           ? `${formatDate(segments[0].start, currentLanguage)} ~ ${formatDate(segments[0].end, currentLanguage)}`
@@ -497,20 +514,21 @@ export default function PropertyDetailView({
                 );
               })()}
 
+              {/* 방·화장실·인원 (한 줄) */}
               {(property.maxAdults || property.maxChildren) && (
-                <section className="py-4 pb-4 text-left" style={SECTION_DASHED}>
-                  <p className="text-xs font-medium mb-1.5" style={{ color: LABEL_COLOR }}>
+                <section className="py-3 pb-3 text-left" style={SECTION_DASHED}>
+                  <p className="text-sm font-bold mb-1.5" style={{ color: COLORS.text }}>
                     {getUIText('maxGuests', currentLanguage)}
                   </p>
-                  <p className="text-sm leading-relaxed" style={{ color: COLORS.text }}>
+                  <p className="text-[11px] leading-relaxed" style={{ color: COLORS.textSecondary }}>
                     {[property.bedrooms != null && `${property.bedrooms} ${t('방', 'Phòng', 'Rooms', '部屋', '房间')}`, property.bathrooms != null && `${property.bathrooms} ${t('화장실', 'Phòng tắm', 'Bathrooms', '浴室', '浴室')}`, (property.maxAdults != null || property.maxChildren != null) && `${(property.maxAdults || 0) + (property.maxChildren || 0)} ${t('인원', 'Người', 'Guests', '人数', '人数')}`].filter(Boolean).join(' · ')}
                   </p>
                 </section>
               )}
 
-              {/* 숙소시설 — 제목 상단, 내용 하단, 왼쪽 정렬 */}
-              <section className="py-4 pb-4 text-left" style={SECTION_DASHED}>
-                <p className="text-xs font-medium mb-2" style={{ color: LABEL_COLOR }}>
+              {/* 숙소시설 및 정책 — 매물등록과 동일 */}
+              <section className="py-3 pb-3 text-left" style={SECTION_DASHED}>
+                <p className="text-sm font-bold mb-2" style={{ color: COLORS.text }}>
                   {getUIText('amenities', currentLanguage)}
                 </p>
                 {property.amenities && property.amenities.length > 0 ? (
@@ -552,24 +570,24 @@ export default function PropertyDetailView({
               </section>
 
               {property.original_description && (
-                <section className="py-4 pb-4 text-left" style={SECTION_DASHED}>
-                  <p className="text-xs font-medium mb-2" style={{ color: LABEL_COLOR }}>
+                <section className="py-3 pb-3 text-left" style={SECTION_DASHED}>
+                  <p className="text-sm font-bold mb-2" style={{ color: COLORS.text }}>
                     {getUIText('description', currentLanguage)}
                   </p>
-                  <div style={{ color: COLORS.text }}>
+                  <div style={{ color: COLORS.textSecondary }}>
                     <PropertyDescription
                       description={property.original_description}
                       sourceLanguage="vi"
                       targetLanguage={currentLanguage}
                       cacheKey={`property-detail-tenant-${property.id}`}
-                      className="text-sm leading-relaxed"
+                      className="text-[11px] leading-relaxed"
                     />
                   </div>
                 </section>
               )}
 
-              <section className="py-4 pb-4 text-left" style={SECTION_DASHED}>
-                <p className="text-xs font-medium mb-3" style={{ color: LABEL_COLOR }}>
+              <section className="py-3 pb-3 text-left" style={SECTION_DASHED}>
+                <p className="text-sm font-bold mb-2" style={{ color: COLORS.text }}>
                   {getUIText('selectDatesAndGuests', currentLanguage)}
                 </p>
                 <div className="grid grid-cols-3 gap-2">
@@ -805,103 +823,96 @@ export default function PropertyDetailView({
             </>
           )}
 
-          {/* 임대인 — 편지지: 제목 상단, 내용 하단, 왼쪽 정렬, 공간 활용 */}
+          {/* 임대인 — 매물등록과 동일 순서: 매물종류 → 방|화장실|인원 → 주소 → 도시·구 → 동호수 → 이용기간 → 임대료 → 숙소시설 → 체크인/아웃 → 설명 → 외부캘린더 */}
           {mode === 'owner' && (
             <>
-              <section className="py-4 pb-4 text-left" style={SECTION_DASHED}>
-                {property.propertyType && (
-                  <div className="mb-3">
-                    <p className="text-xs font-medium mb-1" style={{ color: LABEL_COLOR }}>{t('매물 종류', 'Loại BĐS', 'Property Type', '物件タイプ', '房源类型')}</p>
-                    <p className="text-sm" style={{ color: COLORS.text }}>{getPropertyTypeDisplay()}</p>
+              {/* 매물 종류 */}
+              {property.propertyType && (
+                <section className="py-3 pb-3 text-left" style={SECTION_DASHED}>
+                  <p className="text-sm font-bold mb-1.5" style={{ color: COLORS.text }}>{t('매물 종류', 'Loại BĐS', 'Property Type', '物件タイプ', '房源类型')}</p>
+                  <p className="text-[11px]" style={{ color: COLORS.textSecondary }}>{getPropertyTypeDisplay()}</p>
+                </section>
+              )}
+              {/* 방 개수 | 화장실 수 | 최대 인원 (한 줄) */}
+              {(property.bedrooms !== undefined || property.bathrooms !== undefined || (property.maxAdults != null || property.maxChildren != null)) && (
+                <section className="py-3 pb-3 text-left" style={SECTION_DASHED}>
+                  <div className="grid grid-cols-3 gap-2">
+                    {property.bedrooms !== undefined && (
+                      <div>
+                        <p className="text-[11px] font-medium mb-1" style={{ color: COLORS.textSecondary }}>{t('방 개수', 'Số phòng', 'Bedrooms', '寝室数', '卧室数')}</p>
+                        <p className="text-sm" style={{ color: COLORS.text }}>{property.bedrooms}</p>
+                      </div>
+                    )}
+                    {property.bathrooms !== undefined && (
+                      <div>
+                        <p className="text-[11px] font-medium mb-1" style={{ color: COLORS.textSecondary }}>{t('화장실 수', 'Số phòng tắm', 'Bathrooms', '浴室数', '浴室数')}</p>
+                        <p className="text-sm" style={{ color: COLORS.text }}>{property.bathrooms}</p>
+                      </div>
+                    )}
+                    {(property.maxAdults != null || property.maxChildren != null) && (
+                      <div>
+                        <p className="text-[11px] font-medium mb-1" style={{ color: COLORS.textSecondary }}>{t('최대 인원', 'Số người tối đa', 'Max Guests', '最大人数', '最多人数')}</p>
+                        <p className="text-sm" style={{ color: COLORS.text }}>
+                          {(property.maxAdults || 0) + (property.maxChildren || 0)}
+                          {currentLanguage === 'ko' ? '명' : currentLanguage === 'vi' ? ' người' : currentLanguage === 'ja' ? '名' : currentLanguage === 'zh' ? '人' : ' guests'}
+                        </p>
+                      </div>
+                    )}
                   </div>
-                )}
-                {property.bedrooms !== undefined && (
-                  <div className="mb-3">
-                    <p className="text-xs font-medium mb-1" style={{ color: LABEL_COLOR }}>{t('방 개수', 'Số phòng', 'Bedrooms', '寝室数', '卧室数')}</p>
-                    <p className="text-sm" style={{ color: COLORS.text }}>{property.bedrooms}</p>
-                  </div>
-                )}
-                {property.bathrooms !== undefined && (
-                  <div className="mb-3">
-                    <p className="text-xs font-medium mb-1" style={{ color: LABEL_COLOR }}>{t('화장실 수', 'Số phòng tắm', 'Bathrooms', '浴室数', '浴室数')}</p>
-                    <p className="text-sm" style={{ color: COLORS.text }}>{property.bathrooms}</p>
-                  </div>
-                )}
-                {(property.maxAdults != null || property.maxChildren != null) && (
-                  <div className="mb-3">
-                    <p className="text-xs font-medium mb-1" style={{ color: LABEL_COLOR }}>{t('최대 인원', 'Số người tối đa', 'Max Guests', '最大人数', '最多人数')}</p>
-                    <p className="text-sm" style={{ color: COLORS.text }}>
-                      {(property.maxAdults || 0) + (property.maxChildren || 0)}
-                      {currentLanguage === 'ko' ? '명' : currentLanguage === 'vi' ? ' người' : currentLanguage === 'ja' ? '名' : currentLanguage === 'zh' ? '人' : ' guests'}
-                    </p>
-                  </div>
-                )}
-                <div className="mb-3">
-                  <p className="text-xs font-medium mb-1" style={{ color: LABEL_COLOR }}>{t('주소', 'Địa chỉ', 'Address', '住所', '地址')}</p>
-                  <p className="text-sm break-words" style={{ color: COLORS.text }}>{property.address || '—'}</p>
-                </div>
-                {property.unitNumber && (
-                  <>
-                    <div className="mb-2">
-                      <p className="text-xs font-medium mb-1" style={{ color: LABEL_COLOR }}>{t('동호수', 'Số phòng', 'Unit', '号室', '房号')}</p>
-                      <p className="text-sm" style={{ color: COLORS.text }}>{property.unitNumber}</p>
-                    </div>
-                    <p className="text-[10px] mb-3" style={{ color: COLORS.textMuted }}>
-                      {t('예약 완료 후 임차인에게만 표시', 'Chỉ hiển thị cho người thuê sau khi đặt chỗ', 'Shown to tenants after booking', '予約完了後にテナントにのみ表示', '预订完成后仅向租户显示')}
-                    </p>
-                  </>
-                )}
-                <div>
-                  <p className="text-xs font-medium mb-1" style={{ color: LABEL_COLOR }}>{t('도시·구', 'Thành phố·Quận', 'City·District', '都市・区', '城市・区')}</p>
-                  <p className="text-sm" style={{ color: COLORS.text }}>{getCityName() || cityName || '—'} / {getDistrictName() || districtName || '—'}</p>
-                </div>
+                </section>
+              )}
+              {/* 주소 */}
+              <section className="py-3 pb-3 text-left" style={SECTION_DASHED}>
+                <p className="text-sm font-bold mb-1.5" style={{ color: COLORS.text }}>{t('주소', 'Địa chỉ', 'Address', '住所', '地址')}</p>
+                <p className="text-[11px] break-words" style={{ color: COLORS.textSecondary }}>{property.address || '—'}</p>
               </section>
+              {/* 도시·구 */}
+              <section className="py-3 pb-3 text-left" style={SECTION_DASHED}>
+                <p className="text-sm font-bold mb-1.5" style={{ color: COLORS.text }}>{t('도시·구', 'Thành phố·Quận', 'City·District', '都市・区', '城市・区')}</p>
+                <p className="text-[11px]" style={{ color: COLORS.textSecondary }}>{getCityName() || cityName || '—'} / {getDistrictName() || districtName || '—'}</p>
+              </section>
+              {/* 동호수 */}
+              {property.unitNumber && (
+                <section className="py-3 pb-3 text-left" style={SECTION_DASHED}>
+                  <p className="text-sm font-bold mb-1.5" style={{ color: COLORS.text }}>{t('동호수', 'Số phòng', 'Unit', '号室', '房号')}</p>
+                  <p className="text-[11px]" style={{ color: COLORS.textSecondary }}>{property.unitNumber}</p>
+                  <p className="text-[10px] mt-1" style={{ color: COLORS.textMuted }}>
+                    {t('예약 완료 후 임차인에게만 표시', 'Chỉ hiển thị cho người thuê sau khi đặt chỗ', 'Shown to tenants after booking', '予約完了後にテナントにのみ表示', '预订完成后仅向租户显示')}
+                  </p>
+                </section>
+              )}
 
+              {/* 이용기간 (시작일/종료일) */}
               {(property.checkInDate || property.checkOutDate) && (
-                <section className="py-4 pb-4 text-left" style={SECTION_DASHED}>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                <section className="py-3 pb-3 text-left" style={SECTION_DASHED}>
+                  <p className="text-sm font-bold mb-2" style={{ color: COLORS.text }}>{t('이용 가능 기간', 'Khoảng trống', 'Available period', '利用可能期間', '可用期间')}</p>
+                  <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <p className="text-xs font-medium mb-1" style={{ color: LABEL_COLOR }}>{t('시작일', 'Ngày bắt đầu', 'Start Date', '開始日', '开始日期')}</p>
+                      <p className="text-[11px] font-medium mb-0.5" style={{ color: COLORS.textSecondary }}>{t('시작일', 'Ngày bắt đầu', 'Start Date', '開始日', '开始日期')}</p>
                       <p className="text-sm" style={{ color: COLORS.text }}>{property.checkInDate ? formatDate(property.checkInDate, currentLanguage) : '—'}</p>
                     </div>
                     <div>
-                      <p className="text-xs font-medium mb-1" style={{ color: LABEL_COLOR }}>{t('종료일', 'Ngày kết thúc', 'End Date', '終了日', '结束日期')}</p>
+                      <p className="text-[11px] font-medium mb-0.5" style={{ color: COLORS.textSecondary }}>{t('종료일', 'Ngày kết thúc', 'End Date', '終了日', '结束日期')}</p>
                       <p className="text-sm" style={{ color: COLORS.text }}>{property.checkOutDate ? formatDate(property.checkOutDate, currentLanguage) : '—'}</p>
                     </div>
                   </div>
                 </section>
               )}
 
-              {(property.checkInTime || property.checkOutTime) && (
-                <section className="py-4 pb-4 text-left" style={SECTION_DASHED}>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                    <div>
-                      <p className="text-xs font-medium mb-1" style={{ color: LABEL_COLOR }}>{t('체크인', 'Check-in', 'Check-in', 'チェックイン', '入住')}</p>
-                      <p className="text-sm" style={{ color: COLORS.text }}>{property.checkInTime || '14:00'}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium mb-1" style={{ color: LABEL_COLOR }}>{t('체크아웃', 'Check-out', 'Check-out', 'チェックアウト', '退房')}</p>
-                      <p className="text-sm" style={{ color: COLORS.text }}>{property.checkOutTime || '12:00'}</p>
-                    </div>
-                  </div>
-                </section>
-              )}
-
-              <section className="py-4 pb-4 text-left" style={SECTION_DASHED}>
-                <p className="text-xs font-medium mb-1.5" style={{ color: LABEL_COLOR }}>
-                  {t('1주일 임대료', 'Giá thuê 1 tuần', 'Weekly Rent', '1週間賃貸料', '1周租金')}
-                </p>
+              {/* 1주일 임대료 */}
+              <section className="py-3 pb-3 text-left" style={SECTION_DASHED}>
+                <p className="text-sm font-bold mb-1.5" style={{ color: COLORS.text }}>{t('1주일 임대료', 'Giá thuê 1 tuần', 'Weekly Rent', '1週間賃貸料', '1周租金')}</p>
                 <p className="text-sm font-bold" style={{ color: COLORS.text }}>
                   {formatFullPrice(property.price, property.priceUnit)}
-                  <span className="text-xs font-normal ml-1.5" style={{ color: COLORS.textMuted }}>
+                  <span className="text-[11px] font-normal ml-1.5" style={{ color: COLORS.textMuted }}>
                     {t('공과금/관리비 포함', 'Bao gồm phí', 'incl. utilities', '光熱・管理費込み', '含水电')}
                   </span>
                 </p>
               </section>
 
-              {/* 숙소시설 및 정책 — 제목 상단, 내용 하단, 왼쪽 정렬 */}
-              <section className="py-4 pb-4 text-left" style={SECTION_DASHED}>
-                <p className="text-xs font-medium mb-3" style={{ color: LABEL_COLOR }}>
+              {/* 숙소시설 및 정책 — 매물등록과 동일: 카테고리별 제목 + 아이콘/텍스트 */}
+              <section className="py-3 pb-3 text-left" style={SECTION_DASHED}>
+                <p className="text-sm font-bold mb-3" style={{ color: COLORS.text }}>
                   {t('숙소시설 및 정책', 'Tiện ích và chính sách', 'Facilities & Policy', '施設とポリシー', '设施与政策')}
                 </p>
                 <div className="space-y-4">
@@ -912,20 +923,22 @@ export default function PropertyDetailView({
                     );
                     if (selectedFacilitiesInCategory.length === 0) return null;
                     return (
-                      <div key={cat.id}>
-                        <p className="text-[10px] font-medium mb-1.5" style={{ color: LABEL_COLOR }}>
+                      <div key={cat.id} className="pt-2" style={{ borderTop: '1.5px dashed rgba(254,215,170,0.6)' }}>
+                        <p className="text-[11px] font-bold mb-2 text-gray-500">
                           {(cat.label as Record<string, string>)[currentLanguage] ?? cat.label.en}
                         </p>
-                        <div className="flex flex-wrap gap-x-4 gap-y-2">
+                        <div className="grid grid-cols-4 gap-2 justify-items-start">
                           {selectedFacilitiesInCategory.map((opt) => {
                             const Icon = opt.icon;
                             const label = (opt.label as Record<string, string>)[currentLanguage] || opt.label.en;
                             const isPet = opt.id === 'pet';
                             const isCleaning = opt.id === 'cleaning';
                             return (
-                              <div key={opt.id} className="flex items-center gap-1.5">
-                                <Icon className="w-3 h-3 shrink-0" style={{ color: LABEL_COLOR }} />
-                                <span className="text-[10px]" style={{ color: COLORS.text }}>
+                              <div key={opt.id} className="flex flex-col items-center gap-1 text-left">
+                                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${COLORS.border}40` }}>
+                                  <Icon className="w-5 h-5" style={{ color: LABEL_COLOR }} />
+                                </div>
+                                <span className="text-[10px] font-medium" style={{ color: COLORS.textSecondary }}>
                                   {label}
                                   {isPet && property.petAllowed && property.petFee != null && ` · ${property.priceUnit === 'vnd' ? `${property.petFee.toLocaleString('vi-VN')} VND` : `$${property.petFee.toLocaleString()}`}`}
                                   {isCleaning && property.cleaningPerWeek && ` · ${property.cleaningPerWeek}${currentLanguage === 'ko' ? '회/주' : currentLanguage === 'vi' ? ' lần/tuần' : currentLanguage === 'ja' ? '回/週' : currentLanguage === 'zh' ? '次/周' : '/week'}`}
@@ -940,9 +953,27 @@ export default function PropertyDetailView({
                 </div>
               </section>
 
+              {/* 체크인/체크아웃 시간 */}
+              {(property.checkInTime || property.checkOutTime) && (
+                <section className="py-3 pb-3 text-left" style={SECTION_DASHED}>
+                  <p className="text-sm font-bold mb-2" style={{ color: COLORS.text }}>{t('체크인/체크아웃 시간', 'Giờ check-in/out', 'Check-in/out time', 'チェックイン・アウト', '入住/退房时间')}</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-[11px] font-medium mb-0.5" style={{ color: COLORS.textSecondary }}>{t('체크인', 'Check-in', 'Check-in', 'チェックイン', '入住')}</p>
+                      <p className="text-sm" style={{ color: COLORS.text }}>{property.checkInTime || '14:00'}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-medium mb-0.5" style={{ color: COLORS.textSecondary }}>{t('체크아웃', 'Check-out', 'Check-out', 'チェックアウト', '退房')}</p>
+                      <p className="text-sm" style={{ color: COLORS.text }}>{property.checkOutTime || '12:00'}</p>
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {/* 매물 설명 */}
               {property.original_description && (
-                <section className="py-4 pb-4 text-left" style={SECTION_DASHED}>
-                  <p className="text-xs font-medium mb-2" style={{ color: LABEL_COLOR }}>
+                <section className="py-3 pb-3 text-left" style={SECTION_DASHED}>
+                  <p className="text-sm font-bold mb-2" style={{ color: COLORS.text }}>
                     {t('매물 설명', 'Mô tả BĐS', 'Description', '物件説明', '房源描述')}
                   </p>
                   <div style={{ color: COLORS.text }}>
@@ -951,34 +982,35 @@ export default function PropertyDetailView({
                       sourceLanguage="vi"
                       targetLanguage={currentLanguage}
                       cacheKey={`property-detail-owner-${property.id}`}
-                      className="text-sm leading-relaxed"
+                      className="text-[11px] leading-relaxed"
                     />
                   </div>
                 </section>
               )}
 
+              {/* 외부 캘린더 */}
               {(property.icalPlatform || property.icalCalendarName || property.icalUrl) && (
-                <section className="py-4 pb-4 text-left" style={SECTION_DASHED}>
-                  <p className="text-xs font-medium mb-2" style={{ color: LABEL_COLOR }}>
+                <section className="py-3 pb-3 text-left" style={SECTION_DASHED}>
+                  <p className="text-sm font-bold mb-2" style={{ color: COLORS.text }}>
                     {t('외부 캘린더', 'Lịch ngoài', 'External Calendar', '外部カレンダー', '外部日历')}
                   </p>
                   <div className="space-y-2">
                     {property.icalPlatform && (
                       <div>
-                        <p className="text-[10px] font-medium mb-0.5" style={{ color: LABEL_COLOR }}>{t('플랫폼', 'Nền tảng', 'Platform', 'プラットフォーム', '平台')}</p>
-                        <p className="text-xs" style={{ color: COLORS.text }}>{property.icalPlatform}</p>
+                        <p className="text-[11px] font-medium mb-0.5" style={{ color: COLORS.textSecondary }}>{t('플랫폼', 'Nền tảng', 'Platform', 'プラットフォーム', '平台')}</p>
+                        <p className="text-sm" style={{ color: COLORS.text }}>{property.icalPlatform}</p>
                       </div>
                     )}
                     {property.icalCalendarName && (
                       <div>
-                        <p className="text-[10px] font-medium mb-0.5" style={{ color: LABEL_COLOR }}>{t('캘린더', 'Lịch', 'Calendar', 'カレンダー', '日历')}</p>
-                        <p className="text-xs" style={{ color: COLORS.text }}>{property.icalCalendarName}</p>
+                        <p className="text-[11px] font-medium mb-0.5" style={{ color: COLORS.textSecondary }}>{t('캘린더', 'Lịch', 'Calendar', 'カレンダー', '日历')}</p>
+                        <p className="text-sm" style={{ color: COLORS.text }}>{property.icalCalendarName}</p>
                       </div>
                     )}
                     {property.icalUrl && (
                       <div>
-                        <p className="text-[10px] font-medium mb-0.5" style={{ color: LABEL_COLOR }}>iCal URL</p>
-                        <p className="text-xs break-all" style={{ color: COLORS.text }}>{property.icalUrl}</p>
+                        <p className="text-[11px] font-medium mb-0.5" style={{ color: COLORS.textSecondary }}>iCal URL</p>
+                        <p className="text-sm break-all" style={{ color: COLORS.text }}>{property.icalUrl}</p>
                       </div>
                     )}
                   </div>
@@ -986,6 +1018,7 @@ export default function PropertyDetailView({
               )}
             </>
           )}
+          </div>
         </div>
 
         {/* 임차인: 캘린더 오버레이 */}

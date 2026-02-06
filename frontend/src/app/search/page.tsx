@@ -39,8 +39,6 @@ import {
 } from "@/lib/constants/facilities";
 import CalendarComponent from "@/components/CalendarComponent";
 import Image from "next/image";
-import PropertyModal from "@/components/map/PropertyModal";
-import MyPropertyDetailContent from "@/components/MyPropertyDetailContent";
 import { formatPrice, formatFullPrice } from "@/lib/utils/propertyUtils";
 import {
   parseDate,
@@ -220,11 +218,6 @@ function SearchContent() {
   // 필터 적용 상태 (검색 버튼을 눌러야 필터 적용)
   const [filtersApplied, setFiltersApplied] = useState(false);
 
-  // 매물 상세 모달
-  const [showPropertyModal, setShowPropertyModal] = useState(false);
-  const [selectedProperty, setSelectedProperty] = useState<PropertyData | null>(
-    null,
-  );
 
   // 방 개수 필터 옵션 라벨 (5개국어)
   const ROOM_FILTER_OPTIONS: {
@@ -340,39 +333,12 @@ function SearchContent() {
     }
   };
 
-  // 매물 클릭 시 모달 열기
+  // 매물 클릭 시 /properties/[id] 로 이동 (인터셉팅 라우트에서 모달처럼 표시)
   const handlePropertyClick = (property: PropertyData) => {
-    setSelectedProperty(property);
-    setShowPropertyModal(true);
-  };
-
-  // 이전 매물로 이동
-  const handlePrevProperty = () => {
-    if (!selectedProperty || filteredProperties.length <= 1) return;
-    const currentIndex = filteredProperties.findIndex(
-      (p) => p.id === selectedProperty.id,
-    );
-    const prevIndex =
-      currentIndex <= 0 ? filteredProperties.length - 1 : currentIndex - 1;
-    setSelectedProperty(filteredProperties[prevIndex]);
-  };
-
-  // 다음 매물로 이동
-  const handleNextProperty = () => {
-    if (!selectedProperty || filteredProperties.length <= 1) return;
-    const currentIndex = filteredProperties.findIndex(
-      (p) => p.id === selectedProperty.id,
-    );
-    const nextIndex =
-      currentIndex >= filteredProperties.length - 1 ? 0 : currentIndex + 1;
-    setSelectedProperty(filteredProperties[nextIndex]);
+    router.push(`/properties/${property.id}`);
   };
 
   // 현재 매물 인덱스
-  const getCurrentPropertyIndex = () => {
-    if (!selectedProperty) return 0;
-    return filteredProperties.findIndex((p) => p.id === selectedProperty.id);
-  };
 
   const selectedCity = selectedCityId
     ? (VIETNAM_CITIES.find((c) => c.id === selectedCityId) ??
@@ -1633,44 +1599,6 @@ function SearchContent() {
         </div>
       </div>
 
-      {showPropertyModal &&
-        selectedProperty &&
-        (user && selectedProperty.ownerId === user.uid ? (
-          <div
-            className="fixed inset-0 z-[90] bg-black/50 flex items-center justify-center p-4"
-            onClick={() => setShowPropertyModal(false)}
-          >
-            <div
-              className="bg-white rounded-2xl w-full max-w-[430px] max-h-[90vh] overflow-y-auto shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <MyPropertyDetailContent
-                property={selectedProperty}
-                currentLanguage={currentLanguage}
-                onBack={() => setShowPropertyModal(false)}
-                onEdit={() => {
-                  setShowPropertyModal(false);
-                  if (selectedProperty?.id)
-                    router.push(
-                      `/profile/my-properties/${selectedProperty.id}/edit`,
-                    );
-                }}
-              />
-            </div>
-          </div>
-        ) : (
-          <PropertyModal
-            propertyData={selectedProperty}
-            currentLanguage={currentLanguage}
-            onClose={() => setShowPropertyModal(false)}
-            onPrev={handlePrevProperty}
-            onNext={handleNextProperty}
-            hasPrev={filteredProperties.length > 1}
-            hasNext={filteredProperties.length > 1}
-            currentIndex={getCurrentPropertyIndex()}
-            totalProperties={filteredProperties.length}
-          />
-        ))}
     </div>
   );
 }

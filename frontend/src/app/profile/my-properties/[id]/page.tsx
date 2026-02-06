@@ -13,7 +13,8 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { getProperty } from "@/lib/api/properties";
 import { PropertyData } from "@/types/property";
 import TopBar from "@/components/TopBar";
-import MyPropertyDetailContent from "@/components/MyPropertyDetailContent";
+import PropertyDetailView from "@/components/PropertyDetailView";
+import type { SupportedLanguage } from "@/lib/api/translation";
 
 export default function PropertyDetailPage() {
   const router = useRouter();
@@ -71,16 +72,17 @@ export default function PropertyDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex justify-center">
-      <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative">
+    <div className="min-h-screen flex justify-center" style={{ backgroundColor: '#FFF8F0' }}>
+      <div className="w-full max-w-[430px] min-h-screen shadow-2xl flex flex-col relative">
         <TopBar
           currentLanguage={currentLanguage}
           onLanguageChange={setCurrentLanguage}
           hideLanguageSelector={false}
         />
-        <MyPropertyDetailContent
+        <PropertyDetailView
           property={property}
-          currentLanguage={currentLanguage}
+          currentLanguage={currentLanguage as SupportedLanguage}
+          mode="owner"
           onBack={() => router.push("/profile/my-properties")}
           onEdit={() => router.push(`/profile/my-properties/${propertyId}/edit`)}
         />

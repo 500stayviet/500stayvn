@@ -5,15 +5,13 @@ import { flushSync } from 'react-dom';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { MapPin, Plus, Minus } from 'lucide-react';
-import { getAvailableProperties, subscribeToProperties, getProperty } from '@/lib/api/properties';
+import { getAvailableProperties, subscribeToProperties } from '@/lib/api/properties';
 import { PropertyData } from '@/types/property';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { searchRegions, regionToSuggestion, getDistrictIdForCoord } from '@/lib/data/vietnam-regions';
 import { searchLandmarksScored, landmarkToSuggestion, ALL_LANDMARKS } from '@/lib/data/vietnam-landmarks';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import PropertyModal from '@/components/map/PropertyModal';
-import MyPropertyDetailContent from '@/components/MyPropertyDetailContent';
 import SearchBox from '@/components/map/SearchBox';
 import { Suggestion } from '@/types/map';
 import { 
@@ -93,8 +91,6 @@ export default function GrabMapComponent({
   const hasRequestedLocationRef = useRef(false); // 위치 요청 여부 추적
   const isInitializingRef = useRef(false); // 지도 초기화 진행 중 여부 추적 (싱글톤 패턴)
   const [showLocationConsentModal, setShowLocationConsentModal] = useState(false);
-  const [showPropertyModal, setShowPropertyModal] = useState(false);
-  const [selectedPropertyData, setSelectedPropertyData] = useState<PropertyData | null>(null);
   const [rulerZoom, setRulerZoom] = useState(14);
   /** 명소/구 선택 시 해당 구 매물만 필터 (districtId) */
   const [selectedDistrictIdFilter, setSelectedDistrictIdFilter] = useState<string | null>(null);
@@ -137,59 +133,9 @@ export default function GrabMapComponent({
     }
   }, [currentLanguage]);
 
-  // 매물 클릭 시 모달 열기
-  const handlePropertyClick = async (propertyId: string) => {
-    try {
-      const propertyData = await getProperty(propertyId);
-      if (propertyData) {
-        setSelectedPropertyData(propertyData);
-        setShowPropertyModal(true);
-      }
-    } catch (error) {
-      console.error('매물 데이터 로드 실패:', error);
-    }
-  };
-
-  // 이전 매물로 이동 (지도 내 표시된 매물 기준)
-  const handlePrevPropertyInModal = async () => {
-    if (!selectedPropertyData || nearbyProperties.length <= 1) return;
-    const currentIndex = nearbyProperties.findIndex(p => p.id === selectedPropertyData.id);
-    const prevIndex = currentIndex <= 0 ? nearbyProperties.length - 1 : currentIndex - 1;
-    const prevProperty = nearbyProperties[prevIndex];
-    if (prevProperty) {
-      try {
-        const propertyData = await getProperty(prevProperty.id);
-        if (propertyData) {
-          setSelectedPropertyData(propertyData);
-        }
-      } catch (error) {
-        console.error('매물 데이터 로드 실패:', error);
-      }
-    }
-  };
-
-  // 다음 매물로 이동 (지도 내 표시된 매물 기준)
-  const handleNextPropertyInModal = async () => {
-    if (!selectedPropertyData || nearbyProperties.length <= 1) return;
-    const currentIndex = nearbyProperties.findIndex(p => p.id === selectedPropertyData.id);
-    const nextIndex = currentIndex >= nearbyProperties.length - 1 ? 0 : currentIndex + 1;
-    const nextProperty = nearbyProperties[nextIndex];
-    if (nextProperty) {
-      try {
-        const propertyData = await getProperty(nextProperty.id);
-        if (propertyData) {
-          setSelectedPropertyData(propertyData);
-        }
-      } catch (error) {
-        console.error('매물 데이터 로드 실패:', error);
-      }
-    }
-  };
-
-  // 현재 매물 인덱스 (모달용)
-  const getCurrentPropertyIndexInModal = () => {
-    if (!selectedPropertyData) return 0;
-    return nearbyProperties.findIndex(p => p.id === selectedPropertyData.id);
+  // 매물 클릭 시 /properties/[id] 로 이동 (인터셉팅 라우트에서 모달처럼 표시)
+  const handlePropertyClick = (propertyId: string) => {
+    router.push(`/properties/${propertyId}`);
   };
 
   // PropertyData를 Property로 변환하는 함수 (좌표 정확도 개선)
@@ -1674,44 +1620,6 @@ export default function GrabMapComponent({
         </div>
       )}
 
-      {/* 매물 상세 모달 — 본인 매물이면 임대인용(my-properties) 모달, 아니면 임차인용 모달 */}
-      {showPropertyModal && selectedPropertyData && (
-        user && selectedPropertyData.ownerId === user.uid ? (
-          <div
-            className="fixed inset-0 z-[90] bg-black/50 flex items-center justify-center p-4"
-            onClick={() => { setShowPropertyModal(false); setSelectedPropertyData(null); }}
-          >
-            <div
-              className="bg-white rounded-2xl w-full max-w-[430px] max-h-[90vh] overflow-y-auto shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <MyPropertyDetailContent
-                property={selectedPropertyData}
-                currentLanguage={currentLanguage}
-                onBack={() => { setShowPropertyModal(false); setSelectedPropertyData(null); }}
-                onEdit={() => {
-                  setShowPropertyModal(false);
-                  setSelectedPropertyData(null);
-                  if (selectedPropertyData?.id)
-                    router.push(`/profile/my-properties/${selectedPropertyData.id}/edit`);
-                }}
-              />
-            </div>
-          </div>
-        ) : (
-          <PropertyModal
-            propertyData={selectedPropertyData}
-            currentLanguage={currentLanguage}
-            onClose={() => setShowPropertyModal(false)}
-            onPrev={handlePrevPropertyInModal}
-            onNext={handleNextPropertyInModal}
-            hasPrev={nearbyProperties.length > 1}
-            hasNext={nearbyProperties.length > 1}
-            currentIndex={getCurrentPropertyIndexInModal()}
-            totalProperties={nearbyProperties.length}
-          />
-        )
-      )}
 
     </div>
   );
