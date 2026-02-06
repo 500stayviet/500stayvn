@@ -2,15 +2,18 @@
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Sans+KR:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Sans:wght@400;500;700&display=swap');
 
 :root {
-  --background: #ffffff;
-  --foreground: #1F2937;
+  --background: #FAFAFA;
+  --foreground: #111827;
   --brand-primary: #E63946;
-  --brand-primary-light: #E6394615;
+  --brand-primary-light: #E6394610;
   --brand-surface: #FFFFFF;
+  --brand-text: #111827;
+  --brand-text-sub: #374151;
   --brand-muted: #9CA3AF;
-  --brand-border: #F3F4F6;
-  --brand-bg-warm: #FFF8F6;
-  --radius: 0.75rem;
+  --brand-border: #E5E7EB;
+  --brand-input-bg: #F3F4F6;
+  --brand-bg: #FAFAFA;
+  --radius: 1rem;
 }
 
 @theme inline {
@@ -22,8 +25,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #ffffff;
-    --foreground: #1F2937;
+    --background: #FAFAFA;
+    --foreground: #111827;
   }
 }
 

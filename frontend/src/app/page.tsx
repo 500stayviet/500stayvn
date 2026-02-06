@@ -57,7 +57,6 @@ export default function HomePage() {
         <div className="flex-1 overflow-y-auto">
           <HeroSection currentLanguage={currentLanguage} />
           <QuickCityBrowse currentLanguage={currentLanguage} />
-          <div className="h-px" style={{ backgroundColor: '#F3F4F6' }} />
           <PopularStays currentLanguage={currentLanguage} />
           <TrustSignals currentLanguage={currentLanguage} />
         </div>

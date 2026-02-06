@@ -233,67 +233,65 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
     router.push('/profile');
   };
 
-  // 브랜드 컬러 (하단바와 통일)
+  // 브랜드 컬러 - 미니멀 에디토리얼 스타일
   const BRAND = {
     primary: '#E63946',
-    primaryLight: '#E6394615',
-    text: '#1F2937',
+    text: '#111827',
+    textSub: '#374151',
     muted: '#9CA3AF',
     surface: '#FFFFFF',
-    border: '#F3F4F6',
+    border: '#E5E7EB',
+    activeBg: '#F3F4F6',
   };
 
   return (
-    <header className="sticky top-0 z-50 backdrop-blur-md border-b" style={{ backgroundColor: `${BRAND.surface}F2`, borderColor: BRAND.border }}>
-      <div className="w-full px-4 sm:px-6">
-        <div className="flex items-center justify-between h-14 max-w-7xl mx-auto">
+    <header className="sticky top-0 z-50 bg-white border-b" style={{ borderColor: BRAND.border }}>
+      <div className="w-full px-5">
+        <div className="flex items-center justify-between h-13 max-w-7xl mx-auto">
           {/* 좌측: 로고 (홈으로 이동) */}
           <button
             onClick={handleHomeClick}
             className="flex items-center gap-2 hover:opacity-80 transition-opacity"
           >
-            {/* SVG 로고 아이콘 */}
-            <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect width="32" height="32" rx="8" fill={BRAND.primary} />
-              <path d="M8 20L16 10L24 20" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M12 20V24H20V20" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            {/* SVG 로고 아이콘 - 미니멀 */}
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="24" height="24" rx="6" fill={BRAND.text} />
+              <path d="M6 15L12 8L18 15" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M9 15V18H15V15" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            <div className="flex items-baseline gap-0.5">
-              <span className="text-lg font-extrabold tracking-tight" style={{ color: BRAND.primary }}>500</span>
-              <span className="text-lg font-bold tracking-tight" style={{ color: BRAND.text }}>stay</span>
-              <span className="text-lg font-bold tracking-tight" style={{ color: BRAND.primary }}>viet</span>
-            </div>
+            <span className="text-base font-bold tracking-tight" style={{ color: BRAND.text }}>
+              500stay<span style={{ color: BRAND.primary }}>.</span>
+            </span>
           </button>
 
           {/* 우측: 언어 선택 + 로그인/개인정보 */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
             {/* 언어 선택 (홈화면에서는 숨김) */}
             {!hideLanguageSelector && (
               <div className="relative" ref={menuRef}>
                 <button
                   onClick={() => setIsLanguageMenuOpen(!isLanguageMenuOpen)}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium rounded-full transition-all duration-200"
+                  className="flex items-center gap-1 px-2 py-1.5 text-xs font-medium rounded-lg transition-all duration-200"
                   style={{ color: BRAND.muted }}
                 >
-                  <Globe className="w-4 h-4" />
-                  <span className="text-base">{currentLang.flag}</span>
+                  <span className="text-sm">{currentLang.flag}</span>
                 </button>
 
                 {/* 언어 드롭다운 */}
                 {isLanguageMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-44 bg-white rounded-2xl shadow-xl py-2 z-50" style={{ border: `1px solid ${BRAND.border}` }}>
+                  <div className="absolute right-0 mt-1.5 w-40 bg-white rounded-xl shadow-lg py-1 z-50" style={{ border: `1px solid ${BRAND.border}` }}>
                     {languages.map((lang) => (
                       <button
                         key={lang.code}
                         onClick={() => handleLanguageSelect(lang.code)}
-                        className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-3 transition-colors"
+                        className="w-full text-left px-3 py-2 text-sm flex items-center gap-2.5 transition-colors"
                         style={{
-                          backgroundColor: currentLanguage === lang.code ? BRAND.primaryLight : 'transparent',
-                          color: currentLanguage === lang.code ? BRAND.primary : BRAND.text,
+                          backgroundColor: currentLanguage === lang.code ? BRAND.activeBg : 'transparent',
+                          color: currentLanguage === lang.code ? BRAND.text : BRAND.textSub,
                           fontWeight: currentLanguage === lang.code ? 600 : 400,
                         }}
                       >
-                        <span className="text-lg">{lang.flag}</span>
+                        <span className="text-base">{lang.flag}</span>
                         <span>{lang.name}</span>
                       </button>
                     ))}

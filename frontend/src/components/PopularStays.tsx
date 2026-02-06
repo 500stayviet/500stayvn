@@ -109,13 +109,15 @@ export default function PopularStays({ currentLanguage }: PopularStaysProps) {
     router.push(`/properties/${property.id}`);
   };
 
-  // 브랜드 컬러 (하단바와 통일)
+  // 브랜드 컬러
   const BRAND = {
     primary: '#E63946',
-    text: '#1F2937',
+    text: '#111827',
+    textSub: '#374151',
     muted: '#9CA3AF',
     surface: '#FFFFFF',
-    border: '#F3F4F6',
+    border: '#E5E7EB',
+    bg: '#FAFAFA',
   };
 
   // 서버 사이드에서는 아무것도 렌더링하지 않음
@@ -124,11 +126,11 @@ export default function PopularStays({ currentLanguage }: PopularStaysProps) {
   }
 
   return (
-    <section className="py-5 bg-white">
+    <section className="pt-2 pb-4" style={{ backgroundColor: BRAND.bg }}>
       <div className="w-full">
-        {/* 타이틀 - 항상 표시 */}
-        <div className="flex items-center justify-between px-4 mb-4">
-          <h2 className="text-base font-bold" style={{ color: BRAND.text }}>
+        {/* 타이틀 */}
+        <div className="flex items-center justify-between px-5 py-4">
+          <h2 className="text-xs font-semibold tracking-wide uppercase" style={{ color: BRAND.muted }}>
             {getUIText('popularStaysTitle', currentLanguage)}
           </h2>
           {!loading && properties.length > 0 && (
@@ -140,140 +142,109 @@ export default function PopularStays({ currentLanguage }: PopularStaysProps) {
 
         {/* 로딩 중일 때 */}
         {loading && (
-          <div className="flex gap-3 overflow-x-auto scrollbar-hide px-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex-shrink-0 w-[280px]">
-                <div className="h-[180px] rounded-xl animate-pulse" style={{ backgroundColor: BRAND.border }}></div>
-                <div className="mt-3 space-y-2">
-                  <div className="h-4 w-3/4 rounded animate-pulse" style={{ backgroundColor: BRAND.border }}></div>
-                  <div className="h-3 w-1/2 rounded animate-pulse" style={{ backgroundColor: BRAND.border }}></div>
+          <div className="flex flex-col gap-4 px-5">
+            {[1, 2].map((i) => (
+              <div key={i} className="bg-white rounded-2xl overflow-hidden" style={{ border: `1px solid ${BRAND.border}` }}>
+                <div className="h-[200px] animate-pulse" style={{ backgroundColor: '#F3F4F6' }}></div>
+                <div className="p-4">
+                  <div className="h-4 w-3/4 rounded animate-pulse mb-2" style={{ backgroundColor: '#F3F4F6' }}></div>
+                  <div className="h-3 w-1/2 rounded animate-pulse" style={{ backgroundColor: '#F3F4F6' }}></div>
                 </div>
               </div>
             ))}
           </div>
         )}
 
-        {/* 데이터가 없을 때 (로딩 완료 후) */}
+        {/* 데이터가 없을 때 */}
         {!loading && properties.length === 0 && (
-          <div className="text-center py-10 px-4">
+          <div className="text-center py-12 px-5">
             <p className="text-sm" style={{ color: BRAND.muted }}>{getUIText('noProperties', currentLanguage)}</p>
           </div>
         )}
 
-        {/* 매물 리스트 (로딩 완료 후 데이터가 있을 때) */}
+        {/* 매물 리스트 - 세로 카드 */}
         {!loading && properties.length > 0 && (
-          <div className="relative">
-            {/* 좌측 화살표 버튼 */}
-            <button
-              onClick={scrollLeft}
-              className="flex absolute left-1 top-[90px] -translate-y-1/2 z-20 rounded-full p-1.5 shadow-md transition-all"
-              style={{ backgroundColor: BRAND.surface, border: `1px solid ${BRAND.border}` }}
-              aria-label="Previous"
-            >
-              <ChevronLeft className="w-4 h-4" style={{ color: BRAND.text }} />
-            </button>
+          <div className="flex flex-col gap-4 px-5">
+            {properties.slice(0, 6).map((property) => {
+              const imageUrl = property.images && property.images.length > 0
+                ? property.images[0]
+                : 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400&h=300&fit=crop';
 
-            {/* 매물 리스트 (좌우 스크롤 가능) */}
-            <div
-              ref={scrollContainerRef}
-              className="flex gap-3 overflow-x-auto scrollbar-hide scroll-smooth pb-2 px-4"
-              style={{ scrollSnapType: 'x mandatory' }}
-            >
-              {properties.map((property, index) => {
-                const imageUrl = property.images && property.images.length > 0
-                  ? property.images[0]
-                  : 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400&h=300&fit=crop';
+              return (
+                <div
+                  key={property.id}
+                  onClick={() => openPropertyModal(property)}
+                  className="bg-white rounded-2xl overflow-hidden cursor-pointer transition-all active:scale-[0.99]"
+                  style={{ border: `1px solid ${BRAND.border}` }}
+                >
+                  {/* 이미지 */}
+                  <div className="relative h-[200px] overflow-hidden">
+                    <Image
+                      src={imageUrl}
+                      alt={property.title}
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 430px) 100vw, 400px"
+                    />
 
-                return (
-                  <div
-                    key={property.id}
-                    onClick={() => openPropertyModal(property)}
-                    className="flex-shrink-0 w-[280px] cursor-pointer group"
-                    style={{ scrollSnapAlign: 'start' }}
-                  >
-                    {/* 이미지 */}
-                    <div className="relative h-[180px] rounded-xl overflow-hidden">
-                      <Image
-                        src={imageUrl}
-                        alt={property.title}
-                        fill
-                        className="object-cover transition-transform duration-300 group-hover:scale-105"
-                        sizes="280px"
-                      />
+                    {/* 상단 배지 */}
+                    {property.checkInDate && (
+                      <div className="absolute top-3 left-3 z-10">
+                        {isAvailableNow(property.checkInDate) ? (
+                          <div className="text-white px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1.5" style={{ backgroundColor: '#059669' }}>
+                            <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
+                            {getUIText('availableNow', currentLanguage)}
+                          </div>
+                        ) : (
+                          <div className="text-white px-2.5 py-1 rounded-lg text-[10px] font-bold" style={{ backgroundColor: BRAND.text }}>
+                            {formatDateForBadge(property.checkInDate, currentLanguage)}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
 
-                      {/* 상단 배지 */}
-                      {property.checkInDate && (
-                        <div className="absolute top-3 left-3 z-10">
-                          {isAvailableNow(property.checkInDate) ? (
-                            <div className="text-white px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1.5" style={{ backgroundColor: '#059669' }}>
-                              <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
-                              {getUIText('availableNow', currentLanguage)}
-                            </div>
-                          ) : (
-                            <div className="text-white px-2.5 py-1 rounded-lg text-[10px] font-bold" style={{ backgroundColor: '#2563EB' }}>
-                              {formatDateForBadge(property.checkInDate, currentLanguage)}
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* 가격 배지 */}
-                      <div className="absolute bottom-3 right-3 z-10 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-sm" style={{ backgroundColor: 'rgba(255,255,255,0.95)' }}>
-                        <span className="text-sm font-bold" style={{ color: BRAND.primary }}>
+                  {/* 정보 영역 */}
+                  <div className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-bold line-clamp-1" style={{ color: BRAND.text }}>
+                          {property.title}
+                        </h3>
+                        {property.address && (
+                          <div className="flex items-center gap-1 mt-1">
+                            <MapPin className="w-3 h-3 flex-shrink-0" style={{ color: BRAND.muted }} />
+                            <span className="text-xs truncate" style={{ color: BRAND.muted }}>
+                              {getCityName(property.address)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-shrink-0 text-right">
+                        <span className="text-base font-extrabold" style={{ color: BRAND.primary }}>
                           {formatPrice(property.price, property.priceUnit)}
                         </span>
                       </div>
                     </div>
-
-                    {/* 정보 영역 */}
-                    <div className="mt-2.5 px-0.5">
-                      <h3 className="text-sm font-semibold line-clamp-1" style={{ color: BRAND.text }}>
-                        {property.title}
-                      </h3>
-                      {property.address && (
-                        <div className="flex items-center gap-1 mt-1">
-                          <MapPin className="w-3 h-3 flex-shrink-0" style={{ color: BRAND.muted }} />
-                          <span className="text-xs truncate" style={{ color: BRAND.muted }}>
-                            {getCityName(property.address)}
-                          </span>
-                        </div>
-                      )}
-                    </div>
                   </div>
-                );
-              })}
-            </div>
+                </div>
+              );
+            })}
 
-            {/* 인디케이터 점 */}
-            {properties.length > 1 && (
-              <div className="flex justify-center gap-1.5 mt-3">
-                {Array.from({ length: Math.min(properties.length, 5) }).map((_, idx) => {
-                  const maxDots = Math.min(properties.length, 5);
-                  const activeIndex = currentIndex % maxDots;
-                  const isActive = idx === activeIndex;
-                  return (
-                    <div
-                      key={idx}
-                      className="h-1.5 rounded-full transition-all duration-300"
-                      style={{
-                        width: isActive ? '20px' : '6px',
-                        backgroundColor: isActive ? BRAND.primary : '#E5E7EB',
-                      }}
-                    />
-                  );
-                })}
-              </div>
+            {/* 더보기 - 전체 검색으로 이동 */}
+            {properties.length > 6 && (
+              <button
+                onClick={() => router.push('/search')}
+                className="w-full py-3 text-sm font-semibold rounded-2xl transition-all active:scale-[0.98]"
+                style={{ 
+                  color: BRAND.text, 
+                  border: `1.5px solid ${BRAND.border}`,
+                  backgroundColor: BRAND.surface,
+                }}
+              >
+                {getUIText('viewAll', currentLanguage) || 'View all properties'}
+              </button>
             )}
-
-            {/* 우측 화살표 버튼 */}
-            <button
-              onClick={scrollRight}
-              className="flex absolute right-1 top-[90px] -translate-y-1/2 z-20 rounded-full p-1.5 shadow-md transition-all"
-              style={{ backgroundColor: BRAND.surface, border: `1px solid ${BRAND.border}` }}
-              aria-label="Next"
-            >
-              <ChevronRight className="w-4 h-4" style={{ color: BRAND.text }} />
-            </button>
           </div>
         )}
       </div>

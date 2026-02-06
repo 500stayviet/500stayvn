@@ -53,8 +53,11 @@ function getSectionTitle(lang: SupportedLanguage): string {
 
 const BRAND = {
   primary: '#E63946',
-  text: '#1F2937',
+  text: '#111827',
+  textSub: '#374151',
   muted: '#9CA3AF',
+  border: '#E5E7EB',
+  chipBg: '#F3F4F6',
 };
 
 export default function QuickCityBrowse({ currentLanguage }: QuickCityBrowseProps) {
@@ -71,31 +74,33 @@ export default function QuickCityBrowse({ currentLanguage }: QuickCityBrowseProp
   };
 
   return (
-    <section className="py-5 bg-white">
-      <div className="px-4">
-        <h3 className="text-base font-bold mb-3" style={{ color: BRAND.text }}>
+    <section className="bg-white pb-4">
+      {/* 구분선 */}
+      <div className="h-px mx-5" style={{ backgroundColor: '#F3F4F6' }} />
+      
+      <div className="px-5 pt-4">
+        <p className="text-xs font-semibold tracking-wide uppercase mb-3" style={{ color: BRAND.muted }}>
           {getSectionTitle(currentLanguage)}
-        </h3>
+        </p>
       </div>
-      <div className="flex gap-3 overflow-x-auto scrollbar-hide px-4 pb-1">
+      <div className="flex gap-2 overflow-x-auto scrollbar-hide px-5 pb-1">
         {featuredCities.map((city) => (
           <button
             key={city.id}
             onClick={() => handleCityClick(city)}
-            className="flex-shrink-0 group"
+            className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium transition-all active:scale-95"
+            style={{ 
+              backgroundColor: BRAND.chipBg,
+              color: BRAND.textSub,
+            }}
           >
-            <div className="relative w-20 h-20 rounded-2xl overflow-hidden shadow-sm">
-              <img
-                src={CITY_IMAGES[city.id] || ''}
-                alt={getCityDisplayName(city, currentLanguage)}
-                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-                crossOrigin="anonymous"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-            </div>
-            <p className="text-xs font-medium mt-1.5 text-center truncate w-20" style={{ color: BRAND.text }}>
-              {getCityDisplayName(city, currentLanguage)}
-            </p>
+            <img
+              src={CITY_IMAGES[city.id] || ''}
+              alt={getCityDisplayName(city, currentLanguage)}
+              className="w-6 h-6 rounded-full object-cover flex-shrink-0"
+              crossOrigin="anonymous"
+            />
+            <span className="whitespace-nowrap">{getCityDisplayName(city, currentLanguage)}</span>
           </button>
         ))}
       </div>
