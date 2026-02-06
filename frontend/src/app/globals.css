@@ -62,83 +62,64 @@ html[lang="en"] body {
   @apply min-h-screen bg-gray-100 flex justify-center;
 }
 
-/* 앱 전용 커스텀 스크롤바 - 430px 앱 프레임 내부에만 적용 */
+/* 앱 전용 조건부 미니멀 스크롤바 - 430px 앱 프레임 내부에만 적용 */
 .w-full.max-w-\[430px\] {
-  overflow-y: auto !important;
-  max-height: 100vh !important;
+  overflow-y: auto; /* 콘텐츠가 넘칠 때만 스크롤 활성화 */
+  max-height: 100vh;
 }
 
-/* 앱 프레임 내부의 스크롤바만 스타일링 */
+/* 기본 상태: 스크롤바 숨기기 */
 .w-full.max-w-\[430px\]::-webkit-scrollbar {
-  width: 8px !important;
-  height: 8px !important;
+  width: 0px; /* 기본적으로 숨김 */
+  height: 0px;
+}
+
+/* 콘텐츠가 넘칠 때만 스크롤바 표시 */
+.w-full.max-w-\[430px\]:hover::-webkit-scrollbar,
+.w-full.max-w-\[430px\]:active::-webkit-scrollbar,
+.w-full.max-w-\[430px\].scrolling::-webkit-scrollbar {
+  width: 3px; /* 아주 얇은 스크롤바 (3px) - 점처럼 */
+  height: 3px;
 }
 
 .w-full.max-w-\[430px\]::-webkit-scrollbar-track {
-  background: #f1f1f1 !important;
-  border-radius: 4px !important;
-  margin: 4px 0 !important;
+  background: transparent; /* 트랙 투명 */
 }
 
 .w-full.max-w-\[430px\]::-webkit-scrollbar-thumb {
-  background: #FF6B35 !important;
-  border-radius: 4px !important;
-  border: 2px solid #f1f1f1 !important;
+  background: #FF6B35; /* 시그니처 주황색 점 */
+  border-radius: 1.5px; /* 완전한 점 형태 */
+  opacity: 0; /* 기본적으로 투명 */
+  transition: opacity 0.3s ease;
 }
 
-.w-full.max-w-\[430px\]::-webkit-scrollbar-thumb:hover {
-  background: #FF4500 !important;
+/* 호버 또는 스크롤 중일 때만 점 표시 */
+.w-full.max-w-\[430px\]:hover::-webkit-scrollbar-thumb,
+.w-full.max-w-\[430px\]:active::-webkit-scrollbar-thumb,
+.w-full.max-w-\[430px\].scrolling::-webkit-scrollbar-thumb {
+  opacity: 0.6; /* 반투명 점 */
 }
 
-/* Firefox용 스크롤바 스타일 */
+/* Firefox용 조건부 미니멀 스크롤바 스타일 */
 .w-full.max-w-\[430px\] {
-  scrollbar-width: thin !important;
-  scrollbar-color: #FF6B35 #f1f1f1 !important;
+  scrollbar-width: none; /* 기본적으로 숨김 */
 }
 
-/* 앱 컨테이너 내부 스크롤 */
-.app-scroll-container {
-  overflow-y: auto !important;
+.w-full.max-w-\[430px\]:hover,
+.w-full.max-w-\[430px\]:active {
+  scrollbar-width: thin;
+  scrollbar-color: #FF6B35 transparent;
 }
 
-/* 브라우저 전체 창의 스크롤바 숨기기 */
+/* 브라우저 전체 창의 스크롤바는 기본으로 둠 */
 html, body {
-  overflow: hidden !important;
+  overflow: auto; /* 웹은 웹대로 기본 스크롤바 유지 */
 }
 
-/* 430px 앱 프레임 내에서만 스크롤바 적용 */
+/* 불필요한 중복 스크롤바 제거 */
+.app-scroll-container,
+.min-h-screen.flex.flex-col .flex-1,
+.w-full.max-w-\[430px\] .flex-1,
 .w-full.max-w-\[430px\] .app-scroll-container {
-  overflow-y: auto;
-}
-
-/* 전체 페이지 레이아웃에 적용 */
-.min-h-screen.flex.flex-col .flex-1 {
-  overflow-y: auto;
-}
-
-/* 앱 컨테이너 내부 스크롤 최적화 */
-.w-full.max-w-\[430px\] .flex-1 {
-  overflow-y: auto;
-}
-
-/* 스크롤바가 필요할 때만 표시되도록 */
-@media (hover: hover) {
-  .app-scroll-container {
-    scrollbar-color: rgba(0, 0, 0, 0.1) transparent;
-  }
-  
-  .app-scroll-container:hover {
-    scrollbar-color: rgba(0, 0, 0, 0.3) transparent;
-  }
-}
-
-/* 모바일 터치 최적화 */
-@media (pointer: coarse) {
-  .app-scroll-container::-webkit-scrollbar {
-    width: 6px; /* 터치 디바이스에서 조금 더 두껍게 */
-  }
-  
-  .app-scroll-container::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.2); /* 모바일에서 더 잘 보이게 */
-  }
+  overflow-y: visible !important;
 }

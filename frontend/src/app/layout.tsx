@@ -57,7 +57,7 @@ export default function RootLayout({
             <TranslationProvider>
               <div className="min-h-screen bg-gray-100 flex justify-center">
                 <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col">
-                  <main className="flex-1 pb-14">
+                  <main className="flex-1 pb-14 overflow-y-auto">
                     {children}
                   </main>
                   <BottomNavigation />
