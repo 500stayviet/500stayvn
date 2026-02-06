@@ -2,18 +2,22 @@
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Sans+KR:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Sans:wght@400;500;700&display=swap');
 
 :root {
-  --background: #FAFAFA;
-  --foreground: #111827;
-  --brand-primary: #E63946;
-  --brand-primary-light: #E6394610;
+  --background: #FBF8F3;
+  --foreground: #1A2E1A;
+  --brand-primary: #2D6A4F;
+  --brand-primary-dark: #1B4332;
+  --brand-primary-light: #2D6A4F12;
+  --brand-accent: #D4A017;
+  --brand-accent-light: #D4A01715;
+  --brand-terracotta: #C2703E;
   --brand-surface: #FFFFFF;
-  --brand-text: #111827;
-  --brand-text-sub: #374151;
-  --brand-muted: #9CA3AF;
-  --brand-border: #E5E7EB;
-  --brand-input-bg: #F3F4F6;
-  --brand-bg: #FAFAFA;
-  --radius: 1rem;
+  --brand-cream: #FBF8F3;
+  --brand-text: #1A2E1A;
+  --brand-text-sub: #3D5C3D;
+  --brand-muted: #8A9E8A;
+  --brand-border: #E8E0D4;
+  --brand-input-bg: #F5F0E8;
+  --radius: 0.875rem;
 }
 
 @theme inline {
@@ -25,8 +29,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #FAFAFA;
-    --foreground: #111827;
+    --background: #FBF8F3;
+    --foreground: #1A2E1A;
   }
 }
 

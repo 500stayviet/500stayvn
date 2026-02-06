@@ -233,35 +233,42 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
     router.push('/profile');
   };
 
-  // 브랜드 컬러 - 미니멀 에디토리얼 스타일
-  const BRAND = {
-    primary: '#E63946',
-    text: '#111827',
-    textSub: '#374151',
-    muted: '#9CA3AF',
+  // 베트남 컬러 팔레트
+  const VN = {
+    green: '#2D6A4F',
+    greenDark: '#1B4332',
+    gold: '#D4A017',
+    terracotta: '#C2703E',
+    text: '#1A2E1A',
+    textSub: '#3D5C3D',
+    muted: '#8A9E8A',
+    cream: '#FBF8F3',
     surface: '#FFFFFF',
-    border: '#E5E7EB',
-    activeBg: '#F3F4F6',
+    border: '#E8E0D4',
+    activeBg: '#2D6A4F0C',
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-white border-b" style={{ borderColor: BRAND.border }}>
+    <header className="sticky top-0 z-50 border-b" style={{ backgroundColor: VN.cream, borderColor: VN.border }}>
       <div className="w-full px-5">
-        <div className="flex items-center justify-between h-13 max-w-7xl mx-auto">
-          {/* 좌측: 로고 (홈으로 이동) */}
+        <div className="flex items-center justify-between h-14 max-w-7xl mx-auto">
+          {/* 좌측: 로고 */}
           <button
             onClick={handleHomeClick}
-            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+            className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
           >
-            {/* SVG 로고 아이콘 - 미니멀 */}
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect width="24" height="24" rx="6" fill={BRAND.text} />
-              <path d="M6 15L12 8L18 15" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M9 15V18H15V15" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            {/* SVG 로고 - 베트남 그린 */}
+            <svg width="26" height="26" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="26" height="26" rx="7" fill={VN.green} />
+              <path d="M7 16L13 9L19 16" stroke={VN.cream} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M10 16V19.5H16V16" stroke={VN.cream} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              <circle cx="13" cy="6" r="1.2" fill="#D4A017" />
             </svg>
-            <span className="text-base font-bold tracking-tight" style={{ color: BRAND.text }}>
-              500stay<span style={{ color: BRAND.primary }}>.</span>
-            </span>
+            <div className="flex items-baseline">
+              <span className="text-base font-extrabold tracking-tight" style={{ color: VN.green }}>500</span>
+              <span className="text-base font-bold tracking-tight" style={{ color: VN.text }}>stay</span>
+              <span className="text-[10px] font-semibold ml-0.5 -mb-px" style={{ color: VN.gold }}>VIET</span>
+            </div>
           </button>
 
           {/* 우측: 언어 선택 + 로그인/개인정보 */}
@@ -272,22 +279,23 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
                 <button
                   onClick={() => setIsLanguageMenuOpen(!isLanguageMenuOpen)}
                   className="flex items-center gap-1 px-2 py-1.5 text-xs font-medium rounded-lg transition-all duration-200"
-                  style={{ color: BRAND.muted }}
+                  style={{ color: VN.muted }}
                 >
+                  <Globe className="w-3.5 h-3.5" />
                   <span className="text-sm">{currentLang.flag}</span>
                 </button>
 
                 {/* 언어 드롭다운 */}
                 {isLanguageMenuOpen && (
-                  <div className="absolute right-0 mt-1.5 w-40 bg-white rounded-xl shadow-lg py-1 z-50" style={{ border: `1px solid ${BRAND.border}` }}>
+                  <div className="absolute right-0 mt-1.5 w-40 rounded-xl shadow-lg py-1 z-50" style={{ backgroundColor: VN.surface, border: `1px solid ${VN.border}` }}>
                     {languages.map((lang) => (
                       <button
                         key={lang.code}
                         onClick={() => handleLanguageSelect(lang.code)}
-                        className="w-full text-left px-3 py-2 text-sm flex items-center gap-2.5 transition-colors"
+                        className="w-full text-left px-3 py-2.5 text-sm flex items-center gap-2.5 transition-colors"
                         style={{
-                          backgroundColor: currentLanguage === lang.code ? BRAND.activeBg : 'transparent',
-                          color: currentLanguage === lang.code ? BRAND.text : BRAND.textSub,
+                          backgroundColor: currentLanguage === lang.code ? VN.activeBg : 'transparent',
+                          color: currentLanguage === lang.code ? VN.green : VN.textSub,
                           fontWeight: currentLanguage === lang.code ? 600 : 400,
                         }}
                       >
@@ -310,12 +318,12 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
                       <button
                         onClick={() => setIsNotificationOpen(!isNotificationOpen)}
                         className="p-2 rounded-full transition-all duration-200 relative"
-                        style={{ color: notificationsEnabled ? BRAND.text : BRAND.muted }}
+                        style={{ color: notificationsEnabled ? VN.text : VN.muted }}
                         aria-label="Notifications"
                       >
                         <Bell className="w-5 h-5" />
                         {notificationsEnabled && unreadCount > 0 && (
-                          <span className="absolute -top-1 -right-1 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full font-bold" style={{ backgroundColor: BRAND.primary }}>
+                          <span className="absolute -top-1 -right-1 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full font-bold" style={{ backgroundColor: VN.terracotta }}>
                             {unreadCount > 9 ? '9+' : unreadCount}
                           </span>
                         )}
@@ -574,7 +582,7 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
                       <button
                         onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                         className="p-2 rounded-full transition-all duration-200"
-                        style={{ color: BRAND.text }}
+                        style={{ color: VN.text }}
                         aria-label="Profile"
                       >
                         <User className="w-5 h-5" />
@@ -617,7 +625,7 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
                     <button
                       onClick={handleLoginClick}
                       className="p-2 rounded-full transition-all duration-200 cursor-pointer"
-                      style={{ color: BRAND.muted }}
+                      style={{ color: VN.muted }}
                       aria-label="Login"
                     >
                       <User className="w-5 h-5" />

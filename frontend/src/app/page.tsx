@@ -46,8 +46,8 @@ export default function HomePage() {
   const shouldShowLanguageSelector = !user || !userPreferredLanguage;
 
   return (
-    <div className="min-h-screen flex justify-center" style={{ backgroundColor: '#F9FAFB' }}>
-      <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative">
+    <div className="min-h-screen flex justify-center" style={{ backgroundColor: '#F5F0E8' }}>
+      <div className="w-full max-w-[430px] min-h-screen shadow-2xl flex flex-col relative" style={{ backgroundColor: '#FBF8F3' }}>
         <TopBar 
           currentLanguage={currentLanguage}
           onLanguageChange={setCurrentLanguage}

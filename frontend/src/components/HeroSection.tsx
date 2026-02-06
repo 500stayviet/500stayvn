@@ -293,16 +293,20 @@ export default function HeroSection({ currentLanguage }: HeroSectionProps) {
     router.push('/map?denied=true');
   };
 
-  // 브랜드 컬러
-  const BRAND = {
-    primary: '#E63946',
-    text: '#111827',
-    textSub: '#374151',
-    muted: '#9CA3AF',
+  // 베트남 컬러 팔레트
+  const VN = {
+    green: '#2D6A4F',
+    greenDark: '#1B4332',
+    gold: '#D4A017',
+    goldLight: '#D4A01718',
+    terracotta: '#C2703E',
+    text: '#1A2E1A',
+    textSub: '#3D5C3D',
+    muted: '#8A9E8A',
+    cream: '#FBF8F3',
     surface: '#FFFFFF',
-    bg: '#FAFAFA',
-    border: '#E5E7EB',
-    inputBg: '#F3F4F6',
+    border: '#E8E0D4',
+    inputBg: '#F5F0E8',
   };
 
   // 인사말
@@ -317,135 +321,165 @@ export default function HeroSection({ currentLanguage }: HeroSectionProps) {
     return greetings[lang] || greetings.en;
   };
 
+  const getSubtitle = (lang: SupportedLanguage): string => {
+    const subtitles: Record<SupportedLanguage, string> = {
+      ko: '호치민, 하노이, 다낭 등 베트남 전역의 매물',
+      vi: 'Bat dong san khap Viet Nam',
+      en: 'Properties across Vietnam',
+      ja: 'ベトナム全土の物件',
+      zh: '越南各地的房产',
+    };
+    return subtitles[lang] || subtitles.en;
+  };
+
   return (
-    <section className="bg-white">
-      {/* 인사말 + 검색 영역 */}
-      <div className="px-5 pt-6 pb-5">
-        {/* 인사말 */}
-        <h2 className="text-[22px] font-extrabold leading-tight tracking-tight whitespace-pre-line mb-5" style={{ color: BRAND.text }}>
-          {getGreeting(currentLanguage)}
-        </h2>
-
-        {/* 검색창 */}
-        <form onSubmit={handleSearch}>
-          <div className="relative" ref={searchContainerRef}>
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
-              <Search className="h-[18px] w-[18px]" style={{ color: BRAND.muted }} />
-            </div>
-            <input
-              ref={searchInputRef}
-              name="search"
-              type="text"
-              value={searchValue}
-              onChange={handleInputChange}
-              onFocus={() => {
-                setShowSuggestions(false);
-              }}
-              placeholder={getUIText('searchPlaceholderCityDistrict', currentLanguage)}
-              className="w-full pl-11 pr-4 py-3.5 text-sm rounded-2xl transition-all placeholder:text-gray-400"
-              style={{ 
-                backgroundColor: BRAND.inputBg, 
-                border: '1.5px solid transparent',
-                color: BRAND.text,
-                outline: 'none',
-              }}
-              onFocusCapture={(e) => {
-                (e.target as HTMLInputElement).style.borderColor = BRAND.border;
-                (e.target as HTMLInputElement).style.backgroundColor = BRAND.surface;
-              }}
-              onBlurCapture={(e) => {
-                (e.target as HTMLInputElement).style.borderColor = 'transparent';
-                (e.target as HTMLInputElement).style.backgroundColor = BRAND.inputBg;
-              }}
-            />
-            
-            {/* 추천 결과 드롭다운 */}
-            {searchValue && showSuggestions && suggestions.length > 0 && (
-              <div className="absolute z-50 w-full mt-1.5 bg-white rounded-2xl shadow-xl max-h-72 overflow-y-auto" style={{ border: `1px solid ${BRAND.border}` }}>
-                {suggestions.map((suggestion, index) => {
-                  const badge = getSuggestionBadge(suggestion, currentLanguage);
-                  const displayText = suggestion.Text || '';
-                  const parts = displayText.split(',');
-                  const mainName = cleanDisplayName(parts[0]?.trim() || displayText);
-                  const subAddress = cleanSubAddress(parts.slice(1).join(',').trim());
-                  
-                  return (
-                    <button
-                      key={suggestion.PlaceId || index}
-                      type="button"
-                      onClick={() => {
-                        handleSelectSuggestion(suggestion);
-                        setShowSuggestions(false);
-                      }}
-                      className="w-full text-left px-4 py-3 transition-colors border-b last:border-b-0"
-                      style={{ borderColor: '#F3F4F6', backgroundColor: suggestion.isRegion ? '#FAFAFA' : 'transparent' }}
-                    >
-                      <div className="flex items-start gap-3">
-                        <span className="text-base flex-shrink-0 mt-0.5">{badge.icon}</span>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded ${badge.color} text-white font-semibold flex-shrink-0`}>
-                              {badge.text}
-                            </span>
-                            <p className="text-sm font-medium truncate" style={{ color: BRAND.text }}>
-                              {mainName}
-                            </p>
-                          </div>
-                          {subAddress && (
-                            <p className="text-xs mt-0.5 truncate" style={{ color: BRAND.muted }}>
-                              {subAddress}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-            
-            {/* 검색 중 표시 */}
-            {isSearching && (
-              <div className="absolute z-50 w-full mt-1.5 bg-white rounded-2xl shadow-xl p-4" style={{ border: `1px solid ${BRAND.border}` }}>
-                <div className="flex items-center justify-center gap-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2" style={{ borderColor: BRAND.primary }}></div>
-                  <span className="text-sm" style={{ color: BRAND.muted }}>
-                    {getUIText('searching', currentLanguage)}
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-        </form>
-
-        {/* 지도로 매물 찾기 버튼 */}
-        <button
-          onClick={handleMapView}
-          className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl font-semibold text-sm mt-3 transition-all active:scale-[0.98]"
-          style={{ 
-            backgroundColor: BRAND.text, 
-            color: BRAND.surface,
+    <section style={{ backgroundColor: VN.cream }}>
+      {/* 배경 이미지 영역 - 베트남 풍경 */}
+      <div className="relative h-[180px] overflow-hidden">
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{
+            backgroundImage: 'url(https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=1200&h=600&fit=crop)',
           }}
         >
-          <MapPin className="w-4 h-4" />
-          <span>
-            {getUIText('findPropertiesOnMap', currentLanguage)}
-          </span>
-        </button>
+          {/* 따뜻한 녹색-황금빛 오버레이 */}
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(27,67,50,0.3) 0%, rgba(27,67,50,0.55) 100%)' }}></div>
+        </div>
+        
+        <div className="relative z-10 h-full flex flex-col justify-end px-5 pb-5">
+          <h2 className="text-xl font-extrabold leading-tight whitespace-pre-line text-white drop-shadow-md text-balance">
+            {getGreeting(currentLanguage)}
+          </h2>
+          <p className="text-xs mt-1.5 font-medium drop-shadow-sm" style={{ color: '#E8E0D4' }}>
+            {getSubtitle(currentLanguage)}
+          </p>
+        </div>
+      </div>
+
+      {/* 검색 카드 - 이미지와 겹침 */}
+      <div className="relative z-10 px-4 -mt-6 pb-4">
+        <div className="rounded-2xl p-4 shadow-md" style={{ backgroundColor: VN.surface, border: `1px solid ${VN.border}` }}>
+          {/* 검색창 */}
+          <form onSubmit={handleSearch}>
+            <div className="relative" ref={searchContainerRef}>
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none z-10">
+                <Search className="h-[16px] w-[16px]" style={{ color: VN.muted }} />
+              </div>
+              <input
+                ref={searchInputRef}
+                name="search"
+                type="text"
+                value={searchValue}
+                onChange={handleInputChange}
+                onFocus={() => {
+                  setShowSuggestions(false);
+                }}
+                placeholder={getUIText('searchPlaceholderCityDistrict', currentLanguage)}
+                className="w-full pl-10 pr-4 py-3 text-sm rounded-xl transition-all"
+                style={{ 
+                  backgroundColor: VN.inputBg, 
+                  border: '1.5px solid transparent',
+                  color: VN.text,
+                  outline: 'none',
+                }}
+                onFocusCapture={(e) => {
+                  (e.target as HTMLInputElement).style.borderColor = VN.green;
+                  (e.target as HTMLInputElement).style.backgroundColor = VN.surface;
+                }}
+                onBlurCapture={(e) => {
+                  (e.target as HTMLInputElement).style.borderColor = 'transparent';
+                  (e.target as HTMLInputElement).style.backgroundColor = VN.inputBg;
+                }}
+              />
+              
+              {/* 추천 결과 드롭다운 */}
+              {searchValue && showSuggestions && suggestions.length > 0 && (
+                <div className="absolute z-50 w-full mt-1.5 rounded-xl shadow-xl max-h-72 overflow-y-auto" style={{ backgroundColor: VN.surface, border: `1px solid ${VN.border}` }}>
+                  {suggestions.map((suggestion, index) => {
+                    const badge = getSuggestionBadge(suggestion, currentLanguage);
+                    const displayText = suggestion.Text || '';
+                    const parts = displayText.split(',');
+                    const mainName = cleanDisplayName(parts[0]?.trim() || displayText);
+                    const subAddress = cleanSubAddress(parts.slice(1).join(',').trim());
+                    
+                    return (
+                      <button
+                        key={suggestion.PlaceId || index}
+                        type="button"
+                        onClick={() => {
+                          handleSelectSuggestion(suggestion);
+                          setShowSuggestions(false);
+                        }}
+                        className="w-full text-left px-4 py-3 transition-colors border-b last:border-b-0"
+                        style={{ borderColor: VN.border, backgroundColor: suggestion.isRegion ? VN.cream : 'transparent' }}
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className="text-base flex-shrink-0 mt-0.5">{badge.icon}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded ${badge.color} text-white font-semibold flex-shrink-0`}>
+                                {badge.text}
+                              </span>
+                              <p className="text-sm font-medium truncate" style={{ color: VN.text }}>
+                                {mainName}
+                              </p>
+                            </div>
+                            {subAddress && (
+                              <p className="text-xs mt-0.5 truncate" style={{ color: VN.muted }}>
+                                {subAddress}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              
+              {/* 검색 중 표시 */}
+              {isSearching && (
+                <div className="absolute z-50 w-full mt-1.5 rounded-xl shadow-xl p-4" style={{ backgroundColor: VN.surface, border: `1px solid ${VN.border}` }}>
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2" style={{ borderColor: VN.green }}></div>
+                    <span className="text-sm" style={{ color: VN.muted }}>
+                      {getUIText('searching', currentLanguage)}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </form>
+
+          {/* 지도로 매물 찾기 버튼 */}
+          <button
+            onClick={handleMapView}
+            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm mt-3 transition-all active:scale-[0.98]"
+            style={{ 
+              backgroundColor: VN.green, 
+              color: VN.cream,
+            }}
+          >
+            <MapPin className="w-4 h-4" />
+            <span>
+              {getUIText('findPropertiesOnMap', currentLanguage)}
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* 위치 권한 요청 모달 */}
       {showLocationPermissionModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-5">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6">
+          <div className="rounded-2xl shadow-2xl max-w-sm w-full p-6" style={{ backgroundColor: VN.surface }}>
             <div className="text-center mb-5">
-              <div className="mx-auto w-12 h-12 rounded-2xl flex items-center justify-center mb-3" style={{ backgroundColor: '#F3F4F6' }}>
-                <MapPin className="w-6 h-6" style={{ color: BRAND.text }} />
+              <div className="mx-auto w-12 h-12 rounded-2xl flex items-center justify-center mb-3" style={{ backgroundColor: VN.inputBg }}>
+                <MapPin className="w-6 h-6" style={{ color: VN.green }} />
               </div>
-              <h3 className="text-base font-bold mb-1.5" style={{ color: BRAND.text }}>
+              <h3 className="text-base font-bold mb-1.5" style={{ color: VN.text }}>
                 {getUIText('useCurrentLocation', currentLanguage)}
               </h3>
-              <p className="text-xs leading-relaxed" style={{ color: BRAND.muted }}>
+              <p className="text-xs leading-relaxed" style={{ color: VN.muted }}>
                 {getUIText('locationPermissionDesc', currentLanguage)}
               </p>
             </div>
@@ -455,11 +489,11 @@ export default function HeroSection({ currentLanguage }: HeroSectionProps) {
                 onClick={handleRequestLocationPermission}
                 disabled={requestingLocation}
                 className="w-full py-3 px-4 rounded-xl font-semibold text-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                style={{ backgroundColor: BRAND.text, color: BRAND.surface }}
+                style={{ backgroundColor: VN.green, color: VN.cream }}
               >
                 {requestingLocation ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2" style={{ borderColor: VN.cream }}></div>
                     <span>{getUIText('requesting', currentLanguage)}</span>
                   </>
                 ) : (
@@ -470,7 +504,7 @@ export default function HeroSection({ currentLanguage }: HeroSectionProps) {
                 onClick={handleSkipLocation}
                 disabled={requestingLocation}
                 className="w-full py-3 px-4 rounded-xl font-semibold text-sm transition-colors disabled:opacity-50"
-                style={{ backgroundColor: '#F3F4F6', color: BRAND.textSub }}
+                style={{ backgroundColor: VN.inputBg, color: VN.textSub }}
               >
                 {getUIText('skip', currentLanguage)}
               </button>

@@ -181,12 +181,13 @@ export default function BottomNavigation({ hideOnPaths = [] }: BottomNavigationP
     return null;
   }
 
-  // 베트남 스타일 컬러
+  // 베트남 그린 컬러
   const COLORS = {
-    primary: '#E63946', // Coral Red - 메인 컬러
-    textMuted: '#9CA3AF', // 희미한 텍스트
-    surface: '#FFFFFF', // 카드 배경
-    border: '#FED7AA', // 따뜻한 오렌지 테두리
+    primary: '#2D6A4F',
+    gold: '#D4A017',
+    textMuted: '#8A9E8A',
+    surface: '#FBF8F3',
+    border: '#E8E0D4',
   };
 
   // 임대인 모드 네비게이션 아이템 (add-property 페이지와 동일한 라벨)
@@ -324,7 +325,7 @@ export default function BottomNavigation({ hideOnPaths = [] }: BottomNavigationP
       </div>
       
       {/* 안전 영역 (iPhone 노치 대응) */}
-      <div className="h-2 bg-white" />
+      <div className="h-2" style={{ backgroundColor: COLORS.surface }} />
     </nav>
   );
 }

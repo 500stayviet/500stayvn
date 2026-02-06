@@ -109,15 +109,19 @@ export default function PopularStays({ currentLanguage }: PopularStaysProps) {
     router.push(`/properties/${property.id}`);
   };
 
-  // 브랜드 컬러
-  const BRAND = {
-    primary: '#E63946',
-    text: '#111827',
-    textSub: '#374151',
-    muted: '#9CA3AF',
+  // 베트남 컬러 팔레트
+  const VN = {
+    green: '#2D6A4F',
+    greenDark: '#1B4332',
+    gold: '#D4A017',
+    terracotta: '#C2703E',
+    text: '#1A2E1A',
+    textSub: '#3D5C3D',
+    muted: '#8A9E8A',
+    cream: '#FBF8F3',
     surface: '#FFFFFF',
-    border: '#E5E7EB',
-    bg: '#FAFAFA',
+    border: '#E8E0D4',
+    inputBg: '#F5F0E8',
   };
 
   // 서버 사이드에서는 아무것도 렌더링하지 않음
@@ -126,15 +130,18 @@ export default function PopularStays({ currentLanguage }: PopularStaysProps) {
   }
 
   return (
-    <section className="pt-2 pb-4" style={{ backgroundColor: BRAND.bg }}>
+    <section className="pt-2 pb-4" style={{ backgroundColor: VN.cream }}>
       <div className="w-full">
         {/* 타이틀 */}
         <div className="flex items-center justify-between px-5 py-4">
-          <h2 className="text-xs font-semibold tracking-wide uppercase" style={{ color: BRAND.muted }}>
-            {getUIText('popularStaysTitle', currentLanguage)}
-          </h2>
+          <div className="flex items-center gap-2">
+            <div className="w-1 h-4 rounded-full" style={{ backgroundColor: VN.gold }} />
+            <h2 className="text-xs font-bold tracking-wide uppercase" style={{ color: VN.green }}>
+              {getUIText('popularStaysTitle', currentLanguage)}
+            </h2>
+          </div>
           {!loading && properties.length > 0 && (
-            <span className="text-xs font-medium" style={{ color: BRAND.muted }}>
+            <span className="text-xs font-medium" style={{ color: VN.muted }}>
               {properties.length}{getUIText('propertiesCount', currentLanguage)}
             </span>
           )}
@@ -144,11 +151,11 @@ export default function PopularStays({ currentLanguage }: PopularStaysProps) {
         {loading && (
           <div className="flex flex-col gap-4 px-5">
             {[1, 2].map((i) => (
-              <div key={i} className="bg-white rounded-2xl overflow-hidden" style={{ border: `1px solid ${BRAND.border}` }}>
-                <div className="h-[200px] animate-pulse" style={{ backgroundColor: '#F3F4F6' }}></div>
+              <div key={i} className="rounded-2xl overflow-hidden" style={{ backgroundColor: VN.surface, border: `1px solid ${VN.border}` }}>
+                <div className="h-[200px] animate-pulse" style={{ backgroundColor: VN.inputBg }}></div>
                 <div className="p-4">
-                  <div className="h-4 w-3/4 rounded animate-pulse mb-2" style={{ backgroundColor: '#F3F4F6' }}></div>
-                  <div className="h-3 w-1/2 rounded animate-pulse" style={{ backgroundColor: '#F3F4F6' }}></div>
+                  <div className="h-4 w-3/4 rounded animate-pulse mb-2" style={{ backgroundColor: VN.inputBg }}></div>
+                  <div className="h-3 w-1/2 rounded animate-pulse" style={{ backgroundColor: VN.inputBg }}></div>
                 </div>
               </div>
             ))}
@@ -158,7 +165,7 @@ export default function PopularStays({ currentLanguage }: PopularStaysProps) {
         {/* 데이터가 없을 때 */}
         {!loading && properties.length === 0 && (
           <div className="text-center py-12 px-5">
-            <p className="text-sm" style={{ color: BRAND.muted }}>{getUIText('noProperties', currentLanguage)}</p>
+            <p className="text-sm" style={{ color: VN.muted }}>{getUIText('noProperties', currentLanguage)}</p>
           </div>
         )}
 
@@ -174,8 +181,8 @@ export default function PopularStays({ currentLanguage }: PopularStaysProps) {
                 <div
                   key={property.id}
                   onClick={() => openPropertyModal(property)}
-                  className="bg-white rounded-2xl overflow-hidden cursor-pointer transition-all active:scale-[0.99]"
-                  style={{ border: `1px solid ${BRAND.border}` }}
+                  className="rounded-2xl overflow-hidden cursor-pointer transition-all active:scale-[0.99]"
+                  style={{ backgroundColor: VN.surface, border: `1px solid ${VN.border}` }}
                 >
                   {/* 이미지 */}
                   <div className="relative h-[200px] overflow-hidden">
@@ -191,12 +198,12 @@ export default function PopularStays({ currentLanguage }: PopularStaysProps) {
                     {property.checkInDate && (
                       <div className="absolute top-3 left-3 z-10">
                         {isAvailableNow(property.checkInDate) ? (
-                          <div className="text-white px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1.5" style={{ backgroundColor: '#059669' }}>
+                          <div className="text-white px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1.5" style={{ backgroundColor: VN.green }}>
                             <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
                             {getUIText('availableNow', currentLanguage)}
                           </div>
                         ) : (
-                          <div className="text-white px-2.5 py-1 rounded-lg text-[10px] font-bold" style={{ backgroundColor: BRAND.text }}>
+                          <div className="px-2.5 py-1 rounded-lg text-[10px] font-bold" style={{ backgroundColor: VN.greenDark, color: VN.cream }}>
                             {formatDateForBadge(property.checkInDate, currentLanguage)}
                           </div>
                         )}
@@ -208,20 +215,20 @@ export default function PopularStays({ currentLanguage }: PopularStaysProps) {
                   <div className="p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-sm font-bold line-clamp-1" style={{ color: BRAND.text }}>
+                        <h3 className="text-sm font-bold line-clamp-1" style={{ color: VN.text }}>
                           {property.title}
                         </h3>
                         {property.address && (
                           <div className="flex items-center gap-1 mt-1">
-                            <MapPin className="w-3 h-3 flex-shrink-0" style={{ color: BRAND.muted }} />
-                            <span className="text-xs truncate" style={{ color: BRAND.muted }}>
+                            <MapPin className="w-3 h-3 flex-shrink-0" style={{ color: VN.muted }} />
+                            <span className="text-xs truncate" style={{ color: VN.muted }}>
                               {getCityName(property.address)}
                             </span>
                           </div>
                         )}
                       </div>
                       <div className="flex-shrink-0 text-right">
-                        <span className="text-base font-extrabold" style={{ color: BRAND.primary }}>
+                        <span className="text-base font-extrabold" style={{ color: VN.terracotta }}>
                           {formatPrice(property.price, property.priceUnit)}
                         </span>
                       </div>
@@ -237,9 +244,9 @@ export default function PopularStays({ currentLanguage }: PopularStaysProps) {
                 onClick={() => router.push('/search')}
                 className="w-full py-3 text-sm font-semibold rounded-2xl transition-all active:scale-[0.98]"
                 style={{ 
-                  color: BRAND.text, 
-                  border: `1.5px solid ${BRAND.border}`,
-                  backgroundColor: BRAND.surface,
+                  color: VN.green, 
+                  border: `1.5px solid ${VN.border}`,
+                  backgroundColor: VN.surface,
                 }}
               >
                 {getUIText('viewAll', currentLanguage) || 'View all properties'}

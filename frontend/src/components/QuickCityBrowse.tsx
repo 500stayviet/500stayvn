@@ -51,13 +51,16 @@ function getSectionTitle(lang: SupportedLanguage): string {
   return titles[lang] || titles.en;
 }
 
-const BRAND = {
-  primary: '#E63946',
-  text: '#111827',
-  textSub: '#374151',
-  muted: '#9CA3AF',
-  border: '#E5E7EB',
-  chipBg: '#F3F4F6',
+const VN = {
+  green: '#2D6A4F',
+  gold: '#D4A017',
+  text: '#1A2E1A',
+  textSub: '#3D5C3D',
+  muted: '#8A9E8A',
+  cream: '#FBF8F3',
+  surface: '#FFFFFF',
+  border: '#E8E0D4',
+  chipBg: '#F5F0E8',
 };
 
 export default function QuickCityBrowse({ currentLanguage }: QuickCityBrowseProps) {
@@ -74,33 +77,34 @@ export default function QuickCityBrowse({ currentLanguage }: QuickCityBrowseProp
   };
 
   return (
-    <section className="bg-white pb-4">
-      {/* 구분선 */}
-      <div className="h-px mx-5" style={{ backgroundColor: '#F3F4F6' }} />
-      
-      <div className="px-5 pt-4">
-        <p className="text-xs font-semibold tracking-wide uppercase mb-3" style={{ color: BRAND.muted }}>
-          {getSectionTitle(currentLanguage)}
-        </p>
+    <section style={{ backgroundColor: VN.cream }} className="pb-3">
+      <div className="px-5 pt-4 pb-2">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-1 h-4 rounded-full" style={{ backgroundColor: VN.gold }} />
+          <p className="text-xs font-bold tracking-wide uppercase" style={{ color: VN.green }}>
+            {getSectionTitle(currentLanguage)}
+          </p>
+        </div>
       </div>
-      <div className="flex gap-2 overflow-x-auto scrollbar-hide px-5 pb-1">
+      <div className="flex gap-2.5 overflow-x-auto scrollbar-hide px-5 pb-2">
         {featuredCities.map((city) => (
           <button
             key={city.id}
             onClick={() => handleCityClick(city)}
-            className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium transition-all active:scale-95"
-            style={{ 
-              backgroundColor: BRAND.chipBg,
-              color: BRAND.textSub,
-            }}
+            className="flex-shrink-0 group"
           >
-            <img
-              src={CITY_IMAGES[city.id] || ''}
-              alt={getCityDisplayName(city, currentLanguage)}
-              className="w-6 h-6 rounded-full object-cover flex-shrink-0"
-              crossOrigin="anonymous"
-            />
-            <span className="whitespace-nowrap">{getCityDisplayName(city, currentLanguage)}</span>
+            <div className="relative w-[72px] h-[72px] rounded-2xl overflow-hidden shadow-sm" style={{ border: `1.5px solid ${VN.border}` }}>
+              <img
+                src={CITY_IMAGES[city.id] || ''}
+                alt={getCityDisplayName(city, currentLanguage)}
+                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                crossOrigin="anonymous"
+              />
+              <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(27,67,50,0.5) 0%, transparent 60%)' }} />
+            </div>
+            <p className="text-[11px] font-semibold mt-1.5 text-center truncate w-[72px]" style={{ color: VN.text }}>
+              {getCityDisplayName(city, currentLanguage)}
+            </p>
           </button>
         ))}
       </div>
