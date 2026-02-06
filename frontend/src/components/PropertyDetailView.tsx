@@ -98,30 +98,73 @@ export default function PropertyDetailView({
   const router = useRouter();
   const { user } = useAuth();
 
-  const [imageIndex, setImageIndex] = useState(0);
-  const [fullScreenImageIndex, setFullScreenImageIndex] = useState<number | null>(null);
-  const [bookedRanges, setBookedRanges] = useState<{ checkIn: Date; checkOut: Date }[]>([]);
-  const sliderRef = useRef<HTMLDivElement>(null);
-  const touchStartX = useRef<number>(0);
-
   const propertyImages =
     property.images && property.images.length > 0
       ? property.images
       : ['https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800&h=400&fit=crop'];
 
-  const goToSlide = useCallback((index: number) => {
-    setImageIndex(index);
-  }, []);
+  const N = propertyImages.length;
+  const SLIDER_MID = N;
+  const SLIDER_MAX = 3 * N;
+  const [imageIndex, setImageIndex] = useState(N > 1 ? SLIDER_MID : 0);
+  const [fullScreenImageIndex, setFullScreenImageIndex] = useState<number | null>(null);
+  const [bookedRanges, setBookedRanges] = useState<{ checkIn: Date; checkOut: Date }[]>([]);
+  const sliderRef = useRef<HTMLDivElement>(null);
+  const sliderViewportRef = useRef<HTMLDivElement>(null);
+  const touchStartX = useRef<number>(0);
+  const [sliderNoTransition, setSliderNoTransition] = useState(false);
+  const [sliderWidth, setSliderWidth] = useState(0);
+
+  useEffect(() => {
+    const el = sliderViewportRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const e of entries) setSliderWidth(e.contentRect.width);
+    });
+    ro.observe(el);
+    setSliderWidth(el.getBoundingClientRect().width);
+    return () => ro.disconnect();
+  }, [N]);
+
+  const displayDotIndex = imageIndex < 0 ? N - 1 : imageIndex > SLIDER_MAX ? 0 : imageIndex % N;
+  // 슬라이드: 78% 너비, 좌우 사진 각 10%가 중앙 사진 뒤로 겹침
+  const SLIDE_WIDTH_PCT = 0.78;
+  const OVERLAP_PCT = 0.10;
+  const slideWidthPx = sliderWidth * SLIDE_WIDTH_PCT;
+  const overlapPx = slideWidthPx * OVERLAP_PCT;
+  const stepPx = slideWidthPx - overlapPx;
+  const initialOffsetPx = sliderWidth * (1 - SLIDE_WIDTH_PCT) / 2;
+  const sliderOffsetPx =
+    N <= 1 || sliderWidth <= 0
+      ? 0
+      : imageIndex < 0
+        ? 0
+        : imageIndex > SLIDER_MAX
+          ? (3 * N + 1) * stepPx
+          : (imageIndex + 1) * stepPx;
+
+  const goToSlide = useCallback((dotIndex: number) => {
+    const target = SLIDER_MID + dotIndex;
+    if (imageIndex < 0 || imageIndex > SLIDER_MAX) {
+      setSliderNoTransition(true);
+      setImageIndex(target);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => setSliderNoTransition(false));
+      });
+    } else {
+      setImageIndex(target);
+    }
+  }, [imageIndex, N]);
 
   const goToPrevSlide = useCallback(() => {
-    if (propertyImages.length <= 1) return;
-    setImageIndex((i) => (i - 1 + propertyImages.length) % propertyImages.length);
-  }, [propertyImages.length]);
+    if (N <= 1) return;
+    setImageIndex((i) => (i <= 0 ? -1 : i - 1));
+  }, [N]);
 
   const goToNextSlide = useCallback(() => {
-    if (propertyImages.length <= 1) return;
-    setImageIndex((i) => (i + 1) % propertyImages.length);
-  }, [propertyImages.length]);
+    if (N <= 1) return;
+    setImageIndex((i) => (i >= SLIDER_MAX - 1 ? SLIDER_MAX : i + 1));
+  }, [N, SLIDER_MAX]);
 
   const handleSwipeStart = useCallback((clientX: number) => {
     touchStartX.current = clientX;
@@ -130,10 +173,10 @@ export default function PropertyDetailView({
   const handleSwipeEnd = useCallback((clientX: number) => {
     const diff = clientX - touchStartX.current;
     const minSwipe = 50;
-    if (Math.abs(diff) < minSwipe || propertyImages.length <= 1) return;
+    if (Math.abs(diff) < minSwipe || N <= 1) return;
     if (diff > 0) goToPrevSlide();
     else goToNextSlide();
-  }, [propertyImages.length, goToPrevSlide, goToNextSlide]);
+  }, [N, goToPrevSlide, goToNextSlide]);
 
   const [checkInDate, setCheckInDate] = useState<Date | null>(null);
   const [checkOutDate, setCheckOutDate] = useState<Date | null>(null);
@@ -364,6 +407,7 @@ export default function PropertyDetailView({
           {/* 매물 사진 슬라이더 (3D 피크: 옆 슬라이드가 살짝 보이고, 넘길 때 입체감) */}
           <section className="overflow-hidden mb-0 w-full" ref={sliderRef}>
             <div
+              ref={sliderViewportRef}
               className="relative w-full overflow-hidden bg-gray-200 select-none"
               style={{ aspectRatio: '4/3', perspective: 1200 }}
               onMouseDown={(e) => handleSwipeStart(e.clientX)}
@@ -371,40 +415,72 @@ export default function PropertyDetailView({
               onTouchStart={(e) => handleSwipeStart(e.touches[0].clientX)}
               onTouchEnd={(e) => e.changedTouches[0] && handleSwipeEnd(e.changedTouches[0].clientX)}
             >
-              {/* 트랙: 한 슬라이드 84% + 간격 4% → 옆장이 양쪽으로 살짝 보임 */}
+              {/* 트랙: 3복제+좌우 클론 — 루프 시 중간 세트로만 리셋해서 “1번으로 돌아온다” 느낌 없음 */}
               <div
-                className="flex h-full items-stretch transition-transform duration-300 ease-out"
+                className="flex h-full items-stretch ease-out"
                 style={{
-                  paddingLeft: '8%',
-                  transform: `translateX(-${imageIndex * 88}%)`,
+                  paddingLeft: sliderWidth > 0 ? `${initialOffsetPx}px` : '11%',
+                  transform: N > 1
+                    ? `translate3d(-${sliderOffsetPx}px, 0, 0)`
+                    : 'none',
                   transformStyle: 'preserve-3d',
+                  transition: sliderNoTransition ? 'none' : 'transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+                }}
+                onTransitionEnd={() => {
+                  if (N <= 1) return;
+                  if (imageIndex === SLIDER_MAX) {
+                    setSliderNoTransition(true);
+                    setImageIndex(SLIDER_MID);
+                    requestAnimationFrame(() => {
+                      requestAnimationFrame(() => setSliderNoTransition(false));
+                    });
+                  } else if (imageIndex === -1) {
+                    setSliderNoTransition(true);
+                    setImageIndex(2 * N - 1);
+                    requestAnimationFrame(() => {
+                      requestAnimationFrame(() => setSliderNoTransition(false));
+                    });
+                  }
                 }}
               >
-                {propertyImages.map((src, idx) => {
-                  const isCenter = idx === imageIndex;
-                  const isLeft = idx < imageIndex;
+                {(N > 1
+                  ? [
+                      propertyImages[N - 1],
+                      ...propertyImages,
+                      ...propertyImages,
+                      ...propertyImages,
+                      propertyImages[0],
+                    ]
+                  : propertyImages
+                ).map((src, idx) => {
+                  const currentPos = imageIndex < 0 ? 0 : imageIndex + 1;
+                  const isCenter = idx === currentPos;
+                  const offsetFromCenter = idx - currentPos;
+                  const isLast = N > 1 && idx === 3 * N + 1;
                   return (
                     <div
                       key={idx}
-                      className="relative shrink-0 h-full transition-all duration-300 ease-out rounded-xl overflow-hidden shadow-lg"
+                      className="relative shrink-0 h-full transition-all duration-300 ease-out rounded-xl overflow-hidden"
                       style={{
-                        width: '84%',
-                        marginRight: '4%',
+                        width: sliderWidth > 0 ? `${slideWidthPx}px` : '78%',
+                        minWidth: sliderWidth > 0 ? slideWidthPx : undefined,
+                        height: '100%',
+                        marginRight: sliderWidth > 0 && !isLast ? -overlapPx : 0,
                         transform: isCenter
-                          ? 'scale(1) translateZ(0)'
-                          : isLeft
-                            ? 'scale(0.88) translateZ(-24px)'
-                            : 'scale(0.88) translateZ(-24px)',
-                        opacity: isCenter ? 1 : 0.88,
-                        zIndex: isCenter ? 10 : 1,
+                          ? 'scale(1) translateZ(20px)'
+                          : `scale(0.9) translateZ(${-20 + Math.abs(offsetFromCenter) * -10}px)`,
+                        transformOrigin: 'center center',
+                        opacity: isCenter ? 1 : 0.75,
+                        zIndex: isCenter ? 20 : Math.max(1, 10 - Math.abs(offsetFromCenter)),
                         boxShadow: isCenter
-                          ? '0 10px 40px rgba(0,0,0,0.25)'
+                          ? '0 12px 40px rgba(0,0,0,0.3)'
                           : '0 4px 12px rgba(0,0,0,0.15)',
+                        transformStyle: 'preserve-3d',
                       }}
                     >
                       <Image
                         src={src}
-                        alt={`${property.title || ''} ${idx + 1}`}
+                        alt={`${property.title || ''} ${(N > 1 ? (idx === 0 ? N : idx <= 3 * N ? ((idx - 1) % N) + 1 : 1) : idx + 1)}`}
                         fill
                         className="object-cover"
                         sizes="(max-width: 430px) 85vw, 360px"
@@ -434,16 +510,16 @@ export default function PropertyDetailView({
               ) : null}
 
               {/* 사진 인디케이터: 1/5 형식 + 도트 */}
-              {propertyImages.length > 1 && (
+              {N > 1 && (
                 <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2 z-40 bg-black/50 text-white px-3 py-1.5 rounded-full text-xs font-medium">
-                  <span>{imageIndex + 1} / {propertyImages.length}</span>
+                  <span>{displayDotIndex + 1} / {N}</span>
                   <div className="flex gap-1">
                     {propertyImages.map((_, idx) => (
                       <button
                         key={idx}
                         type="button"
                         onClick={(e) => { e.stopPropagation(); goToSlide(idx); }}
-                        className={`rounded-full transition-all ${idx === imageIndex ? 'w-2 h-2 bg-white' : 'w-1.5 h-1.5 bg-white/50'}`}
+                        className={`rounded-full transition-all ${idx === displayDotIndex ? 'w-2 h-2 bg-white' : 'w-1.5 h-1.5 bg-white/50'}`}
                         aria-label={`사진 ${idx + 1}`}
                       />
                     ))}
@@ -452,7 +528,7 @@ export default function PropertyDetailView({
               )}
 
               {/* 좌우 화살표 */}
-              {propertyImages.length > 1 && (
+              {N > 1 && (
                 <>
                   <button
                     type="button"
@@ -499,7 +575,7 @@ export default function PropertyDetailView({
               {mode === 'owner' && (
                 <button
                   type="button"
-                  onClick={() => setFullScreenImageIndex(imageIndex)}
+                  onClick={() => setFullScreenImageIndex(displayDotIndex)}
                   className="absolute bottom-3 left-3 w-10 h-10 flex items-center justify-center bg-black/50 text-white rounded-full z-40 hover:bg-black/70 transition-colors"
                   aria-label="전체화면"
                 >
@@ -1247,21 +1323,89 @@ export default function PropertyDetailView({
           </div>
         )}
 
-        {/* 임대인: 전체화면 이미지 */}
+        {/* 임대인: 전체화면 이미지 (3D 슬라이더) */}
         {mode === 'owner' && fullScreenImageIndex !== null && (
-          <div className="fixed inset-0 bg-black z-[60] flex items-center justify-center">
-            <img
-              src={propertyImages[fullScreenImageIndex]}
-              alt={`Full screen ${fullScreenImageIndex + 1}`}
-              className="max-w-full max-h-full object-contain"
-            />
-            <button
-              type="button"
-              onClick={() => setFullScreenImageIndex(null)}
-              className="absolute top-6 left-6 bg-white/90 text-gray-900 rounded-full p-2 hover:bg-white transition-colors"
+          <div
+            className="fixed inset-0 bg-black/95 z-[60] flex items-center justify-center"
+            style={{ perspective: 1400 }}
+            onClick={() => setFullScreenImageIndex(null)}
+          >
+            <div
+              className="relative w-full h-full flex items-center justify-center"
+              onClick={(e) => e.stopPropagation()}
             >
-              <X className="w-6 h-6" />
-            </button>
+              {/* 중앙 이미지 (3D 전환 효과) */}
+              <div
+                className="relative w-full max-w-4xl h-[80vh] mx-4 flex items-center justify-center overflow-hidden rounded-xl"
+                style={{ transformStyle: 'preserve-3d' }}
+              >
+                <img
+                  key={fullScreenImageIndex}
+                  src={propertyImages[fullScreenImageIndex]}
+                  alt={`사진 ${fullScreenImageIndex + 1}`}
+                  className="w-full h-full object-contain rounded-xl shadow-2xl transition-all duration-300"
+                  style={{
+                    transform: 'translateZ(0) scale(1)',
+                    boxShadow: '0 25px 80px rgba(0,0,0,0.6)',
+                  }}
+                />
+              </div>
+
+              {/* 좌우 네비게이션 */}
+              {N > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFullScreenImageIndex((i) => (i! <= 0 ? N - 1 : i! - 1));
+                    }}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center bg-white/20 hover:bg-white/40 text-white rounded-full z-50 transition-colors"
+                  >
+                    <ChevronLeft className="w-6 h-6" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFullScreenImageIndex((i) => (i! >= N - 1 ? 0 : i! + 1));
+                    }}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center bg-white/20 hover:bg-white/40 text-white rounded-full z-50 transition-colors"
+                  >
+                    <ChevronRight className="w-6 h-6" />
+                  </button>
+                </>
+              )}
+
+              {/* 인디케이터 */}
+              {N > 1 && (
+                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 z-50 bg-black/50 text-white px-4 py-2 rounded-full text-sm">
+                  <span>{fullScreenImageIndex + 1} / {N}</span>
+                  <div className="flex gap-1.5">
+                    {propertyImages.map((_, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFullScreenImageIndex(idx);
+                        }}
+                        className={`rounded-full transition-all ${idx === fullScreenImageIndex ? 'w-2.5 h-2.5 bg-white' : 'w-2 h-2 bg-white/50 hover:bg-white/70'}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 닫기 */}
+              <button
+                type="button"
+                onClick={() => setFullScreenImageIndex(null)}
+                className="absolute top-6 left-6 bg-white/90 text-gray-900 rounded-full p-2.5 hover:bg-white transition-colors z-50"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
           </div>
         )}
       </div>
