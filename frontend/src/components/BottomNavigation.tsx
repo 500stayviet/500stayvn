@@ -324,7 +324,7 @@ export default function BottomNavigation({ hideOnPaths = [] }: BottomNavigationP
       </div>
       
       {/* 안전 영역 (iPhone 노치 대응) */}
-      <div className="h-4 bg-white" />
+      <div className="h-2 bg-white" />
     </nav>
   );
 }
