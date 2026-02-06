@@ -62,44 +62,48 @@ html[lang="en"] body {
   @apply min-h-screen bg-gray-100 flex justify-center;
 }
 
-/* 앱 전용 커스텀 스크롤바 (430px 앱 프레임 내에서만 적용) */
+/* 앱 전용 커스텀 스크롤바 - 430px 앱 프레임 내부에만 적용 */
+.w-full.max-w-\[430px\] {
+  overflow-y: auto !important;
+  max-height: 100vh !important;
+}
+
+/* 앱 프레임 내부의 스크롤바만 스타일링 */
+.w-full.max-w-\[430px\]::-webkit-scrollbar {
+  width: 8px !important;
+  height: 8px !important;
+}
+
+.w-full.max-w-\[430px\]::-webkit-scrollbar-track {
+  background: #f1f1f1 !important;
+  border-radius: 4px !important;
+  margin: 4px 0 !important;
+}
+
+.w-full.max-w-\[430px\]::-webkit-scrollbar-thumb {
+  background: #FF6B35 !important;
+  border-radius: 4px !important;
+  border: 2px solid #f1f1f1 !important;
+}
+
+.w-full.max-w-\[430px\]::-webkit-scrollbar-thumb:hover {
+  background: #FF4500 !important;
+}
+
+/* Firefox용 스크롤바 스타일 */
+.w-full.max-w-\[430px\] {
+  scrollbar-width: thin !important;
+  scrollbar-color: #FF6B35 #f1f1f1 !important;
+}
+
+/* 앱 컨테이너 내부 스크롤 */
 .app-scroll-container {
-  overflow-y: auto; /* 콘텐츠가 넘칠 때만 스크롤 활성화 */
-  scrollbar-width: thin; /* Firefox용 얇은 스크롤바 */
-  scrollbar-color: #FF6B35 transparent; /* 주황색 스크롤바 */
+  overflow-y: auto !important;
 }
 
-/* Webkit 브라우저용 커스텀 스크롤바 */
-.app-scroll-container::-webkit-scrollbar {
-  width: 8px; /* 두꺼운 스크롤바 (8px) */
-  height: 8px;
-}
-
-.app-scroll-container::-webkit-scrollbar-track {
-  background: #f1f1f1; /* 밝은 회색 트랙 */
-  border-radius: 4px;
-  margin: 4px 0;
-}
-
-.app-scroll-container::-webkit-scrollbar-thumb {
-  background: #FF6B35; /* 시그니처 주황색 */
-  border-radius: 4px;
-  transition: all 0.3s ease;
-  border: 2px solid #f1f1f1; /* 트랙과 구분되는 테두리 */
-}
-
-/* 스크롤 중일 때만 스크롤바 표시 */
-.app-scroll-container:hover::-webkit-scrollbar-thumb,
-.app-scroll-container:active::-webkit-scrollbar-thumb,
-.app-scroll-container.scrolling::-webkit-scrollbar-thumb {
-  background: #FF6B35; /* 주황색 유지 */
-  border: 2px solid #e0e0e0;
-}
-
-/* 스크롤바 호버 시 강조 */
-.app-scroll-container::-webkit-scrollbar-thumb:hover {
-  background: #FF4500; /* 더 진한 주황색 */
-  transform: scaleX(1.1);
+/* 브라우저 전체 창의 스크롤바 숨기기 */
+html, body {
+  overflow: hidden !important;
 }
 
 /* 430px 앱 프레임 내에서만 스크롤바 적용 */

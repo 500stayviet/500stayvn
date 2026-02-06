@@ -52,7 +52,7 @@ export default function HomePage() {
           hideLanguageSelector={!shouldShowLanguageSelector}
         />
 
-        <div className="flex-1 overflow-y-auto pb-4 app-scroll-container">
+        <div className="flex-1 pb-4">
           <HeroSection currentLanguage={currentLanguage} />
           <PopularStays currentLanguage={currentLanguage} />
         </div>
