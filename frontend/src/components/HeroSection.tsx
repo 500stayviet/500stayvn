@@ -293,162 +293,184 @@ export default function HeroSection({ currentLanguage }: HeroSectionProps) {
     router.push('/map?denied=true');
   };
 
+  // 브랜드 컬러 (하단바와 통일)
+  const BRAND = {
+    primary: '#E63946',
+    primaryDark: '#C62D3A',
+    text: '#1F2937',
+    muted: '#9CA3AF',
+    surface: '#FFFFFF',
+    bgWarm: '#FFF8F6',
+  };
+
   return (
-    <section className="relative h-[320px] overflow-hidden">
-      {/* 배경 이미지 */}
-      <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{
-          backgroundImage: 'url(https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200&h=800&fit=crop)',
-        }}
-      >
-        {/* 오버레이 (더 밝게) */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/20 to-black/40"></div>
+    <section className="relative overflow-hidden" style={{ backgroundColor: BRAND.bgWarm }}>
+      {/* 배경 이미지 영역 */}
+      <div className="relative h-[200px] overflow-hidden">
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{
+            backgroundImage: 'url(https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200&h=800&fit=crop)',
+          }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/30 to-black/60"></div>
+        </div>
+        
+        {/* 메인 문구 */}
+        <div className="relative z-10 h-full flex flex-col items-center justify-center px-5">
+          <h2 className="text-2xl font-bold text-white text-center drop-shadow-lg max-w-xs leading-snug text-balance">
+            {getUIText('whereDoYouWantToLive', currentLanguage)}
+          </h2>
+        </div>
       </div>
 
-      {/* 콘텐츠 */}
-      <div className="relative z-10 h-full flex flex-col items-center justify-center px-4">
-        {/* 메인 문구 */}
-        <h2 className="text-2xl sm:text-3xl font-bold text-white text-center mb-6 drop-shadow-lg max-w-md">
-          {getUIText('whereDoYouWantToLive', currentLanguage)}
-        </h2>
-
-        {/* 검색창 */}
-        <form onSubmit={handleSearch} className="w-full max-w-lg mb-4">
-          <div className="relative" ref={searchContainerRef}>
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
-              <Search className="h-5 w-5 text-gray-400" />
-            </div>
-            <input
-              ref={searchInputRef}
-              name="search"
-              type="text"
-              value={searchValue}
-              onChange={handleInputChange}
-              onFocus={() => {
-                // 검색창 클릭 시 드롭다운 닫기
-                setShowSuggestions(false);
-              }}
-              placeholder={getUIText('searchPlaceholderCityDistrict', currentLanguage)}
-              className="w-full pl-12 pr-4 py-3.5 text-base rounded-full bg-white border-0 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-xl transition-all"
-            />
-            
-            {/* 추천 결과 드롭다운 (도시·구만, 같은 구명은 "구, 도시"로 구별) */}
-            {searchValue && showSuggestions && suggestions.length > 0 && (
-              <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-lg max-h-72 overflow-y-auto">
-                {suggestions.map((suggestion, index) => {
-                  const badge = getSuggestionBadge(suggestion, currentLanguage);
-                  const displayText = suggestion.Text || '';
-                  const parts = displayText.split(',');
-                  const mainName = cleanDisplayName(parts[0]?.trim() || displayText);
-                  const subAddress = cleanSubAddress(parts.slice(1).join(',').trim());
-                  
-                  return (
-                    <button
-                      key={suggestion.PlaceId || index}
-                      type="button"
-                      onClick={() => {
-                        handleSelectSuggestion(suggestion);
-                        setShowSuggestions(false);
-                      }}
-                      className={`w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0 ${
-                        suggestion.isRegion ? 'bg-blue-50/30' : ''
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        {/* 아이콘 */}
-                        <span className="text-lg flex-shrink-0 mt-0.5">{badge.icon}</span>
-                        
-                        <div className="flex-1 min-w-0">
-                          {/* 배지 + 메인 이름 */}
-                          <div className="flex items-center gap-2">
-                            <span className={`text-xs px-2 py-0.5 rounded-full ${badge.color} text-white font-medium flex-shrink-0`}>
-                              {badge.text}
-                            </span>
-                            <p className="text-sm font-semibold text-gray-900 truncate">
-                              {mainName}
-                            </p>
+      {/* 검색 영역 - 이미지와 겹치는 카드 형태 */}
+      <div className="relative z-10 px-4 -mt-8 pb-5">
+        <div className="bg-white rounded-2xl shadow-lg p-4" style={{ border: '1px solid #F3F4F6' }}>
+          {/* 검색창 */}
+          <form onSubmit={handleSearch}>
+            <div className="relative" ref={searchContainerRef}>
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none z-10">
+                <Search className="h-4.5 w-4.5" style={{ color: BRAND.muted }} />
+              </div>
+              <input
+                ref={searchInputRef}
+                name="search"
+                type="text"
+                value={searchValue}
+                onChange={handleInputChange}
+                onFocus={() => {
+                  setShowSuggestions(false);
+                }}
+                placeholder={getUIText('searchPlaceholderCityDistrict', currentLanguage)}
+                className="w-full pl-11 pr-4 py-3 text-sm rounded-xl transition-all"
+                style={{ 
+                  backgroundColor: '#F9FAFB', 
+                  border: '1.5px solid #E5E7EB',
+                  color: BRAND.text,
+                  outline: 'none',
+                }}
+                onFocusCapture={(e) => {
+                  (e.target as HTMLInputElement).style.borderColor = BRAND.primary;
+                }}
+                onBlurCapture={(e) => {
+                  (e.target as HTMLInputElement).style.borderColor = '#E5E7EB';
+                }}
+              />
+              
+              {/* 추천 결과 드롭다운 */}
+              {searchValue && showSuggestions && suggestions.length > 0 && (
+                <div className="absolute z-50 w-full mt-2 bg-white rounded-xl shadow-lg max-h-72 overflow-y-auto" style={{ border: '1px solid #E5E7EB' }}>
+                  {suggestions.map((suggestion, index) => {
+                    const badge = getSuggestionBadge(suggestion, currentLanguage);
+                    const displayText = suggestion.Text || '';
+                    const parts = displayText.split(',');
+                    const mainName = cleanDisplayName(parts[0]?.trim() || displayText);
+                    const subAddress = cleanSubAddress(parts.slice(1).join(',').trim());
+                    
+                    return (
+                      <button
+                        key={suggestion.PlaceId || index}
+                        type="button"
+                        onClick={() => {
+                          handleSelectSuggestion(suggestion);
+                          setShowSuggestions(false);
+                        }}
+                        className="w-full text-left px-4 py-3 transition-colors border-b border-gray-50 last:border-b-0"
+                        style={{ backgroundColor: suggestion.isRegion ? '#FFF8F6' : 'transparent' }}
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className="text-lg flex-shrink-0 mt-0.5">{badge.icon}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className={`text-xs px-2 py-0.5 rounded-full ${badge.color} text-white font-medium flex-shrink-0`}>
+                                {badge.text}
+                              </span>
+                              <p className="text-sm font-semibold truncate" style={{ color: BRAND.text }}>
+                                {mainName}
+                              </p>
+                            </div>
+                            {subAddress && (
+                              <p className="text-xs mt-1 truncate" style={{ color: BRAND.muted }}>
+                                {subAddress}
+                              </p>
+                            )}
                           </div>
-                          
-                          {/* 보조 주소 */}
-                          {subAddress && (
-                            <p className="text-xs text-gray-400 mt-1 truncate">
-                              {subAddress}
-                            </p>
-                          )}
                         </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-            
-            {/* 검색 중 표시 */}
-            {isSearching && (
-              <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-lg p-4">
-                <div className="flex items-center justify-center gap-2 text-gray-500">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-                  <span className="text-sm">
-                    {getUIText('searching', currentLanguage)}
-                  </span>
+                      </button>
+                    );
+                  })}
                 </div>
-              </div>
-            )}
-          </div>
-        </form>
+              )}
+              
+              {/* 검색 중 표시 */}
+              {isSearching && (
+                <div className="absolute z-50 w-full mt-2 bg-white rounded-xl shadow-lg p-4" style={{ border: '1px solid #E5E7EB' }}>
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2" style={{ borderColor: BRAND.primary }}></div>
+                    <span className="text-sm" style={{ color: BRAND.muted }}>
+                      {getUIText('searching', currentLanguage)}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </form>
 
-        {/* 지도로 매물 찾기 버튼 */}
-        <button
-          onClick={handleMapView}
-          className="w-full max-w-lg flex items-center justify-center gap-2 bg-white text-gray-900 py-3.5 px-6 rounded-full font-semibold text-base hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all shadow-xl hover:shadow-2xl active:scale-95"
-        >
-          <MapPin className="w-5 h-5 text-blue-600" />
-          <span>
-            {getUIText('findPropertiesOnMap', currentLanguage)}
-          </span>
-        </button>
+          {/* 지도로 매물 찾기 버튼 */}
+          <button
+            onClick={handleMapView}
+            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm mt-3 transition-all active:scale-[0.98]"
+            style={{ 
+              backgroundColor: BRAND.primary, 
+              color: BRAND.surface,
+            }}
+          >
+            <MapPin className="w-4 h-4" />
+            <span>
+              {getUIText('findPropertiesOnMap', currentLanguage)}
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* 위치 권한 요청 모달 */}
       {showLocationPermissionModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
             <div className="text-center mb-6">
-              <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                <MapPin className="w-8 h-8 text-blue-600" />
+              <div className="mx-auto w-14 h-14 rounded-full flex items-center justify-center mb-4" style={{ backgroundColor: '#E6394615' }}>
+                <MapPin className="w-7 h-7" style={{ color: BRAND.primary }} />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">
+              <h3 className="text-lg font-bold mb-2" style={{ color: BRAND.text }}>
                 {getUIText('useCurrentLocation', currentLanguage)}
               </h3>
-              <p className="text-gray-600 text-sm">
+              <p className="text-sm leading-relaxed" style={{ color: BRAND.muted }}>
                 {getUIText('locationPermissionDesc', currentLanguage)}
               </p>
             </div>
 
-            <div className="space-y-3">
+            <div className="flex flex-col gap-2.5">
               <button
                 onClick={handleRequestLocationPermission}
                 disabled={requestingLocation}
-                className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full py-3 px-4 rounded-xl font-semibold text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                style={{ backgroundColor: BRAND.primary, color: '#FFFFFF' }}
               >
                 {requestingLocation ? (
                   <>
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    <span>
-                      {getUIText('requesting', currentLanguage)}
-                    </span>
+                    <span>{getUIText('requesting', currentLanguage)}</span>
                   </>
                 ) : (
-                  <span>
-                    {getUIText('allowLocationAccess', currentLanguage)}
-                  </span>
+                  <span>{getUIText('allowLocationAccess', currentLanguage)}</span>
                 )}
               </button>
               <button
                 onClick={handleSkipLocation}
                 disabled={requestingLocation}
-                className="w-full bg-gray-100 text-gray-700 py-3 px-4 rounded-lg font-semibold hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-3 px-4 rounded-xl font-semibold text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ backgroundColor: '#F3F4F6', color: BRAND.text }}
               >
                 {getUIText('skip', currentLanguage)}
               </button>

@@ -233,28 +233,47 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
     router.push('/profile');
   };
 
+  // 브랜드 컬러 (하단바와 통일)
+  const BRAND = {
+    primary: '#E63946',
+    primaryLight: '#E6394615',
+    text: '#1F2937',
+    muted: '#9CA3AF',
+    surface: '#FFFFFF',
+    border: '#F3F4F6',
+  };
+
   return (
-    <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
+    <header className="sticky top-0 z-50 backdrop-blur-md border-b" style={{ backgroundColor: `${BRAND.surface}F2`, borderColor: BRAND.border }}>
       <div className="w-full px-4 sm:px-6">
-        <div className="flex items-center justify-between h-16 max-w-7xl mx-auto">
+        <div className="flex items-center justify-between h-14 max-w-7xl mx-auto">
           {/* 좌측: 로고 (홈으로 이동) */}
           <button
             onClick={handleHomeClick}
-            className="flex items-center"
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
           >
-            <h1 className="text-xl font-extrabold bg-gradient-to-r from-blue-600 via-blue-500 to-blue-600 bg-clip-text text-transparent tracking-tight hover:opacity-80 transition-opacity">
-              500stayviet
-            </h1>
+            {/* SVG 로고 아이콘 */}
+            <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="32" height="32" rx="8" fill={BRAND.primary} />
+              <path d="M8 20L16 10L24 20" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M12 20V24H20V20" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <div className="flex items-baseline gap-0.5">
+              <span className="text-lg font-extrabold tracking-tight" style={{ color: BRAND.primary }}>500</span>
+              <span className="text-lg font-bold tracking-tight" style={{ color: BRAND.text }}>stay</span>
+              <span className="text-lg font-bold tracking-tight" style={{ color: BRAND.primary }}>viet</span>
+            </div>
           </button>
 
           {/* 우측: 언어 선택 + 로그인/개인정보 */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             {/* 언어 선택 (홈화면에서는 숨김) */}
             {!hideLanguageSelector && (
               <div className="relative" ref={menuRef}>
                 <button
                   onClick={() => setIsLanguageMenuOpen(!isLanguageMenuOpen)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-full transition-all duration-200"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium rounded-full transition-all duration-200"
+                  style={{ color: BRAND.muted }}
                 >
                   <Globe className="w-4 h-4" />
                   <span className="text-base">{currentLang.flag}</span>
@@ -262,14 +281,17 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
 
                 {/* 언어 드롭다운 */}
                 {isLanguageMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-44 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50">
+                  <div className="absolute right-0 mt-2 w-44 bg-white rounded-2xl shadow-xl py-2 z-50" style={{ border: `1px solid ${BRAND.border}` }}>
                     {languages.map((lang) => (
                       <button
                         key={lang.code}
                         onClick={() => handleLanguageSelect(lang.code)}
-                        className={`w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 flex items-center gap-3 transition-colors ${
-                          currentLanguage === lang.code ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-700'
-                        }`}
+                        className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-3 transition-colors"
+                        style={{
+                          backgroundColor: currentLanguage === lang.code ? BRAND.primaryLight : 'transparent',
+                          color: currentLanguage === lang.code ? BRAND.primary : BRAND.text,
+                          fontWeight: currentLanguage === lang.code ? 600 : 400,
+                        }}
                       >
                         <span className="text-lg">{lang.flag}</span>
                         <span>{lang.name}</span>
@@ -289,14 +311,13 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
                     <div className="relative" ref={notificationRef}>
                       <button
                         onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                        className={`p-2 hover:bg-gray-50 rounded-full transition-all duration-200 relative ${
-                          notificationsEnabled ? 'text-gray-700 hover:text-blue-600' : 'text-gray-400'
-                        }`}
+                        className="p-2 rounded-full transition-all duration-200 relative"
+                        style={{ color: notificationsEnabled ? BRAND.text : BRAND.muted }}
                         aria-label="Notifications"
                       >
                         <Bell className="w-5 h-5" />
                         {notificationsEnabled && unreadCount > 0 && (
-                          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full font-bold">
+                          <span className="absolute -top-1 -right-1 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full font-bold" style={{ backgroundColor: BRAND.primary }}>
                             {unreadCount > 9 ? '9+' : unreadCount}
                           </span>
                         )}
@@ -554,7 +575,8 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
                     <div className="relative" ref={userMenuRef}>
                       <button
                         onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                        className="p-2 text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-full transition-all duration-200"
+                        className="p-2 rounded-full transition-all duration-200"
+                        style={{ color: BRAND.text }}
                         aria-label="Profile"
                       >
                         <User className="w-5 h-5" />
@@ -596,7 +618,8 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
                   <div className="relative group">
                     <button
                       onClick={handleLoginClick}
-                      className="p-2 text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-full transition-all duration-200 cursor-pointer"
+                      className="p-2 rounded-full transition-all duration-200 cursor-pointer"
+                      style={{ color: BRAND.muted }}
                       aria-label="Login"
                     >
                       <User className="w-5 h-5" />

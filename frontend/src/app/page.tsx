@@ -7,7 +7,9 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { SupportedLanguage } from '@/lib/api/translation';
 import TopBar from '@/components/TopBar';
 import HeroSection from '@/components/HeroSection';
+import QuickCityBrowse from '@/components/QuickCityBrowse';
 import PopularStays from '@/components/PopularStays';
+import TrustSignals from '@/components/TrustSignals';
 
 export default function HomePage() {
   const { user, loading: authLoading } = useAuth();
@@ -44,7 +46,7 @@ export default function HomePage() {
   const shouldShowLanguageSelector = !user || !userPreferredLanguage;
 
   return (
-    <div className="min-h-screen bg-gray-100 flex justify-center">
+    <div className="min-h-screen flex justify-center" style={{ backgroundColor: '#F9FAFB' }}>
       <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative">
         <TopBar 
           currentLanguage={currentLanguage}
@@ -54,7 +56,10 @@ export default function HomePage() {
 
         <div className="flex-1 overflow-y-auto">
           <HeroSection currentLanguage={currentLanguage} />
+          <QuickCityBrowse currentLanguage={currentLanguage} />
+          <div className="h-px" style={{ backgroundColor: '#F3F4F6' }} />
           <PopularStays currentLanguage={currentLanguage} />
+          <TrustSignals currentLanguage={currentLanguage} />
         </div>
       </div>
     </div>

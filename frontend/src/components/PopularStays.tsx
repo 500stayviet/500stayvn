@@ -109,162 +109,174 @@ export default function PopularStays({ currentLanguage }: PopularStaysProps) {
     router.push(`/properties/${property.id}`);
   };
 
+  // 브랜드 컬러 (하단바와 통일)
+  const BRAND = {
+    primary: '#E63946',
+    text: '#1F2937',
+    muted: '#9CA3AF',
+    surface: '#FFFFFF',
+    border: '#F3F4F6',
+  };
+
   // 서버 사이드에서는 아무것도 렌더링하지 않음
   if (!isClient) {
     return null;
   }
 
   return (
-    <section className="py-6 bg-white">
-      <div className="w-full px-4">
+    <section className="py-5 bg-white">
+      <div className="w-full">
         {/* 타이틀 - 항상 표시 */}
-        <h2 className="text-xl font-bold text-gray-900 mb-6 px-2">
-          {getUIText('popularStaysTitle', currentLanguage)}
-        </h2>
+        <div className="flex items-center justify-between px-4 mb-4">
+          <h2 className="text-base font-bold" style={{ color: BRAND.text }}>
+            {getUIText('popularStaysTitle', currentLanguage)}
+          </h2>
+          {!loading && properties.length > 0 && (
+            <span className="text-xs font-medium" style={{ color: BRAND.muted }}>
+              {properties.length}{getUIText('propertiesCount', currentLanguage)}
+            </span>
+          )}
+        </div>
 
         {/* 로딩 중일 때 */}
         {loading && (
-          <div className="flex gap-4 overflow-x-auto scrollbar-hide">
+          <div className="flex gap-3 overflow-x-auto scrollbar-hide px-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="relative h-[280px] w-[calc(100vw-2rem)] sm:w-[350px] flex-shrink-0 bg-gray-100 rounded-2xl animate-pulse"></div>
+              <div key={i} className="flex-shrink-0 w-[280px]">
+                <div className="h-[180px] rounded-xl animate-pulse" style={{ backgroundColor: BRAND.border }}></div>
+                <div className="mt-3 space-y-2">
+                  <div className="h-4 w-3/4 rounded animate-pulse" style={{ backgroundColor: BRAND.border }}></div>
+                  <div className="h-3 w-1/2 rounded animate-pulse" style={{ backgroundColor: BRAND.border }}></div>
+                </div>
+              </div>
             ))}
           </div>
         )}
 
         {/* 데이터가 없을 때 (로딩 완료 후) */}
         {!loading && properties.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-500">{getUIText('noProperties', currentLanguage)}</p>
+          <div className="text-center py-10 px-4">
+            <p className="text-sm" style={{ color: BRAND.muted }}>{getUIText('noProperties', currentLanguage)}</p>
           </div>
         )}
 
         {/* 매물 리스트 (로딩 완료 후 데이터가 있을 때) */}
         {!loading && properties.length > 0 && (
           <div className="relative">
-          {/* 좌측 화살표 버튼 */}
-          <button
-            onClick={scrollLeft}
-            className="flex absolute left-2 sm:left-0 top-1/2 -translate-y-1/2 z-20 bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-lg hover:bg-white transition-all"
-            aria-label="Previous"
-          >
-            <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700" />
-          </button>
+            {/* 좌측 화살표 버튼 */}
+            <button
+              onClick={scrollLeft}
+              className="flex absolute left-1 top-[90px] -translate-y-1/2 z-20 rounded-full p-1.5 shadow-md transition-all"
+              style={{ backgroundColor: BRAND.surface, border: `1px solid ${BRAND.border}` }}
+              aria-label="Previous"
+            >
+              <ChevronLeft className="w-4 h-4" style={{ color: BRAND.text }} />
+            </button>
 
-          {/* 매물 리스트 (좌우 스크롤 가능) */}
-          <div
-            ref={scrollContainerRef}
-            className="flex gap-4 overflow-x-auto scrollbar-hide scroll-smooth pb-4 px-4 sm:px-10"
-            style={{ scrollSnapType: 'x mandatory' }}
-          >
-            {properties.map((property, index) => {
-              const imageUrl = property.images && property.images.length > 0
-                ? property.images[0]
-                : 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400&h=300&fit=crop';
-              const isCurrentCard = currentIndex === index;
+            {/* 매물 리스트 (좌우 스크롤 가능) */}
+            <div
+              ref={scrollContainerRef}
+              className="flex gap-3 overflow-x-auto scrollbar-hide scroll-smooth pb-2 px-4"
+              style={{ scrollSnapType: 'x mandatory' }}
+            >
+              {properties.map((property, index) => {
+                const imageUrl = property.images && property.images.length > 0
+                  ? property.images[0]
+                  : 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400&h=300&fit=crop';
 
-              return (
-                <div
-                  key={property.id}
-                  onClick={() => openPropertyModal(property)}
-                  className="relative h-[280px] w-[calc(100vw-2rem)] sm:w-[350px] flex-shrink-0 cursor-pointer rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 active:scale-[0.98]"
-                  style={{ scrollSnapAlign: 'start' }}
-                >
-                {/* 이미지 */}
-                <div className="relative w-full h-full">
-                  <Image
-                    src={imageUrl}
-                    alt={property.title}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 430px) 100vw, 430px"
-                  />
+                return (
+                  <div
+                    key={property.id}
+                    onClick={() => openPropertyModal(property)}
+                    className="flex-shrink-0 w-[280px] cursor-pointer group"
+                    style={{ scrollSnapAlign: 'start' }}
+                  >
+                    {/* 이미지 */}
+                    <div className="relative h-[180px] rounded-xl overflow-hidden">
+                      <Image
+                        src={imageUrl}
+                        alt={property.title}
+                        fill
+                        className="object-cover transition-transform duration-300 group-hover:scale-105"
+                        sizes="280px"
+                      />
 
-                  {/* 그라데이션 오버레이 */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent"></div>
-
-                  {/* 사진 내부 하단 중앙: 인디케이터 점 (현재 보이는 사진에만 표시) */}
-                  {isCurrentCard && (
-                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex gap-2">
-                      {Array.from({ length: Math.min(properties.length, 5) }).map((_, idx) => {
-                        const maxDots = Math.min(properties.length, 5);
-                        const activeIndex = currentIndex % maxDots;
-                        const isActive = idx === activeIndex;
-                        return (
-                          <div
-                            key={idx}
-                            className={`h-2 rounded-full transition-all duration-300 ${
-                              isActive ? 'bg-white w-6' : 'bg-white/50 w-2'
-                            }`}
-                          />
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {/* 좌측 상단: 체크인 날짜 배지 */}
-                  {property.checkInDate && (
-                    <div className="absolute top-4 left-4 z-10">
-                      {isAvailableNow(property.checkInDate) ? (
-                        <div className="bg-green-500 text-white px-3 py-1.5 rounded-lg shadow-lg flex items-center gap-1.5">
-                          <div className="w-2 h-2 bg-white rounded-full"></div>
-                          <span className="text-xs font-semibold">
-                            {getUIText('availableNow', currentLanguage)}
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="bg-blue-500 text-white px-3 py-1.5 rounded-lg shadow-lg">
-                          <span className="text-xs font-semibold">
-                            {formatDateForBadge(property.checkInDate, currentLanguage)}
-                          </span>
+                      {/* 상단 배지 */}
+                      {property.checkInDate && (
+                        <div className="absolute top-3 left-3 z-10">
+                          {isAvailableNow(property.checkInDate) ? (
+                            <div className="text-white px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1.5" style={{ backgroundColor: '#059669' }}>
+                              <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
+                              {getUIText('availableNow', currentLanguage)}
+                            </div>
+                          ) : (
+                            <div className="text-white px-2.5 py-1 rounded-lg text-[10px] font-bold" style={{ backgroundColor: '#2563EB' }}>
+                              {formatDateForBadge(property.checkInDate, currentLanguage)}
+                            </div>
+                          )}
                         </div>
                       )}
-                    </div>
-                  )}
 
-                  {/* 콘텐츠 오버레이 */}
-                  <div className="absolute inset-0 flex flex-col justify-between p-5">
-                    {/* 상단: 금액 */}
-                    <div className="flex justify-end">
-                      <div className="bg-white/95 backdrop-blur-sm text-gray-900 px-4 py-2 rounded-xl shadow-lg">
-                        <span className="text-lg font-bold">
+                      {/* 가격 배지 */}
+                      <div className="absolute bottom-3 right-3 z-10 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-sm" style={{ backgroundColor: 'rgba(255,255,255,0.95)' }}>
+                        <span className="text-sm font-bold" style={{ color: BRAND.primary }}>
                           {formatPrice(property.price, property.priceUnit)}
                         </span>
                       </div>
                     </div>
 
-                    {/* 하단: 제목과 위치 */}
-                    <div className="space-y-2">
-                      <h3 className="text-white text-lg font-bold drop-shadow-lg line-clamp-2">
+                    {/* 정보 영역 */}
+                    <div className="mt-2.5 px-0.5">
+                      <h3 className="text-sm font-semibold line-clamp-1" style={{ color: BRAND.text }}>
                         {property.title}
                       </h3>
                       {property.address && (
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4 text-white" />
-                          <span className="text-white text-sm drop-shadow-lg">
+                        <div className="flex items-center gap-1 mt-1">
+                          <MapPin className="w-3 h-3 flex-shrink-0" style={{ color: BRAND.muted }} />
+                          <span className="text-xs truncate" style={{ color: BRAND.muted }}>
                             {getCityName(property.address)}
                           </span>
                         </div>
                       )}
                     </div>
                   </div>
-                </div>
+                );
+              })}
+            </div>
+
+            {/* 인디케이터 점 */}
+            {properties.length > 1 && (
+              <div className="flex justify-center gap-1.5 mt-3">
+                {Array.from({ length: Math.min(properties.length, 5) }).map((_, idx) => {
+                  const maxDots = Math.min(properties.length, 5);
+                  const activeIndex = currentIndex % maxDots;
+                  const isActive = idx === activeIndex;
+                  return (
+                    <div
+                      key={idx}
+                      className="h-1.5 rounded-full transition-all duration-300"
+                      style={{
+                        width: isActive ? '20px' : '6px',
+                        backgroundColor: isActive ? BRAND.primary : '#E5E7EB',
+                      }}
+                    />
+                  );
+                })}
               </div>
-              );
-            })}
-          </div>
+            )}
 
             {/* 우측 화살표 버튼 */}
             <button
               onClick={scrollRight}
-              className="flex absolute right-2 sm:right-0 top-1/2 -translate-y-1/2 z-20 bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-lg hover:bg-white transition-all"
+              className="flex absolute right-1 top-[90px] -translate-y-1/2 z-20 rounded-full p-1.5 shadow-md transition-all"
+              style={{ backgroundColor: BRAND.surface, border: `1px solid ${BRAND.border}` }}
               aria-label="Next"
             >
-              <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700" />
+              <ChevronRight className="w-4 h-4" style={{ color: BRAND.text }} />
             </button>
           </div>
         )}
       </div>
-
     </section>
   );
 }
