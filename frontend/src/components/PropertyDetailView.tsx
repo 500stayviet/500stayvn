@@ -7,7 +7,7 @@
  * tenant/owner 동일 디자인(섹션·폰트·여백), 상단바는 수정하지 않음.
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
@@ -101,6 +101,39 @@ export default function PropertyDetailView({
   const [imageIndex, setImageIndex] = useState(0);
   const [fullScreenImageIndex, setFullScreenImageIndex] = useState<number | null>(null);
   const [bookedRanges, setBookedRanges] = useState<{ checkIn: Date; checkOut: Date }[]>([]);
+  const sliderRef = useRef<HTMLDivElement>(null);
+  const touchStartX = useRef<number>(0);
+
+  const propertyImages =
+    property.images && property.images.length > 0
+      ? property.images
+      : ['https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800&h=400&fit=crop'];
+
+  const goToSlide = useCallback((index: number) => {
+    setImageIndex(index);
+  }, []);
+
+  const goToPrevSlide = useCallback(() => {
+    if (propertyImages.length <= 1) return;
+    setImageIndex((i) => (i - 1 + propertyImages.length) % propertyImages.length);
+  }, [propertyImages.length]);
+
+  const goToNextSlide = useCallback(() => {
+    if (propertyImages.length <= 1) return;
+    setImageIndex((i) => (i + 1) % propertyImages.length);
+  }, [propertyImages.length]);
+
+  const handleSwipeStart = useCallback((clientX: number) => {
+    touchStartX.current = clientX;
+  }, []);
+
+  const handleSwipeEnd = useCallback((clientX: number) => {
+    const diff = clientX - touchStartX.current;
+    const minSwipe = 50;
+    if (Math.abs(diff) < minSwipe || propertyImages.length <= 1) return;
+    if (diff > 0) goToPrevSlide();
+    else goToNextSlide();
+  }, [propertyImages.length, goToPrevSlide, goToNextSlide]);
 
   const [checkInDate, setCheckInDate] = useState<Date | null>(null);
   const [checkOutDate, setCheckOutDate] = useState<Date | null>(null);
@@ -175,11 +208,6 @@ export default function PropertyDetailView({
   }, [property?.id, property?.icalUrl]);
 
   if (!property) return null;
-
-  const images =
-    property.images && property.images.length > 0
-      ? property.images
-      : ['https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800&h=400&fit=crop'];
 
   const { cityName, districtName } = property.coordinates
     ? getCityDistrictFromCoords(property.coordinates.lat, property.coordinates.lng, currentLanguage)
@@ -333,152 +361,168 @@ export default function PropertyDetailView({
         </div>
 
         <div className="flex-1 overflow-y-auto px-0 py-0 pb-6" style={{ backgroundColor: COLORS.background }}>
-          {/* 이미지 슬라이더: 모달 폭 꽉 차게, 좌측 현재 사진 + 우측 다음 사진 살짝 보이게, 1/N 표시, 이전/다음 버튼 */}
-          <section className="overflow-hidden mb-0 w-full">
-            <div className="relative w-full overflow-hidden bg-gray-100" style={{ aspectRatio: '4/3' }}>
-              {/* 좌측 현재 사진 꽉 차고 우측에 다음 사진 살짝 보이게 (88% + 12% 간격, 컨테이너 기준) */}
-              {images.length > 1 ? (
-                <div
-                  className="flex h-full transition-transform duration-300 ease-out"
-                  style={{
-                    width: `${images.length * 100}%`,
-                    transform: `translateX(-${imageIndex * (100 / images.length)}%)`,
-                  }}
-                >
-                  {images.map((src, idx) => (
-                    <div key={idx} className="relative shrink-0 h-full" style={{ width: `${88 / images.length}%`, marginRight: `${12 / images.length}%` }}>
+          {/* 매물 사진 슬라이더 (3D 피크: 옆 슬라이드가 살짝 보이고, 넘길 때 입체감) */}
+          <section className="overflow-hidden mb-0 w-full" ref={sliderRef}>
+            <div
+              className="relative w-full overflow-hidden bg-gray-200 select-none"
+              style={{ aspectRatio: '4/3', perspective: 1200 }}
+              onMouseDown={(e) => handleSwipeStart(e.clientX)}
+              onMouseUp={(e) => handleSwipeEnd(e.clientX)}
+              onTouchStart={(e) => handleSwipeStart(e.touches[0].clientX)}
+              onTouchEnd={(e) => e.changedTouches[0] && handleSwipeEnd(e.changedTouches[0].clientX)}
+            >
+              {/* 트랙: 한 슬라이드 84% + 간격 4% → 옆장이 양쪽으로 살짝 보임 */}
+              <div
+                className="flex h-full items-stretch transition-transform duration-300 ease-out"
+                style={{
+                  paddingLeft: '8%',
+                  transform: `translateX(-${imageIndex * 88}%)`,
+                  transformStyle: 'preserve-3d',
+                }}
+              >
+                {propertyImages.map((src, idx) => {
+                  const isCenter = idx === imageIndex;
+                  const isLeft = idx < imageIndex;
+                  return (
+                    <div
+                      key={idx}
+                      className="relative shrink-0 h-full transition-all duration-300 ease-out rounded-xl overflow-hidden shadow-lg"
+                      style={{
+                        width: '84%',
+                        marginRight: '4%',
+                        transform: isCenter
+                          ? 'scale(1) translateZ(0)'
+                          : isLeft
+                            ? 'scale(0.88) translateZ(-24px)'
+                            : 'scale(0.88) translateZ(-24px)',
+                        opacity: isCenter ? 1 : 0.88,
+                        zIndex: isCenter ? 10 : 1,
+                        boxShadow: isCenter
+                          ? '0 10px 40px rgba(0,0,0,0.25)'
+                          : '0 4px 12px rgba(0,0,0,0.15)',
+                      }}
+                    >
                       <Image
                         src={src}
                         alt={`${property.title || ''} ${idx + 1}`}
                         fill
                         className="object-cover"
-                        sizes="(max-width: 430px) 100vw, 430px"
+                        sizes="(max-width: 430px) 85vw, 360px"
+                        priority={idx <= 1}
+                        draggable={false}
                       />
                     </div>
-                  ))}
-                </div>
-              ) : images.length === 1 ? (
-                <div className="relative w-full h-full">
-                  <Image
-                    src={images[0]}
-                    alt={property.title || ''}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 430px) 100vw, 430px"
-                  />
-                </div>
-              ) : null}
+                  );
+                })}
+              </div>
 
-              {/* 즉시 입주 가능 뱃지 */}
+              {/* 즉시 입주 / 입주일 뱃지 */}
               {isAvailableNow(property.checkInDate) ? (
-                <div className="absolute top-1.5 left-1.5 bg-green-600 text-white px-1.5 py-0.5 rounded-sm z-20 flex items-center gap-0.5">
-                  <div className="w-1 h-1 bg-white rounded-full animate-pulse" />
-                  <span className="text-[9px] font-bold">
+                <div className="absolute top-3 left-3 bg-green-600 text-white px-2 py-1 rounded-md z-40 flex items-center gap-1 shadow-lg">
+                  <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+                  <span className="text-xs font-bold">
                     {getUIText('immediateEntry', currentLanguage)}
                   </span>
                 </div>
               ) : property.checkInDate ? (
-                <div className="absolute top-1.5 left-1.5 bg-blue-600 text-white px-1.5 py-0.5 rounded-sm z-20 flex items-center gap-0.5">
-                  <Calendar className="w-2.5 h-2.5" />
-                  <span className="text-[9px] font-bold">
+                <div className="absolute top-3 left-3 bg-blue-600 text-white px-2 py-1 rounded-md z-40 flex items-center gap-1 shadow-lg">
+                  <Calendar className="w-3 h-3" />
+                  <span className="text-xs font-bold">
                     {formatDateForBadge(property.checkInDate, currentLanguage)}
                   </span>
                 </div>
               ) : null}
 
-              {/* 사진 하단 점 인디케이터: 사진 개수만큼 점, 현재 인덱스에 맞게 활성화 */}
-              {images.length > 1 && (
-                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
-                  {images.map((_, idx) => (
-                    <div
-                      key={idx}
-                      className={`rounded-full transition-all ${
-                        idx === imageIndex ? 'bg-white w-2 h-2' : 'bg-white/50 w-1.5 h-1.5'
-                      }`}
-                    />
-                  ))}
+              {/* 사진 인디케이터: 1/5 형식 + 도트 */}
+              {propertyImages.length > 1 && (
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2 z-40 bg-black/50 text-white px-3 py-1.5 rounded-full text-xs font-medium">
+                  <span>{imageIndex + 1} / {propertyImages.length}</span>
+                  <div className="flex gap-1">
+                    {propertyImages.map((_, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); goToSlide(idx); }}
+                        className={`rounded-full transition-all ${idx === imageIndex ? 'w-2 h-2 bg-white' : 'w-1.5 h-1.5 bg-white/50'}`}
+                        aria-label={`사진 ${idx + 1}`}
+                      />
+                    ))}
+                  </div>
                 </div>
               )}
 
-              {/* 좌우 넘기기 버튼 (무한 루프: 끝에서 우→첫장, 첫장에서 좌→끝) */}
-              {images.length > 1 && (
+              {/* 좌우 화살표 */}
+              {propertyImages.length > 1 && (
                 <>
                   <button
                     type="button"
-                    onClick={() =>
-                      setImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1))
-                    }
-                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-all z-10"
+                    onClick={(e) => { e.stopPropagation(); goToPrevSlide(); }}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center bg-black/50 hover:bg-black/70 text-white rounded-full z-40 transition-all"
                     aria-label="이전 사진"
                   >
-                    <ChevronLeft className="w-4 h-4" />
+                    <ChevronLeft className="w-5 h-5" />
                   </button>
                   <button
                     type="button"
-                    onClick={() =>
-                      setImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1))
-                    }
-                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-all z-10"
+                    onClick={(e) => { e.stopPropagation(); goToNextSlide(); }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center bg-black/50 hover:bg-black/70 text-white rounded-full z-40 transition-all"
                     aria-label="다음 사진"
                   >
-                    <ChevronRight className="w-4 h-4" />
+                    <ChevronRight className="w-5 h-5" />
                   </button>
                 </>
               )}
 
-              {/* 가격 정보 - 우측 상단 */}
-              <div className="absolute top-1.5 right-1.5 bg-black/80 text-white px-1.5 py-0.5 rounded-sm z-10">
-                <p className="text-xs font-bold">
-                  {formatFullPrice(property.price, property.priceUnit)}
-                </p>
-                <p className="text-[9px] text-gray-300">
+              {/* 가격 - 우측 상단 */}
+              <div className="absolute top-3 right-3 bg-black/60 text-white px-2 py-1 rounded-lg z-40 shadow">
+                <p className="text-sm font-bold">{formatFullPrice(property.price, property.priceUnit)}</p>
+                <p className="text-xs text-white/80">
                   {currentLanguage === 'ko' ? '/주' : currentLanguage === 'vi' ? '/tuần' : currentLanguage === 'ja' ? '/週' : currentLanguage === 'zh' ? '/周' : '/week'}
                 </p>
               </div>
 
-              {/* 방/욕실 정보 - 우측 하단 (개수 표시와 겹치지 않게 왼쪽으로) */}
-              <div className="absolute bottom-2 right-2 bg-black/80 text-white px-1.5 py-0.5 rounded-sm z-10 flex items-center gap-1">
+              {/* 방/욕실 - 우측 하단 */}
+              <div className="absolute bottom-3 right-3 bg-black/60 text-white px-2 py-1 rounded-lg z-40 flex items-center gap-2 shadow">
                 {property.bedrooms !== undefined && (
-                  <div className="flex items-center gap-0.5">
-                    <Bed className="w-3 h-3" />
-                    <span className="text-[9px] font-medium">{property.bedrooms}</span>
-                  </div>
+                  <span className="flex items-center gap-1 text-xs">
+                    <Bed className="w-3.5 h-3.5" />{property.bedrooms}
+                  </span>
                 )}
                 {property.bathrooms !== undefined && (
-                  <div className="flex items-center gap-0.5">
-                    <Bath className="w-3 h-3" />
-                    <span className="text-[9px] font-medium">{property.bathrooms}</span>
-                  </div>
+                  <span className="flex items-center gap-1 text-xs">
+                    <Bath className="w-3.5 h-3.5" />{property.bathrooms}
+                  </span>
                 )}
               </div>
 
-              {/* 전체화면 버튼 (임대인용) */}
+              {/* 전체화면 (임대인) */}
               {mode === 'owner' && (
                 <button
                   type="button"
                   onClick={() => setFullScreenImageIndex(imageIndex)}
-                  className="absolute bottom-2 left-2 bg-black/60 text-white p-1.5 rounded-full hover:bg-black/80 transition-colors z-10"
+                  className="absolute bottom-3 left-3 w-10 h-10 flex items-center justify-center bg-black/50 text-white rounded-full z-40 hover:bg-black/70 transition-colors"
+                  aria-label="전체화면"
                 >
-                  <Maximize2 className="w-3.5 h-3.5" />
+                  <Maximize2 className="w-4 h-4" />
                 </button>
               )}
             </div>
-            {/* 사진 아래: 점선 위에 뱃지 깔끔하게 (박스 없음) */}
-            <div className="py-2 px-4 border-b border-dashed" style={{ borderColor: COLORS.border, borderBottomWidth: '1.5px' }}>
+            {/* 사진 아래: 점선 위에 뱃지 깔끔하게 (박스 없음) - 스냅 모드와 조화 */}
+            <div className="py-3 px-4 border-b border-dashed" style={{ borderColor: COLORS.border, borderBottomWidth: '1.5px' }}>
               {(hasFullFurniture || hasFullElectronics || hasFullKitchen) && (
-                <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                <div className="flex flex-wrap gap-x-4 gap-y-1 justify-center">
                   {hasFullFurniture && (
-                    <span className="text-[10px] font-semibold" style={{ color: LABEL_COLOR }}>
+                    <span className="text-xs font-semibold px-3 py-1 rounded-full bg-orange-50" style={{ color: COLORS.primary }}>
                       {t('풀 가구', 'Full nội thất', 'Full Furniture', 'フル家具', '全家具')}
                     </span>
                   )}
                   {hasFullElectronics && (
-                    <span className="text-[10px] font-semibold" style={{ color: LABEL_COLOR }}>
+                    <span className="text-xs font-semibold px-3 py-1 rounded-full bg-orange-50" style={{ color: COLORS.primary }}>
                       {t('풀 가전', 'Full điện tử', 'Full Electronics', 'フル家電', '全家电')}
                     </span>
                   )}
                   {hasFullKitchen && (
-                    <span className="text-[10px] font-semibold" style={{ color: LABEL_COLOR }}>
+                    <span className="text-xs font-semibold px-3 py-1 rounded-full bg-orange-50" style={{ color: COLORS.primary }}>
                       {t('풀옵션 주방', 'Bếp đầy đủ', 'Full Kitchen', 'フルキッチン', '全配厨房')}
                     </span>
                   )}
@@ -1207,7 +1251,7 @@ export default function PropertyDetailView({
         {mode === 'owner' && fullScreenImageIndex !== null && (
           <div className="fixed inset-0 bg-black z-[60] flex items-center justify-center">
             <img
-              src={images[fullScreenImageIndex]}
+              src={propertyImages[fullScreenImageIndex]}
               alt={`Full screen ${fullScreenImageIndex + 1}`}
               className="max-w-full max-h-full object-contain"
             />
