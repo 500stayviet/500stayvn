@@ -11,6 +11,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { getProperty } from '@/lib/api/properties';
 import { PropertyData } from '@/types/property';
 import PropertyDetailView from '@/components/PropertyDetailView';
+import AppBox from '@/components/AppBox';
 import type { SupportedLanguage } from '@/lib/api/translation';
 
 export default function InterceptedPropertyPage() {
@@ -70,8 +71,8 @@ export default function InterceptedPropertyPage() {
 
   return (
     <div className="fixed inset-0 z-[90] bg-black/50 flex items-center justify-center p-4" onClick={handleBack}>
-      <div
-        className="w-full max-w-[430px] max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl"
+      <AppBox
+        className="modal-app-box w-full max-w-[430px] rounded-2xl shadow-2xl bg-white"
         onClick={(e) => e.stopPropagation()}
       >
         <PropertyDetailView
@@ -86,7 +87,7 @@ export default function InterceptedPropertyPage() {
               : undefined
           }
         />
-      </div>
+      </AppBox>
     </div>
   );
 }

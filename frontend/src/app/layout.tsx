@@ -5,6 +5,7 @@ import { LanguageProvider } from "@/contexts/LanguageContext";
 import { TranslationProvider } from "@/contexts/TranslationProvider";
 import NextAuthProvider from "@/components/providers/NextAuthProvider";
 import BottomNavigation from "@/components/BottomNavigation";
+import AppBox from "@/components/AppBox";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -56,12 +57,12 @@ export default function RootLayout({
           <LanguageProvider>
             <TranslationProvider>
               <div className="min-h-screen bg-gray-100 flex justify-center">
-                <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col overflow-y-auto">
+                <AppBox className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col">
                   <main className="flex-1 pb-14">
                     {children}
                   </main>
                   <BottomNavigation />
-                </div>
+                </AppBox>
               </div>
             </TranslationProvider>
           </LanguageProvider>

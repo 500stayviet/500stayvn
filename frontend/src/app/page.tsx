@@ -45,7 +45,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gray-100 flex justify-center">
-      <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col overflow-y-auto">
+      <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col">
         <TopBar 
           currentLanguage={currentLanguage}
           onLanguageChange={setCurrentLanguage}

@@ -403,7 +403,7 @@ export default function PropertyDetailView({
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto px-0 py-0 pb-6" style={{ backgroundColor: COLORS.background }}>
+        <div className="flex-1 overflow-visible px-0 py-0 pb-6 min-h-0" style={{ backgroundColor: COLORS.background }}>
           {/* 매물 사진 슬라이더 (3D 피크: 옆 슬라이드가 살짝 보이고, 넘길 때 입체감) */}
           <section className="overflow-hidden mb-0 w-full" ref={sliderRef}>
             <div
