@@ -124,10 +124,10 @@ export default function Property3DCardSlider({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* 배경 장식 요소 */}
+      {/* 배경 장식 요소 (베이지 크기 더 줄이기) */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-[#FF6B35]/5 to-transparent rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-[#E63946]/5 to-transparent rounded-full blur-3xl" />
+        <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-[#FF6B35]/2 to-transparent rounded-full blur-lg" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-[#E63946]/2 to-transparent rounded-full blur-lg" />
       </div>
 
       {/* 메인 슬라이더 컨테이너 */}
@@ -164,11 +164,11 @@ export default function Property3DCardSlider({
           </motion.div>
         </AnimatePresence>
 
-        {/* 중앙 메인 카드 (3D 깊이감) */}
+        {/* 중앙 메인 카드 (3D 깊이감 - 높이 최적화) */}
         <AnimatePresence mode="wait">
           <motion.div
             key={`main-${selectedIndex}`}
-            className="absolute w-[85vw] sm:w-96 h-[400px] sm:h-96 z-30"
+            className="absolute w-[85vw] sm:w-96 h-[360px] sm:h-80 z-30"
             initial={{ opacity: 0, scale: 0.8, rotateX: 20 }}
             animate={{ opacity: 1, scale: 1, rotateX: 0 }}
             exit={{ opacity: 0, scale: 0.8, rotateX: -20 }}
@@ -193,9 +193,9 @@ export default function Property3DCardSlider({
               }}
               transition={{ type: "spring", stiffness: 400, damping: 20 }}
             >
-              {/* 전체 클릭 가능한 이미지 섹션 */}
+              {/* 전체 클릭 가능한 이미지 섹션 (크기 키우기) */}
               <div
-                className="relative w-full h-2/3 overflow-hidden bg-gradient-to-b from-gray-200 to-gray-100 cursor-pointer"
+                className="relative w-full h-[75%] overflow-hidden bg-gradient-to-b from-gray-200 to-gray-100 cursor-pointer"
                 onClick={() => onCardClick?.(currentProperty, selectedIndex)}
               >
                 <Image
@@ -333,10 +333,10 @@ export default function Property3DCardSlider({
                 </div>
               </div>
 
-              {/* 정보 섹션 (최적화된 사이즈) */}
-              <div className="w-full h-1/5 p-1.5 bg-white">
+              {/* 정보 섹션 (최적화 - 주소 텍스트 아래 기준 라인 맞춤) */}
+              <div className="w-full h-1/5 p-1 bg-white">
                 {/* 제목과 위치 */}
-                <div className="h-full flex flex-col justify-center">
+                <div className="h-full flex flex-col justify-end pb-0.5">
                   <motion.h3
                     className="font-bold text-gray-900 text-xs line-clamp-1 mb-0.5"
                     initial={{ opacity: 0 }}
@@ -394,7 +394,6 @@ export default function Property3DCardSlider({
           </motion.div>
         </AnimatePresence>
       </div>
-
     </div>
   );
 }

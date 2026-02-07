@@ -222,8 +222,8 @@ function MapContent() {
       <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative overflow-y-scroll overscroll-y-auto" style={{ scrollbarGutter: 'stable' }}>
         <TopBar currentLanguage={currentLanguage} onLanguageChange={setCurrentLanguage} />
         <main className="flex-1 relative flex flex-col min-h-0 bg-white">
-          {/* 지도: 고정 비율, 아래 영역과 겹치지 않도록 overflow-hidden */}
-          <div className="h-[50vh] min-h-[280px] max-h-[50vh] relative flex-shrink-0 overflow-hidden w-full">
+          {/* 지도: 비중 줄이기 (그랩맵 비중 감소) */}
+          <div className="h-[40vh] min-h-[220px] max-h-[40vh] relative flex-shrink-0 overflow-hidden w-full">
             <GrabMapComponent
               onPropertiesChange={setNearbyProperties}
               onPropertySelect={handlePropertySelect}
