@@ -7,6 +7,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
 import TopBar from "@/components/TopBar";
 import GrabMapComponent from "@/components/GrabMapComponent";
+import Property3DCardSlider from "@/components/Property3DCardSlider";
 import { PropertyData } from "@/types/property";
 import { formatPrice, getCityName } from "@/lib/utils/propertyUtils";
 import { isAvailableNow, formatDateForBadge } from "@/lib/utils/dateUtils";
@@ -246,63 +247,18 @@ function MapContent() {
               </p>
             </div>
 
-            <div className="flex-1 min-h-[260px] relative group/slider px-4 sm:px-6 pb-6">
-              <button
-                onClick={scrollLeft}
-                className="absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-white/90 rounded-full p-2 shadow-lg opacity-0 group-hover/slider:opacity-100 disabled:hidden"
-              >
-                <ChevronLeft className="w-5 h-5 text-gray-700" />
-              </button>
-
-              <div
-                ref={cardSliderRef}
-                className="flex gap-4 overflow-x-auto scrollbar-hide snap-x snap-mandatory"
-              >
-                {nearbyProperties.map((property, index) => (
-                  <div
-                    key={property.id}
-                    onClick={() => {
-                      handlePropertySelect(index, property);
-                      router.push(`/properties/${property.id}`);
-                    }}
-                    className={`relative h-[250px] w-[calc(100vw-4rem)] max-w-[320px] flex-shrink-0 cursor-pointer rounded-2xl overflow-hidden shadow-lg snap-start transition-all border-4 ${selectedPropertyIndex === index ? "border-blue-600" : "border-transparent"}`}
-                  >
-                    <Image
-                      src={
-                        property.images?.[0] ||
-                        "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400"
-                      }
-                      alt={property.name}
-                      fill
-                      className="object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/75 to-transparent"></div>
-                    <div className="absolute inset-0 flex flex-col justify-between p-4">
-                      <div className="flex justify-end">
-                        <div className="bg-white/95 text-blue-600 px-3 py-1 rounded-xl font-black text-sm">
-                          {formatPrice(property.price, "vnd")}
-                        </div>
-                      </div>
-                      <div className="space-y-1">
-                        <h3 className="text-white text-base font-bold line-clamp-1">
-                          {property.name}
-                        </h3>
-                        <div className="flex items-center gap-1.5 text-white/90 text-xs">
-                          <MapPin className="w-3.5 h-3.5" />
-                          {getCityName(property.address)}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <button
-                onClick={scrollRight}
-                className="absolute right-0 top-1/2 -translate-y-1/2 z-20 bg-white/90 rounded-full p-2 shadow-lg opacity-0 group-hover/slider:opacity-100 disabled:hidden"
-              >
-                <ChevronRight className="w-5 h-5 text-gray-700" />
-              </button>
+            <div className="flex-1 min-h-[400px] relative px-4 sm:px-6 pb-6">
+              <Property3DCardSlider
+                properties={nearbyProperties}
+                selectedIndex={selectedPropertyIndex}
+                onSelectIndex={(index) => {
+                  handlePropertySelect(index);
+                }}
+                onCardClick={(property, index) => {
+                  handlePropertySelect(index, property);
+                  router.push(`/properties/${property.id}`);
+                }}
+              />
             </div>
           </div>
         </main>
