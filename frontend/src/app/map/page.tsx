@@ -235,19 +235,19 @@ function MapContent() {
             />
           </div>
 
-          {/* 주변 인기 매물: 지도 아래 고정, 잘리지 않도록 최소 높이·패딩 적용 */}
-          <div className="flex-1 flex flex-col min-h-[320px] bg-white flex-shrink-0 w-full">
-            <div className="flex-shrink-0 px-4 pt-4 pb-2 sm:px-6 sm:pt-5 sm:pb-3">
+          {/* 주변 인기 매물: 지도 아래 고정, 공간 최소화 */}
+          <div className="flex-1 flex flex-col min-h-[280px] bg-white flex-shrink-0 w-full">
+            <div className="flex-shrink-0 px-4 pt-2 pb-1 sm:px-4 sm:pt-3 sm:pb-2">
               <h2 className="text-lg sm:text-xl font-bold text-gray-900 break-words leading-tight">
                 {getUIText('popularStaysNearby', currentLanguage)}
               </h2>
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-gray-400 mt-0.5">
                 {nearbyProperties.length}{" "}
                 {getUIText('propertiesCount', currentLanguage)}
               </p>
             </div>
 
-            <div className="flex-1 min-h-[360px] relative px-4 sm:px-6 pb-4">
+            <div className="flex-1 h-auto relative px-2 pb-2">
               <Property3DCardSlider
                 properties={nearbyProperties}
                 selectedIndex={selectedPropertyIndex}

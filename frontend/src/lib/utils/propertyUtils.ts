@@ -36,11 +36,29 @@ export const formatFullPrice = (price: number, unit: string): string => {
 
 /**
  * 주소에서 도시명 추출
+ * 예: "123 Street, District 1, Ho Chi Minh City, Vietnam" → "Ho Chi Minh City"
  */
 export const getCityName = (address?: string): string => {
   if (!address) return '';
-  const parts = address.split(',');
-  return parts.length > 1 ? parts[parts.length - 1].trim() : address;
+  
+  // 주소를 쉼표로 분리
+  const parts = address.split(',').map(part => part.trim());
+  
+  // "Vietnam" 제거
+  const filteredParts = parts.filter(part => 
+    !part.toLowerCase().includes('vietnam') && 
+    part.length > 0
+  );
+  
+  // 마지막 부분이 도시 이름 (보통 마지막에서 두 번째가 도시, 마지막이 국가)
+  if (filteredParts.length >= 2) {
+    // 마지막 부분 반환 (도시 이름)
+    return filteredParts[filteredParts.length - 1];
+  } else if (filteredParts.length === 1) {
+    return filteredParts[0];
+  }
+  
+  return '';
 };
 
 /**

@@ -105,7 +105,7 @@ export default function Property3DCardSlider({
     return (
       <div className="w-full flex flex-col items-center justify-center">
         {/* 매물 카드와 동일한 높이의 컨테이너 */}
-        <div className="w-[85vw] sm:w-96 h-[360px] sm:h-80 flex items-center justify-center bg-gradient-to-b from-[#FFF8F0]/5 to-white/5 rounded-[2.5rem]">
+        <div className="w-[85vw] sm:w-96 h-[360px] sm:h-80 flex items-center justify-center bg-transparent rounded-[2.5rem]">
           <p className="text-gray-400 text-xs">매물을 불러오는 중...</p>
         </div>
       </div>
@@ -122,14 +122,14 @@ export default function Property3DCardSlider({
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-[380px] bg-gradient-to-b from-[#FFF8F0] via-white to-[#FFF8F0] overflow-hidden"
+      className="relative w-full h-auto bg-transparent"
       onMouseMove={handleMouseMove}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
 
-      {/* 메인 슬라이더 컨테이너 - 베이지 배경 복원, 위쪽 정렬 더 강화 */}
-      <div className="relative w-full h-full flex items-start justify-center perspective px-4 pt-16">
+      {/* 메인 슬라이더 컨테이너 - 배경 제거, 패딩 최소화 */}
+      <div className="relative w-full h-auto flex items-start justify-center perspective px-2 pt-4">
         {/* 좌측 카드 (흐릿함) */}
         <AnimatePresence mode="wait">
           <motion.div
