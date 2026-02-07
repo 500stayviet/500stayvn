@@ -981,26 +981,28 @@ function SearchContent() {
           <div className="grid grid-cols-3 gap-2 mb-4">
             <button
               onClick={() => openCalendar("checkin")}
-              className="flex flex-col items-center justify-center px-3 py-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors"
+              className={`flex flex-col items-center justify-center px-3 py-3 rounded-lg border transition-colors ${checkInDate ? "text-white hover:opacity-90" : "bg-gray-50 border-gray-200 hover:bg-gray-100"}`}
+              style={checkInDate ? { backgroundColor: BRAND.primary, borderColor: BRAND.primary } : undefined}
             >
-              <Calendar className="w-4 h-4 text-gray-600 mb-1" />
-              <div className="text-[10px] text-gray-400 font-bold uppercase text-center mb-0.5 leading-tight">
+              <Calendar className={`w-4 h-4 mb-1 ${checkInDate ? "text-white" : "text-gray-600"}`} />
+              <div className={`text-[10px] font-bold uppercase text-center mb-0.5 leading-tight ${checkInDate ? "text-white" : "text-gray-400"}`}>
                 {getUIText("checkIn", currentLanguage)}
               </div>
-              <div className={`text-xs inline-block ${checkInDate ? "font-bold" : "font-black"}`} style={{ color: checkInDate ? BRAND.text : BRAND.primaryLight, ...(!checkInDate && { WebkitTextStroke: "1.5px", WebkitTextStrokeColor: BRAND.primaryLight }) }}>
+              <div className={`text-xs inline-block ${checkInDate ? "font-bold text-white" : "font-black"}`} style={!checkInDate ? { color: BRAND.primaryLight, WebkitTextStroke: "1.5px", WebkitTextStrokeColor: BRAND.primaryLight } : undefined}>
                 {checkInDate ? formatDate(checkInDate) : "—"}
               </div>
             </button>
 
             <button
               onClick={() => openCalendar("checkout")}
-              className="flex flex-col items-center justify-center px-3 py-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors"
+              className={`flex flex-col items-center justify-center px-3 py-3 rounded-lg border transition-colors ${checkOutDate ? "text-white hover:opacity-90" : "bg-gray-50 border-gray-200 hover:bg-gray-100"}`}
+              style={checkOutDate ? { backgroundColor: BRAND.primary, borderColor: BRAND.primary } : undefined}
             >
-              <Calendar className="w-4 h-4 text-gray-600 mb-1" />
-              <div className="text-[10px] text-gray-400 font-bold uppercase text-center mb-0.5 leading-tight">
+              <Calendar className={`w-4 h-4 mb-1 ${checkOutDate ? "text-white" : "text-gray-600"}`} />
+              <div className={`text-[10px] font-bold uppercase text-center mb-0.5 leading-tight ${checkOutDate ? "text-white" : "text-gray-400"}`}>
                 {getUIText("checkOut", currentLanguage)}
               </div>
-              <div className={`text-xs inline-block ${checkOutDate ? "font-bold" : "font-black"}`} style={{ color: checkOutDate ? BRAND.text : BRAND.primaryLight, ...(!checkOutDate && { WebkitTextStroke: "1.5px", WebkitTextStrokeColor: BRAND.primaryLight }) }}>
+              <div className={`text-xs inline-block ${checkOutDate ? "font-bold text-white" : "font-black"}`} style={!checkOutDate ? { color: BRAND.primaryLight, WebkitTextStroke: "1.5px", WebkitTextStrokeColor: BRAND.primaryLight } : undefined}>
                 {checkOutDate ? formatDate(checkOutDate) : "—"}
               </div>
             </button>
@@ -1012,13 +1014,14 @@ function SearchContent() {
                   setShowRoomDropdown(!showRoomDropdown);
                   setShowCalendar(false);
                 }}
-                className="w-full flex flex-col items-center justify-center px-3 py-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors"
+                className={`w-full flex flex-col items-center justify-center px-3 py-3 rounded-lg border transition-colors ${roomFilter ? "text-white hover:opacity-90" : "bg-gray-50 border-gray-200 hover:bg-gray-100"}`}
+                style={roomFilter ? { backgroundColor: BRAND.primary, borderColor: BRAND.primary } : undefined}
               >
-                <Bed className="w-4 h-4 text-gray-600 mb-1" />
-                <div className="text-[10px] text-gray-400 font-bold uppercase text-center mb-0.5 leading-tight">
+                <Bed className={`w-4 h-4 mb-1 ${roomFilter ? "text-white" : "text-gray-600"}`} />
+                <div className={`text-[10px] font-bold uppercase text-center mb-0.5 leading-tight ${roomFilter ? "text-white" : "text-gray-400"}`}>
                   {getUIText("roomsLabel", currentLanguage)}
                 </div>
-                <div className={`text-xs truncate max-w-[100%] inline-block ${roomFilter ? "font-bold" : "font-black"}`} style={{ color: roomFilter ? BRAND.text : BRAND.primaryLight, ...(!roomFilter && { WebkitTextStroke: "1.5px", WebkitTextStrokeColor: BRAND.primaryLight }) }}>
+                <div className={`text-xs truncate max-w-[100%] inline-block ${roomFilter ? "font-bold text-white" : "font-black"}`} style={!roomFilter ? { color: BRAND.primaryLight, WebkitTextStroke: "1.5px", WebkitTextStrokeColor: BRAND.primaryLight } : undefined}>
                   {roomFilter
                     ? (ROOM_FILTER_OPTIONS.find((o) => o.value === roomFilter)?.[currentLanguage as "ko" | "vi" | "en" | "ja" | "zh"] ?? "Select").substring(0, 8)
                     : "—"}
