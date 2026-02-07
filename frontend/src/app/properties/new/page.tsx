@@ -21,6 +21,7 @@ export default function NewPropertyPage() {
   // 폼 상태
   const [formData, setFormData] = useState({
     title: '',
+    propertyNickname: '', // 임대인만 알아보는 매물명 추가
     original_description: '',
     translated_description: '',
     price: '',
@@ -101,6 +102,7 @@ export default function NewPropertyPage() {
     try {
       await addProperty({
         title: formData.title,
+        propertyNickname: formData.propertyNickname || formData.title, // propertyNickname 추가 (없으면 title 사용)
         original_description: formData.original_description,
         translated_description: formData.translated_description,
         price: parseInt(formData.price),
@@ -142,6 +144,24 @@ export default function NewPropertyPage() {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
             />
+          </div>
+
+          {/* 임대인만 알아보는 매물명 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              임대인만 알아보는 매물명 (내부용)
+              <span className="ml-2 text-xs text-gray-500">(선택사항, 없으면 제목 사용)</span>
+            </label>
+            <input
+              type="text"
+              value={formData.propertyNickname}
+              onChange={(e) => setFormData((prev) => ({ ...prev, propertyNickname: e.target.value }))}
+              placeholder="예: 홍대점 301호, 판매용 A동"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              임대인만 알아볼 수 있는 내부 매물명입니다. 공개되지 않습니다.
+            </p>
           </div>
 
           {/* 설명 */}
