@@ -276,12 +276,8 @@ export default function Property3DCardSlider({
                   </motion.div>
                 </div>
 
-                {/* 간결한 가격 표시 */}
-                <div className="pt-2">
-                  <div className="text-sm font-bold text-[#E63946]">
-                    {formatPrice(currentProperty.price, 'vnd').replace(' vnd', '')}
-                  </div>
-                </div>
+                {/* 공간 절약을 위한 빈 공간 */}
+                <div className="pt-1"></div>
               </div>
             </motion.div>
           </motion.div>
