@@ -103,8 +103,11 @@ export default function Property3DCardSlider({
 
   if (!properties.length) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-gradient-to-b from-[#FFF8F0] to-white">
-        <p className="text-gray-400">매물을 불러오는 중...</p>
+      <div className="w-full flex flex-col items-center justify-center">
+        {/* 매물 카드와 동일한 높이의 컨테이너 */}
+        <div className="w-[85vw] sm:w-96 h-[360px] sm:h-80 flex items-center justify-center bg-gradient-to-b from-[#FFF8F0]/5 to-white/5 rounded-[2.5rem]">
+          <p className="text-gray-400 text-xs">매물을 불러오는 중...</p>
+        </div>
       </div>
     );
   }
@@ -119,24 +122,19 @@ export default function Property3DCardSlider({
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full bg-gradient-to-b from-[#FFF8F0] via-white to-[#FFF8F0] overflow-hidden"
+      className="relative w-full h-[380px] bg-gradient-to-b from-[#FFF8F0] via-white to-[#FFF8F0] overflow-hidden"
       onMouseMove={handleMouseMove}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* 배경 장식 요소 (베이지 크기 더 줄이기) */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-[#FF6B35]/2 to-transparent rounded-full blur-lg" />
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-[#E63946]/2 to-transparent rounded-full blur-lg" />
-      </div>
 
-      {/* 메인 슬라이더 컨테이너 */}
-      <div className="relative w-full h-full flex items-center justify-center perspective px-4">
+      {/* 메인 슬라이더 컨테이너 - 베이지 배경 복원, 위쪽 정렬 더 강화 */}
+      <div className="relative w-full h-full flex items-start justify-center perspective px-4 pt-16">
         {/* 좌측 카드 (흐릿함) */}
         <AnimatePresence mode="wait">
           <motion.div
             key={`prev-${selectedIndex}`}
-            className="absolute left-2 sm:left-4 w-24 sm:w-32 h-32 sm:h-40"
+            className="absolute left-2 sm:left-4 w-24 sm:w-32 h-32 sm:h-40 top-4"
             initial={{ opacity: 0, x: -100, rotateY: -45, scale: 0.7 }}
             animate={{ opacity: 0.4, x: 0, rotateY: -35, scale: 0.75 }}
             exit={{ opacity: 0, x: -100, rotateY: -45, scale: 0.7 }}
@@ -147,7 +145,7 @@ export default function Property3DCardSlider({
             }}
           >
             <motion.div
-              className="relative w-full h-full rounded-3xl overflow-hidden shadow-2xl border-2 border-[#FED7AA]/30 bg-white"
+              className="relative w-full h-full rounded-3xl overflow-hidden shadow-xl border-2 border-[#FED7AA]/30 bg-white"
               whileHover={{ scale: 0.8 }}
             >
               <Image
@@ -164,11 +162,11 @@ export default function Property3DCardSlider({
           </motion.div>
         </AnimatePresence>
 
-        {/* 중앙 메인 카드 (3D 깊이감 - 높이 최적화) */}
+        {/* 중앙 메인 카드 (3D 깊이감 - 높이 최적화, 위쪽 정렬 더 강화) */}
         <AnimatePresence mode="wait">
           <motion.div
             key={`main-${selectedIndex}`}
-            className="absolute w-[85vw] sm:w-96 h-[360px] sm:h-80 z-30"
+            className="absolute w-[85vw] sm:w-96 h-[360px] sm:h-80 z-30 top-0"
             initial={{ opacity: 0, scale: 0.8, rotateX: 20 }}
             animate={{ opacity: 1, scale: 1, rotateX: 0 }}
             exit={{ opacity: 0, scale: 0.8, rotateX: -20 }}
@@ -183,13 +181,13 @@ export default function Property3DCardSlider({
             onMouseMove={handleMouseMove}
           >
             <motion.div
-              className="relative w-full h-full rounded-[2.5rem] overflow-hidden shadow-2xl border-2 border-white/50 bg-white backdrop-blur-xl"
+              className="relative w-full h-full rounded-[2.5rem] overflow-hidden shadow-xl border-2 border-white/50 bg-white backdrop-blur-xl"
               style={{
                 transformStyle: "preserve-3d",
               }}
               whileHover={{
-                y: -8,
-                boxShadow: "0 40px 60px rgba(230, 57, 70, 0.25)",
+                y: -6,
+                boxShadow: "0 30px 45px rgba(230, 57, 70, 0.2)",
               }}
               transition={{ type: "spring", stiffness: 400, damping: 20 }}
             >
@@ -209,12 +207,12 @@ export default function Property3DCardSlider({
                   priority
                 />
 
-                {/* 반짝이는 광선 효과 (마우스 따라다님) */}
+                {/* 반짝이는 광선 효과 (마우스 따라다님) - 사이즈 더 줄이기 */}
                 {isHovered && (
                   <motion.div
                     className="absolute inset-0 pointer-events-none"
                     style={{
-                      background: `radial-gradient(circle 200px at ${mousePosition.x}px ${mousePosition.y}px, rgba(255,255,255,0.3), transparent 80%)`,
+                      background: `radial-gradient(circle 60px at ${mousePosition.x}px ${mousePosition.y}px, rgba(255,255,255,0.12), transparent 50%)`,
                     }}
                   />
                 )}
@@ -366,7 +364,7 @@ export default function Property3DCardSlider({
         <AnimatePresence mode="wait">
           <motion.div
             key={`next-${selectedIndex}`}
-            className="absolute right-2 sm:right-4 w-24 sm:w-32 h-32 sm:h-40"
+            className="absolute right-2 sm:right-4 w-24 sm:w-32 h-32 sm:h-40 top-4"
             initial={{ opacity: 0, x: 100, rotateY: 45, scale: 0.7 }}
             animate={{ opacity: 0.4, x: 0, rotateY: 35, scale: 0.75 }}
             exit={{ opacity: 0, x: 100, rotateY: 45, scale: 0.7 }}
@@ -377,7 +375,7 @@ export default function Property3DCardSlider({
             }}
           >
             <motion.div
-              className="relative w-full h-full rounded-3xl overflow-hidden shadow-2xl border-2 border-[#FED7AA]/30 bg-white"
+              className="relative w-full h-full rounded-3xl overflow-hidden shadow-xl border-2 border-[#FED7AA]/30 bg-white"
               whileHover={{ scale: 0.8 }}
             >
               <Image

@@ -247,7 +247,7 @@ function MapContent() {
               </p>
             </div>
 
-            <div className="flex-1 min-h-[400px] relative px-4 sm:px-6 pb-6">
+            <div className="flex-1 min-h-[360px] relative px-4 sm:px-6 pb-4">
               <Property3DCardSlider
                 properties={nearbyProperties}
                 selectedIndex={selectedPropertyIndex}
