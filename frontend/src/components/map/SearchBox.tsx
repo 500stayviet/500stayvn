@@ -49,7 +49,7 @@ export default function SearchBox({
   }, [setShowSuggestions]);
 
   return (
-    <form onSubmit={onSearchSubmit} className="absolute top-4 left-4 right-4 z-10 max-w-md">
+    <form onSubmit={onSearchSubmit} className="absolute top-2 left-4 right-4 z-10 max-w-md">
       <div className="relative" ref={searchContainerRef}>
         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
           <Search className="h-5 w-5 text-[#E63946]" />
@@ -63,7 +63,7 @@ export default function SearchBox({
             setShowSuggestions(false);
           }}
           placeholder={getUIText('searchPlaceholderCityDistrict', currentLanguage)}
-          className="w-full pl-12 pr-10 py-3 text-base rounded-lg bg-white border border-[#FED7AA] focus:outline-none focus:ring-2 focus:ring-[#E63946] focus:border-transparent shadow-lg transition-all"
+          className="w-full pl-12 pr-10 py-2.5 text-base rounded-lg bg-white border border-[#FED7AA] focus:outline-none focus:ring-2 focus:ring-[#E63946] focus:border-transparent shadow-lg transition-all"
         />
         {searchValue && (
           <button
