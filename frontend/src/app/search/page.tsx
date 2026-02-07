@@ -965,81 +965,67 @@ function SearchContent() {
           </div>
         </div>
 
-        <div className="px-4 py-3 border-b border-gray-200 bg-white">
-          <div className="flex gap-3">
+        <div className="px-4 py-4 border-b border-[#FED7AA] bg-white">
+          {/* Quick Filters Grid */}
+          <div className="grid grid-cols-3 gap-2.5 mb-4">
             <button
               onClick={() => openCalendar("checkin")}
-              className="flex-1 flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+              className="flex flex-col items-center justify-center px-3 py-3.5 bg-gradient-to-br from-[#FFF8F0] to-[#FFE8D6] rounded-2xl border-2 border-[#FED7AA] hover:border-[#E63946] hover:shadow-md transition-all active:scale-95"
             >
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-gray-600" />
-                <div className="text-left">
-                  <div className="text-xs text-gray-500">
-                    {getUIText("checkIn", currentLanguage)}
-                  </div>
-                  <div className="text-sm font-medium text-gray-900">
-                    {checkInDate
-                      ? formatDate(checkInDate)
-                      : getUIText("selectDatePlaceholder", currentLanguage)}
-                  </div>
-                </div>
+              <Calendar className="w-5 h-5 text-[#E63946] mb-1.5" />
+              <div className="text-xs text-gray-500 font-medium text-center mb-0.5">
+                {getUIText("checkIn", currentLanguage)}
+              </div>
+              <div className="text-xs font-bold text-gray-900">
+                {checkInDate
+                  ? formatDate(checkInDate)
+                  : "—"}
               </div>
             </button>
 
             <button
               onClick={() => openCalendar("checkout")}
-              className="flex-1 flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+              className="flex flex-col items-center justify-center px-3 py-3.5 bg-gradient-to-br from-[#FFF8F0] to-[#FFE8D6] rounded-2xl border-2 border-[#FED7AA] hover:border-[#E63946] hover:shadow-md transition-all active:scale-95"
             >
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-gray-600" />
-                <div className="text-left">
-                  <div className="text-xs text-gray-500">
-                    {getUIText("checkOut", currentLanguage)}
-                  </div>
-                  <div className="text-sm font-medium text-gray-900">
-                    {checkOutDate
-                      ? formatDate(checkOutDate)
-                      : getUIText("selectDatePlaceholder", currentLanguage)}
-                  </div>
-                </div>
+              <Calendar className="w-5 h-5 text-[#E63946] mb-1.5" />
+              <div className="text-xs text-gray-500 font-medium text-center mb-0.5">
+                {getUIText("checkOut", currentLanguage)}
+              </div>
+              <div className="text-xs font-bold text-gray-900">
+                {checkOutDate
+                  ? formatDate(checkOutDate)
+                  : "—"}
               </div>
             </button>
 
-            <div className="flex-1 relative" ref={roomDropdownRef}>
+            <div className="relative" ref={roomDropdownRef}>
               <button
                 type="button"
                 onClick={() => {
                   setShowRoomDropdown(!showRoomDropdown);
                   setShowCalendar(false);
                 }}
-                className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                className="w-full flex flex-col items-center justify-center px-3 py-3.5 bg-gradient-to-br from-[#FFF8F0] to-[#FFE8D6] rounded-2xl border-2 border-[#FED7AA] hover:border-[#E63946] hover:shadow-md transition-all active:scale-95"
               >
-                <div className="flex items-center gap-2">
-                  <Bed className="w-4 h-4 text-gray-600" />
-                  <div className="text-left">
-                    <div className="text-xs text-gray-500">
-                      {getUIText("roomsLabel", currentLanguage)}
-                    </div>
-                    <div className="text-sm font-medium text-gray-900">
-                      {roomFilter
-                        ? roomFilterLabel()
-                        : getUIText("selectLabel", currentLanguage)}
-                    </div>
-                  </div>
+                <Bed className="w-5 h-5 text-[#E63946] mb-1.5" />
+                <div className="text-xs text-gray-500 font-medium text-center mb-0.5 leading-tight">
+                  {getUIText("roomsLabel", currentLanguage)}
                 </div>
-                <ChevronDown
-                  className={`w-4 h-4 text-gray-500 transition-transform ${showRoomDropdown ? "rotate-180" : ""}`}
-                />
+                <div className="text-xs font-bold text-gray-900 truncate max-w-[100%]">
+                  {roomFilter
+                    ? (ROOM_FILTER_OPTIONS.find(o => o.value === roomFilter)?.[currentLanguage as "ko" | "vi" | "en" | "ja" | "zh"] ?? "Select").substring(0, 8)
+                    : "—"}
+                </div>
               </button>
               {showRoomDropdown && (
-                <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg py-1 max-h-60 overflow-y-auto">
+                <div className="absolute z-50 left-0 right-0 mt-2 bg-white border-2 border-[#E63946] rounded-2xl shadow-xl py-2 max-h-60 overflow-y-auto">
                   <button
                     type="button"
                     onClick={() => {
                       setRoomFilter(null);
                       setShowRoomDropdown(false);
                     }}
-                    className={`w-full text-left px-4 py-2.5 text-sm ${!roomFilter ? "bg-blue-50 text-blue-700 font-medium" : "text-gray-700 hover:bg-gray-50"}`}
+                    className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors ${!roomFilter ? "bg-[#FFF8F0] text-[#E63946]" : "text-gray-700 hover:bg-[#FFF8F0]"}`}
                   >
                     {getUIText("allLabel", currentLanguage)}
                   </button>
@@ -1051,9 +1037,9 @@ function SearchContent() {
                         setRoomFilter(opt.value);
                         setShowRoomDropdown(false);
                       }}
-                      className={`w-full text-left px-4 py-2.5 text-sm ${roomFilter === opt.value ? "bg-blue-50 text-blue-700 font-medium" : "text-gray-700 hover:bg-gray-50"}`}
+                      className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors ${roomFilter === opt.value ? "bg-[#FFF8F0] text-[#E63946]" : "text-gray-700 hover:bg-[#FFF8F0]"}`}
                     >
-                      {opt[currentLanguage as "ko" | "vi" | "en"] ?? opt.en}
+                      {opt[currentLanguage as "ko" | "vi" | "en" | "ja" | "zh"] ?? opt.en}
                     </button>
                   ))}
                 </div>
@@ -1061,16 +1047,21 @@ function SearchContent() {
             </div>
           </div>
 
-          <div className="mt-3 flex justify-center">
+          {/* Advanced Filter Toggle */}
+          <div className="flex justify-center">
             <button
               onClick={() => {
                 setShowAdvancedFilters(!showAdvancedFilters);
                 setShowCalendar(false);
                 setShowRoomDropdown(false);
               }}
-              className="text-xs text-gray-500 hover:text-gray-700 transition-colors flex items-center gap-1"
+              className={`text-xs font-bold flex items-center gap-1.5 px-4 py-2 rounded-full transition-all ${
+                showAdvancedFilters
+                  ? "bg-[#E63946] text-white"
+                  : "bg-[#FFF8F0] text-[#E63946] hover:bg-[#FFE8D6]"
+              }`}
             >
-              <span>{getUIText("advancedFilter", currentLanguage)}</span>
+              <span>⚙️ {getUIText("advancedFilter", currentLanguage)}</span>
               <ChevronRight
                 className={`w-3 h-3 transition-transform ${showAdvancedFilters ? "rotate-90" : ""}`}
               />
@@ -1078,7 +1069,7 @@ function SearchContent() {
           </div>
 
           {showAdvancedFilters && (
-            <div className="mt-3 p-4 bg-gray-50 rounded-lg border border-gray-200 space-y-4">
+            <div className="mt-4 p-5 bg-gradient-to-br from-[#FFF8F0] to-white rounded-2xl border-2 border-[#FED7AA] space-y-5">
               {/* 임대료(주당) — 비선형 가격 범위 슬라이더만, 실시간 금액 표시, 최소 거리 유지 */}
               {(() => {
                 const allowedValues = getAllowedPriceValues(priceCap);
@@ -1163,18 +1154,17 @@ function SearchContent() {
                 };
                 return (
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      {getUIText("rentWeekly", currentLanguage)}
+                    <label className="block text-xs font-bold text-gray-800 mb-2 uppercase tracking-wide">
+                      💰 {getUIText("rentWeekly", currentLanguage)}
                     </label>
                     {/* 개선된 가격 표시 */}
-                    <div className="mb-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 shadow-sm">
+                    <div className="mb-3 p-4 bg-gradient-to-r from-[#FF6B6B] to-[#FF6B35] rounded-2xl border-2 border-[#E63946] shadow-lg">
                       <div className="text-center">
-                        <div className="text-2xl font-bold text-blue-800 tracking-tight">
-                          {formatVndWithComma(minPrice)} ~{" "}
-                          {formatVndWithComma(maxPrice)}
+                        <div className="text-2xl font-bold text-white tracking-tight">
+                          {formatVndToManSimple(minPrice)} — {formatVndToManSimple(maxPrice)}
                         </div>
-                        <div className="text-sm text-blue-600 mt-2 font-medium">
-                          VND
+                        <div className="text-xs text-orange-100 mt-2 font-semibold">
+                          VND / {currentLanguage === "ko" ? "주" : currentLanguage === "vi" ? "tuần" : "week"}
                         </div>
                       </div>
                     </div>
@@ -1186,7 +1176,7 @@ function SearchContent() {
                       onPointerDown={handleRentTrackPointerDown}
                     >
                       {/* 자 모양 배경 - 가로선 */}
-                      <div className="absolute left-0 right-0 top-3 h-px bg-gray-300" />
+                      <div className="absolute left-0 right-0 top-3 h-1.5 bg-gradient-to-r from-[#FFB627] to-[#FF6B35] rounded-full opacity-30" />
 
                       {/* 주요 구간 눈금 (자 모양) */}
                       <div className="absolute left-0 right-0 top-3 flex justify-between pointer-events-none">
@@ -1237,7 +1227,7 @@ function SearchContent() {
 
                       {/* 선택된 범위 */}
                       <div
-                        className="absolute top-3 h-2 bg-blue-500 rounded-full -translate-y-1/2"
+                        className="absolute top-3 h-1.5 bg-gradient-to-r from-[#E63946] to-[#FF6B35] rounded-full -translate-y-1/2 shadow-lg"
                         style={{
                           left: `${(minPrice / (priceCap || 1)) * 100}%`,
                           width: `${((maxPrice - minPrice) / (priceCap || 1)) * 100}%`,
@@ -1328,11 +1318,11 @@ function SearchContent() {
                           );
                         }}
                       >
-                        <div className="w-6 h-6 bg-white border-2 border-blue-600 rounded-full shadow-lg flex items-center justify-center">
-                          <div className="w-2 h-2 bg-blue-600 rounded-full" />
+                        <div className="w-7 h-7 bg-white border-3 border-[#E63946] rounded-full shadow-xl flex items-center justify-center">
+                          <div className="w-2 h-2 bg-[#E63946] rounded-full" />
                         </div>
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-xs font-bold text-blue-700 bg-white px-2 py-1 rounded-md shadow border border-blue-200 whitespace-nowrap">
-                          {formatVndWithComma(minPrice)}
+                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-xs font-bold text-white bg-[#E63946] px-2.5 py-1.5 rounded-lg shadow-lg border border-[#DC2626] whitespace-nowrap">
+                          {formatVndToManSimple(minPrice)}
                         </div>
                       </div>
 
@@ -1420,11 +1410,11 @@ function SearchContent() {
                           );
                         }}
                       >
-                        <div className="w-6 h-6 bg-white border-2 border-blue-600 rounded-full shadow-lg flex items-center justify-center">
-                          <div className="w-2 h-2 bg-blue-600 rounded-full" />
+                        <div className="w-7 h-7 bg-white border-3 border-[#E63946] rounded-full shadow-xl flex items-center justify-center">
+                          <div className="w-2 h-2 bg-[#E63946] rounded-full" />
                         </div>
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-xs font-bold text-blue-700 bg-white px-2 py-1 rounded-md shadow border border-blue-200 whitespace-nowrap">
-                          {formatVndWithComma(maxPrice)}
+                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-xs font-bold text-white bg-[#E63946] px-2.5 py-1.5 rounded-lg shadow-lg border border-[#DC2626] whitespace-nowrap">
+                          {formatVndToManSimple(maxPrice)}
                         </div>
                       </div>
 
@@ -1475,44 +1465,44 @@ function SearchContent() {
 
               {/* 풀 가구 / 풀 가전 / 풀옵션 주방 */}
               <div>
-                <span className="block text-xs font-medium text-gray-700 mb-2">
-                  {getUIText("fullOption", currentLanguage)}
+                <span className="block text-xs font-bold text-gray-800 mb-3 uppercase tracking-wide">
+                  🏠 {getUIText("fullOption", currentLanguage)}
                 </span>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={() => setFullFurniture(!fullFurniture)}
-                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-colors shrink-0 ${
+                    className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl border-2 text-xs font-bold transition-all shrink-0 ${
                       fullFurniture
-                        ? "bg-green-50 border-green-300 text-green-800"
-                        : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
+                        ? "bg-[#10B981] border-[#059669] text-white shadow-md"
+                        : "bg-white border-[#FED7AA] text-gray-700 hover:border-[#E63946]"
                     }`}
                   >
-                    <Bed className="w-3.5 h-3.5" />
+                    <Bed className="w-4 h-4" />
                     {getUIText("fullFurniture", currentLanguage)}
                   </button>
                   <button
                     type="button"
                     onClick={() => setFullElectronics(!fullElectronics)}
-                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-colors shrink-0 ${
+                    className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl border-2 text-xs font-bold transition-all shrink-0 ${
                       fullElectronics
-                        ? "bg-green-50 border-green-300 text-green-800"
-                        : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
+                        ? "bg-[#10B981] border-[#059669] text-white shadow-md"
+                        : "bg-white border-[#FED7AA] text-gray-700 hover:border-[#E63946]"
                     }`}
                   >
-                    <Tv className="w-3.5 h-3.5" />
+                    <Tv className="w-4 h-4" />
                     {getUIText("fullElectronics", currentLanguage)}
                   </button>
                   <button
                     type="button"
                     onClick={() => setFullOptionKitchen(!fullOptionKitchen)}
-                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-colors shrink-0 ${
+                    className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl border-2 text-xs font-bold transition-all shrink-0 ${
                       fullOptionKitchen
-                        ? "bg-green-50 border-green-300 text-green-800"
-                        : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
+                        ? "bg-[#10B981] border-[#059669] text-white shadow-md"
+                        : "bg-white border-[#FED7AA] text-gray-700 hover:border-[#E63946]"
                     }`}
                   >
-                    <Sparkles className="w-3.5 h-3.5" />
+                    <Sparkles className="w-4 h-4" />
                     {getUIText("fullKitchen", currentLanguage)}
                   </button>
                 </div>
@@ -1520,8 +1510,8 @@ function SearchContent() {
 
               {/* 시설·정책 — 매물 등록 시 숙소시설 및 정책과 동일한 아이콘 전체 */}
               <div>
-                <span className="block text-xs font-medium text-gray-700 mb-2">
-                  {getUIText("amenitiesPolicy", currentLanguage)}
+                <span className="block text-xs font-bold text-gray-800 mb-3 uppercase tracking-wide">
+                  ✨ {getUIText("amenitiesPolicy", currentLanguage)}
                 </span>
                 <div className="flex flex-wrap gap-2">
                   {FACILITY_OPTIONS.map((opt) => {
@@ -1541,15 +1531,15 @@ function SearchContent() {
                             [opt.id]: !prev[opt.id],
                           }));
                         }}
-                        className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg border text-xs font-medium transition-colors shrink-0 ${
+                        className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl border-2 text-xs font-bold transition-all shrink-0 ${
                           on
-                            ? "bg-blue-50 border-blue-300 text-blue-800"
-                            : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
+                            ? "bg-[#FFB627] border-[#E8A400] text-white shadow-md"
+                            : "bg-white border-[#FED7AA] text-gray-700 hover:border-[#FFB627]"
                         }`}
                         title={label}
                       >
-                        <Icon className="w-3.5 h-3.5 shrink-0" />
-                        <span className="truncate max-w-[72px]">{label}</span>
+                        <Icon className="w-4 h-4 shrink-0" />
+                        <span className="truncate max-w-[70px]">{label}</span>
                       </button>
                     );
                   })}
@@ -1559,10 +1549,10 @@ function SearchContent() {
           )}
 
           {/* 초기화 버튼 - 검색하기 버튼 위에 배치 */}
-          <div className="flex gap-2 mt-4">
+          <div className="flex gap-3 mt-5">
             <button
               onClick={resetAdvancedFilters}
-              className="flex-1 py-3 px-4 bg-gray-100 text-gray-700 rounded-lg font-medium text-sm hover:bg-gray-200 transition-all flex items-center justify-center gap-2 border border-gray-300"
+              className="flex-1 py-3.5 px-4 bg-white text-[#E63946] rounded-xl font-bold text-sm border-2 border-[#FED7AA] hover:border-[#E63946] hover:shadow-md transition-all flex items-center justify-center gap-2"
             >
               <RotateCcw className="w-4 h-4" />
               <span>
@@ -1581,13 +1571,22 @@ function SearchContent() {
               onClick={async () => {
                 setShowCalendar(false);
                 setShowRoomDropdown(false);
-                await geocodeSearchQuery();
-                applyFilters();
+                await applyFilters();
               }}
-              className="flex-1 py-3.5 px-6 bg-blue-600 text-white rounded-lg font-semibold text-base hover:bg-blue-700 transition-all shadow-lg flex items-center justify-center gap-2"
+              className="flex-1 py-3.5 px-4 bg-gradient-to-r from-[#E63946] to-[#FF6B35] text-white rounded-xl font-bold text-sm hover:shadow-xl transition-all flex items-center justify-center gap-2 border-2 border-[#DC2626]"
             >
-              <Search className="w-5 h-5" />
-              <span>{getUIText("searchButton", currentLanguage)}</span>
+              <Search className="w-4 h-4" />
+              <span>
+                {currentLanguage === "ko"
+                  ? "검색하기"
+                  : currentLanguage === "vi"
+                    ? "Tìm kiếm"
+                    : currentLanguage === "ja"
+                      ? "検索"
+                      : currentLanguage === "zh"
+                        ? "搜索"
+                        : "Search"}
+              </span>
             </button>
           </div>
         </div>
@@ -1616,30 +1615,49 @@ function SearchContent() {
           </div>
         )}
 
-        <div className="p-4">
+        <div className="px-4 py-4 border-t border-[#FED7AA] bg-gradient-to-b from-white to-[#FFF8F0]">
           {loading ? (
-            <div className="text-center py-12 text-gray-500">
-              {getUIText("searching", currentLanguage)}
+            <div className="text-center py-12 text-gray-500 font-medium">
+              {getUIText("searching", currentLanguage)}...
             </div>
           ) : filteredProperties.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              {getUIText("noResultsFound", currentLanguage)}
+            <div className="text-center py-12">
+              <div className="text-3xl mb-2">🔍</div>
+              <div className="text-gray-600 font-medium">
+                {getUIText("noResultsFound", currentLanguage)}
+              </div>
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="text-sm text-gray-600 mb-4">
-                {filteredProperties.length}
-                {getUIText("propertiesFound", currentLanguage)}
+              {/* Results Header with Count and Sorting */}
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#FED7AA]">
+                <div className="text-sm font-bold text-gray-900">
+                  <span className="text-[#E63946]">{filteredProperties.length}</span>
+                  <span className="text-gray-700 ml-1">{getUIText("propertiesFound", currentLanguage)}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-600 font-medium">정렬:</span>
+                  <select className="text-xs font-bold px-3 py-1.5 rounded-lg border-2 border-[#FED7AA] bg-white text-gray-700 hover:border-[#E63946] transition-colors focus:outline-none focus:border-[#E63946]">
+                    <option>🔥 인기순</option>
+                    <option>💰 저가순</option>
+                    <option>⭐ 평점순</option>
+                    <option>📍 거리순</option>
+                  </select>
+                </div>
               </div>
-              {filteredProperties.map((property) => (
-                <PropertyCard
-                  key={property.id}
-                  property={property}
-                  isSelected={false}
-                  onClick={() => handlePropertyClick(property)}
-                  currentLanguage={currentLanguage}
-                />
-              ))}
+
+              {/* Properties Grid */}
+              <div className="space-y-3">
+                {filteredProperties.map((property) => (
+                  <PropertyCard
+                    key={property.id}
+                    property={property}
+                    isSelected={false}
+                    onClick={() => handlePropertyClick(property)}
+                    currentLanguage={currentLanguage}
+                  />
+                ))}
+              </div>
             </div>
           )}
         </div>
