@@ -271,12 +271,12 @@ export default function GrabMapComponent({
 
     const el = document.createElement('div');
     el.className = 'user-location-marker';
-    el.style.width = '20px';
-    el.style.height = '20px';
+    el.style.width = '14px';
+    el.style.height = '14px';
     el.style.borderRadius = '50%';
-    el.style.backgroundColor = '#3b82f6';
-    el.style.border = '3px solid white';
-    el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
+    el.style.backgroundColor = '#E63946';
+    el.style.border = '2.5px solid white';
+    el.style.boxShadow = '0 0 0 3px rgba(230,57,70,0.2), 0 1px 4px rgba(0,0,0,0.2)';
     el.style.cursor = 'pointer';
     el.style.zIndex = '1000';
 
@@ -584,12 +584,12 @@ export default function GrabMapComponent({
         for (const lm of ALL_LANDMARKS) {
           const el = document.createElement('div');
           el.className = 'landmark-marker';
-          el.style.width = '12px';
-          el.style.height = '12px';
+          el.style.width = '9px';
+          el.style.height = '9px';
           el.style.borderRadius = '50%';
           el.style.backgroundColor = categoryColor[lm.category] || '#6b7280';
-          el.style.border = '2px solid white';
-          el.style.boxShadow = '0 1px 3px rgba(0,0,0,0.3)';
+          el.style.border = '1.5px solid white';
+          el.style.boxShadow = '0 1px 2px rgba(0,0,0,0.2)';
           el.style.cursor = 'pointer';
           const m = new maplibregl.Marker({ element: el })
             .setLngLat([lm.lng, lm.lat])
@@ -926,31 +926,31 @@ export default function GrabMapComponent({
       
       if (isCluster) {
         // 여러 매물: 숫자 표시. 선택 시 내부는 주황 유지, 테두리만 파란색
-        const clusterBorder = isClusterSelected ? '4px solid #2563eb' : '3px solid white';
+        const clusterBorder = isClusterSelected ? '3px solid #E63946' : '2px solid white';
         el.innerHTML = `
           <div style="
             background-color: #FF6B35;
-            width: 48px;
-            height: 48px;
+            width: 34px;
+            height: 34px;
             border-radius: 50%;
             border: ${clusterBorder};
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
             display: flex;
             align-items: center;
             justify-content: center;
           ">
             <div style="
               color: white;
-              font-size: 18px;
-              font-weight: bold;
+              font-size: 13px;
+              font-weight: 700;
+              line-height: 1;
             ">${clusterProperties.length}</div>
           </div>
         `;
       } else {
         // 단일 매물: 집 마커. 선택 시 내부는 주황 유지, 테두리만 파란색
-        const markerSize = isZoomedIn ? 50 : 40;
-        const iconSize = isZoomedIn ? 22 : 18;
-        const borderStyle = isSelected ? '4px solid #2563eb' : '3px solid white';
+        const markerSize = isZoomedIn ? 36 : 30;
+        const borderStyle = isSelected ? '3px solid #E63946' : '2px solid white';
         el.innerHTML = `
           <div style="
             background-color: #FF6B35;
@@ -959,17 +959,16 @@ export default function GrabMapComponent({
             border-radius: 50% 50% 50% 0;
             transform: rotate(-45deg);
             border: ${borderStyle};
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
             display: flex;
             align-items: center;
             justify-content: center;
           ">
-            <div style="
-              transform: rotate(45deg);
-              color: white;
-              font-size: ${iconSize}px;
-              font-weight: bold;
-            ">🏠</div>
+            <svg xmlns="http://www.w3.org/2000/svg" style="transform:rotate(45deg)" width="${isZoomedIn ? 16 : 13}" height="${isZoomedIn ? 16 : 13}" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 10.5L12 3l9 7.5"/>
+              <path d="M5 10v8a1 1 0 001 1h12a1 1 0 001-1v-8"/>
+              <path d="M10 19v-5h4v5"/>
+            </svg>
           </div>
         `;
       }
@@ -1015,26 +1014,25 @@ export default function GrabMapComponent({
           // 5m 이상 떨어진 매물은 개별 마커로 표시
           if (distance > 0.005) {
             const smallIsSelected = selectedPropertyRef.current?.id === property.id;
-            const smallBorder = smallIsSelected ? '3px solid #2563eb' : '2px solid white';
+            const smallBorder = smallIsSelected ? '2px solid #E63946' : '1.5px solid white';
             const smallMarkerEl = document.createElement('div');
             smallMarkerEl.className = 'property-marker-small';
             smallMarkerEl.innerHTML = `
               <div style="
                 background-color: #FF6B35;
-                width: 24px;
-                height: 24px;
+                width: 20px;
+                height: 20px;
                 border-radius: 50%;
                 border: ${smallBorder};
-                box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+                box-shadow: 0 1px 3px rgba(0,0,0,0.2);
                 display: flex;
                 align-items: center;
                 justify-content: center;
               ">
-                <div style="
-                  color: white;
-                  font-size: 12px;
-                  font-weight: bold;
-                ">🏠</div>
+                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 10.5L12 3l9 7.5"/>
+                  <path d="M5 10v8a1 1 0 001 1h12a1 1 0 001-1v-8"/>
+                </svg>
               </div>
             `;
             smallMarkerEl.style.cursor = 'pointer';
@@ -1509,8 +1507,8 @@ export default function GrabMapComponent({
 
   const ZOOM_MIN = 10;
   const ZOOM_MAX = 18;
-  const RULER_HEIGHT = 120;
-  const THUMB_SIZE = 14;
+  const RULER_HEIGHT = 80;
+  const THUMB_SIZE = 10;
   const thumbTop = Math.max(0, Math.min(RULER_HEIGHT - THUMB_SIZE, ((ZOOM_MAX - rulerZoom) / (ZOOM_MAX - ZOOM_MIN)) * (RULER_HEIGHT - THUMB_SIZE)));
 
   return (
