@@ -265,7 +265,12 @@ function MapContent() {
                       handlePropertySelect(index, property);
                       router.push(`/properties/${property.id}`);
                     }}
-                    className={`relative h-[250px] w-[calc(100vw-4rem)] max-w-[320px] flex-shrink-0 cursor-pointer rounded-2xl overflow-hidden shadow-lg snap-start transition-all border-4 ${selectedPropertyIndex === index ? "border-blue-600" : "border-transparent"}`}
+                    className={`relative h-[250px] w-[calc(100vw-4rem)] max-w-[320px] flex-shrink-0 cursor-pointer overflow-hidden snap-start transition-all ${selectedPropertyIndex === index ? "ring-4 ring-[#E63946] rounded-3xl" : "rounded-2xl"}`}
+                    style={{
+                      boxShadow: selectedPropertyIndex === index 
+                        ? '0 10px 30px rgba(230, 57, 70, 0.3)' 
+                        : '0 8px 24px rgba(0, 0, 0, 0.15)'
+                    }}
                   >
                     <Image
                       src={
@@ -276,20 +281,20 @@ function MapContent() {
                       fill
                       className="object-cover"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/75 to-transparent"></div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent"></div>
                     <div className="absolute inset-0 flex flex-col justify-between p-4">
                       <div className="flex justify-end">
-                        <div className="bg-white/95 text-blue-600 px-3 py-1 rounded-xl font-black text-sm">
+                        <div className="bg-white/95 text-[#E63946] px-3 py-1.5 rounded-xl font-bold text-xs tracking-tight">
                           {formatPrice(property.price, "vnd")}
                         </div>
                       </div>
-                      <div className="space-y-1">
+                      <div className="space-y-2">
                         <h3 className="text-white text-base font-bold line-clamp-1">
                           {property.name}
                         </h3>
                         <div className="flex items-center gap-1.5 text-white/90 text-xs">
-                          <MapPin className="w-3.5 h-3.5" />
-                          {getCityName(property.address)}
+                          <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
+                          <span className="line-clamp-1">{getCityName(property.address)}</span>
                         </div>
                       </div>
                     </div>

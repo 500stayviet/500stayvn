@@ -274,9 +274,9 @@ export default function GrabMapComponent({
     el.style.width = '20px';
     el.style.height = '20px';
     el.style.borderRadius = '50%';
-    el.style.backgroundColor = '#3b82f6';
+    el.style.backgroundColor = '#E63946';
     el.style.border = '3px solid white';
-    el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
+    el.style.boxShadow = '0 2px 8px rgba(230, 57, 70, 0.4)';
     el.style.cursor = 'pointer';
     el.style.zIndex = '1000';
 
@@ -572,11 +572,11 @@ export default function GrabMapComponent({
           updateVisiblePropertiesRef.current();
         }
 
-        // 명소 핀 추가 (카테고리별 색상: 랜드마크=빨강, 쇼핑=파랑, 거주=초록, 관광=보라)
+        // 명소 핀 추가 (카테고리별 색상: 랜드마크=시그니처빨강, 쇼핑=시그니처오렌지, 거주=성공초록, 관광=보라)
         const categoryColor: Record<string, string> = {
-          landmark: '#dc2626',
-          shopping: '#2563eb',
-          residential: '#16a34a',
+          landmark: '#E63946',
+          shopping: '#FF6B35',
+          residential: '#10B981',
           tourism: '#9333ea',
         };
         landmarkMarkersRef.current.forEach(m => m.remove());
@@ -925,8 +925,8 @@ export default function GrabMapComponent({
       el.className = 'property-marker';
       
       if (isCluster) {
-        // 여러 매물: 숫자 표시. 선택 시 내부는 주황 유지, 테두리만 파란색
-        const clusterBorder = isClusterSelected ? '4px solid #2563eb' : '3px solid white';
+        // 여러 매물: 숫자 표시. 선택 시 테두리 빨강, 아니면 흰색
+        const clusterBorder = isClusterSelected ? '4px solid #E63946' : '3px solid white';
         el.innerHTML = `
           <div style="
             background-color: #FF6B35;
@@ -934,7 +934,7 @@ export default function GrabMapComponent({
             height: 48px;
             border-radius: 50%;
             border: ${clusterBorder};
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            box-shadow: ${isClusterSelected ? '0 3px 12px rgba(230, 57, 70, 0.4)' : '0 2px 8px rgba(0,0,0,0.3)'};
             display: flex;
             align-items: center;
             justify-content: center;
@@ -947,10 +947,10 @@ export default function GrabMapComponent({
           </div>
         `;
       } else {
-        // 단일 매물: 집 마커. 선택 시 내부는 주황 유지, 테두리만 파란색
+        // 단일 매물: 집 마커. 선택 시 테두리 빨강, 아니면 흰색
         const markerSize = isZoomedIn ? 50 : 40;
         const iconSize = isZoomedIn ? 22 : 18;
-        const borderStyle = isSelected ? '4px solid #2563eb' : '3px solid white';
+        const borderStyle = isSelected ? '4px solid #E63946' : '3px solid white';
         el.innerHTML = `
           <div style="
             background-color: #FF6B35;
@@ -959,7 +959,7 @@ export default function GrabMapComponent({
             border-radius: 50% 50% 50% 0;
             transform: rotate(-45deg);
             border: ${borderStyle};
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            box-shadow: ${isSelected ? '0 3px 12px rgba(230, 57, 70, 0.4)' : '0 2px 8px rgba(0,0,0,0.3)'};
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1015,7 +1015,7 @@ export default function GrabMapComponent({
           // 5m 이상 떨어진 매물은 개별 마커로 표시
           if (distance > 0.005) {
             const smallIsSelected = selectedPropertyRef.current?.id === property.id;
-            const smallBorder = smallIsSelected ? '3px solid #2563eb' : '2px solid white';
+            const smallBorder = smallIsSelected ? '3px solid #E63946' : '2px solid white';
             const smallMarkerEl = document.createElement('div');
             smallMarkerEl.className = 'property-marker-small';
             smallMarkerEl.innerHTML = `
@@ -1025,7 +1025,7 @@ export default function GrabMapComponent({
                 height: 24px;
                 border-radius: 50%;
                 border: ${smallBorder};
-                box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+                box-shadow: ${smallIsSelected ? '0 1px 6px rgba(230, 57, 70, 0.3)' : '0 1px 4px rgba(0,0,0,0.3)'};
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -1467,9 +1467,9 @@ export default function GrabMapComponent({
         if (marker.current) marker.current.remove();
         if (!suggestion.isRegion) {
           marker.current = new maplibregl.Marker({
-            color: suggestion.isLandmark && suggestion.landmarkCategory === 'landmark' ? '#dc2626'
-              : suggestion.isLandmark && suggestion.landmarkCategory === 'shopping' ? '#2563eb'
-              : suggestion.isLandmark && suggestion.landmarkCategory === 'residential' ? '#16a34a'
+            color: suggestion.isLandmark && suggestion.landmarkCategory === 'landmark' ? '#E63946'
+              : suggestion.isLandmark && suggestion.landmarkCategory === 'shopping' ? '#FF6B35'
+              : suggestion.isLandmark && suggestion.landmarkCategory === 'residential' ? '#10B981'
               : suggestion.isLandmark && suggestion.landmarkCategory === 'tourism' ? '#9333ea'
               : '#FF6B35',
             scale: 1.2,
@@ -1546,29 +1546,29 @@ export default function GrabMapComponent({
 
       {/* 우측 세로 줌 룰러: +/- 아이콘 + 현재 줌 위치(동그라미), 조작 불가 */}
       <div
-        className="zoom-ruler-wrap absolute right-2 top-1/2 z-20 -translate-y-1/2 flex flex-col items-center pointer-events-none select-none gap-0.5"
+        className="zoom-ruler-wrap absolute right-3 top-1/2 z-20 -translate-y-1/2 flex flex-col items-center pointer-events-none select-none gap-1"
         style={{ height: RULER_HEIGHT + 44 }}
         aria-label="현재 줌 레벨"
       >
-        <div className="flex items-center justify-center w-6 h-5 rounded bg-gray-100 text-gray-500" aria-hidden>
-          <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-white text-[#E63946] shadow-md" aria-hidden>
+          <Plus className="w-4 h-4" strokeWidth={3} />
         </div>
         <div
-          className="zoom-ruler-track w-5 rounded-full bg-gray-200/90 flex-shrink-0 relative"
-          style={{ height: RULER_HEIGHT }}
+          className="zoom-ruler-track w-1.5 rounded-full bg-gray-300/80 flex-shrink-0 relative"
+          style={{ height: RULER_HEIGHT, backgroundColor: '#E5E7EB' }}
         >
           {/* 동그라미 포인터: 현재 줌 위치 */}
           <div
-            className="absolute left-1/2 -translate-x-1/2 rounded-full bg-blue-500 border-2 border-white shadow-sm"
+            className="absolute left-1/2 -translate-x-1/2 rounded-full bg-[#E63946] border-2 border-white shadow-md"
             style={{
               top: thumbTop,
-              width: THUMB_SIZE,
-              height: THUMB_SIZE,
+              width: THUMB_SIZE + 2,
+              height: THUMB_SIZE + 2,
             }}
           />
         </div>
-        <div className="flex items-center justify-center w-6 h-5 rounded bg-gray-100 text-gray-500" aria-hidden>
-          <Minus className="w-3.5 h-3.5" strokeWidth={2.5} />
+        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-white text-[#E63946] shadow-md" aria-hidden>
+          <Minus className="w-4 h-4" strokeWidth={3} />
         </div>
       </div>
 
@@ -1589,7 +1589,7 @@ export default function GrabMapComponent({
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white rounded-lg shadow-xl p-6 max-w-md mx-4 w-full">
             <div className="flex items-center gap-3 mb-4">
-              <MapPin className="w-6 h-6 text-blue-500" />
+              <MapPin className="w-6 h-6 text-[#E63946]" />
               <h3 className="text-lg font-semibold text-gray-900">
                 {getUIText('locationPermissionTitle', currentLanguage)}
               </h3>
@@ -1605,13 +1605,13 @@ export default function GrabMapComponent({
                   setShowLocationConsentModal(false);
                   hasRequestedLocationRef.current = true;
                 }}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                className="flex-1 px-4 py-2 border border-[#FED7AA] rounded-lg text-gray-700 hover:bg-orange-50 transition-colors"
               >
                 {getUIText('deny', currentLanguage)}
               </button>
               <button
                 onClick={requestLocation}
-                className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                className="flex-1 px-4 py-2 bg-[#E63946] text-white rounded-lg hover:bg-[#DC2F38] transition-colors font-medium"
               >
                 {getUIText('allow', currentLanguage)}
               </button>

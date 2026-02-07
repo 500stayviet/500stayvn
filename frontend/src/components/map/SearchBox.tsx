@@ -52,7 +52,7 @@ export default function SearchBox({
     <form onSubmit={onSearchSubmit} className="absolute top-4 left-4 right-4 z-10 max-w-md">
       <div className="relative" ref={searchContainerRef}>
         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-          <Search className="h-5 w-5 text-gray-400" />
+          <Search className="h-5 w-5 text-[#E63946]" />
         </div>
         <input
           type="text"
@@ -63,7 +63,7 @@ export default function SearchBox({
             setShowSuggestions(false);
           }}
           placeholder={getUIText('searchPlaceholderCityDistrict', currentLanguage)}
-          className="w-full pl-12 pr-10 py-3 text-base rounded-lg bg-white border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-lg"
+          className="w-full pl-12 pr-10 py-3 text-base rounded-lg bg-white border border-[#FED7AA] focus:outline-none focus:ring-2 focus:ring-[#E63946] focus:border-transparent shadow-lg transition-all"
         />
         {searchValue && (
           <button
@@ -116,19 +116,19 @@ export default function SearchBox({
                   if (suggestion.regionType === 'city') {
                     const text = { ko: '도시', vi: 'Thành phố', en: 'City', ja: '都市', zh: '城市' };
                     badgeText = text[currentLanguage] || text.en;
-                    badgeColor = 'bg-blue-600';
+                    badgeColor = 'bg-[#E63946]';
                     badgeIcon = '🏙️';
                   } else {
                     const text = { ko: '구/군', vi: 'Quận', en: 'District', ja: '区/郡', zh: '区/县' };
                     badgeText = text[currentLanguage] || text.en;
-                    badgeColor = 'bg-blue-500';
+                    badgeColor = 'bg-[#FF6B35]';
                     badgeIcon = '📍';
                   }
                 } else {
                   // 3순위: 대표 명소
                   const text = { ko: '명소', vi: 'Địa danh', en: 'Landmark', ja: '名所', zh: '景点' };
                   badgeText = text[currentLanguage] || text.en;
-                  badgeColor = 'bg-amber-500';
+                  badgeColor = 'bg-[#FFB627]';
                   badgeIcon = '⭐';
                 }
                 
@@ -141,8 +141,8 @@ export default function SearchBox({
                       onSelectSuggestion(suggestion);
                       setShowSuggestions(false);
                     }}
-                    className={`w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0 ${
-                      suggestion.isRegion ? 'bg-blue-50/30' : ''
+                    className={`w-full text-left px-4 py-3 hover:bg-orange-50 transition-colors border-b border-gray-100 last:border-b-0 ${
+                      suggestion.isRegion ? 'bg-orange-50/30' : ''
                     }`}
                   >
                     <div className="flex items-start gap-3">
