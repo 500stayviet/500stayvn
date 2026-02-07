@@ -269,9 +269,15 @@ export default function HeroSection({ currentLanguage }: HeroSectionProps) {
                 className="w-full pl-11 pr-4 py-3 text-sm rounded-xl transition-all"
                 style={{ 
                   backgroundColor: '#F9FAFB', 
-                  border: `1.5px solid ${BRAND.primary}`,
+                  border: '1.5px solid #E5E7EB',
                   color: BRAND.text,
                   outline: 'none',
+                }}
+                onFocusCapture={(e) => {
+                  (e.target as HTMLInputElement).style.borderColor = BRAND.primary;
+                }}
+                onBlurCapture={(e) => {
+                  (e.target as HTMLInputElement).style.borderColor = '#E5E7EB';
                 }}
               />
               

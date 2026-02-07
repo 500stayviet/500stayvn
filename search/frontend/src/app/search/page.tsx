@@ -219,7 +219,7 @@ function SearchContent() {
   // URL 파라미터가 있으면 초기에 필터 적용 상태로 설정
   const [filtersApplied, setFiltersApplied] = useState(false);
   
-  // 자동 필터링 적용 여부 (URL 파라미터가 있으면 true)
+  // 자동 필터��� 적용 여부 (URL 파라미터가 있으면 true)
   const [shouldAutoApplyFilters, setShouldAutoApplyFilters] = useState(
     !!(query || cityIdParam || districtIdParam)
   );
@@ -773,13 +773,6 @@ function SearchContent() {
     return opt[currentLanguage as "ko" | "vi" | "en" | "ja" | "zh"] ?? opt.en;
   };
 
-  const BRAND = {
-    primary: "#E63946",
-    primaryLight: "#FF6B6B", // Light Coral (밝은 산호)
-    muted: "#9CA3AF",
-    text: "#1F2937",
-  };
-
   return (
     <div className="min-h-screen bg-gray-100 flex justify-center">
       <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative">
@@ -790,35 +783,31 @@ function SearchContent() {
           hideLanguageSelector={false}
         />
 
-        {/* 검색어 입력창 — 홈(HeroSection)과 동일한 카드 스타일 */}
-        <div className="px-4 pb-3 pt-3">
-          <div className="bg-white rounded-2xl shadow-lg p-4" style={{ border: "1px solid #F3F4F6" }}>
+        {/* 검색어 입력창 — 지도 페이지와 동일한 로직 (드롭다운 포함) */}
+        <div className="px-4 pb-3 pt-3 border-b border-gray-200">
           <div className="relative" ref={searchContainerRef}>
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none z-10">
-              <Search className="h-4 w-4" style={{ color: BRAND.muted }} />
+            <div className="flex items-center gap-2 rounded-xl bg-gray-50 border border-gray-200 px-3 py-2.5">
+              <Search className="w-4 h-4 text-gray-500 shrink-0" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={handleAddressInputChange}
+                onFocus={() => {
+                  // 검색창 클릭 시 드롭다운 닫기
+                  setShowSuggestions(false);
+                }}
+                placeholder={getUIText(
+                  "searchPlaceholderCityDistrict",
+                  currentLanguage,
+                )}
+                className="flex-1 bg-transparent text-sm text-gray-900 placeholder-gray-400 focus:outline-none"
+              />
             </div>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={handleAddressInputChange}
-              onFocus={() => setShowSuggestions(false)}
-              placeholder={getUIText(
-                "searchPlaceholderCityDistrict",
-                currentLanguage,
-              )}
-              className="w-full pl-11 pr-4 py-3 text-sm rounded-xl transition-all focus:outline-none"
-              style={{
-                backgroundColor: "#F9FAFB",
-                border: `1.5px solid ${BRAND.primary}`,
-                color: BRAND.text,
-                outline: "none",
-              }}
-            />
             {searchQuery &&
               showSuggestions &&
               suggestions.length > 0 &&
               !closedBySelection && (
-                <div className="absolute z-50 w-full mt-2 bg-white rounded-xl shadow-lg max-h-72 overflow-y-auto" style={{ border: "1px solid #E5E7EB" }}>
+                <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-lg max-h-72 overflow-y-auto">
                   {suggestions.map((suggestion, index) => {
                     const badge = getSuggestionBadge(
                       suggestion,
@@ -838,8 +827,7 @@ function SearchContent() {
                         type="button"
                         onMouseDown={(e) => e.preventDefault()}
                         onClick={() => handleSelectSuggestion(suggestion)}
-                        className="w-full text-left px-4 py-3 transition-colors border-b border-gray-50 last:border-b-0"
-                        style={{ backgroundColor: suggestion.isRegion ? "#FFF8F6" : "transparent" }}
+                        className={`w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0 ${suggestion.isRegion ? "bg-blue-50/30" : ""}`}
                       >
                         <div className="flex items-start gap-3">
                           <span className="text-lg flex-shrink-0 mt-0.5">
@@ -852,12 +840,12 @@ function SearchContent() {
                               >
                                 {badge.text}
                               </span>
-                              <p className="text-sm font-semibold truncate" style={{ color: BRAND.text }}>
+                              <p className="text-sm font-semibold text-gray-900 truncate">
                                 {mainName}
                               </p>
                             </div>
                             {subAddress && (
-                              <p className="text-xs mt-1 truncate" style={{ color: BRAND.muted }}>
+                              <p className="text-xs text-gray-400 mt-1 truncate">
                                 {subAddress}
                               </p>
                             )}
@@ -869,10 +857,10 @@ function SearchContent() {
                 </div>
               )}
             {isSearching && (
-              <div className="absolute z-50 w-full mt-2 bg-white rounded-xl shadow-lg p-4" style={{ border: "1px solid #E5E7EB" }}>
-                <div className="flex items-center justify-center gap-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2" style={{ borderColor: BRAND.primary }} />
-                  <span className="text-sm" style={{ color: BRAND.muted }}>
+              <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-lg p-4">
+                <div className="flex items-center justify-center gap-2 text-gray-500">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500" />
+                  <span className="text-sm">
                     {getUIText("searching", currentLanguage)}
                   </span>
                 </div>
@@ -901,15 +889,16 @@ function SearchContent() {
                         lng: city.center[0],
                       });
                   } else setSearchLocation(null);
-                  // 도시 선택 시 자동으로 필터링 적용
+                  // 도시 선택 시 자동으로 필터링 ���용
                   setTimeout(() => {
                     applyFilters();
                   }, 100);
                 }}
-                className="w-full rounded-lg border px-3 py-2.5 text-sm min-h-[42px] focus:ring-2 focus:ring-[#E63946] focus:border-transparent transition-colors"
-                style={{
-                  ...(selectedCityId ? { borderColor: BRAND.primary, backgroundColor: "#E6394615", color: "#C62D3A", fontWeight: 600 } : { borderColor: "#E5E7EB", backgroundColor: "#F9FAFB", color: BRAND.text }),
-                }}
+                className={`w-full rounded-lg border px-3 py-2.5 text-sm min-h-[42px] focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
+                  selectedCityId
+                    ? "border-blue-500 bg-blue-50 text-blue-700 font-medium"
+                    : "bg-gray-50 border-gray-200 text-gray-800"
+                }`}
               >
                 <option value="">
                   {currentLanguage === "ko"
@@ -957,10 +946,11 @@ function SearchContent() {
                   }, 100);
                 }}
                 disabled={!selectedCityId || districts.length === 0}
-                className="w-full rounded-lg border px-3 py-2.5 text-sm min-h-[42px] focus:ring-2 focus:ring-[#E63946] focus:border-transparent disabled:opacity-70 disabled:cursor-not-allowed transition-colors"
-                style={{
-                  ...(selectedDistrictId ? { borderColor: BRAND.primary, backgroundColor: "#E6394615", color: "#C62D3A", fontWeight: 600 } : { borderColor: "#E5E7EB", backgroundColor: "#F9FAFB", color: BRAND.text }),
-                }}
+                className={`w-full rounded-lg border px-3 py-2.5 text-sm min-h-[42px] focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-70 disabled:cursor-not-allowed transition-colors ${
+                  selectedDistrictId
+                    ? "border-blue-500 bg-blue-50 text-blue-700 font-medium"
+                    : "bg-gray-50 border-gray-200 text-gray-800"
+                }`}
               >
                 <option value="">
                   {getUIText("selectDistrictPlaceholder", currentLanguage)}
@@ -973,11 +963,10 @@ function SearchContent() {
               </select>
             </div>
           </div>
-          </div>
         </div>
 
         <div className="px-4 py-4 border-b border-gray-100 bg-white">
-          {/* 체크인/체크아웃/인원 필터 - v0 스타일 */}
+          {/* Quick Filters Grid */}
           <div className="grid grid-cols-3 gap-2 mb-4">
             <button
               onClick={() => openCalendar("checkin")}
@@ -987,8 +976,10 @@ function SearchContent() {
               <div className="text-[10px] text-gray-400 font-bold uppercase text-center mb-0.5 leading-tight">
                 {getUIText("checkIn", currentLanguage)}
               </div>
-              <div className={`text-xs inline-block ${checkInDate ? "font-bold" : "font-black"}`} style={{ color: checkInDate ? BRAND.text : BRAND.primaryLight, ...(!checkInDate && { WebkitTextStroke: "1.5px", WebkitTextStrokeColor: BRAND.primaryLight }) }}>
-                {checkInDate ? formatDate(checkInDate) : "—"}
+              <div className="text-xs font-bold text-gray-900">
+                {checkInDate
+                  ? formatDate(checkInDate)
+                  : "—"}
               </div>
             </button>
 
@@ -1000,8 +991,10 @@ function SearchContent() {
               <div className="text-[10px] text-gray-400 font-bold uppercase text-center mb-0.5 leading-tight">
                 {getUIText("checkOut", currentLanguage)}
               </div>
-              <div className={`text-xs inline-block ${checkOutDate ? "font-bold" : "font-black"}`} style={{ color: checkOutDate ? BRAND.text : BRAND.primaryLight, ...(!checkOutDate && { WebkitTextStroke: "1.5px", WebkitTextStrokeColor: BRAND.primaryLight }) }}>
-                {checkOutDate ? formatDate(checkOutDate) : "—"}
+              <div className="text-xs font-bold text-gray-900">
+                {checkOutDate
+                  ? formatDate(checkOutDate)
+                  : "—"}
               </div>
             </button>
 
@@ -1018,9 +1011,9 @@ function SearchContent() {
                 <div className="text-[10px] text-gray-400 font-bold uppercase text-center mb-0.5 leading-tight">
                   {getUIText("roomsLabel", currentLanguage)}
                 </div>
-                <div className={`text-xs truncate max-w-[100%] inline-block ${roomFilter ? "font-bold" : "font-black"}`} style={{ color: roomFilter ? BRAND.text : BRAND.primaryLight, ...(!roomFilter && { WebkitTextStroke: "1.5px", WebkitTextStrokeColor: BRAND.primaryLight }) }}>
+                <div className="text-xs font-bold text-gray-900 truncate max-w-[100%]">
                   {roomFilter
-                    ? (ROOM_FILTER_OPTIONS.find((o) => o.value === roomFilter)?.[currentLanguage as "ko" | "vi" | "en" | "ja" | "zh"] ?? "Select").substring(0, 8)
+                    ? (ROOM_FILTER_OPTIONS.find(o => o.value === roomFilter)?.[currentLanguage as "ko" | "vi" | "en" | "ja" | "zh"] ?? "Select").substring(0, 8)
                     : "—"}
                 </div>
               </button>
@@ -1054,7 +1047,7 @@ function SearchContent() {
             </div>
           </div>
 
-          {/* 고급 필터 토글 버튼 - v0 스타일 */}
+          {/* Advanced Filter Toggle */}
           <div className="flex justify-center">
             <button
               onClick={() => {
@@ -1062,8 +1055,11 @@ function SearchContent() {
                 setShowCalendar(false);
                 setShowRoomDropdown(false);
               }}
-              className={`text-xs font-bold flex items-center gap-1 px-4 py-2 rounded-lg transition-colors ${showAdvancedFilters ? "text-white" : "hover:bg-gray-50"}`}
-              style={showAdvancedFilters ? { backgroundColor: BRAND.primary } : { color: BRAND.primary }}
+              className={`text-xs font-bold flex items-center gap-1 px-4 py-2 rounded-lg transition-colors ${
+                showAdvancedFilters
+                  ? "bg-[#E63946] text-white"
+                  : "text-gray-600 hover:bg-gray-50"
+              }`}
             >
               <span>{getUIText("advancedFilter", currentLanguage)}</span>
               <ChevronRight
@@ -1073,7 +1069,7 @@ function SearchContent() {
           </div>
 
           {showAdvancedFilters && (
-            <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-5">
+            <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-4">
               {/* 임대료(주당) — 비선형 가격 범위 슬라이더만, 실시간 금액 표시, 최소 거리 유지 */}
               {(() => {
                 const allowedValues = getAllowedPriceValues(priceCap);
@@ -1161,7 +1157,7 @@ function SearchContent() {
                     <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">
                       {getUIText("rentWeekly", currentLanguage)}
                     </label>
-                    {/* 가격 표시 - v0 스타일 */}
+                    {/* 가격 표시 */}
                     <div className="mb-3 p-3 bg-white rounded-lg border border-gray-200">
                       <div className="text-center">
                         <div className="text-lg font-bold text-gray-900 tracking-tight">
@@ -1173,14 +1169,14 @@ function SearchContent() {
                       </div>
                     </div>
 
-                    {/* 개선된 비선형 슬라이더 - 자 모양 눈금 추가 */}
+                    {/* 가격 슬라이더 */}
                     <div
                       className="relative py-6"
                       ref={rentTrackRef}
                       onPointerDown={handleRentTrackPointerDown}
                     >
-                      {/* 자 모양 배경 - 가로선 */}
-                      <div className="absolute left-0 right-0 top-3 h-px bg-gray-300" />
+                      {/* 슬라이더 배경 */}
+                      <div className="absolute left-0 right-0 top-3 h-1 bg-gray-300 rounded-full" />
 
                       {/* 주요 구간 눈금 (자 모양) */}
                       <div className="absolute left-0 right-0 top-3 flex justify-between pointer-events-none">
@@ -1231,9 +1227,9 @@ function SearchContent() {
 
                       {/* 선택된 범위 */}
                       <div
-                        className="absolute top-3 h-px rounded-full -translate-y-1/2"
+                        className="absolute top-3 h-1 rounded-full -translate-y-1/2"
                         style={{
-                          backgroundColor: BRAND.primary,
+                          backgroundColor: "#E63946",
                           left: `${(minPrice / (priceCap || 1)) * 100}%`,
                           width: `${((maxPrice - minPrice) / (priceCap || 1)) * 100}%`,
                         }}
@@ -1323,10 +1319,10 @@ function SearchContent() {
                           );
                         }}
                       >
-                        <div className="w-6 h-6 bg-white border-2 rounded-full shadow-md flex items-center justify-center" style={{ borderColor: BRAND.primary }}>
-                          <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: BRAND.primary }} />
+                        <div className="w-6 h-6 bg-white border-2 rounded-full shadow-md flex items-center justify-center" style={{ borderColor: "#E63946" }}>
+                          <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: "#E63946" }} />
                         </div>
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-xs font-bold text-white px-2 py-1 rounded-md shadow border whitespace-nowrap" style={{ backgroundColor: BRAND.primary, borderColor: BRAND.primary }}>
+                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-xs font-bold text-white px-2 py-1 rounded-md shadow border whitespace-nowrap" style={{ backgroundColor: "#E63946", borderColor: "#E63946" }}>
                           {formatVndToManSimple(minPrice)}
                         </div>
                       </div>
@@ -1415,10 +1411,10 @@ function SearchContent() {
                           );
                         }}
                       >
-                        <div className="w-6 h-6 bg-white border-2 rounded-full shadow-md flex items-center justify-center" style={{ borderColor: BRAND.primary }}>
-                          <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: BRAND.primary }} />
+                        <div className="w-6 h-6 bg-white border-2 rounded-full shadow-md flex items-center justify-center" style={{ borderColor: "#E63946" }}>
+                          <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: "#E63946" }} />
                         </div>
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-xs font-bold text-white px-2 py-1 rounded-md shadow border whitespace-nowrap" style={{ backgroundColor: BRAND.primary, borderColor: BRAND.primary }}>
+                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-xs font-bold text-white px-2 py-1 rounded-md shadow border whitespace-nowrap" style={{ backgroundColor: "#E63946", borderColor: "#E63946" }}>
                           {formatVndToManSimple(maxPrice)}
                         </div>
                       </div>
@@ -1478,9 +1474,10 @@ function SearchContent() {
                     type="button"
                     onClick={() => setFullFurniture(!fullFurniture)}
                     className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-colors shrink-0 ${
-                      fullFurniture ? "text-white border" : "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
+                      fullFurniture
+                        ? "text-white border" : "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
                     }`}
-                    style={fullFurniture ? { backgroundColor: BRAND.primary, borderColor: BRAND.primary } : undefined}
+                    style={fullFurniture ? { backgroundColor: "#E63946", borderColor: "#E63946" } : undefined}
                   >
                     <Bed className="w-3.5 h-3.5" />
                     {getUIText("fullFurniture", currentLanguage)}
@@ -1489,9 +1486,10 @@ function SearchContent() {
                     type="button"
                     onClick={() => setFullElectronics(!fullElectronics)}
                     className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-colors shrink-0 ${
-                      fullElectronics ? "text-white border" : "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
+                      fullElectronics
+                        ? "text-white border" : "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
                     }`}
-                    style={fullElectronics ? { backgroundColor: BRAND.primary, borderColor: BRAND.primary } : undefined}
+                    style={fullElectronics ? { backgroundColor: "#E63946", borderColor: "#E63946" } : undefined}
                   >
                     <Tv className="w-3.5 h-3.5" />
                     {getUIText("fullElectronics", currentLanguage)}
@@ -1500,9 +1498,10 @@ function SearchContent() {
                     type="button"
                     onClick={() => setFullOptionKitchen(!fullOptionKitchen)}
                     className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-colors shrink-0 ${
-                      fullOptionKitchen ? "text-white border" : "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
+                      fullOptionKitchen
+                        ? "text-white border" : "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
                     }`}
-                    style={fullOptionKitchen ? { backgroundColor: BRAND.primary, borderColor: BRAND.primary } : undefined}
+                    style={fullOptionKitchen ? { backgroundColor: "#E63946", borderColor: "#E63946" } : undefined}
                   >
                     <Sparkles className="w-3.5 h-3.5" />
                     {getUIText("fullKitchen", currentLanguage)}
@@ -1534,9 +1533,10 @@ function SearchContent() {
                           }));
                         }}
                         className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-colors shrink-0 ${
-                          on ? "text-white border" : "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
+                          on
+                            ? "text-white border" : "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
                         }`}
-                        style={on ? { backgroundColor: BRAND.primary, borderColor: BRAND.primary } : undefined}
+                        style={on ? { backgroundColor: "#E63946", borderColor: "#E63946" } : undefined}
                         title={label}
                       >
                         <Icon className="w-3.5 h-3.5 shrink-0" />
@@ -1549,7 +1549,7 @@ function SearchContent() {
             </div>
           )}
 
-          {/* 초기화 버튼 - 검색하기 버튼 위에 배치 - v0 스타일 */}
+          {/* 초기화 버튼 - 검색하기 버튼 위에 배치 */}
           <div className="flex gap-2 mt-4">
             <button
               onClick={resetAdvancedFilters}
@@ -1572,14 +1572,23 @@ function SearchContent() {
               onClick={async () => {
                 setShowCalendar(false);
                 setShowRoomDropdown(false);
-                await geocodeSearchQuery();
-                applyFilters();
+                await applyFilters();
               }}
               className="flex-1 py-3 px-4 text-white rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2"
-              style={{ backgroundColor: BRAND.primary }}
+              style={{ backgroundColor: "#E63946" }}
             >
               <Search className="w-3.5 h-3.5" />
-              <span>{getUIText("searchButton", currentLanguage)}</span>
+              <span>
+                {currentLanguage === "ko"
+                  ? "검색하기"
+                  : currentLanguage === "vi"
+                    ? "Tìm kiếm"
+                    : currentLanguage === "ja"
+                      ? "検索"
+                      : currentLanguage === "zh"
+                        ? "搜索"
+                        : "Search"}
+              </span>
             </button>
           </div>
         </div>
@@ -1608,9 +1617,9 @@ function SearchContent() {
           </div>
         )}
 
-        <div className="p-4">
+        <div className="px-4 py-4 border-t border-gray-100 bg-white">
           {loading ? (
-            <div className="text-center py-12 text-gray-500">
+            <div className="text-center py-12 text-gray-500 font-medium">
               {getUIText("searching", currentLanguage)}
             </div>
           ) : filteredProperties.length === 0 ? (
@@ -1619,19 +1628,26 @@ function SearchContent() {
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="text-sm text-gray-600 mb-4">
-                {filteredProperties.length}
-                {getUIText("propertiesFound", currentLanguage)}
+              {/* Results Header with Count */}
+              <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-100">
+                <div className="text-sm font-bold text-gray-900">
+                  <span className="text-gray-600">{filteredProperties.length}</span>
+                  <span className="text-gray-600 ml-2">{getUIText("propertiesFound", currentLanguage)}</span>
+                </div>
               </div>
-              {filteredProperties.map((property) => (
-                <PropertyCard
-                  key={property.id}
-                  property={property}
-                  isSelected={false}
-                  onClick={() => handlePropertyClick(property)}
-                  currentLanguage={currentLanguage}
-                />
-              ))}
+
+              {/* Properties List */}
+              <div className="space-y-3">
+                {filteredProperties.map((property) => (
+                  <PropertyCard
+                    key={property.id}
+                    property={property}
+                    isSelected={false}
+                    onClick={() => handlePropertyClick(property)}
+                    currentLanguage={currentLanguage}
+                  />
+                ))}
+              </div>
             </div>
           )}
         </div>
