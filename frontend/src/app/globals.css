@@ -4,6 +4,13 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  
+  /* 3D 슬라이더 시그니처 컬러 시스템 */
+  --primary: #E63946;        /* 메인 포인트 (빨강) */
+  --secondary: #FF6B35;      /* 보조 포인트 (오렌지) */
+  --bg-warm: #FFF8F0;        /* 따뜻한 배경 톤 */
+  --surface: #FFFFFF;        /* 카드 기본색 */
+  --border-light: #FED7AA;   /* 부드러운 테두리 */
 }
 
 @theme inline {
