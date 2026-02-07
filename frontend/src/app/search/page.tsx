@@ -219,7 +219,7 @@ function SearchContent() {
   // URL 파라미터가 있으면 초기에 필터 적용 상태로 설정
   const [filtersApplied, setFiltersApplied] = useState(false);
   
-  // 자동 필터��� 적용 여부 (URL 파라미터가 있으면 true)
+  // 자동 필터����� 적용 여부 (URL 파라미터가 있으면 true)
   const [shouldAutoApplyFilters, setShouldAutoApplyFilters] = useState(
     !!(query || cityIdParam || districtIdParam)
   );
@@ -889,7 +889,7 @@ function SearchContent() {
                         lng: city.center[0],
                       });
                   } else setSearchLocation(null);
-                  // 도시 선택 시 자동으로 필터링 ���용
+                  // 도시 선택 시 자동으로 필터링 ����용
                   setTimeout(() => {
                     applyFilters();
                   }, 100);
@@ -970,13 +970,14 @@ function SearchContent() {
           <div className="grid grid-cols-3 gap-2 mb-4">
             <button
               onClick={() => openCalendar("checkin")}
-              className="flex flex-col items-center justify-center px-3 py-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors"
+              className="flex flex-col items-center justify-center px-3 py-3 rounded-lg border transition-colors"
+              style={{ backgroundColor: "#FF6B6B", borderColor: "#FF6B6B" }}
             >
-              <Calendar className="w-4 h-4 text-gray-600 mb-1" />
-              <div className="text-[10px] text-gray-400 font-bold uppercase text-center mb-0.5 leading-tight">
+              <Calendar className="w-4 h-4 text-white mb-1" />
+              <div className="text-[10px] text-white font-bold uppercase text-center mb-0.5 leading-tight">
                 {getUIText("checkIn", currentLanguage)}
               </div>
-              <div className="text-xs font-bold text-gray-900">
+              <div className="text-xs font-bold text-white">
                 {checkInDate
                   ? formatDate(checkInDate)
                   : "—"}
@@ -985,13 +986,14 @@ function SearchContent() {
 
             <button
               onClick={() => openCalendar("checkout")}
-              className="flex flex-col items-center justify-center px-3 py-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors"
+              className="flex flex-col items-center justify-center px-3 py-3 rounded-lg border transition-colors"
+              style={{ backgroundColor: "#FF6B6B", borderColor: "#FF6B6B" }}
             >
-              <Calendar className="w-4 h-4 text-gray-600 mb-1" />
-              <div className="text-[10px] text-gray-400 font-bold uppercase text-center mb-0.5 leading-tight">
+              <Calendar className="w-4 h-4 text-white mb-1" />
+              <div className="text-[10px] text-white font-bold uppercase text-center mb-0.5 leading-tight">
                 {getUIText("checkOut", currentLanguage)}
               </div>
-              <div className="text-xs font-bold text-gray-900">
+              <div className="text-xs font-bold text-white">
                 {checkOutDate
                   ? formatDate(checkOutDate)
                   : "—"}
@@ -1005,13 +1007,14 @@ function SearchContent() {
                   setShowRoomDropdown(!showRoomDropdown);
                   setShowCalendar(false);
                 }}
-                className="w-full flex flex-col items-center justify-center px-3 py-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors"
+                className="w-full flex flex-col items-center justify-center px-3 py-3 rounded-lg border transition-colors"
+                style={{ backgroundColor: "#FF6B6B", borderColor: "#FF6B6B" }}
               >
-                <Bed className="w-4 h-4 text-gray-600 mb-1" />
-                <div className="text-[10px] text-gray-400 font-bold uppercase text-center mb-0.5 leading-tight">
+                <Bed className="w-4 h-4 text-white mb-1" />
+                <div className="text-[10px] text-white font-bold uppercase text-center mb-0.5 leading-tight">
                   {getUIText("roomsLabel", currentLanguage)}
                 </div>
-                <div className="text-xs font-bold text-gray-900 truncate max-w-[100%]">
+                <div className="text-xs font-bold text-white truncate max-w-[100%]">
                   {roomFilter
                     ? (ROOM_FILTER_OPTIONS.find(o => o.value === roomFilter)?.[currentLanguage as "ko" | "vi" | "en" | "ja" | "zh"] ?? "Select").substring(0, 8)
                     : "—"}
