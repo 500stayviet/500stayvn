@@ -580,7 +580,6 @@ export default function GrabMapComponent({
         attributionControl: true as any,
       });
 
-
       // 지도 로드 완료 이벤트
       map.current.on("load", () => {
         console.log("Map loaded successfully");
@@ -635,22 +634,22 @@ export default function GrabMapComponent({
 
         // 명소 핀 추가 (카테고리별 색상: 랜드마크=시그니처빨강, 쇼핑=시그니처오렌지, 거주=성공초록)
         const categoryColor: Record<string, string> = {
-          landmark: '#E63946',
-          shopping: '#FF6B35',
-          residential: '#10B981',
+          landmark: "#E63946",
+          shopping: "#FF6B35",
+          residential: "#10B981",
         };
-        landmarkMarkersRef.current.forEach(m => m.remove());
+        landmarkMarkersRef.current.forEach((m) => m.remove());
         landmarkMarkersRef.current = [];
         for (const lm of ALL_LANDMARKS) {
-          const el = document.createElement('div');
-          el.className = 'landmark-marker';
-          el.style.width = '12px';
-          el.style.height = '12px';
-          el.style.borderRadius = '50%';
-          el.style.backgroundColor = categoryColor[lm.category] || '#6b7280';
-          el.style.border = '2px solid white';
-          el.style.boxShadow = '0 1px 3px rgba(0,0,0,0.3)';
-          el.style.cursor = 'pointer';
+          const el = document.createElement("div");
+          el.className = "landmark-marker";
+          el.style.width = "12px";
+          el.style.height = "12px";
+          el.style.borderRadius = "50%";
+          el.style.backgroundColor = categoryColor[lm.category] || "#6b7280";
+          el.style.border = "2px solid white";
+          el.style.boxShadow = "0 1px 3px rgba(0,0,0,0.3)";
+          el.style.cursor = "pointer";
           const m = new maplibregl.Marker({ element: el })
             .setLngLat([lm.lng, lm.lat])
             .setPopup(new maplibregl.Popup({ offset: 15 }).setText(lm.name))
@@ -1611,15 +1610,13 @@ export default function GrabMapComponent({
         );
 
         const landmarkScored = searchLandmarksScored(value);
-        const landmarkResults: Suggestion[] = landmarkScored
-          .slice(0, 5)
-          .map(
-            ({ landmark }) =>
-              ({
-                ...landmarkToSuggestion(landmark, currentLanguage),
-                zoom: 16,
-              }) as Suggestion,
-          );
+        const landmarkResults: Suggestion[] = landmarkScored.slice(0, 5).map(
+          ({ landmark }) =>
+            ({
+              ...landmarkToSuggestion(landmark, currentLanguage),
+              zoom: 16,
+            }) as Suggestion,
+        );
 
         const combinedResults = [
           ...cityResults,
@@ -1778,28 +1775,32 @@ export default function GrabMapComponent({
         ref={mapContainer}
         className="w-full h-full"
         style={{
-          width: "100%",
+          width: "100vw", // 사이드바 표시를 덮기 위해 전체 너비 사용
           height: "100%",
           minHeight: "400px",
           position: "absolute",
           top: 0,
           left: 0,
+          zIndex: 1, // 사이드바 표시 위에 표시
           backgroundColor: "#f3f4f6", // 로딩 중 배경색
         }}
       />
 
       {/* 우측 세로 줌 룰러: +/- 아이콘 + 현재 줌 위치(동그라미), 조작 불가 */}
       <div
-        className="zoom-ruler-wrap absolute right-3 top-1/2 z-20 -translate-y-1/2 flex flex-col items-center pointer-events-none select-none gap-1"
+        className="zoom-ruler-wrap absolute right-0 top-1/2 z-20 -translate-y-1/2 flex flex-col items-center pointer-events-none select-none gap-1"
         style={{ height: RULER_HEIGHT + 44 }}
         aria-label="현재 줌 레벨"
       >
-        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-white text-[#E63946] shadow-md" aria-hidden>
+        <div
+          className="flex items-center justify-center w-8 h-8 rounded-lg bg-white text-[#E63946] shadow-md"
+          aria-hidden
+        >
           <Plus className="w-4 h-4" strokeWidth={3} />
         </div>
         <div
           className="zoom-ruler-track w-1.5 rounded-full bg-gray-300/80 flex-shrink-0 relative"
-          style={{ height: RULER_HEIGHT, backgroundColor: '#E5E7EB' }}
+          style={{ height: RULER_HEIGHT, backgroundColor: "#E5E7EB" }}
         >
           {/* 동그라미 포인터: 현재 줌 위치 */}
           <div
@@ -1811,7 +1812,10 @@ export default function GrabMapComponent({
             }}
           />
         </div>
-        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-white text-[#E63946] shadow-md" aria-hidden>
+        <div
+          className="flex items-center justify-center w-8 h-8 rounded-lg bg-white text-[#E63946] shadow-md"
+          aria-hidden
+        >
           <Minus className="w-4 h-4" strokeWidth={3} />
         </div>
       </div>
