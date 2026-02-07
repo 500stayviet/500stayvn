@@ -1190,13 +1190,17 @@ function SearchContent() {
 
                       {/* 주요 구간 눈금 (자 모양) */}
                       <div className="absolute left-0 right-0 top-3 flex justify-between pointer-events-none">
-                        {[0, 2000000, 5000000, 10000000, priceCap].map(
-                          (value) => {
+                        {[0, 2000000, 5000000, 10000000, priceCap]
+                          .filter((value, index, array) => 
+                            // 중복 제거: priceCap이 배열의 다른 값과 같으면 마지막 요소만 유지
+                            value !== priceCap || index === array.length - 1
+                          )
+                          .map((value) => {
                             if (value > priceCap) return null;
                             const position = (value / (priceCap || 1)) * 100;
                             return (
                               <div
-                                key={value}
+                                key={`price-marker-${value}`}
                                 className="absolute top-0 -translate-x-1/2"
                                 style={{ left: `${position}%` }}
                               >
@@ -1208,8 +1212,7 @@ function SearchContent() {
                                 </div>
                               </div>
                             );
-                          },
-                        )}
+                          })}
                       </div>
 
                       {/* 중간 눈금 (짧은 선) */}
