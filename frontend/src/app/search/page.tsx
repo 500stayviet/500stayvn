@@ -219,7 +219,7 @@ function SearchContent() {
   // URL 파라미터가 있으면 초기에 필터 적용 상태로 설정
   const [filtersApplied, setFiltersApplied] = useState(false);
   
-  // 자동 필터�� 적용 여부 (URL 파라미터가 있으면 true)
+  // 자동 필터��� 적용 여부 (URL 파라미터가 있으면 true)
   const [shouldAutoApplyFilters, setShouldAutoApplyFilters] = useState(
     !!(query || cityIdParam || districtIdParam)
   );
@@ -1057,7 +1057,7 @@ function SearchContent() {
               }}
               className={`text-xs font-bold flex items-center gap-1 px-4 py-2 rounded-lg transition-colors ${
                 showAdvancedFilters
-                  ? "bg-gray-900 text-white"
+                  ? "bg-[#E63946] text-white"
                   : "text-gray-600 hover:bg-gray-50"
               }`}
             >
@@ -1227,8 +1227,9 @@ function SearchContent() {
 
                       {/* 선택된 범위 */}
                       <div
-                        className="absolute top-3 h-1 bg-gray-900 rounded-full -translate-y-1/2"
+                        className="absolute top-3 h-1 rounded-full -translate-y-1/2"
                         style={{
+                          backgroundColor: "#E63946",
                           left: `${(minPrice / (priceCap || 1)) * 100}%`,
                           width: `${((maxPrice - minPrice) / (priceCap || 1)) * 100}%`,
                         }}
@@ -1318,10 +1319,10 @@ function SearchContent() {
                           );
                         }}
                       >
-                        <div className="w-6 h-6 bg-white border-2 border-gray-900 rounded-full shadow-md flex items-center justify-center">
-                          <div className="w-1.5 h-1.5 bg-gray-900 rounded-full" />
+                        <div className="w-6 h-6 bg-white border-2 rounded-full shadow-md flex items-center justify-center" style={{ borderColor: "#E63946" }}>
+                          <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: "#E63946" }} />
                         </div>
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-xs font-bold text-white bg-gray-900 px-2 py-1 rounded-md shadow border border-gray-900 whitespace-nowrap">
+                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-xs font-bold text-white px-2 py-1 rounded-md shadow border whitespace-nowrap" style={{ backgroundColor: "#E63946", borderColor: "#E63946" }}>
                           {formatVndToManSimple(minPrice)}
                         </div>
                       </div>
@@ -1410,10 +1411,10 @@ function SearchContent() {
                           );
                         }}
                       >
-                        <div className="w-6 h-6 bg-white border-2 border-gray-900 rounded-full shadow-md flex items-center justify-center">
-                          <div className="w-1.5 h-1.5 bg-gray-900 rounded-full" />
+                        <div className="w-6 h-6 bg-white border-2 rounded-full shadow-md flex items-center justify-center" style={{ borderColor: "#E63946" }}>
+                          <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: "#E63946" }} />
                         </div>
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-xs font-bold text-white bg-gray-900 px-2 py-1 rounded-md shadow border border-gray-900 whitespace-nowrap">
+                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-xs font-bold text-white px-2 py-1 rounded-md shadow border whitespace-nowrap" style={{ backgroundColor: "#E63946", borderColor: "#E63946" }}>
                           {formatVndToManSimple(maxPrice)}
                         </div>
                       </div>
@@ -1474,9 +1475,9 @@ function SearchContent() {
                     onClick={() => setFullFurniture(!fullFurniture)}
                     className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-colors shrink-0 ${
                       fullFurniture
-                        ? "bg-gray-900 border-gray-900 text-white"
-                        : "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
+                        ? "text-white border" : "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
                     }`}
+                    style={fullFurniture ? { backgroundColor: "#E63946", borderColor: "#E63946" } : undefined}
                   >
                     <Bed className="w-3.5 h-3.5" />
                     {getUIText("fullFurniture", currentLanguage)}
@@ -1486,9 +1487,9 @@ function SearchContent() {
                     onClick={() => setFullElectronics(!fullElectronics)}
                     className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-colors shrink-0 ${
                       fullElectronics
-                        ? "bg-gray-900 border-gray-900 text-white"
-                        : "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
+                        ? "text-white border" : "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
                     }`}
+                    style={fullElectronics ? { backgroundColor: "#E63946", borderColor: "#E63946" } : undefined}
                   >
                     <Tv className="w-3.5 h-3.5" />
                     {getUIText("fullElectronics", currentLanguage)}
@@ -1498,9 +1499,9 @@ function SearchContent() {
                     onClick={() => setFullOptionKitchen(!fullOptionKitchen)}
                     className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-colors shrink-0 ${
                       fullOptionKitchen
-                        ? "bg-gray-900 border-gray-900 text-white"
-                        : "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
+                        ? "text-white border" : "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
                     }`}
+                    style={fullOptionKitchen ? { backgroundColor: "#E63946", borderColor: "#E63946" } : undefined}
                   >
                     <Sparkles className="w-3.5 h-3.5" />
                     {getUIText("fullKitchen", currentLanguage)}
@@ -1533,9 +1534,9 @@ function SearchContent() {
                         }}
                         className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-colors shrink-0 ${
                           on
-                            ? "bg-gray-900 border-gray-900 text-white"
-                            : "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
+                            ? "text-white border" : "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
                         }`}
+                        style={on ? { backgroundColor: "#E63946", borderColor: "#E63946" } : undefined}
                         title={label}
                       >
                         <Icon className="w-3.5 h-3.5 shrink-0" />
@@ -1573,7 +1574,8 @@ function SearchContent() {
                 setShowRoomDropdown(false);
                 await applyFilters();
               }}
-              className="flex-1 py-3 px-4 bg-gray-900 text-white rounded-lg font-bold text-sm hover:bg-black transition-colors flex items-center justify-center gap-2"
+              className="flex-1 py-3 px-4 text-white rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2"
+              style={{ backgroundColor: "#E63946" }}
             >
               <Search className="w-3.5 h-3.5" />
               <span>
