@@ -7,7 +7,7 @@
 
 "use client";
 
-import { useState, useEffect, useRef, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense, useCallback } from "react";
 import { flushSync } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
@@ -216,7 +216,13 @@ function SearchContent() {
   const rentTrackRef = useRef<HTMLDivElement>(null);
 
   // 필터 적용 상태 (검색 버튼을 눌러야 필터 적용)
+  // URL 파라미터가 있으면 초기에 필터 적용 상태로 설정
   const [filtersApplied, setFiltersApplied] = useState(false);
+  
+  // 자동 필터링 적용 여부 (URL 파라미터가 있으면 true)
+  const [shouldAutoApplyFilters, setShouldAutoApplyFilters] = useState(
+    !!(query || cityIdParam || districtIdParam)
+  );
 
 
   // 방 개수 필터 옵션 라벨 (5개국어)
@@ -356,6 +362,11 @@ function SearchContent() {
     else setSelectedCityId(null);
     if (districtIdParam) setSelectedDistrictId(districtIdParam);
     else setSelectedDistrictId(null);
+    
+    // URL 파라미터가 있으면 자동 필터링 적용 플래그 설정
+    if (query || cityIdParam || districtIdParam) {
+      setShouldAutoApplyFilters(true);
+    }
   }, [query, cityIdParam, districtIdParam]);
 
   // 홈에서 도시/구 검색으로 들어온 경우: q만 있고 cityId/districtId 없으면 검색어로 지역 매칭
@@ -367,9 +378,11 @@ function SearchContent() {
     if (districtMatch) {
       setSelectedCityId(districtMatch.parentCity ?? null);
       setSelectedDistrictId(districtMatch.id);
+      setShouldAutoApplyFilters(true);
     } else if (cityMatch) {
       setSelectedCityId(cityMatch.id);
       setSelectedDistrictId(null);
+      setShouldAutoApplyFilters(true);
     }
   }, [query]);
 
@@ -384,6 +397,7 @@ function SearchContent() {
     const loadProperties = async () => {
       try {
         const allProperties = await getAvailableProperties();
+        console.log('Loaded properties:', allProperties.length, allProperties);
         setProperties(allProperties);
         if (allProperties.length > 0) {
           const prices = allProperties
@@ -400,13 +414,15 @@ function SearchContent() {
         // 매물 로드 후, URL 파라미터가 있으면 자동으로 필터링 적용
         // 홈에서 검색 후 검색 결과 페이지로 넘어올 때 바로 필터링 적용
         if (cityIdParam || districtIdParam || query) {
-          // 약간의 지연 후 필터링 적용 (상태 업데이트 완료 보장)
-          setTimeout(() => {
-            applyFilters();
-          }, 100);
+          console.log('URL params detected, applying filters...');
+          // 즉시 필터링 적용
+          applyFilters();
+        } else {
+          // URL 파라미터가 없으면 모든 매물 표시
+          setFilteredProperties(allProperties);
         }
       } catch (error) {
-        // Silent fail
+        console.error('Error loading properties:', error);
       } finally {
         setLoading(false);
       }
@@ -432,6 +448,21 @@ function SearchContent() {
 
   // 매물 필터링
   const applyFilters = () => {
+    console.log('applyFilters called with:', {
+      propertiesCount: properties.length,
+      selectedCityId,
+      selectedDistrictId,
+      searchLocation,
+      filtersApplied,
+      shouldAutoApplyFilters
+    });
+    
+    if (properties.length === 0) {
+      console.log('No properties to filter');
+      setFilteredProperties([]);
+      return;
+    }
+    
     let filtered = properties;
 
     // 구 필터링: 선택된 구에 있는 매물만 표시 (구 ID 직접 비교 + 도시 ID 검증)
@@ -625,8 +656,20 @@ function SearchContent() {
   useEffect(() => {
     if (!filtersApplied) {
       setFilteredProperties(properties);
+    } else {
+      // filtersApplied가 true이면 필터링 적용
+      applyFilters();
     }
   }, [properties, filtersApplied]);
+
+  // properties가 로드되면 shouldAutoApplyFilters가 true이면 자동으로 필터링 적용
+  useEffect(() => {
+    if (properties.length > 0 && shouldAutoApplyFilters) {
+      setFiltersApplied(true);
+      applyFilters();
+      setShouldAutoApplyFilters(false); // 한 번만 실행
+    }
+  }, [properties, shouldAutoApplyFilters]);
 
   const handleCheckInSelect = (date: Date) => {
     setCheckInDate(date);
