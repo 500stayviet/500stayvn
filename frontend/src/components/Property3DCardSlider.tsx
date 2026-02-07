@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import Image from 'next/image';
-import { MapPin, ChevronLeft, ChevronRight, Heart, Zap } from 'lucide-react';
-import { formatPrice } from '@/lib/utils/propertyUtils';
-import { getCityName } from '@/lib/utils/propertyUtils';
+import React, { useState, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
+import { MapPin, ChevronLeft, ChevronRight, Heart, Zap } from "lucide-react";
+import { formatPrice } from "@/lib/utils/propertyUtils";
+import { getCityName } from "@/lib/utils/propertyUtils";
 
 interface Property {
   id: string;
@@ -45,11 +45,15 @@ export default function Property3DCardSlider({
   };
 
   const handlePrevious = () => {
-    onSelectIndex(selectedIndex === 0 ? properties.length - 1 : selectedIndex - 1);
+    onSelectIndex(
+      selectedIndex === 0 ? properties.length - 1 : selectedIndex - 1,
+    );
   };
 
   const handleNext = () => {
-    onSelectIndex(selectedIndex === properties.length - 1 ? 0 : selectedIndex + 1);
+    onSelectIndex(
+      selectedIndex === properties.length - 1 ? 0 : selectedIndex + 1,
+    );
   };
 
   // 유동적 도트 네비게이터 계산
@@ -58,42 +62,42 @@ export default function Property3DCardSlider({
     if (total <= 7) {
       return Array.from({ length: total }, (_, i) => i);
     }
-    
+
     const visibleCount = 5;
     const half = Math.floor(visibleCount / 2);
     let start = selectedIndex - half;
     let end = selectedIndex + half;
-    
+
     if (start < 0) {
       end += Math.abs(start);
       start = 0;
     }
-    
+
     if (end >= total) {
-      start -= (end - total + 1);
+      start -= end - total + 1;
       end = total - 1;
     }
-    
+
     if (start < 0) start = 0;
-    
+
     const result = [];
     for (let i = start; i <= end; i++) {
       result.push(i);
     }
-    
+
     return result;
   };
 
   // 주소에서 'Vietnam' 제거하고 구 정보만 추출
   const getDistrictName = (address?: string): string => {
-    if (!address) return '';
-    
+    if (!address) return "";
+
     // 'Vietnam' 제거
-    let cleaned = address.replace(/Vietnam/gi, '').trim();
-    
+    let cleaned = address.replace(/Vietnam/gi, "").trim();
+
     // 마지막 쉼표나 점 제거
-    cleaned = cleaned.replace(/[,.]\s*$/, '').trim();
-    
+    cleaned = cleaned.replace(/[,.]\s*$/, "").trim();
+
     return cleaned;
   };
 
@@ -109,7 +113,7 @@ export default function Property3DCardSlider({
   const nextProperty = properties[(selectedIndex + 1) % properties.length];
   const prevProperty =
     properties[(selectedIndex - 1 + properties.length) % properties.length];
-    
+
   const visibleDots = getVisibleDots();
 
   return (
@@ -136,9 +140,9 @@ export default function Property3DCardSlider({
             initial={{ opacity: 0, x: -100, rotateY: -45, scale: 0.7 }}
             animate={{ opacity: 0.4, x: 0, rotateY: -35, scale: 0.75 }}
             exit={{ opacity: 0, x: -100, rotateY: -45, scale: 0.7 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
             style={{
-              transformStyle: 'preserve-3d',
+              transformStyle: "preserve-3d",
               perspective: 1200,
             }}
           >
@@ -149,7 +153,7 @@ export default function Property3DCardSlider({
               <Image
                 src={
                   prevProperty.images?.[0] ||
-                  'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400'
+                  "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400"
                 }
                 alt={prevProperty.name}
                 fill
@@ -169,35 +173,35 @@ export default function Property3DCardSlider({
             animate={{ opacity: 1, scale: 1, rotateX: 0 }}
             exit={{ opacity: 0, scale: 0.8, rotateX: -20 }}
             transition={{
-              type: 'spring',
+              type: "spring",
               stiffness: 200,
               damping: 25,
             }}
             style={{
-              transformStyle: 'preserve-3d',
+              transformStyle: "preserve-3d",
             }}
             onMouseMove={handleMouseMove}
           >
             <motion.div
               className="relative w-full h-full rounded-[2.5rem] overflow-hidden shadow-2xl border-2 border-white/50 bg-white backdrop-blur-xl"
               style={{
-                transformStyle: 'preserve-3d',
+                transformStyle: "preserve-3d",
               }}
               whileHover={{
                 y: -8,
-                boxShadow: '0 40px 60px rgba(230, 57, 70, 0.25)',
+                boxShadow: "0 40px 60px rgba(230, 57, 70, 0.25)",
               }}
-              transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+              transition={{ type: "spring", stiffness: 400, damping: 20 }}
             >
               {/* 전체 클릭 가능한 이미지 섹션 */}
-              <div 
+              <div
                 className="relative w-full h-2/3 overflow-hidden bg-gradient-to-b from-gray-200 to-gray-100 cursor-pointer"
                 onClick={() => onCardClick?.(currentProperty, selectedIndex)}
               >
                 <Image
                   src={
                     currentProperty.images?.[0] ||
-                    'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=500'
+                    "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=500"
                   }
                   alt={currentProperty.name}
                   fill
@@ -247,16 +251,94 @@ export default function Property3DCardSlider({
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2 }}
                 >
-                  {formatPrice(currentProperty.price, 'vnd')}
+                  {formatPrice(currentProperty.price, "vnd")}
                 </motion.div>
+
+                {/* 매물 이미지 위에 위치한 네비게이션 컨트롤러 (사진 기준 중앙) */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 flex items-center gap-2">
+                  {/* 좌측 버튼 */}
+                  <motion.button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePrevious();
+                    }}
+                    className="w-8 h-8 rounded-full bg-gradient-to-br from-[#E63946] to-[#FF6B35] flex items-center justify-center shadow-lg transition-all hover:scale-110"
+                    whileHover={{ scale: 1.15 }}
+                    whileTap={{ scale: 0.9 }}
+                  >
+                    <ChevronLeft className="w-4 h-4 text-white" />
+                  </motion.button>
+
+                  {/* 유동적 도트 네비게이터 */}
+                  <div className="flex items-center gap-1.5 px-2">
+                    {visibleDots.map((index) => {
+                      const distance = Math.abs(index - selectedIndex);
+                      const maxDistance = Math.max(
+                        selectedIndex - visibleDots[0],
+                        visibleDots[visibleDots.length - 1] - selectedIndex,
+                      );
+                      const scale = 1 - (distance / (maxDistance || 1)) * 0.4;
+                      const opacity = 1 - (distance / (maxDistance || 1)) * 0.6;
+
+                      return (
+                        <motion.button
+                          key={index}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSelectIndex(index);
+                          }}
+                          className="relative"
+                          whileHover={{ scale: 1.2 }}
+                          whileTap={{ scale: 0.9 }}
+                        >
+                          <motion.div
+                            className={`h-1.5 rounded-full ${
+                              index === selectedIndex
+                                ? "bg-gradient-to-r from-[#E63946] to-[#FF6B35]"
+                                : "bg-[#E63946]/40"
+                            }`}
+                            style={{
+                              width: index === selectedIndex ? "20px" : "8px",
+                              scale,
+                              opacity,
+                            }}
+                            animate={{
+                              width: index === selectedIndex ? "20px" : "8px",
+                              scale,
+                              opacity,
+                            }}
+                            transition={{
+                              type: "spring",
+                              stiffness: 300,
+                              damping: 20,
+                            }}
+                          />
+                        </motion.button>
+                      );
+                    })}
+                  </div>
+
+                  {/* 우측 버튼 */}
+                  <motion.button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleNext();
+                    }}
+                    className="w-8 h-8 rounded-full bg-gradient-to-br from-[#E63946] to-[#FF6B35] flex items-center justify-center shadow-lg transition-all hover:scale-110"
+                    whileHover={{ scale: 1.15 }}
+                    whileTap={{ scale: 0.9 }}
+                  >
+                    <ChevronRight className="w-4 h-4 text-white" />
+                  </motion.button>
+                </div>
               </div>
 
-              {/* 정보 섹션 (공간 최소화) */}
-              <div className="w-full h-1/3 p-3 flex flex-col justify-between bg-white">
+              {/* 정보 섹션 (컨테이너 하단 줄이기) */}
+              <div className="w-full h-1/4 p-2 bg-white">
                 {/* 제목과 위치 */}
-                <div className="space-y-1 flex-1">
+                <div className="h-full flex flex-col justify-center">
                   <motion.h3
-                    className="font-bold text-gray-900 text-sm line-clamp-1"
+                    className="font-bold text-gray-900 text-sm line-clamp-1 mb-0.5"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.1 }}
@@ -269,15 +351,12 @@ export default function Property3DCardSlider({
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.15 }}
                   >
-                    <MapPin className="w-3 h-3 flex-shrink-0 text-[#E63946]" />
+                    <MapPin className="w-2.5 h-2.5 flex-shrink-0 text-[#E63946]" />
                     <span className="text-xs truncate">
                       {getCityName(currentProperty.address)}
                     </span>
                   </motion.div>
                 </div>
-
-                {/* 최소한의 공간 */}
-                <div className="h-1"></div>
               </div>
             </motion.div>
           </motion.div>
@@ -291,9 +370,9 @@ export default function Property3DCardSlider({
             initial={{ opacity: 0, x: 100, rotateY: 45, scale: 0.7 }}
             animate={{ opacity: 0.4, x: 0, rotateY: 35, scale: 0.75 }}
             exit={{ opacity: 0, x: 100, rotateY: 45, scale: 0.7 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
             style={{
-              transformStyle: 'preserve-3d',
+              transformStyle: "preserve-3d",
               perspective: 1200,
             }}
           >
@@ -304,7 +383,7 @@ export default function Property3DCardSlider({
               <Image
                 src={
                   nextProperty.images?.[0] ||
-                  'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400'
+                  "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400"
                 }
                 alt={nextProperty.name}
                 fill
@@ -316,84 +395,6 @@ export default function Property3DCardSlider({
         </AnimatePresence>
       </div>
 
-      {/* 매물 이미지 위에 위치한 네비게이션 컨트롤러 */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 flex items-center gap-2">
-        {/* 좌측 버튼 (동그라미 색상 유지) */}
-        <motion.button
-          onClick={handlePrevious}
-          className="w-8 h-8 rounded-full bg-gradient-to-br from-[#E63946] to-[#FF6B35] flex items-center justify-center shadow-lg transition-all hover:scale-110"
-          whileHover={{ scale: 1.15 }}
-          whileTap={{ scale: 0.9 }}
-        >
-          <ChevronLeft className="w-4 h-4 text-white" />
-        </motion.button>
-
-        {/* 유동적 도트 네비게이터 */}
-        <div className="flex items-center gap-1.5 px-2">
-          {visibleDots.map((index) => {
-            const distance = Math.abs(index - selectedIndex);
-            const maxDistance = Math.max(
-              selectedIndex - visibleDots[0],
-              visibleDots[visibleDots.length - 1] - selectedIndex
-            );
-            const scale = 1 - (distance / (maxDistance || 1)) * 0.4;
-            const opacity = 1 - (distance / (maxDistance || 1)) * 0.6;
-            
-            return (
-              <motion.button
-                key={index}
-                onClick={() => onSelectIndex(index)}
-                className="relative"
-                whileHover={{ scale: 1.2 }}
-                whileTap={{ scale: 0.9 }}
-              >
-                <motion.div
-                  className={`h-1.5 rounded-full ${
-                    index === selectedIndex
-                      ? 'bg-gradient-to-r from-[#E63946] to-[#FF6B35]'
-                      : 'bg-[#E63946]/40'
-                  }`}
-                  style={{
-                    width: index === selectedIndex ? '20px' : '8px',
-                    scale,
-                    opacity,
-                  }}
-                  animate={{
-                    width: index === selectedIndex ? '20px' : '8px',
-                    scale,
-                    opacity,
-                  }}
-                  transition={{
-                    type: 'spring',
-                    stiffness: 300,
-                    damping: 20,
-                  }}
-                />
-              </motion.button>
-            );
-          })}
-        </div>
-
-        {/* 우측 버튼 (동그라미 색상 유지) */}
-        <motion.button
-          onClick={handleNext}
-          className="w-8 h-8 rounded-full bg-gradient-to-br from-[#E63946] to-[#FF6B35] flex items-center justify-center shadow-lg transition-all hover:scale-110"
-          whileHover={{ scale: 1.15 }}
-          whileTap={{ scale: 0.9 }}
-        >
-          <ChevronRight className="w-4 h-4 text-white" />
-        </motion.button>
-      </div>
-
-      {/* 매물 개수 표시 (더 작고 간결하게) */}
-      <motion.div
-        className="absolute top-3 right-3 px-2 py-1 rounded-full text-xs font-medium text-gray-600"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 0.7 }}
-        transition={{ delay: 0.3 }}
-      >
-        {selectedIndex + 1}<span className="text-gray-400">/{properties.length}</span>
-      </motion.div>
     </div>
   );
 }
