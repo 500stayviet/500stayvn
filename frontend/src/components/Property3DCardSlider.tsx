@@ -254,23 +254,23 @@ export default function Property3DCardSlider({
                   {formatPrice(currentProperty.price, "vnd")}
                 </motion.div>
 
-                {/* 매물 이미지 위에 위치한 네비게이션 컨트롤러 (사진 기준 중앙) */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 flex items-center gap-2">
+                {/* 매물 이미지 하단에 위치한 네비게이션 컨트롤러 */}
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2">
                   {/* 좌측 버튼 */}
                   <motion.button
                     onClick={(e) => {
                       e.stopPropagation();
                       handlePrevious();
                     }}
-                    className="w-8 h-8 rounded-full bg-gradient-to-br from-[#E63946] to-[#FF6B35] flex items-center justify-center shadow-lg transition-all hover:scale-110"
+                    className="w-7 h-7 rounded-full bg-gradient-to-br from-[#E63946] to-[#FF6B35] flex items-center justify-center shadow-lg transition-all hover:scale-110"
                     whileHover={{ scale: 1.15 }}
                     whileTap={{ scale: 0.9 }}
                   >
-                    <ChevronLeft className="w-4 h-4 text-white" />
+                    <ChevronLeft className="w-3.5 h-3.5 text-white" />
                   </motion.button>
 
                   {/* 유동적 도트 네비게이터 */}
-                  <div className="flex items-center gap-1.5 px-2">
+                  <div className="flex items-center gap-1 px-2">
                     {visibleDots.map((index) => {
                       const distance = Math.abs(index - selectedIndex);
                       const maxDistance = Math.max(
@@ -298,12 +298,12 @@ export default function Property3DCardSlider({
                                 : "bg-[#E63946]/40"
                             }`}
                             style={{
-                              width: index === selectedIndex ? "20px" : "8px",
+                              width: index === selectedIndex ? "16px" : "6px",
                               scale,
                               opacity,
                             }}
                             animate={{
-                              width: index === selectedIndex ? "20px" : "8px",
+                              width: index === selectedIndex ? "16px" : "6px",
                               scale,
                               opacity,
                             }}
@@ -324,21 +324,21 @@ export default function Property3DCardSlider({
                       e.stopPropagation();
                       handleNext();
                     }}
-                    className="w-8 h-8 rounded-full bg-gradient-to-br from-[#E63946] to-[#FF6B35] flex items-center justify-center shadow-lg transition-all hover:scale-110"
+                    className="w-7 h-7 rounded-full bg-gradient-to-br from-[#E63946] to-[#FF6B35] flex items-center justify-center shadow-lg transition-all hover:scale-110"
                     whileHover={{ scale: 1.15 }}
                     whileTap={{ scale: 0.9 }}
                   >
-                    <ChevronRight className="w-4 h-4 text-white" />
+                    <ChevronRight className="w-3.5 h-3.5 text-white" />
                   </motion.button>
                 </div>
               </div>
 
-              {/* 정보 섹션 (컨테이너 하단 줄이기) */}
-              <div className="w-full h-1/4 p-2 bg-white">
+              {/* 정보 섹션 (최적화된 사이즈) */}
+              <div className="w-full h-1/5 p-1.5 bg-white">
                 {/* 제목과 위치 */}
                 <div className="h-full flex flex-col justify-center">
                   <motion.h3
-                    className="font-bold text-gray-900 text-sm line-clamp-1 mb-0.5"
+                    className="font-bold text-gray-900 text-xs line-clamp-1 mb-0.5"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.1 }}
@@ -351,7 +351,7 @@ export default function Property3DCardSlider({
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.15 }}
                   >
-                    <MapPin className="w-2.5 h-2.5 flex-shrink-0 text-[#E63946]" />
+                    <MapPin className="w-2 h-2 flex-shrink-0 text-[#E63946]" />
                     <span className="text-xs truncate">
                       {getCityName(currentProperty.address)}
                     </span>
