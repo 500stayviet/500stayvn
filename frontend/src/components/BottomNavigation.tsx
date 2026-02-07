@@ -284,7 +284,7 @@ export default function BottomNavigation({ hideOnPaths = [] }: BottomNavigationP
       className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-[430px] z-40"
       style={{
         backgroundColor: COLORS.surface,
-        borderTop: `3px solid #FF6B35`,
+        borderTop: `1px solid #FF6B35`,
       }}
     >
       <div className="flex items-center justify-around py-1">
