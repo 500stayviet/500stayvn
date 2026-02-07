@@ -276,13 +276,10 @@ export default function Property3DCardSlider({
                   </motion.div>
                 </div>
 
-                {/* 가격 정보 (하단에 표시) */}
-                <div className="pt-2 border-t border-gray-100">
-                  <div className="flex items-center justify-between">
-                    <div className="text-xs text-gray-500">주간 요금</div>
-                    <div className="text-sm font-bold text-[#E63946]">
-                      {formatPrice(currentProperty.price, 'vnd')}
-                    </div>
+                {/* 간결한 가격 표시 */}
+                <div className="pt-2">
+                  <div className="text-sm font-bold text-[#E63946]">
+                    {formatPrice(currentProperty.price, 'vnd').replace(' vnd', '')}
                   </div>
                 </div>
               </div>
@@ -323,16 +320,16 @@ export default function Property3DCardSlider({
         </AnimatePresence>
       </div>
 
-      {/* 컴팩트한 네비게이션 컨트롤러 */}
-      <div className="absolute bottom-4 sm:bottom-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2">
-        {/* 좌측 버튼 */}
+      {/* 매물 이미지 위에 위치한 네비게이션 컨트롤러 */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 flex items-center gap-2">
+        {/* 좌측 버튼 (동그라미 색상 유지) */}
         <motion.button
           onClick={handlePrevious}
-          className="w-7 h-7 rounded-full flex items-center justify-center transition-all hover:scale-110"
+          className="w-8 h-8 rounded-full bg-gradient-to-br from-[#E63946] to-[#FF6B35] flex items-center justify-center shadow-lg transition-all hover:scale-110"
           whileHover={{ scale: 1.15 }}
           whileTap={{ scale: 0.9 }}
         >
-          <ChevronLeft className="w-4 h-4 text-[#E63946]" />
+          <ChevronLeft className="w-4 h-4 text-white" />
         </motion.button>
 
         {/* 유동적 도트 네비게이터 */}
@@ -381,14 +378,14 @@ export default function Property3DCardSlider({
           })}
         </div>
 
-        {/* 우측 버튼 */}
+        {/* 우측 버튼 (동그라미 색상 유지) */}
         <motion.button
           onClick={handleNext}
-          className="w-7 h-7 rounded-full flex items-center justify-center transition-all hover:scale-110"
+          className="w-8 h-8 rounded-full bg-gradient-to-br from-[#E63946] to-[#FF6B35] flex items-center justify-center shadow-lg transition-all hover:scale-110"
           whileHover={{ scale: 1.15 }}
           whileTap={{ scale: 0.9 }}
         >
-          <ChevronRight className="w-4 h-4 text-[#E63946]" />
+          <ChevronRight className="w-4 h-4 text-white" />
         </motion.button>
       </div>
 
