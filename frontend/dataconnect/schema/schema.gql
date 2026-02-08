@@ -1,0 +1,49 @@
+type User @table {
+  username: String!
+  email: String!
+  createdAt: Timestamp!
+  displayName: String
+  bio: String
+  profilePictureUrl: String
+}
+
+type PointOfInterest @table {
+  name: String!
+  latitude: Float!
+  longitude: Float!
+  category: String!
+  createdAt: Timestamp!
+  description: String
+  address: String
+  imageUrl: String
+  avgRating: Float
+}
+
+type Itinerary @table {
+  user: User!
+  name: String!
+  startDate: Date!
+  endDate: Date!
+  isPublic: Boolean!
+  createdAt: Timestamp!
+  updatedAt: Timestamp!
+  description: String
+}
+
+type ItineraryItem @table {
+  itinerary: Itinerary!
+  pointOfInterest: PointOfInterest!
+  itineraryDate: Date!
+  orderIndex: Int!
+  notes: String
+}
+
+type Review @table {
+  user: User!
+  pointOfInterest: PointOfInterest!
+  rating: Int!
+  createdAt: Timestamp!
+  updatedAt: Timestamp!
+  comment: String
+  visitedAt: Date
+}

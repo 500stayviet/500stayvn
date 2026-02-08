@@ -39,6 +39,13 @@ export const metadata: Metadata = {
   title: "500 STAY VN",
   description: "베트남 숙박 예약 플랫폼 - 7일 단위 숙박 예약 시스템",
   manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/icon-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512x512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: "/icon-192x192.png",
+  },
   appleWebApp: {
     capable: true,
     title: "500 STAY VN",
@@ -85,6 +92,8 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="500 STAY VN" />
         <link rel="apple-touch-icon" href="/icon-192x192.png" />
+        <link rel="apple-touch-icon" sizes="192x192" href="/icon-192x192.png" />
+        <link rel="apple-touch-icon" sizes="512x512" href="/icon-512x512.png" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="application-name" content="500 STAY VN" />
         <link rel="icon" href="/favicon.ico" />
