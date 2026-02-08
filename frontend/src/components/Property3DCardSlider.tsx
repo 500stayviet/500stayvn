@@ -1,11 +1,15 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
-import { MapPin, ChevronLeft, ChevronRight, Heart, Zap } from "lucide-react";
+import { ChevronLeft, ChevronRight, Bed, Bath, Users, Sofa, Tv, UtensilsCrossed } from "lucide-react";
 import { formatPrice } from "@/lib/utils/propertyUtils";
-import { getCityName } from "@/lib/utils/propertyUtils";
+import {
+  FULL_FURNITURE_IDS,
+  FULL_ELECTRONICS_IDS,
+  FULL_OPTION_KITCHEN_IDS,
+} from "@/lib/constants/facilities";
 
 interface Property {
   id: string;
@@ -17,6 +21,12 @@ interface Property {
   address?: string;
   priceUnit?: string;
   checkInDate?: string | Date;
+  bedrooms?: number;
+  bathrooms?: number;
+  maxAdults?: number;
+  maxChildren?: number;
+  amenities?: string[];
+  area?: number;
 }
 
 interface Property3DCardSliderProps {
@@ -39,9 +49,7 @@ export default function Property3DCardSlider({
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    setMousePosition({ x, y });
+    setMousePosition({ x: e.clientX - rect.left, y: e.clientY - rect.top });
   };
 
   const handlePrevious = () => {
@@ -56,57 +64,33 @@ export default function Property3DCardSlider({
     );
   };
 
-  // 유동적 도트 네비게이터 계산
   const getVisibleDots = () => {
     const total = properties.length;
-    if (total <= 7) {
-      return Array.from({ length: total }, (_, i) => i);
-    }
-
-    const visibleCount = 5;
-    const half = Math.floor(visibleCount / 2);
+    if (total <= 7) return Array.from({ length: total }, (_, i) => i);
+    const half = 2;
     let start = selectedIndex - half;
     let end = selectedIndex + half;
-
-    if (start < 0) {
-      end += Math.abs(start);
-      start = 0;
-    }
-
-    if (end >= total) {
-      start -= end - total + 1;
-      end = total - 1;
-    }
-
+    if (start < 0) { end += Math.abs(start); start = 0; }
+    if (end >= total) { start -= end - total + 1; end = total - 1; }
     if (start < 0) start = 0;
-
     const result = [];
-    for (let i = start; i <= end; i++) {
-      result.push(i);
-    }
-
+    for (let i = start; i <= end; i++) result.push(i);
     return result;
   };
 
-  // 주소에서 'Vietnam' 제거하고 구 정보만 추출
-  const getDistrictName = (address?: string): string => {
-    if (!address) return "";
-
-    // 'Vietnam' 제거
-    let cleaned = address.replace(/Vietnam/gi, "").trim();
-
-    // 마지막 쉼표나 점 제거
-    cleaned = cleaned.replace(/[,.]\s*$/, "").trim();
-
-    return cleaned;
-  };
+  // Full option badge checks
+  const hasFullFurniture = (amenities?: string[]) =>
+    FULL_FURNITURE_IDS.every((id) => amenities?.includes(id));
+  const hasFullElectronics = (amenities?: string[]) =>
+    FULL_ELECTRONICS_IDS.every((id) => amenities?.includes(id));
+  const hasFullKitchen = (amenities?: string[]) =>
+    FULL_OPTION_KITCHEN_IDS.every((id) => amenities?.includes(id));
 
   if (!properties.length) {
     return (
       <div className="w-full flex flex-col items-center justify-center">
-        {/* 매물 카드와 동일한 높이의 컨테이너 */}
-        <div className="w-[85vw] sm:w-96 h-[360px] sm:h-80 flex items-center justify-center bg-transparent rounded-[2.5rem]">
-          <p className="text-gray-400 text-xs">매물을 불러오는 중...</p>
+        <div className="w-[85vw] sm:w-96 h-[280px] sm:h-[260px] flex items-center justify-center rounded-2xl">
+          <p className="text-sm" style={{ color: "#999" }}>...</p>
         </div>
       </div>
     );
@@ -116,279 +100,253 @@ export default function Property3DCardSlider({
   const nextProperty = properties[(selectedIndex + 1) % properties.length];
   const prevProperty =
     properties[(selectedIndex - 1 + properties.length) % properties.length];
-
   const visibleDots = getVisibleDots();
+  const totalPeople = (currentProperty.maxAdults || 0) + (currentProperty.maxChildren || 0);
+
+  // Collect full-option badges for current property
+  const badges: { icon: React.ElementType; label: string; bg: string; text: string }[] = [];
+  if (hasFullFurniture(currentProperty.amenities)) {
+    badges.push({ icon: Sofa, label: "Full Furniture", bg: "#F3E8FF", text: "#7C3AED" });
+  }
+  if (hasFullElectronics(currentProperty.amenities)) {
+    badges.push({ icon: Tv, label: "Full Electronics", bg: "#FFF7ED", text: "#EA580C" });
+  }
+  if (hasFullKitchen(currentProperty.amenities)) {
+    badges.push({ icon: UtensilsCrossed, label: "Full Kitchen", bg: "#FFF1F2", text: "#E11D48" });
+  }
 
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-auto bg-transparent"
+      className="relative w-full h-auto"
       onMouseMove={handleMouseMove}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-
-      {/* 메인 슬라이더 컨테이너 - 배경 제거, 패딩 최소화 */}
-      <div className="relative w-full h-auto flex items-start justify-center perspective px-2 pt-4">
-        {/* 좌측 카드 (흐릿함) */}
+      <div className="relative w-full h-auto flex items-start justify-center perspective px-2 pt-3">
+        {/* Left peek card */}
         <AnimatePresence mode="wait">
           <motion.div
             key={`prev-${selectedIndex}`}
-            className="absolute left-2 sm:left-4 w-24 sm:w-32 h-32 sm:h-40 top-4"
-            initial={{ opacity: 0, x: -100, rotateY: -45, scale: 0.7 }}
-            animate={{ opacity: 0.4, x: 0, rotateY: -35, scale: 0.75 }}
-            exit={{ opacity: 0, x: -100, rotateY: -45, scale: 0.7 }}
+            className="absolute left-1 sm:left-3 w-16 sm:w-24 h-24 sm:h-32 top-6"
+            initial={{ opacity: 0, x: -60, scale: 0.7 }}
+            animate={{ opacity: 0.35, x: 0, scale: 0.75 }}
+            exit={{ opacity: 0, x: -60, scale: 0.7 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            style={{
-              transformStyle: "preserve-3d",
-              perspective: 1200,
-            }}
           >
-            <motion.div
-              className="relative w-full h-full rounded-3xl overflow-hidden shadow-xl border-2 border-[#FED7AA]/30 bg-white"
-              whileHover={{ scale: 0.8 }}
-            >
+            <div className="relative w-full h-full rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(230,57,70,0.12)" }}>
               <Image
-                src={
-                  prevProperty.images?.[0] ||
-                  "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400"
-                }
+                src={prevProperty.images?.[0] || "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400"}
                 alt={prevProperty.name}
                 fill
-                className="object-cover blur-sm"
+                className="object-cover blur-[2px]"
               />
-              <div className="absolute inset-0 bg-black/20" />
-            </motion.div>
+              <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(255,248,240,0.3), rgba(255,248,240,0.5))" }} />
+            </div>
           </motion.div>
         </AnimatePresence>
 
-        {/* 중앙 메인 카드 (3D 깊이감 - 높이 최적화, 위쪽 정렬 더 강화) */}
+        {/* Main card */}
         <AnimatePresence mode="wait">
           <motion.div
             key={`main-${selectedIndex}`}
-            className="absolute w-[85vw] sm:w-96 h-[360px] sm:h-80 z-30 top-0"
-            initial={{ opacity: 0, scale: 0.8, rotateX: 20 }}
-            animate={{ opacity: 1, scale: 1, rotateX: 0 }}
-            exit={{ opacity: 0, scale: 0.8, rotateX: -20 }}
-            transition={{
-              type: "spring",
-              stiffness: 200,
-              damping: 25,
-            }}
-            style={{
-              transformStyle: "preserve-3d",
-            }}
-            onMouseMove={handleMouseMove}
+            className="relative w-[82vw] sm:w-[380px] z-30"
+            initial={{ opacity: 0, scale: 0.92, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.92, y: -16 }}
+            transition={{ type: "spring", stiffness: 260, damping: 26 }}
           >
             <motion.div
-              className="relative w-full h-full rounded-[2.5rem] overflow-hidden shadow-xl border-2 border-white/50 bg-white backdrop-blur-xl"
+              className="relative w-full rounded-2xl overflow-hidden cursor-pointer"
               style={{
-                transformStyle: "preserve-3d",
+                backgroundColor: "#FFFFFF",
+                boxShadow: "0 8px 32px rgba(230,57,70,0.10), 0 2px 8px rgba(0,0,0,0.06)",
+                border: "1px solid rgba(230,57,70,0.08)",
               }}
               whileHover={{
-                y: -6,
-                boxShadow: "0 30px 45px rgba(230, 57, 70, 0.2)",
+                y: -4,
+                boxShadow: "0 16px 48px rgba(230,57,70,0.16), 0 4px 12px rgba(0,0,0,0.08)",
               }}
-              transition={{ type: "spring", stiffness: 400, damping: 20 }}
+              transition={{ type: "spring", stiffness: 400, damping: 22 }}
+              onClick={() => onCardClick?.(currentProperty, selectedIndex)}
             >
-              {/* 전체 클릭 가능한 이미지 섹션 (크기 키우기) */}
-              <div
-                className="relative w-full h-[75%] overflow-hidden bg-gradient-to-b from-gray-200 to-gray-100 cursor-pointer"
-                onClick={() => onCardClick?.(currentProperty, selectedIndex)}
-              >
+              {/* Image section */}
+              <div className="relative w-full aspect-[16/10] overflow-hidden">
                 <Image
-                  src={
-                    currentProperty.images?.[0] ||
-                    "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=500"
-                  }
+                  src={currentProperty.images?.[0] || "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=500"}
                   alt={currentProperty.name}
                   fill
                   className="object-cover"
                   priority
                 />
 
-                {/* 반짝이는 광선 효과 (마우스 따라다님) - 사이즈 더 줄이기 */}
+                {/* Subtle shine effect on hover */}
                 {isHovered && (
                   <motion.div
                     className="absolute inset-0 pointer-events-none"
                     style={{
-                      background: `radial-gradient(circle 60px at ${mousePosition.x}px ${mousePosition.y}px, rgba(255,255,255,0.12), transparent 50%)`,
+                      background: `radial-gradient(circle 80px at ${mousePosition.x}px ${mousePosition.y}px, rgba(255,255,255,0.15), transparent 60%)`,
                     }}
                   />
                 )}
 
-                {/* 그라데이션 오버레이 */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                {/* Bottom gradient for readability */}
+                <div className="absolute inset-x-0 bottom-0 h-20" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.45), transparent)" }} />
 
-                {/* 즉시 입주 가능 배지 */}
+                {/* Price pill - bottom left */}
                 <motion.div
-                  className="absolute top-3 left-3 flex items-center gap-2 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-full shadow-lg"
-                  whileHover={{ scale: 1.05 }}
-                >
-                  <Zap className="w-3.5 h-3.5 text-[#E63946]" />
-                  <span className="text-xs font-bold text-[#E63946]">NEW</span>
-                </motion.div>
-
-                {/* 찜 버튼 */}
-                <motion.button
-                  className="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 backdrop-blur-md shadow-lg flex items-center justify-center hover:bg-white transition-colors"
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={(e) => {
-                    e.stopPropagation(); // 상세 페이지 이동 방지
-                    // 찜하기 기능 구현
+                  className="absolute bottom-3 left-3 flex items-baseline gap-1 px-3 py-1.5 rounded-xl"
+                  style={{
+                    background: "linear-gradient(135deg, #E63946, #FF6B35)",
+                    boxShadow: "0 4px 16px rgba(230,57,70,0.35)",
                   }}
-                >
-                  <Heart className="w-5 h-5 text-[#E63946]" />
-                </motion.button>
-
-                {/* 가격 배지 */}
-                <motion.div
-                  className="absolute bottom-3 right-3 bg-gradient-to-br from-[#E63946] to-[#FF6B35] text-white px-4 py-2 rounded-2xl shadow-xl font-black text-sm"
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
+                  transition={{ delay: 0.15 }}
                 >
-                  {formatPrice(currentProperty.price, "vnd")}
+                  <span className="text-sm font-bold text-white tracking-tight">
+                    {formatPrice(currentProperty.price, currentProperty.priceUnit || "vnd")}
+                  </span>
+                  <span className="text-[10px] text-white/70 font-medium">/week</span>
                 </motion.div>
 
-                {/* 매물 이미지 하단에 위치한 네비게이션 컨트롤러 (globals 44px 예외로 작은 크기 유지) */}
-                <div className="card-slider-nav absolute bottom-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2">
-                  {/* 좌측 버튼 */}
+                {/* Navigation controls overlay */}
+                <div className="card-slider-nav absolute bottom-3 right-3 z-50 flex items-center gap-1.5">
                   <motion.button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handlePrevious();
-                    }}
-                    className="w-7 h-7 rounded-full bg-gradient-to-br from-[#E63946] to-[#FF6B35] flex items-center justify-center shadow-lg transition-all hover:scale-110"
-                    whileHover={{ scale: 1.15 }}
+                    onClick={(e) => { e.stopPropagation(); handlePrevious(); }}
+                    className="w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-md"
+                    style={{ backgroundColor: "rgba(255,255,255,0.85)", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}
+                    whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
                   >
-                    <ChevronLeft className="w-3.5 h-3.5 text-white" />
+                    <ChevronLeft className="w-3.5 h-3.5" style={{ color: "#E63946" }} />
                   </motion.button>
 
-                  {/* 유동적 도트 네비게이터 */}
-                  <div className="flex items-center gap-1 px-2">
+                  {/* Dot indicators */}
+                  <div className="flex items-center gap-1 px-1">
                     {visibleDots.map((index) => {
-                      const distance = Math.abs(index - selectedIndex);
-                      const maxDistance = Math.max(
-                        selectedIndex - visibleDots[0],
-                        visibleDots[visibleDots.length - 1] - selectedIndex,
-                      );
-                      const scale = 1 - (distance / (maxDistance || 1)) * 0.4;
-                      const opacity = 1 - (distance / (maxDistance || 1)) * 0.6;
-
+                      const isActive = index === selectedIndex;
                       return (
                         <motion.button
                           key={index}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onSelectIndex(index);
-                          }}
+                          onClick={(e) => { e.stopPropagation(); onSelectIndex(index); }}
                           className="relative"
                           whileHover={{ scale: 1.2 }}
                           whileTap={{ scale: 0.9 }}
                         >
                           <motion.div
-                            className={`h-1.5 rounded-full ${
-                              index === selectedIndex
-                                ? "bg-gradient-to-r from-[#E63946] to-[#FF6B35]"
-                                : "bg-[#E63946]/40"
-                            }`}
+                            className="h-1.5 rounded-full"
                             style={{
-                              width: index === selectedIndex ? "16px" : "6px",
-                              scale,
-                              opacity,
+                              backgroundColor: isActive ? "#FFFFFF" : "rgba(255,255,255,0.45)",
+                              width: isActive ? 14 : 5,
                             }}
                             animate={{
-                              width: index === selectedIndex ? "16px" : "6px",
-                              scale,
-                              opacity,
+                              width: isActive ? 14 : 5,
+                              backgroundColor: isActive ? "#FFFFFF" : "rgba(255,255,255,0.45)",
                             }}
-                            transition={{
-                              type: "spring",
-                              stiffness: 300,
-                              damping: 20,
-                            }}
+                            transition={{ type: "spring", stiffness: 300, damping: 22 }}
                           />
                         </motion.button>
                       );
                     })}
                   </div>
 
-                  {/* 우측 버튼 */}
                   <motion.button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleNext();
-                    }}
-                    className="w-7 h-7 rounded-full bg-gradient-to-br from-[#E63946] to-[#FF6B35] flex items-center justify-center shadow-lg transition-all hover:scale-110"
-                    whileHover={{ scale: 1.15 }}
+                    onClick={(e) => { e.stopPropagation(); handleNext(); }}
+                    className="w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-md"
+                    style={{ backgroundColor: "rgba(255,255,255,0.85)", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}
+                    whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
                   >
-                    <ChevronRight className="w-3.5 h-3.5 text-white" />
+                    <ChevronRight className="w-3.5 h-3.5" style={{ color: "#E63946" }} />
                   </motion.button>
                 </div>
               </div>
 
-              {/* 정보 섹션 (최적화 - 주소 텍스트 아래 기준 라인 맞춤) */}
-              <div className="w-full h-1/5 p-1 bg-white">
-                {/* 제목과 위치 */}
-                <div className="h-full flex flex-col justify-end pb-0.5">
-                  <motion.h3
-                    className="font-bold text-gray-900 text-xs line-clamp-1 mb-0.5"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.1 }}
-                  >
-                    {currentProperty.name}
-                  </motion.h3>
-                  <motion.div
-                    className="flex items-center gap-1 text-gray-600"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.15 }}
-                  >
-                    <MapPin className="w-2 h-2 flex-shrink-0 text-[#E63946]" />
-                    <span className="text-xs truncate">
-                      {getCityName(currentProperty.address)}
+              {/* Info section */}
+              <div className="px-3.5 py-3 flex flex-col gap-2" style={{ backgroundColor: "#FFFFFF" }}>
+                {/* Full-option badges row */}
+                {badges.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {badges.map((badge, i) => {
+                      const Icon = badge.icon;
+                      return (
+                        <span
+                          key={i}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold"
+                          style={{ backgroundColor: badge.bg, color: badge.text }}
+                        >
+                          <Icon className="w-3 h-3" />
+                          {badge.label}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Room info strip */}
+                <div
+                  className="flex items-center gap-3 px-3 py-2 rounded-xl"
+                  style={{ backgroundColor: "#FFF8F0" }}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <Bed className="w-3.5 h-3.5" style={{ color: "#E63946" }} />
+                    <span className="text-xs font-semibold" style={{ color: "#1F2937" }}>
+                      {currentProperty.bedrooms || 0}
                     </span>
-                  </motion.div>
+                  </div>
+                  <div className="w-px h-3" style={{ backgroundColor: "#E5E7EB" }} />
+                  <div className="flex items-center gap-1.5">
+                    <Bath className="w-3.5 h-3.5" style={{ color: "#FF6B35" }} />
+                    <span className="text-xs font-semibold" style={{ color: "#1F2937" }}>
+                      {currentProperty.bathrooms || 0}
+                    </span>
+                  </div>
+                  <div className="w-px h-3" style={{ backgroundColor: "#E5E7EB" }} />
+                  <div className="flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5" style={{ color: "#FFB627" }} />
+                    <span className="text-xs font-semibold" style={{ color: "#1F2937" }}>
+                      {totalPeople || "-"}
+                    </span>
+                  </div>
+                  {currentProperty.area ? (
+                    <>
+                      <div className="w-px h-3" style={{ backgroundColor: "#E5E7EB" }} />
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs font-semibold" style={{ color: "#1F2937" }}>
+                          {currentProperty.area}
+                        </span>
+                        <span className="text-[10px]" style={{ color: "#9CA3AF" }}>
+                          {"m\u00B2"}
+                        </span>
+                      </div>
+                    </>
+                  ) : null}
                 </div>
               </div>
             </motion.div>
           </motion.div>
         </AnimatePresence>
 
-        {/* 우측 카드 (흐릿함) */}
+        {/* Right peek card */}
         <AnimatePresence mode="wait">
           <motion.div
             key={`next-${selectedIndex}`}
-            className="absolute right-2 sm:right-4 w-24 sm:w-32 h-32 sm:h-40 top-4"
-            initial={{ opacity: 0, x: 100, rotateY: 45, scale: 0.7 }}
-            animate={{ opacity: 0.4, x: 0, rotateY: 35, scale: 0.75 }}
-            exit={{ opacity: 0, x: 100, rotateY: 45, scale: 0.7 }}
+            className="absolute right-1 sm:right-3 w-16 sm:w-24 h-24 sm:h-32 top-6"
+            initial={{ opacity: 0, x: 60, scale: 0.7 }}
+            animate={{ opacity: 0.35, x: 0, scale: 0.75 }}
+            exit={{ opacity: 0, x: 60, scale: 0.7 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            style={{
-              transformStyle: "preserve-3d",
-              perspective: 1200,
-            }}
           >
-            <motion.div
-              className="relative w-full h-full rounded-3xl overflow-hidden shadow-xl border-2 border-[#FED7AA]/30 bg-white"
-              whileHover={{ scale: 0.8 }}
-            >
+            <div className="relative w-full h-full rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(230,57,70,0.12)" }}>
               <Image
-                src={
-                  nextProperty.images?.[0] ||
-                  "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400"
-                }
+                src={nextProperty.images?.[0] || "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400"}
                 alt={nextProperty.name}
                 fill
-                className="object-cover blur-sm"
+                className="object-cover blur-[2px]"
               />
-              <div className="absolute inset-0 bg-black/20" />
-            </motion.div>
+              <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(255,248,240,0.3), rgba(255,248,240,0.5))" }} />
+            </div>
           </motion.div>
         </AnimatePresence>
       </div>

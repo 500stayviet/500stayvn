@@ -33,6 +33,12 @@ interface Property {
   address?: string;
   priceUnit?: string;
   checkInDate?: string | Date;
+  bedrooms?: number;
+  bathrooms?: number;
+  maxAdults?: number;
+  maxChildren?: number;
+  amenities?: string[];
+  area?: number;
 }
 
 // 1. 실제 로직이 들어있는 알맹이 컴포넌트
@@ -236,18 +242,17 @@ function MapContent() {
           </div>
 
           {/* 주변 인기 매물: 지도 아래 고정, 잘리지 않도록 최소 높이·패딩 적용 */}
-          <div className="flex-1 flex flex-col min-h-[320px] bg-white flex-shrink-0 w-full">
-            <div className="flex-shrink-0 px-4 pt-4 pb-2 sm:px-6 sm:pt-5 sm:pb-3">
-              <h2 className="text-lg sm:text-xl font-bold text-gray-900 break-words leading-tight">
+          <div className="flex-1 flex flex-col min-h-[300px] flex-shrink-0 w-full" style={{ backgroundColor: "#FFF8F0" }}>
+            <div className="flex-shrink-0 flex items-baseline justify-between px-4 pt-3 pb-1 sm:px-6 sm:pt-4 sm:pb-2">
+              <h2 className="text-base sm:text-lg font-bold break-words leading-tight" style={{ color: "#1F2937" }}>
                 {getUIText('popularStaysNearby', currentLanguage)}
               </h2>
-              <p className="text-xs text-gray-400 mt-1">
-                {nearbyProperties.length}{" "}
-                {getUIText('propertiesCount', currentLanguage)}
-              </p>
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: "#E63946", color: "#FFFFFF" }}>
+                {nearbyProperties.length}
+              </span>
             </div>
 
-            <div className="flex-1 h-auto relative px-2 pb-2">
+            <div className="flex-1 h-auto relative px-1 pb-2">
               <Property3DCardSlider
                 properties={nearbyProperties}
                 selectedIndex={selectedPropertyIndex}
@@ -273,8 +278,8 @@ export default function MapPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center bg-white">
-          <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+        <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#FFF8F0" }}>
+          <Loader2 className="w-10 h-10 animate-spin" style={{ color: "#E63946" }} />
           <span className="ml-2">{getUIText('loading', currentLanguage)}</span>
         </div>
       }

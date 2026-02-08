@@ -44,6 +44,12 @@ interface Property {
   address?: string;
   priceUnit?: string;
   checkInDate?: string | Date;
+  bedrooms?: number;
+  bathrooms?: number;
+  maxAdults?: number;
+  maxChildren?: number;
+  amenities?: string[];
+  area?: number;
 }
 
 // 호치민 초기 좌표 상수 (지도는 항상 이 값으로 시작, 절대 null 전달 금지)
@@ -250,6 +256,12 @@ export default function GrabMapComponent({
       address: propertyData.address || "",
       priceUnit: propertyData.priceUnit,
       checkInDate: propertyData.checkInDate,
+      bedrooms: propertyData.bedrooms,
+      bathrooms: propertyData.bathrooms,
+      maxAdults: propertyData.maxAdults,
+      maxChildren: propertyData.maxChildren,
+      amenities: propertyData.amenities,
+      area: propertyData.area,
     };
   };
 
