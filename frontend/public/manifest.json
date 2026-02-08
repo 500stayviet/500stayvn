@@ -1,0 +1,47 @@
+{
+  "name": "500 STAY VN",
+  "short_name": "500 STAY",
+  "description": "베트남 숙박 예약 플랫폼 - 7일 단위 숙박 예약 시스템",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFF8F0",
+  "theme_color": "#E63946",
+  "orientation": "portrait",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["travel", "business", "lifestyle"],
+  "lang": "ko",
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "숙소 검색",
+      "short_name": "검색",
+      "description": "베트남 숙소 검색하기",
+      "url": "/search",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "내 예약",
+      "short_name": "예약",
+      "description": "내 예약 확인하기",
+      "url": "/my-bookings",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
+    }
+  ]
+}

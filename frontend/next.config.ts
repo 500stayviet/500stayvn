@@ -1,5 +1,12 @@
 import type { NextConfig } from "next";
 
+const withPWA = require("next-pwa")({
+  dest: "public",
+  register: true,
+  skipWaiting: true,
+  disable: process.env.NODE_ENV === "development",
+});
+
 const nextConfig: NextConfig = {
   // AWS Amplify: output: 'standalone' 미사용 시 Amplify 자동 어댑터가 빌드합니다.
   reactStrictMode: true,
@@ -28,4 +35,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withPWA(nextConfig);

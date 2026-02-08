@@ -68,7 +68,7 @@ html[lang="en"] body {
 }
 
 @utility page-background {
-  @apply min-h-screen bg-gray-100 flex justify-center;
+  @apply min-h-screen bg-[#F3F4F6] flex justify-center;
 }
 
 /* ===== 브라우저 스크롤 (External): 그대로 유지 ===== */
@@ -121,4 +121,22 @@ html, body {
 /* ===== 중복 스크롤바 방지: 앱 박스 내부는 단일 스크롤만 ===== */
 .app-box .flex-1.overflow-y-auto {
   overflow-y: visible !important;
+}
+
+/* 모바일 터치 최적화 */
+button, 
+[role="button"],
+a[href],
+input[type="button"],
+input[type="submit"],
+input[type="reset"] {
+  min-height: 44px;
+  min-width: 44px;
+  touch-action: manipulation;
+}
+
+/* 터치 피드백 */
+.tap-highlight {
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+  tap-highlight-color: rgba(0, 0, 0, 0.1);
 }

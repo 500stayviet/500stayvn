@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Be_Vietnam_Pro, Noto_Sans_KR, Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
 import { LanguageProvider } from "@/contexts/LanguageContext";
@@ -36,8 +36,38 @@ const notoSansJP = Noto_Sans_JP({
 });
 
 export const metadata: Metadata = {
-  title: "500stayviet",
-  description: "Vietnam Real Estate Platform",
+  title: "500 STAY VN",
+  description: "베트남 숙박 예약 플랫폼 - 7일 단위 숙박 예약 시스템",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    title: "500 STAY VN",
+    statusBarStyle: "black-translucent",
+  },
+  applicationName: "500 STAY VN",
+  formatDetection: {
+    telephone: false,
+  },
+  openGraph: {
+    type: "website",
+    siteName: "500 STAY VN",
+    title: "500 STAY VN - 베트남 숙박 예약",
+    description: "베트남 숙박 예약 플랫폼 - 7일 단위 숙박 예약 시스템",
+  },
+  twitter: {
+    card: "summary",
+    title: "500 STAY VN",
+    description: "베트남 숙박 예약 플랫폼 - 7일 단위 숙박 예약 시스템",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#E63946",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -50,13 +80,23 @@ export default function RootLayout({
       lang="en"
       className={`${beVietnamPro.variable} ${notoSansKR.variable} ${notoSansJP.variable}`}
     >
+      <head>
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="500 STAY VN" />
+        <link rel="apple-touch-icon" href="/icon-192x192.png" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="application-name" content="500 STAY VN" />
+        <link rel="icon" href="/favicon.ico" />
+        <link rel="manifest" href="/manifest.json" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <NextAuthProvider>
           <LanguageProvider>
             <TranslationProvider>
-              <div className="min-h-screen bg-gray-100 flex justify-center">
+              <div className="min-h-screen bg-[#F3F4F6] flex justify-center">
                 <AppBox className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col">
                   <main className="flex-1 pb-14">
                     {children}
