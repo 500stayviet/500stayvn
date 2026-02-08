@@ -8,8 +8,8 @@ applications:
             - nvm install 20
             - nvm use 20
             - npm cache clean --force
-            - rm -rf node_modules package-lock.json
-            - npm ci --no-audit --prefer-offline
+            - rm -rf node_modules
+            - npm install --no-audit --prefer-offline
         build:
           commands:
             - npx prisma generate
