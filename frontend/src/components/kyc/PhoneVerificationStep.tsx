@@ -1,13 +1,13 @@
 /**
- * KYC Step 1: 전화번호 인증 컴포넌트
+ * KYC Step 1: 전화번호 인증 컴포넌트 (Firebase Client SDK 방식)
  * 
- * 회원가입 시 전화번호 인증을 완료한 경우 자동으로 인증 완료 처리
- * 미인증 유저는 회원가입과 동일한 인증 로직 사용
+ * Firebase의 signInWithPhoneNumber 함수를 사용한 전화번호 인증
+ * Invisible reCAPTCHA 설정 포함
  */
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ArrowRight, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PhoneVerificationData } from '@/types/kyc.types';
@@ -15,6 +15,12 @@ import { SupportedLanguage } from '@/lib/api/translation';
 import { useAuth } from '@/hooks/useAuth';
 import { getCurrentUserData } from '@/lib/api/auth';
 import InternationalPhoneInput from '@/components/auth/InternationalPhoneInput';
+import { 
+  auth, 
+  createRecaptchaVerifier, 
+  sendPhoneVerificationCode,
+  verifyPhoneCode 
+} from '@/lib/firebase/firebase';
 
 interface PhoneVerificationStepProps {
   currentLanguage: SupportedLanguage;
@@ -39,6 +45,9 @@ export default function PhoneVerificationStep({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [checkingUser, setCheckingUser] = useState(true);
+  const [confirmationResult, setConfirmationResult] = useState<any>(null);
+  const recaptchaVerifierRef = useRef<any>(null);
+  const recaptchaContainerId = 'recaptcha-container';
 
   // 사용자 인증 정보 확인
   useEffect(() => {
@@ -53,8 +62,6 @@ export default function PhoneVerificationStep({
         if (userData?.phoneNumber) {
           setUserPhoneNumber(userData.phoneNumber);
           // 회원가입 시 전화번호 인증을 완료했다고 가정
-          // 실제로는 isPhoneVerified 필드가 있으면 더 정확하지만, 
-          // 현재는 phoneNumber가 있으면 인증된 것으로 간주
           setIsPhoneVerified(true);
           setPhoneNumber(userData.phoneNumber);
         }
@@ -68,6 +75,34 @@ export default function PhoneVerificationStep({
     checkUserVerification();
   }, [user]);
 
+  // reCAPTCHA 초기화
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // reCAPTCHA 컨테이너 생성 (invisible)
+      const container = document.getElementById(recaptchaContainerId);
+      if (!container) {
+        const div = document.createElement('div');
+        div.id = recaptchaContainerId;
+        div.style.display = 'none';
+        document.body.appendChild(div);
+      }
+
+      // reCAPTCHA verifier 초기화
+      try {
+        recaptchaVerifierRef.current = createRecaptchaVerifier(recaptchaContainerId);
+      } catch (error) {
+        console.error('Error initializing reCAPTCHA:', error);
+      }
+    }
+
+    // 컴포넌트 언마운트 시 정리
+    return () => {
+      if (recaptchaVerifierRef.current) {
+        recaptchaVerifierRef.current.clear();
+      }
+    };
+  }, []);
+
   const handlePhoneChange = (normalizedPhone: string, isComplete: boolean) => {
     setPhoneNumber(normalizedPhone);
     setIsPhoneComplete(isComplete);
@@ -75,30 +110,51 @@ export default function PhoneVerificationStep({
       setIsPhoneVerified(false);
       setOtpSent(false);
       setOtpCode('');
+      setConfirmationResult(null);
     }
   };
 
   const handleSendOTP = async (normalizedPhone: string): Promise<boolean> => {
     setLoading(true);
     setError('');
+    setOtpError('');
+    
     try {
-      const response = await fetch('/api/auth/send-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phoneNumber: normalizedPhone }),
-      });
-      
-      if (response.ok) {
-        setOtpSent(true);
-        setOtpError('');
-        return true;
-      } else {
-        const data = await response.json();
-        setError(data.error || 'Failed to send OTP');
-        return false;
+      // reCAPTCHA 확인
+      if (!recaptchaVerifierRef.current) {
+        throw new Error('reCAPTCHA not initialized');
       }
-    } catch (err) {
-      setError('System error occurred while sending OTP');
+
+      // Firebase 전화번호 인증 요청
+      const result = await sendPhoneVerificationCode(
+        normalizedPhone,
+        recaptchaVerifierRef.current
+      );
+      
+      setConfirmationResult(result);
+      setOtpSent(true);
+      setOtpError('');
+      
+      // 성공 메시지
+      console.log('Verification code sent via Firebase');
+      return true;
+    } catch (err: any) {
+      console.error('Firebase phone auth error:', err);
+      
+      // 에러 메시지 처리
+      let errorMessage = 'Failed to send verification code';
+      
+      if (err.code === 'auth/invalid-phone-number') {
+        errorMessage = 'Invalid phone number format';
+      } else if (err.code === 'auth/too-many-requests') {
+        errorMessage = 'Too many requests. Please try again later';
+      } else if (err.code === 'auth/quota-exceeded') {
+        errorMessage = 'SMS quota exceeded. Please try again later';
+      } else if (err.message.includes('reCAPTCHA')) {
+        errorMessage = 'reCAPTCHA verification failed. Please refresh the page';
+      }
+      
+      setError(errorMessage);
       return false;
     } finally {
       setLoading(false);
@@ -106,29 +162,46 @@ export default function PhoneVerificationStep({
   };
 
   const handleVerifyOTP = async () => {
-    if (otpCode.length !== 6) return;
+    if (otpCode.length !== 6 || !confirmationResult) return;
     
     setIsVerifyingOtp(true);
     setOtpError('');
+    
     try {
-      const response = await fetch('/api/auth/send-otp', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          phoneNumber: phoneNumber, 
-          code: otpCode 
-        }),
-      });
+      // Firebase 인증 코드 확인
+      const result = await verifyPhoneCode(confirmationResult, otpCode);
       
-      if (response.ok) {
-        setIsPhoneVerified(true);
-        setOtpError('');
-      } else {
-        const data = await response.json();
-        setOtpError(data.error || 'Invalid code');
+      // 인증 성공
+      setIsPhoneVerified(true);
+      setOtpError('');
+      
+      // 인증된 전화번호 추출
+      const verifiedPhoneNumber = result.user?.phoneNumber || phoneNumber;
+      
+      // Supabase에 저장할 데이터 준비
+      const verificationData: PhoneVerificationData = {
+        phoneNumber: verifiedPhoneNumber,
+        verificationCode: otpCode,
+        verificationId: result.user?.uid || 'firebase_verified',
+      };
+      
+      // 부모 컴포넌트에 완료 알림 (Supabase 저장은 부모에서 처리)
+      onComplete(verificationData);
+      
+      console.log('Phone verification successful:', verifiedPhoneNumber);
+    } catch (err: any) {
+      console.error('Firebase verification error:', err);
+      
+      // 에러 메시지 처리
+      let errorMessage = 'Invalid verification code';
+      
+      if (err.code === 'auth/invalid-verification-code') {
+        errorMessage = 'Invalid code. Please check and try again';
+      } else if (err.code === 'auth/code-expired') {
+        errorMessage = 'Code expired. Please request a new code';
       }
-    } catch (err) {
-      setOtpError('Verification error');
+      
+      setOtpError(errorMessage);
     } finally {
       setIsVerifyingOtp(false);
     }
@@ -136,11 +209,10 @@ export default function PhoneVerificationStep({
 
   const handleNext = () => {
     // 테스트 모드: 실제 인증 없이 다음 단계로 진행
-    // 전화번호 입력 여부와 관계없이 항상 진행
-    const testPhoneNumber = phoneNumber || '01012345678'; // 기본 테스트 번호
+    const testPhoneNumber = phoneNumber || '01012345678';
     console.log('Phone verification step completed (test mode)');
     
-    // 즉시 onComplete 호출 (부모 컴포넌트에서 setCurrentStep(2) 실행)
+    // 테스트 데이터로 완료 처리
     onComplete({
       phoneNumber: testPhoneNumber,
       verificationCode: 'test_mode',
@@ -164,32 +236,32 @@ export default function PhoneVerificationStep({
 
   return (
     <div className="w-full space-y-6">
-      {/* 테스트 모드 알림 - 상단에 표시 */}
-      <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-xl text-yellow-700 text-sm">
+      {/* Firebase 전화번호 인증 안내 */}
+      <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-700 text-sm">
         <div className="flex items-center gap-2">
-          <span className="text-lg">⚠️</span>
+          <span className="text-lg">📱</span>
           <div>
             <p className="font-medium">
               {currentLanguage === 'ko' 
-                ? '현재 테스트 모드입니다'
+                ? 'Firebase 전화번호 인증'
                 : currentLanguage === 'vi'
-                ? 'Đang ở chế độ thử nghiệm'
+                ? 'Xác thực số điện thoại bằng Firebase'
                 : currentLanguage === 'ja'
-                ? '現在テストモードです'
+                ? 'Firebase電話番号認証'
                 : currentLanguage === 'zh'
-                ? '当前为测试模式'
-                : 'Currently in test mode'}
+                ? 'Firebase手机号验证'
+                : 'Firebase Phone Authentication'}
             </p>
             <p className="text-xs mt-1">
               {currentLanguage === 'ko' 
-                ? '촬영/인증 없이 다음 단계 이동 가능'
+                ? 'Google Firebase를 통한 안전한 전화번호 인증'
                 : currentLanguage === 'vi'
-                ? 'Có thể chuyển bước tiếp theo mà không cần chụp ảnh/xác thực'
+                ? 'Xác thực số điện thoại an toàn qua Google Firebase'
                 : currentLanguage === 'ja'
-                ? '撮影/認証なしで次のステップに移動可能'
+                ? 'Google Firebaseによる安全な電話番号認証'
                 : currentLanguage === 'zh'
-                ? '无需拍摄/验证即可进入下一步'
-                : 'Can proceed to next step without capture/verification'}
+                ? '通过Google Firebase进行安全的手机号验证'
+                : 'Secure phone verification via Google Firebase'}
             </p>
           </div>
         </div>
@@ -247,17 +319,17 @@ export default function PhoneVerificationStep({
             className="w-full py-3.5 px-4 bg-blue-600 text-white rounded-xl font-semibold text-base hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all flex items-center justify-center gap-2"
           >
             <span>
-              {currentLanguage === 'ko' ? '다음 (테스트 모드)' : 
-               currentLanguage === 'vi' ? 'Tiếp theo (Chế độ thử nghiệm)' : 
-               currentLanguage === 'ja' ? '次へ (テストモード)' : 
-               currentLanguage === 'zh' ? '下一步 (测试模式)' : 
-               'Next (Test Mode)'}
+              {currentLanguage === 'ko' ? '다음 단계로' : 
+               currentLanguage === 'vi' ? 'Tiếp theo' : 
+               currentLanguage === 'ja' ? '次へ' : 
+               currentLanguage === 'zh' ? '下一步' : 
+               'Next Step'}
             </span>
             <ArrowRight className="w-5 h-5" />
           </button>
         </motion.div>
       ) : (
-        /* 미인증 유저: 회원가입과 동일한 인증 로직 */
+        /* 미인증 유저: Firebase 전화번호 인증 */
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -326,20 +398,22 @@ export default function PhoneVerificationStep({
             </div>
           )}
 
+          {/* reCAPTCHA 컨테이너 (invisible) */}
+          <div id={recaptchaContainerId} style={{ display: 'none' }} />
 
-          <button
-            onClick={handleNext}
-            className="w-full py-3.5 px-4 bg-blue-600 text-white rounded-xl font-semibold text-base hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all flex items-center justify-center gap-2"
-          >
-            <span>
-              {currentLanguage === 'ko' ? '다음 (테스트 모드)' : 
-               currentLanguage === 'vi' ? 'Tiếp theo (Chế độ thử nghiệm)' : 
-               currentLanguage === 'ja' ? '次へ (テストモード)' : 
-               currentLanguage === 'zh' ? '下一步 (测试模式)' : 
-               'Next (Test Mode)'}
-            </span>
-            <ArrowRight className="w-5 h-5" />
-          </button>
+          {/* 테스트 모드 버튼 (개발용) */}
+          {process.env.NODE_ENV === 'development' && (
+            <button
+              onClick={handleNext}
+              className="w-full py-3 px-4 bg-yellow-500 text-white rounded-xl font-semibold text-sm hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 transition-all"
+            >
+              {currentLanguage === 'ko' ? '테스트 모드로 진행' : 
+               currentLanguage === 'vi' ? 'Tiếp theo (chế độ thử nghiệm)' : 
+               currentLanguage === 'ja' ? 'テストモードで進む' : 
+               currentLanguage === 'zh' ? '测试模式进行' : 
+               'Proceed in Test Mode'}
+            </button>
+          )}
         </motion.div>
       )}
     </div>
