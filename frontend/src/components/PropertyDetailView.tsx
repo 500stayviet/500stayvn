@@ -509,9 +509,9 @@ export default function PropertyDetailView({
                 </div>
               ) : null}
 
-              {/* 사진 인디케이터: 1/5 형식 + 도트 */}
+              {/* 사진 인디케이터: 1/5 형식 + 도트 (맵 매물카드와 동일하게 44px 예외) */}
               {N > 1 && (
-                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2 z-40 bg-black/50 text-white px-3 py-1.5 rounded-full text-xs font-medium">
+                <div className="card-slider-nav absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2 z-40 bg-black/50 text-white px-3 py-1.5 rounded-full text-xs font-medium">
                   <span>{displayDotIndex + 1} / {N}</span>
                   <div className="flex gap-1">
                     {propertyImages.map((_, idx) => (
@@ -527,13 +527,13 @@ export default function PropertyDetailView({
                 </div>
               )}
 
-              {/* 좌우 화살표 */}
+              {/* 좌우 화살표 (맵 매물카드와 동일하게 44px 예외) */}
               {N > 1 && (
-                <>
+                <div className="card-slider-nav absolute inset-0 pointer-events-none z-40">
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); goToPrevSlide(); }}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center bg-black/50 hover:bg-black/70 text-white rounded-full z-40 transition-all"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center bg-black/50 hover:bg-black/70 text-white rounded-full transition-all pointer-events-auto"
                     aria-label="이전 사진"
                   >
                     <ChevronLeft className="w-5 h-5" />
@@ -541,12 +541,12 @@ export default function PropertyDetailView({
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); goToNextSlide(); }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center bg-black/50 hover:bg-black/70 text-white rounded-full z-40 transition-all"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center bg-black/50 hover:bg-black/70 text-white rounded-full transition-all pointer-events-auto"
                     aria-label="다음 사진"
                   >
                     <ChevronRight className="w-5 h-5" />
                   </button>
-                </>
+                </div>
               )}
 
               {/* 가격 - 우측 상단 */}
@@ -1351,16 +1351,16 @@ export default function PropertyDetailView({
                 />
               </div>
 
-              {/* 좌우 네비게이션 */}
+              {/* 좌우 네비게이션 + 인디케이터 (맵 매물카드와 동일하게 44px 예외) */}
               {N > 1 && (
-                <>
+                <div className="card-slider-nav absolute inset-0 pointer-events-none z-50">
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       setFullScreenImageIndex((i) => (i! <= 0 ? N - 1 : i! - 1));
                     }}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center bg-white/20 hover:bg-white/40 text-white rounded-full z-50 transition-colors"
+                    className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center bg-white/20 hover:bg-white/40 text-white rounded-full transition-colors pointer-events-auto"
                   >
                     <ChevronLeft className="w-6 h-6" />
                   </button>
@@ -1370,29 +1370,25 @@ export default function PropertyDetailView({
                       e.stopPropagation();
                       setFullScreenImageIndex((i) => (i! >= N - 1 ? 0 : i! + 1));
                     }}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center bg-white/20 hover:bg-white/40 text-white rounded-full z-50 transition-colors"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center bg-white/20 hover:bg-white/40 text-white rounded-full transition-colors pointer-events-auto"
                   >
                     <ChevronRight className="w-6 h-6" />
                   </button>
-                </>
-              )}
-
-              {/* 인디케이터 */}
-              {N > 1 && (
-                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 z-50 bg-black/50 text-white px-4 py-2 rounded-full text-sm">
-                  <span>{fullScreenImageIndex + 1} / {N}</span>
-                  <div className="flex gap-1.5">
-                    {propertyImages.map((_, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setFullScreenImageIndex(idx);
-                        }}
-                        className={`rounded-full transition-all ${idx === fullScreenImageIndex ? 'w-2.5 h-2.5 bg-white' : 'w-2 h-2 bg-white/50 hover:bg-white/70'}`}
-                      />
-                    ))}
+                  <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/50 text-white px-4 py-2 rounded-full text-sm pointer-events-auto">
+                    <span>{fullScreenImageIndex + 1} / {N}</span>
+                    <div className="flex gap-1.5">
+                      {propertyImages.map((_, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setFullScreenImageIndex(idx);
+                          }}
+                          className={`rounded-full transition-all ${idx === fullScreenImageIndex ? 'w-2.5 h-2.5 bg-white' : 'w-2 h-2 bg-white/50 hover:bg-white/70'}`}
+                        />
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
