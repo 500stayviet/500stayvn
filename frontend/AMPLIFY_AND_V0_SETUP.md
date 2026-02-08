@@ -23,6 +23,8 @@
   `appRoot: frontend` 기준으로 `npm ci` → `prisma generate` → `npm run build`가 실행됩니다.
 - **환경 변수**  
   Amplify 콘솔에서 `NEXT_PUBLIC_*`, `DATABASE_URL`, Auth 관련 변수 등을 반드시 설정하세요.
+  - **DATABASE_URL**: 런타임에서도 필요합니다. Amplify 콘솔 → 앱 → Environment variables에서 **빌드 시**와 **실행 시** 모두 사용되도록 설정되어 있는지 확인하세요. (Supabase 연결 문자열, 예: `postgresql://USER:PASSWORD@HOST:5432/postgres`)
+  - NextAuth + Prisma 어댑터 사용 시, 로그인 시 User/Account가 Supabase에 저장되므로 `DATABASE_URL`이 배포 환경에서 유효해야 합니다.
 - **Node 버전**  
   `nvm use 20`으로 20 사용 중이므로, Amplify 빌드 이미지에서도 Node 18+가 지원되는지 확인하세요.
 - **아티팩트**  
@@ -47,3 +49,19 @@
 
 ### 폰트·색상
 - `layout.tsx`에서 Be Vietnam Pro, Noto Sans KR/JP를 CSS 변수로 로드하고, `tailwind.config.js`의 `fontFamily.sans`와 `colors`(brand-deep, brand-emerald)가 설정되어 있어, v0 컴포넌트에서 `font-sans`, `text-brand-deep` 등을 그대로 사용할 수 있습니다.
+
+## NextAuth + Supabase DB 연동 확인 (배포 후)
+
+1. **환경 변수 점검**
+   - Amplify 콘솔 → 해당 앱 → Environment variables
+   - `DATABASE_URL`이 Supabase PostgreSQL 연결 문자열로 설정되어 있는지 확인.
+   - 변경 후 재배포: **Redeploy this version** 또는 새 커밋으로 배포.
+
+2. **배포 후 페이스북(또는 구글) 로그인 테스트**
+   - 배포된 앱에서 로그인 페이지로 이동 후 Facebook(또는 Google)으로 로그인.
+
+3. **Supabase에서 데이터 생성 여부 확인**
+   - Supabase 대시보드 → Table Editor
+   - **User** 테이블: 방금 로그인한 사용자의 `id`, `email`, `name`, `image` 등이 들어와 있는지 확인.
+   - **Account** 테이블: 해당 사용자의 `userId`, `provider`(facebook 또는 google), `providerAccountId` 등이 생성되었는지 확인.
+   - 로그인 시도 시 에러가 나면 Amplify → Monitor → Logs에서 런타임 로그를 확인 (NextAuth `debug: true` 시 인증 관련 로그 출력).

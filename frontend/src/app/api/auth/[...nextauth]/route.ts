@@ -1,6 +1,8 @@
 import NextAuth from "next-auth";
+import { PrismaAdapter } from "@auth/prisma-adapter";
 import GoogleProvider from "next-auth/providers/google";
 import FacebookProvider from "next-auth/providers/facebook";
+import { prisma } from "@/lib/prisma";
 
 // NextAuth 타입 확장
 declare module "next-auth" {
@@ -18,6 +20,7 @@ declare module "next-auth" {
 }
 
 const handler = NextAuth({
+  adapter: PrismaAdapter(prisma),
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
@@ -28,6 +31,9 @@ const handler = NextAuth({
       clientSecret: process.env.FACEBOOK_CLIENT_SECRET || "",
     }),
   ],
+  session: {
+    strategy: "jwt",
+  },
   callbacks: {
     async session({ session, token }) {
       if (session.user && token.sub) {
