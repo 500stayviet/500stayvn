@@ -313,14 +313,15 @@ export default function GrabMapComponent({
         marker.current.remove();
       }
 
+      const userMarkerSizePx = 12; // 명소(8px)보다 조금 더 크게
       const el = document.createElement("div");
       el.className = "user-location-marker";
-      el.style.width = "20px";
-      el.style.height = "20px";
+      el.style.width = `${userMarkerSizePx}px`;
+      el.style.height = `${userMarkerSizePx}px`;
       el.style.borderRadius = "50%";
       el.style.backgroundColor = "#E63946";
-      el.style.border = "3px solid white";
-      el.style.boxShadow = "0 2px 8px rgba(230, 57, 70, 0.4)";
+      el.style.border = "2px solid white";
+      el.style.boxShadow = "0 2px 6px rgba(230, 57, 70, 0.4)";
       el.style.cursor = "pointer";
       el.style.zIndex = "1000";
 

@@ -151,6 +151,15 @@ input[type="reset"] {
   box-sizing: border-box;
 }
 
+/* 지도 현재위치 마커 - 명소(8px)보다 조금 더 크게 */
+.user-location-marker {
+  width: 12px !important;
+  height: 12px !important;
+  min-width: 12px !important;
+  min-height: 12px !important;
+  box-sizing: border-box;
+}
+
 /* 터치 피드백 */
 .tap-highlight {
   -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
