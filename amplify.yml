@@ -7,7 +7,9 @@ applications:
           commands:
             - nvm install 20
             - nvm use 20
-            - npm ci
+            - npm cache clean --force
+            - rm -rf node_modules package-lock.json
+            - npm ci --no-audit --prefer-offline
         build:
           commands:
             - npx prisma generate
@@ -20,3 +22,5 @@ applications:
         paths:
           - node_modules/**/*
           - .next/cache/**/*
+          - public/sw.js
+          - public/workbox-*.js

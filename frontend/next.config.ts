@@ -1,11 +1,24 @@
 import type { NextConfig } from "next";
 
-const withPWA = require("next-pwa")({
-  dest: "public",
-  register: true,
-  skipWaiting: true,
-  disable: process.env.NODE_ENV === "development",
-});
+// PWA 설정을 위한 임포트
+const withPWA = (nextConfig: NextConfig) => {
+  const pwaConfig = {
+    dest: "public",
+    register: true,
+    skipWaiting: true,
+    disable: process.env.NODE_ENV === "development",
+  };
+
+  // next-pwa가 설치되어 있는지 확인
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const withPWA = require("next-pwa").default || require("next-pwa");
+    return withPWA(pwaConfig)(nextConfig);
+  } catch (error) {
+    console.warn("next-pwa not found, skipping PWA configuration");
+    return nextConfig;
+  }
+};
 
 const nextConfig: NextConfig = {
   // AWS Amplify: output: 'standalone' 미사용 시 Amplify 자동 어댑터가 빌드합니다.
