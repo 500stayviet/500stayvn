@@ -1771,10 +1771,10 @@ export default function GrabMapComponent({
         currentLanguage={currentLanguage}
       />
 
-      {/* 지도 컨테이너 */}
+      {/* 지도 컨테이너: touch-action pan-y로 세로 터치를 페이지 스크롤에 넘겨 스크롤이 끊기지 않도록 함 */}
       <div
         ref={mapContainer}
-        className="w-full h-full"
+        className="w-full h-full map-touch-scroll-passthrough"
         style={{
           width: "100vw", // 사이드바 표시를 덮기 위해 전체 너비 사용
           height: "100%",
@@ -1784,6 +1784,7 @@ export default function GrabMapComponent({
           left: 0,
           zIndex: 1, // 사이드바 표시 위에 표시
           backgroundColor: "#f3f4f6", // 로딩 중 배경색
+          touchAction: "pan-y",
         }}
       />
 

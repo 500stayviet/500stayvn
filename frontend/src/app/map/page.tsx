@@ -217,9 +217,12 @@ function MapContent() {
 
 
   return (
-    <div className="min-h-screen bg-gray-100 flex justify-center">
-      {/* 웹 기준 우측 스크롤바: 지도 우측 끝(max-w 영역)에 세로 스크롤 표시 */}
-      <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative overflow-y-scroll overscroll-y-auto" style={{ scrollbarGutter: 'stable' }}>
+    <div className="h-screen overflow-hidden bg-gray-100 flex justify-center">
+      {/* 스크롤 영역 단일화: 바깥은 고정 높이·overflow-hidden, 430px 박스만 스크롤 */}
+      <div
+        className="map-page-scroll w-full max-w-[430px] h-screen bg-white shadow-2xl flex flex-col relative overflow-y-auto overscroll-y-auto"
+        style={{ scrollbarGutter: "stable", scrollBehavior: "smooth", WebkitOverflowScrolling: "touch" }}
+      >
         <TopBar currentLanguage={currentLanguage} onLanguageChange={setCurrentLanguage} />
         <main className="flex-1 relative flex flex-col min-h-0 bg-white">
           {/* 지도: 비중 줄이기 (그랩맵 비중 감소) */}
