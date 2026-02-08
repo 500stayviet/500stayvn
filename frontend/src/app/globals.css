@@ -124,7 +124,7 @@ html, body {
 }
 
 /* 모바일 터치 최적화 */
-button, 
+button,
 [role="button"],
 a[href],
 input[type="button"],
@@ -133,6 +133,22 @@ input[type="reset"] {
   min-height: 44px;
   min-width: 44px;
   touch-action: manipulation;
+}
+
+/* 예외: 매물 카드 슬라이더 네비(앞뒤·도트)는 의도된 작은 크기 유지 */
+.card-slider-nav button,
+.card-slider-nav [role="button"] {
+  min-width: unset;
+  min-height: unset;
+}
+
+/* 지도 명소 마커(빨강·주황·회색 원) 크기 고정 - Landmark 81 등 */
+.landmark-marker {
+  width: 8px !important;
+  height: 8px !important;
+  min-width: 8px !important;
+  min-height: 8px !important;
+  box-sizing: border-box;
 }
 
 /* 터치 피드백 */

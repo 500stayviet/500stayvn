@@ -252,8 +252,8 @@ export default function Property3DCardSlider({
                   {formatPrice(currentProperty.price, "vnd")}
                 </motion.div>
 
-                {/* 매물 이미지 하단에 위치한 네비게이션 컨트롤러 */}
-                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2">
+                {/* 매물 이미지 하단에 위치한 네비게이션 컨트롤러 (globals 44px 예외로 작은 크기 유지) */}
+                <div className="card-slider-nav absolute bottom-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2">
                   {/* 좌측 버튼 */}
                   <motion.button
                     onClick={(e) => {

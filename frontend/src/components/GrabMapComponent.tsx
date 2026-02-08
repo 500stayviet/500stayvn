@@ -640,11 +640,12 @@ export default function GrabMapComponent({
         };
         landmarkMarkersRef.current.forEach((m) => m.remove());
         landmarkMarkersRef.current = [];
+        const landmarkSizePx = 8;
         for (const lm of ALL_LANDMARKS) {
           const el = document.createElement("div");
           el.className = "landmark-marker";
-          el.style.width = "12px";
-          el.style.height = "12px";
+          el.style.width = `${landmarkSizePx}px`;
+          el.style.height = `${landmarkSizePx}px`;
           el.style.borderRadius = "50%";
           el.style.backgroundColor = categoryColor[lm.category] || "#6b7280";
           el.style.border = "2px solid white";
