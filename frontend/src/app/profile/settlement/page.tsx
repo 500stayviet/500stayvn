@@ -119,7 +119,7 @@ export default function SettlementPage() {
           let propertyName = b.propertyTitle ?? '';
           try {
             const prop = await getProperty(b.propertyId);
-            if (prop?.propertyNickname) propertyName = prop.propertyNickname;
+            if (prop?.title) propertyName = prop.title;
           } catch {
             // keep propertyTitle fallback
           }
@@ -300,7 +300,7 @@ export default function SettlementPage() {
                   <div key={entry.bookingId} className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
                     <div className="flex justify-between items-start">
                       <div className="min-w-0 flex-1">
-                        <p className="font-semibold text-gray-900 truncate">{entry.propertyName || getUIText('propertyNickname', currentLanguage)}</p>
+                        <p className="font-semibold text-gray-900 truncate">{entry.propertyName || getUIText('title', currentLanguage)}</p>
                         <p className="text-sm text-gray-500 mt-1">
                           {formatDate(entry.checkInDate, currentLanguage)} ~ {formatDate(entry.checkOutDate, currentLanguage)}
                         </p>

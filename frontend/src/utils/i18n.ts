@@ -246,7 +246,7 @@ export type UITextKey =
   | 'incomeStatusConfirmed'
   | 'incomeStatusPayable'
   | 'rentalPeriod'
-  | 'propertyNickname'
+  | 'title'
   | 'rentingInProgress'
   | 'withdrawalCompleted'
   | 'serverTimeSyncError'
@@ -254,7 +254,7 @@ export type UITextKey =
   // 매물명 관련
   | 'propertyName'
   | 'propertyNamePlaceholder'
-  | 'propertyNicknamePlaceholder'
+  | 'titlePlaceholder'
   | 'propertyDescription'
   | 'propertyDescriptionPlaceholder'
   | 'confirmLogout'
@@ -501,7 +501,7 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     incomeStatusConfirmed: '확정금액',
     incomeStatusPayable: '지급됨',
     rentalPeriod: '임대 기간',
-    propertyNickname: '매물명',
+    title: '매물명',
     rentingInProgress: '임대중',
     withdrawalCompleted: '출금완료',
     serverTimeSyncError: '서버 시간 동기화 실패',
@@ -509,7 +509,7 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     // 매물명 관련
     propertyName: '매물명',
     propertyNamePlaceholder: '예: 내 첫 번째 스튜디오',
-    propertyNicknamePlaceholder: '예: 내 첫 번째 스튜디오',
+    titlePlaceholder: '예: 내 첫 번째 스튜디오',
     propertyDescription: '매물 설명',
     propertyDescriptionPlaceholder: '매물에 대한 상세 설명을 입력해주세요.',
     confirmLogout: '로그아웃 확인',
@@ -752,7 +752,7 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     incomeStatusConfirmed: 'Số tiền xác nhận',
     incomeStatusPayable: 'Đã thanh toán',
     rentalPeriod: 'Thời gian thuê',
-    propertyNickname: 'Tên bất động sản',
+    title: 'Tên bất động sản',
     rentingInProgress: 'Đang cho thuê',
     withdrawalCompleted: 'Rút tiền hoàn tất',
     serverTimeSyncError: 'Đồng bộ thời gian máy chủ thất bại',
@@ -760,7 +760,7 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     // 매물명 관련
     propertyName: 'Tên bất động sản',
     propertyNamePlaceholder: 'VD: Studio đầu tiên của tôi',
-    propertyNicknamePlaceholder: 'VD: Studio đầu tiên của tôi',
+    titlePlaceholder: 'VD: Studio đầu tiên của tôi',
     propertyDescription: 'Mô tả bất động sản',
     propertyDescriptionPlaceholder: 'Nhập mô tả chi tiết về bất động sản.',
     confirmLogout: 'Xác nhận đăng xuất',
@@ -1003,7 +1003,7 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     incomeStatusConfirmed: 'Confirmed',
     incomeStatusPayable: 'Payable',
     rentalPeriod: 'Rental period',
-    propertyNickname: 'Property name',
+    title: 'Property name',
     rentingInProgress: 'In stay',
     withdrawalCompleted: 'Withdrawal completed',
     serverTimeSyncError: 'Server time sync failed',
@@ -1011,7 +1011,7 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     // 매물명 관련
     propertyName: 'Property Name',
     propertyNamePlaceholder: 'e.g., My first studio',
-    propertyNicknamePlaceholder: 'e.g., My first studio',
+    titlePlaceholder: 'e.g., My first studio',
     propertyDescription: 'Property Description',
     propertyDescriptionPlaceholder: 'Enter detailed description of the property.',
     confirmLogout: 'Confirm Logout',
@@ -1254,7 +1254,7 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     incomeStatusConfirmed: '確定金額',
     incomeStatusPayable: '支払済',
     rentalPeriod: '賃貸期間',
-    propertyNickname: '物件名',
+    title: '物件名',
     rentingInProgress: '滞在中',
     withdrawalCompleted: '出金完了',
     serverTimeSyncError: 'サーバー時刻同期に失敗しました',
@@ -1262,7 +1262,7 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     // 매물명 관련
     propertyName: '物件名',
     propertyNamePlaceholder: '例: 私の最初のスタジオ',
-    propertyNicknamePlaceholder: '例: 私の最初のスタジオ',
+    titlePlaceholder: '例: 私の最初のスタジオ',
     propertyDescription: '物件説明',
     propertyDescriptionPlaceholder: '物件の詳細な説明を入力してください。',
     confirmLogout: 'ログアウト確認',
@@ -1505,7 +1505,7 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     incomeStatusConfirmed: '确认金额',
     incomeStatusPayable: '已支付',
     rentalPeriod: '租期',
-    propertyNickname: '房源名称',
+    title: '房源名称',
     rentingInProgress: '租住中',
     withdrawalCompleted: '提现完成',
     serverTimeSyncError: '服务器时间同步失败',
@@ -1513,7 +1513,7 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     // 매물명 관련
     propertyName: '房源名称',
     propertyNamePlaceholder: '例如: 我的第一个工作室',
-    propertyNicknamePlaceholder: '例如: 我的第一个工作室',
+    titlePlaceholder: '例如: 我的第一个工作室',
     propertyDescription: '房源描述',
     propertyDescriptionPlaceholder: '请输入房源的详细描述。',
     confirmLogout: '确认登出',

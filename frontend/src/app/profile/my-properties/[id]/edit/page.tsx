@@ -81,7 +81,6 @@ function EditPropertyContent() {
   const [images, setImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [address, setAddress] = useState("");
-  const [apartmentName, setApartmentName] = useState("");
   const [buildingNumber, setBuildingNumber] = useState("");
   const [roomNumber, setRoomNumber] = useState("");
   const [weeklyRent, setWeeklyRent] = useState("");
@@ -210,7 +209,7 @@ function EditPropertyContent() {
         const fee = (p as { petFee?: number }).petFee;
         setPetFeeAmount(fee != null ? fee.toString() : "");
         setMaxPets((p as { maxPets?: number }).maxPets ?? 1);
-        setPropertyName(p.propertyNickname || ""); // 매물명 로드
+        setPropertyName(p.title || ""); // 매물명 = title
         setPropertyDescription(
           (p as { original_description?: string }).original_description || "",
         );
@@ -346,11 +345,10 @@ function EditPropertyContent() {
               ? `${formatRoomNumber(roomNumber)}호`
               : undefined;
 
-      const publicAddress = `${apartmentName ? `${apartmentName}, ` : ""}${address}`;
+      const publicAddress = address;
 
       const updates: Partial<import("@/types/property").PropertyData> = {
-        title: apartmentName || address,
-        propertyNickname: propertyName.trim(), // 매물명 추가
+        title: propertyName.trim(), // 매물명 = title
         original_description: propertyDescription || publicAddress,
         price: parseInt(weeklyRent.replace(/\D/g, "") || "0", 10),
         priceUnit: "vnd",

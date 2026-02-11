@@ -4,8 +4,7 @@
 
 export interface PropertyData {
   id?: string; // 매물 ID
-  title: string; // 베트남어 제목
-  propertyNickname: string; // 임대인만 알아보는 매물명 (내부용, 필수)
+  title: string; // 매물명. 임차인 비공개, 나중에 공개 가능
   original_description: string; // 베트남어 원문 설명
   translated_description: string; // 번역된 설명 (한국어)
   price: number; // 가격 (1주일 임대료)

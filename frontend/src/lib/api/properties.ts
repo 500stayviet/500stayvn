@@ -803,12 +803,11 @@ export async function addProperty(
       return '';
     }
     
+    const payload = { ...property }; // title = 매물명 (임차인 비공개)
+
     // 필수 필드 검증
-    if (!property.ownerId) {
+    if (!payload.ownerId) {
       throw new Error('ownerId is required');
-    }
-    if (!property.title || property.title.trim() === '') {
-      throw new Error('title is required');
     }
     if (!property.coordinates || !property.coordinates.lat || !property.coordinates.lng) {
       throw new Error('coordinates are required');
@@ -833,9 +832,9 @@ export async function addProperty(
     // 동일 매물 확인 (임대인 ID, 주소, 호수 일치 여부)
     const existingIndex = properties.findIndex(p => 
       !p.deleted && 
-      p.ownerId === property.ownerId && 
-      (p.address === property.address || p.title === property.title) && 
-      p.unitNumber === property.unitNumber
+      p.ownerId === payload.ownerId && 
+      (p.address === payload.address || p.title === payload.title) && 
+      p.unitNumber === payload.unitNumber
     );
 
     const now = new Date();
@@ -846,8 +845,8 @@ export async function addProperty(
       
       // 1. 날짜 중복 체크 (Overlap Check)
       const newRange = {
-        start: toISODateString(property.checkInDate!),
-        end: toISODateString(property.checkOutDate!)
+        start: toISODateString(payload.checkInDate!),
+        end: toISODateString(payload.checkOutDate!)
       };
       const existingRange = {
         start: toISODateString(existingProp.checkInDate!),
@@ -873,7 +872,7 @@ export async function addProperty(
 
       const updatedProp: PropertyData = {
         ...existingProp, // 기존 정보 기반
-        ...property,     // 새 정보로 덮어쓰기 (최신화)
+        ...payload,      // 새 정보로 덮어쓰기 (최신화)
         id: existingProp.id,
         checkInDate: mergedStart,
         checkOutDate: mergedEnd,
@@ -899,13 +898,13 @@ export async function addProperty(
     // 신규 등록 로직 (히스토리 추가)
     const id = `prop_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const newProperty: PropertyData = {
-      ...property,
+      ...payload,
       id,
-      checkInDate: serializeDate(property.checkInDate),
-      checkOutDate: serializeDate(property.checkOutDate),
+      checkInDate: serializeDate(payload.checkInDate),
+      checkOutDate: serializeDate(payload.checkOutDate),
       createdAt: serializeDate(now),
       updatedAt: serializeDate(now),
-      status: property.status || 'active',
+      status: payload.status || 'active',
       deleted: false,
       history: [{
         action: 'CREATE',

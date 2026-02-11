@@ -242,7 +242,7 @@ export default function GrabMapComponent({
 
     return {
       id: propertyData.id || "",
-      name: propertyData.title || "",
+      name: propertyData.address || "", // 임차인 비공개: 표시는 주소만
       price: propertyData.price || 0,
       lat: lat,
       lng: lng,

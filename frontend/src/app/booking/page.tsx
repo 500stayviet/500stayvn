@@ -253,7 +253,7 @@ function BookingContent() {
           petCount: petsCount > 0 ? petsCount : undefined,
         },
         {
-          title: property.title,
+          title: property.address || property.title, // 임차인 비공개: 저장용은 주소
           address: property.address,
           image: property.images?.[0],
           ownerId: property.ownerId || "",
@@ -324,14 +324,14 @@ function BookingContent() {
             <div className="w-20 h-20 relative rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
               <Image
                 src={property?.images?.[0] || "https://via.placeholder.com/80"}
-                alt={property?.title || "property"}
+                alt={property?.address || "property"}
                 fill
                 className="object-cover"
               />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-gray-900 truncate">
-                {property?.address || property?.title}
+                {property?.address || ''}
               </p>
               <div className="flex items-center gap-1 mt-1 text-xs text-gray-500 font-medium">
                 <Calendar className="w-3 h-3" />

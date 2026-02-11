@@ -299,7 +299,7 @@ function MyPropertiesContent() {
                           <MapPin className="w-3.5 h-3.5 text-blue-400" />
                           <div className="min-w-0">
                             <p className="text-sm font-semibold truncate">
-                              {property.propertyNickname || property.address || property.title}
+                              {property.title || property.address}
                             </p>
                             {property.unitNumber && (
                               <p className="text-xs text-gray-300 opacity-80">

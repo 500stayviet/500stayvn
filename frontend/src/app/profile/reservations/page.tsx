@@ -507,7 +507,7 @@ function ReservationsContent() {
                       {property && (
                         <div>
                           <h3 className="text-lg font-bold text-gray-900 mb-1">
-                            {property.title}
+                            {property.address || property.title || ''}
                           </h3>
                           {property.address && (
                             <p className="text-sm text-gray-600 flex items-center gap-1">

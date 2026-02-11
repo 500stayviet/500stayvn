@@ -173,7 +173,7 @@ export default function PopularStays({ currentLanguage }: PopularStaysProps) {
                 <div className="relative w-full h-full">
                   <Image
                     src={imageUrl}
-                    alt={property.title}
+                    alt={property.address || 'Property'}
                     fill
                     className="object-cover"
                     sizes="(max-width: 430px) 100vw, 430px"
@@ -235,7 +235,7 @@ export default function PopularStays({ currentLanguage }: PopularStaysProps) {
                     {/* 하단: 제목과 위치 */}
                     <div className="space-y-2">
                       <h3 className="text-white text-lg font-bold drop-shadow-lg line-clamp-2">
-                        {property.title}
+                        {property.address || getCityName(property.address)}
                       </h3>
                       {property.address && (
                         <div className="flex items-center gap-2">

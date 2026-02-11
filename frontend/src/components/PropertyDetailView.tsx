@@ -28,7 +28,6 @@ import { PropertyData } from '@/types/property';
 import { getBookedRangesForProperty } from '@/lib/api/properties';
 import { toISODateString } from '@/lib/api/bookings';
 import CalendarComponent from '@/components/CalendarComponent';
-import { PropertyDescription } from '@/components/PropertyDescription';
 import { useAuth } from '@/hooks/useAuth';
 import {
   FACILITY_OPTIONS,
@@ -49,6 +48,7 @@ import {
   formatDate,
 } from '@/lib/utils/dateUtils';
 import { VIETNAM_CITIES, getDistrictsByCityId } from '@/lib/data/vietnam-regions';
+import { PropertyDescription } from '@/components/PropertyDescription';
 import { getUIText } from '@/utils/i18n';
 import type { SupportedLanguage } from '@/lib/api/translation';
 
@@ -337,10 +337,11 @@ export default function PropertyDetailView({
     FULL_OPTION_KITCHEN_IDS.length > 0 &&
     FULL_OPTION_KITCHEN_IDS.every((id) => property.amenities?.includes(id));
 
+  // 매물명 = title. 임차인에게는 비공개, 임대인만 표시
   const displayTitle =
     mode === 'owner'
-      ? property.propertyNickname || property.title || property.address || ''
-      : property.title || property.address || '';
+      ? property.title || ''
+      : '';
 
   const t = (ko: string, vi: string, en: string, ja?: string, zh?: string) => {
     if (currentLanguage === 'ko') return ko;
@@ -480,7 +481,7 @@ export default function PropertyDetailView({
                     >
                       <Image
                         src={src}
-                        alt={`${property.title || ''} ${(N > 1 ? (idx === 0 ? N : idx <= 3 * N ? ((idx - 1) % N) + 1 : 1) : idx + 1)}`}
+                        alt={`${property.address || ''} ${(N > 1 ? (idx === 0 ? N : idx <= 3 * N ? ((idx - 1) % N) + 1 : 1) : idx + 1)}`}
                         fill
                         className="object-cover"
                         sizes="(max-width: 430px) 85vw, 360px"
@@ -618,7 +619,7 @@ export default function PropertyDetailView({
             <p className="text-sm leading-relaxed" style={{ color: COLORS.text }}>{displayTitle}</p>
           </section>
 
-          {/* 임차인(예약): 임대인과 동일 순서·간격·모양 — 매물종류 → 방|화장실|인원 → 주소 → 도시·구 → 이용기간 → 임대료 → 숙소시설 → 체크인/아웃 → 설명 → 날짜·인원·예약하기 */}
+          {/* 임차인(예약): 매물종류 → 방|화장실|인원 → 주소 → 도시·구 → 이용기간 → 임대료 → 숙소시설 → 체크인/아웃 → 설명 → 날짜·인원·예약하기 */}
           {mode === 'tenant' && (
             <>
               {property.propertyType && (
@@ -1098,12 +1099,12 @@ export default function PropertyDetailView({
                 </section>
               )}
               <section className="py-3 text-left" style={SECTION_DASHED}>
-                <p className="text-base font-bold mb-1.5" style={{ color: COLORS.text }}>{t('주소', 'Địa chỉ', 'Address', '住所', '地址')}</p>
-                <p className="text-sm break-words leading-relaxed" style={{ color: COLORS.text }}>{property.address || '—'}</p>
-              </section>
-              <section className="py-3 text-left" style={SECTION_DASHED}>
                 <p className="text-base font-bold mb-1.5" style={{ color: COLORS.text }}>{t('도시·구', 'Thành phố·Quận', 'City·District', '都市・区', '城市・区')}</p>
                 <p className="text-sm" style={{ color: COLORS.text }}>{getCityName() || cityName || '—'} / {getDistrictName() || districtName || '—'}</p>
+              </section>
+              <section className="py-3 text-left" style={SECTION_DASHED}>
+                <p className="text-base font-bold mb-1.5" style={{ color: COLORS.text }}>{t('주소', 'Địa chỉ', 'Address', '住所', '地址')}</p>
+                <p className="text-sm break-words leading-relaxed" style={{ color: COLORS.text }}>{property.address || '—'}</p>
               </section>
               {property.unitNumber && (
                 <section className="py-3 text-left" style={SECTION_DASHED}>

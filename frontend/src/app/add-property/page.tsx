@@ -80,7 +80,6 @@ export default function AddPropertyPage() {
   const [images, setImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [address, setAddress] = useState("");
-  const [apartmentName, setApartmentName] = useState("");
   const [buildingNumber, setBuildingNumber] = useState(""); // 동
   const [roomNumber, setRoomNumber] = useState(""); // 호실
   const [weeklyRent, setWeeklyRent] = useState("");
@@ -101,7 +100,7 @@ export default function AddPropertyPage() {
   const [maxChildren, setMaxChildren] = useState(0);
   const [bedrooms, setBedrooms] = useState(0);
   const [bathrooms, setBathrooms] = useState(0);
-  const [propertyNickname, setPropertyNickname] = useState(""); // 매물명 (임대인용)
+  const [title, setTitle] = useState(""); // 매물명 (title)
   const [propertyDescription, setPropertyDescription] = useState("");
   // 체크인/체크아웃 시간
   const [checkInTime, setCheckInTime] = useState("14:00");
@@ -529,7 +528,7 @@ export default function AddPropertyPage() {
     }
 
     // 매물명 필수 검증
-    if (!propertyNickname || propertyNickname.trim() === "") {
+    if (!title || title.trim() === "") {
       alert(
         currentLanguage === "ko"
           ? "매물명을 입력해주세요."
@@ -652,7 +651,7 @@ export default function AddPropertyPage() {
               : undefined;
 
       // 주소와 설명에는 동호수 포함하지 않음 (비공개)
-      const publicAddress = `${apartmentName ? `${apartmentName}, ` : ""}${address}`;
+      const publicAddress = address;
 
       // 이미지 업로드
       let imageUrls: string[];
@@ -681,8 +680,7 @@ export default function AddPropertyPage() {
       const checkOutDateObj = checkOutDate || undefined;
 
       await addProperty({
-        title: apartmentName || address,
-        propertyNickname: propertyNickname.trim(), // 매물명 (임대인용, 필수)
+        title: title.trim(),
         original_description: propertyDescription, // 매물 설명 (빈 문자열 허용)
         translated_description: "", // 나중에 번역 서비스로 채움
         price: parseInt(weeklyRent.replace(/\D/g, "")),
@@ -2242,17 +2240,17 @@ export default function AddPropertyPage() {
                 className="text-sm font-bold mb-3"
                 style={{ color: COLORS.text }}
               >
-                {getUIText("propertyNickname", currentLanguage)}
+                {getUIText("title", currentLanguage)}
                 <span style={{ color: COLORS.error }} className="ml-1">
                   *
                 </span>
               </h2>
               <input
                 type="text"
-                value={propertyNickname}
-                onChange={(e) => setPropertyNickname(e.target.value)}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
                 placeholder={getUIText(
-                  "propertyNicknamePlaceholder",
+                  "titlePlaceholder",
                   currentLanguage,
                 )}
                 className="w-full px-3 py-2.5 rounded-lg text-sm min-h-[40px] focus:outline-none transition-all"
