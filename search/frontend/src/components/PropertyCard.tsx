@@ -1,26 +1,22 @@
 /**
- * PropertyCard 컴포넌트
+ * PropertyCard 컴포넌트 (리뉴얼)
  * 
- * 33m2 스타일의 매물 카드 컴포넌트
+ * 현대적이고 세련된 부동산 매물 카드 디자인
+ * - 최소한의 정보로 깔끔한 레이아웃
+ * - 마커는 진한 색상으로 눈에 띄게
+ * - 방/욕실/인원 정보 강조
  */
 
 'use client';
 
-import { Bed, Bath, Square, MapPin, Calendar, Users, Wifi, Sofa, Tv, UtensilsCrossed } from 'lucide-react';
+import { Bed, Bath, Users, Wifi, Sofa, Tv, UtensilsCrossed } from 'lucide-react';
 import Image from 'next/image';
 import { PropertyData } from '@/types/property';
 import { useTranslation } from '@/hooks/useTranslation';
 import { SupportedLanguage } from '@/lib/api/translation';
 import { getUIText } from '@/utils/i18n';
-import { 
-  formatPrice, 
-} from '@/lib/utils/propertyUtils';
-import { 
-  parseDate, 
-  isAvailableNow, 
-  formatDate, 
-  formatDateForBadge 
-} from '@/lib/utils/dateUtils';
+import { formatPrice } from '@/lib/utils/propertyUtils';
+import { isAvailableNow, formatDateForBadge } from '@/lib/utils/dateUtils';
 import { 
   FULL_FURNITURE_IDS, 
   FULL_ELECTRONICS_IDS, 
@@ -34,18 +30,23 @@ interface PropertyCardProps {
   currentLanguage: SupportedLanguage;
 }
 
+// 컬러 팔레트
+const colors = {
+  primary: '#E63946',        // Coral Red
+  primaryLight: '#FF6B6B',   // Light Coral
+  secondary: '#FF6B35',      // Golden Orange
+  accent: '#FFB627',         // Sunshine Yellow
+  success: '#10B981',        // Emerald Green
+  background: '#FFF8F0',     // Warm Cream
+  surface: '#FFFFFF',        // White
+};
+
 export default function PropertyCard({
   property,
   isSelected,
   onClick,
   currentLanguage,
 }: PropertyCardProps) {
-  const { translated: translatedDescription, loading: descriptionLoading } = useTranslation(
-    property.original_description,
-    currentLanguage,
-    'vi'
-  );
-
   const { translated: translatedTitle, loading: titleLoading } = useTranslation(
     property.title,
     currentLanguage,
@@ -66,13 +67,6 @@ export default function PropertyCard({
         ? getUIText('translationLoading', currentLanguage)
         : translatedTitle || property.title;
 
-  const displayDescription =
-    currentLanguage === 'vi'
-      ? property.original_description
-      : descriptionLoading
-        ? getUIText('translationLoading', currentLanguage)
-        : translatedDescription || property.original_description;
-
   // 뱃지 확인 로직
   const hasWifi = property.amenities?.includes('wifi') || false;
   
@@ -88,36 +82,63 @@ export default function PropertyCard({
     property.amenities?.includes(id) || false
   );
 
+  const occupancy = (property.maxAdults || 0) + (property.maxChildren || 0);
+
   return (
     <div
       onClick={onClick}
-      className={`flex flex-col bg-white rounded-2xl shadow-lg overflow-hidden cursor-pointer transition-all duration-300 transform ${
-        isSelected ? 'ring-4 ring-blue-500 scale-[1.02]' : 'hover:scale-[1.01]'
+      style={{ '--card-primary': colors.primary } as React.CSSProperties & { '--card-primary': string }}
+      className={`flex flex-col overflow-hidden rounded-2xl cursor-pointer transition-all duration-300 transform ${
+        isSelected 
+          ? 'ring-4 shadow-2xl' 
+          : 'shadow-md hover:shadow-lg hover:scale-[1.02]'
       }`}
+      style={{
+        ...({
+          '--card-primary': colors.primary,
+          borderColor: isSelected ? colors.primary : 'transparent',
+        } as React.CSSProperties),
+        backgroundColor: colors.surface,
+      }}
     >
       {/* 이미지 섹션 */}
-      <div className="relative h-48 w-full">
-        <Image src={imageUrl} alt={property.title} fill className="object-cover" sizes="(max-width: 768px) 100vw, 400px" />
+      <div className="relative h-56 w-full overflow-hidden bg-gradient-to-br from-gray-200 to-gray-300">
+        <Image 
+          src={imageUrl} 
+          alt={property.title} 
+          fill 
+          className="object-cover" 
+          sizes="(max-width: 768px) 100vw, 400px" 
+        />
         
-        {/* 즉시 입주 가능 배지 */}
-        <div className="absolute top-3 left-3 flex flex-col gap-2">
+        {/* 즉시 입주 가능 배지 - 상단 왼쪽 */}
+        <div className="absolute top-3 left-3">
           {isAvailable ? (
-            <div className="bg-green-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-lg flex items-center gap-1.5">
+            <div 
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-bold shadow-lg"
+              style={{ backgroundColor: colors.success }}
+            >
               <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-              {currentLanguage === 'ko' ? '즉시 입주 가능' : currentLanguage === 'vi' ? 'Có thể vào ngay' : 'Available Now'}
+              {currentLanguage === 'ko' ? '즉시입주' : currentLanguage === 'vi' ? 'Vào ngay' : 'Available'}
             </div>
           ) : property.checkInDate && (
-            <div className="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-lg">
+            <div 
+              className="px-3 py-1.5 rounded-lg text-white text-xs font-bold shadow-lg"
+              style={{ backgroundColor: colors.secondary }}
+            >
               {formatDateForBadge(property.checkInDate, currentLanguage)}
             </div>
           )}
         </div>
 
-        {/* 가격 배지 */}
-        <div className="absolute bottom-3 right-3 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-xl shadow-lg">
-          <p className="text-sm font-bold text-gray-900">
+        {/* 가격 배지 - 상단 오른쪽 */}
+        <div 
+          className="absolute top-3 right-3 px-3 py-1.5 rounded-xl shadow-lg text-white font-bold"
+          style={{ backgroundColor: colors.primary }}
+        >
+          <p className="text-sm">
             {formatPrice(property.price, property.priceUnit)}
-            <span className="text-[10px] text-gray-500 font-normal ml-1">
+            <span className="text-[10px] font-normal ml-1">
               {currentLanguage === 'ko' ? '/주' : currentLanguage === 'vi' ? '/tuần' : '/week'}
             </span>
           </p>
@@ -125,81 +146,101 @@ export default function PropertyCard({
       </div>
 
       {/* 정보 섹션 */}
-      <div className="p-4 flex flex-col gap-3">
-        {/* 뱃지 섹션 - 사진 아래 제목 사이 */}
-        <div className="flex flex-wrap gap-1.5 mb-2">
-          {/* 즉시입주 뱃지 */}
-          {isAvailable && (
-            <div className="flex items-center gap-1 bg-green-100 text-green-800 px-2 py-1 rounded-md text-xs font-medium">
-              <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-              {currentLanguage === 'ko' ? '즉시입주' : currentLanguage === 'vi' ? 'Vào ngay' : 'Available Now'}
-            </div>
-          )}
-          
-          {/* 와이파이 뱃지 */}
-          {hasWifi && (
-            <div className="flex items-center gap-1 bg-blue-100 text-blue-800 px-2 py-1 rounded-md text-xs font-medium">
-              <Wifi className="w-3 h-3" />
-              {currentLanguage === 'ko' ? '와이파이' : currentLanguage === 'vi' ? 'Wifi' : 'WiFi'}
-            </div>
-          )}
-          
-          {/* 풀가구 뱃지 */}
-          {hasFullFurniture && (
-            <div className="flex items-center gap-1 bg-purple-100 text-purple-800 px-2 py-1 rounded-md text-xs font-medium">
-              <Sofa className="w-3 h-3" />
-              {currentLanguage === 'ko' ? '풀가구' : currentLanguage === 'vi' ? 'Nội thất đầy đủ' : 'Full Furniture'}
-            </div>
-          )}
-          
-          {/* 풀가전 뱃지 */}
-          {hasFullElectronics && (
-            <div className="flex items-center gap-1 bg-orange-100 text-orange-800 px-2 py-1 rounded-md text-xs font-medium">
-              <Tv className="w-3 h-3" />
-              {currentLanguage === 'ko' ? '풀가전' : currentLanguage === 'vi' ? 'Điện tử đầy đủ' : 'Full Electronics'}
-            </div>
-          )}
-          
-          {/* 풀옵션 주방 뱃지 */}
-          {hasFullOptionKitchen && (
-            <div className="flex items-center gap-1 bg-pink-100 text-pink-800 px-2 py-1 rounded-md text-xs font-medium">
-              <UtensilsCrossed className="w-3 h-3" />
-              {currentLanguage === 'ko' ? '풀옵션 주방' : currentLanguage === 'vi' ? 'Bếp đầy đủ' : 'Full Kitchen'}
-            </div>
-          )}
-        </div>
-
+      <div className="p-4 flex flex-col gap-3 flex-1" style={{ backgroundColor: colors.surface }}>
+        {/* 제목 */}
         <div>
-          <h3 className="font-bold text-gray-900 text-lg line-clamp-1">{displayTitle}</h3>
-          <div className="flex items-center gap-1.5 text-gray-500 mt-1">
-            <MapPin className="w-3.5 h-3.5" />
-            <span className="text-xs truncate">{property.address}</span>
-          </div>
+          <h3 className="font-bold text-gray-900 text-base line-clamp-2 leading-snug">{displayTitle}</h3>
         </div>
 
-        <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed h-10">
-          {displayDescription}
-        </p>
-
-        {/* 하단 아이콘 정보 */}
-        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1 text-gray-500">
-              <Bed className="w-4 h-4" />
-              <span className="text-xs font-medium">{property.bedrooms || 0}</span>
-            </div>
-            <div className="flex items-center gap-1 text-gray-500">
-              <Bath className="w-4 h-4" />
-              <span className="text-xs font-medium">{property.bathrooms || 0}</span>
-            </div>
-            <div className="flex items-center gap-1 text-gray-500">
-              <Square className="w-4 h-4" />
-              <span className="text-xs font-medium">{property.area}m²</span>
-            </div>
+        {/* 마커 뱃지 섹션 - 진한 색상 */}
+        {(isAvailable || hasWifi || hasFullFurniture || hasFullElectronics || hasFullOptionKitchen) && (
+          <div className="flex flex-wrap gap-2">
+            {/* 즉시입주 마커 */}
+            {isAvailable && (
+              <div 
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-white text-xs font-semibold"
+                style={{ backgroundColor: colors.success }}
+              >
+                <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></div>
+                {currentLanguage === 'ko' ? '즉시입주' : currentLanguage === 'vi' ? 'Vào ngay' : 'Now'}
+              </div>
+            )}
+            
+            {/* 와이파이 마커 */}
+            {hasWifi && (
+              <div 
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-white text-xs font-semibold"
+                style={{ backgroundColor: colors.secondary }}
+              >
+                <Wifi className="w-3.5 h-3.5" />
+                WiFi
+              </div>
+            )}
+            
+            {/* 풀가구 마커 */}
+            {hasFullFurniture && (
+              <div 
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-white text-xs font-semibold"
+                style={{ backgroundColor: colors.accent }}
+              >
+                <Sofa className="w-3.5 h-3.5" />
+                {currentLanguage === 'ko' ? '풀가구' : 'Furniture'}
+              </div>
+            )}
+            
+            {/* 풀가전 마커 */}
+            {hasFullElectronics && (
+              <div 
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-white text-xs font-semibold"
+                style={{ backgroundColor: colors.primary }}
+              >
+                <Tv className="w-3.5 h-3.5" />
+                {currentLanguage === 'ko' ? '풀가전' : 'Electronics'}
+              </div>
+            )}
+            
+            {/* 풀옵션 주방 마커 */}
+            {hasFullOptionKitchen && (
+              <div 
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-white text-xs font-semibold"
+                style={{ backgroundColor: colors.primaryLight }}
+              >
+                <UtensilsCrossed className="w-3.5 h-3.5" />
+                {currentLanguage === 'ko' ? '주방' : 'Kitchen'}
+              </div>
+            )}
           </div>
-          <div className="flex items-center gap-1 text-gray-500">
-            <Users className="w-4 h-4" />
-            <span className="text-xs font-medium">{(property.maxAdults || 0) + (property.maxChildren || 0)}</span>
+        )}
+
+        {/* 하단 정보 - 방/욕실/인원 */}
+        <div className="flex items-center justify-between pt-3 border-t border-gray-100 mt-auto">
+          <div className="flex items-center gap-4">
+            {/* 방 */}
+            <div className="flex flex-col items-center gap-1">
+              <div className="flex items-center gap-1" style={{ color: colors.primary }}>
+                <Bed className="w-4 h-4" />
+                <span className="text-sm font-bold">{property.bedrooms || 0}</span>
+              </div>
+              <span className="text-[10px] text-gray-500">{currentLanguage === 'ko' ? '침실' : 'Bed'}</span>
+            </div>
+            
+            {/* 욕실 */}
+            <div className="flex flex-col items-center gap-1">
+              <div className="flex items-center gap-1" style={{ color: colors.secondary }}>
+                <Bath className="w-4 h-4" />
+                <span className="text-sm font-bold">{property.bathrooms || 0}</span>
+              </div>
+              <span className="text-[10px] text-gray-500">{currentLanguage === 'ko' ? '욕실' : 'Bath'}</span>
+            </div>
+
+            {/* 인원 */}
+            <div className="flex flex-col items-center gap-1">
+              <div className="flex items-center gap-1" style={{ color: colors.accent }}>
+                <Users className="w-4 h-4" />
+                <span className="text-sm font-bold">{occupancy}</span>
+              </div>
+              <span className="text-[10px] text-gray-500">{currentLanguage === 'ko' ? '인원' : 'Pax'}</span>
+            </div>
           </div>
         </div>
       </div>
