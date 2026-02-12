@@ -216,9 +216,10 @@ function SearchContent() {
   const rentTrackRef = useRef<HTMLDivElement>(null);
 
   // 필터 적용 상태 (검색 버튼을 눌러야 필터 적용)
-  // URL 파라미터가 있으면 초기에 필터 적용 상태로 설정
   const [filtersApplied, setFiltersApplied] = useState(false);
-  
+  // 검색하기 클릭 시마다 증가 → useEffect에서 최신 고급필터(와이파이 등)로 재적용
+  const [filterVersion, setFilterVersion] = useState(0);
+
   // 자동 필터링 적용 여부 (URL 파라미터가 있으면 true)
   const [shouldAutoApplyFilters, setShouldAutoApplyFilters] = useState(
     !!(query || cityIdParam || districtIdParam)
@@ -657,10 +658,9 @@ function SearchContent() {
     if (!filtersApplied) {
       setFilteredProperties(properties);
     } else {
-      // filtersApplied가 true이면 필터링 적용
       applyFilters();
     }
-  }, [properties, filtersApplied]);
+  }, [properties, filtersApplied, filterVersion]);
 
   // properties가 로드되면 shouldAutoApplyFilters가 true이면 자동으로 필터링 적용
   useEffect(() => {
@@ -1576,7 +1576,8 @@ function SearchContent() {
                 setShowCalendar(false);
                 setShowRoomDropdown(false);
                 await geocodeSearchQuery();
-                applyFilters();
+                setFiltersApplied(true);
+                setFilterVersion((v) => v + 1);
               }}
               className="flex-1 py-3 px-4 text-white rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2"
               style={{ backgroundColor: BRAND.primary }}
