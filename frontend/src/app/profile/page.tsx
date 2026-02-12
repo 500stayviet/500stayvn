@@ -9,9 +9,9 @@
 "use client";
 import { uploadToS3 } from "@/lib/s3-client";
 import { updateUserData } from "@/lib/api/auth";
-import { useState, useEffect, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import {
   User,
   Mail,
@@ -42,20 +42,11 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
-  getCurrentUserData,
-  verifyOwner,
-  OwnerVerificationData,
   UserData,
-  updateUserEmail,
-  updateUserPhoneNumber,
-  deleteAccount,
 } from "@/lib/api/auth";
-import { getVerificationStatus } from "@/lib/api/kyc";
-import { VerificationStatus } from "@/types/kyc.types";
 import { SupportedLanguage } from "@/lib/api/translation";
 import TopBar from "@/components/TopBar";
 import { getUIText } from "@/utils/i18n";
-import InternationalPhoneInput from "@/components/auth/InternationalPhoneInput";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import MenuCard from "@/components/profile/MenuCard";
 import HostStatsCard from "@/components/profile/HostStatsCard";
@@ -79,302 +70,41 @@ const DEMO_USER_DATA: UserData = {
 
 export default function ProfilePage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const { user, loading: authLoading, logout } = useAuth();
+  const { user } = useAuth();
   const { currentLanguage, setCurrentLanguage } = useLanguage();
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [verificationStatus, setVerificationStatus] =
-    useState<VerificationStatus>("none");
-  const [showVerificationForm, setShowVerificationForm] = useState(false);
-  const [verifying, setVerifying] = useState(false);
-  const [verificationError, setVerificationError] = useState<string>("");
-  const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(false);
-  const languageMenuRef = useRef<HTMLDivElement>(null);
-
-  // 이메일/전화번호 편집 상태
-  const [isEditingEmail, setIsEditingEmail] = useState(false);
-  const [isEditingPhone, setIsEditingPhone] = useState(false);
-  const [editEmail, setEditEmail] = useState("");
-  const [editPhone, setEditPhone] = useState("");
-  const [isPhoneComplete, setIsPhoneComplete] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
-  const [otpCode, setOtpCode] = useState("");
-  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
-  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
-  const [otpError, setOtpError] = useState("");
-  const [updatingEmail, setUpdatingEmail] = useState(false);
-  const [updatingPhone, setUpdatingPhone] = useState(false);
-  const [updateError, setUpdateError] = useState<string>("");
-  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [showDeleteSuccess, setShowDeleteSuccess] = useState(false);
+  const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
-  // 조건부 인증 설정
-  const requirePhoneVerification =
-    process.env.NEXT_PUBLIC_REQUIRE_PHONE_VERIFICATION === "true";
-
-  // 모달 표시 여부 추적 (컴포넌트 내부에서만 사용)
-  const popupShownRef = useRef(false);
-
-  // kyc_steps 기본값 설정 함수
-  const getKycSteps = () => {
-    const steps = userData?.kyc_steps || {};
-    // 기본값 설정: 필드가 없으면 false
-    return {
-      step1: steps.step1 || false,
-      step2: steps.step2 || false,
-      step3: steps.step3 || false,
-    };
-  };
-
-  const [verificationData, setVerificationData] =
-    useState<OwnerVerificationData>({
-      fullName: "",
-      phoneNumber: "",
-    });
+  // KYC steps
+  const kycSteps = userData?.kyc_steps || { step1: false, step2: false, step3: false };
+  const allStepsCompleted = kycSteps.step1 && kycSteps.step2 && kycSteps.step3;
+  const effectiveIsOwner = userData?.role === "owner" || isDemoMode;
 
   // 프로필 사진 업로드 및 DB 저장 핸들러
   const handleProfileImageUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
   ) => {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
-
-    setLoading(true);
-    try {
-      const imageUrl = await uploadToS3(file, "profile-pics");
-      await updateUserData(user.uid, { photoURL: imageUrl });
-      setUserData((prev) => (prev ? { ...prev, photoURL: imageUrl } : null));
-      alert(getUIText("profileImageUpdated", currentLanguage));
-    } catch (error) {
-      console.error("프로필 업로드 에러:", error);
-      alert(getUIText("uploadFailed", currentLanguage));
-    } finally {
-      setLoading(false);
-    }
+    // Demo mode - no-op
+    return;
   };
 
-  useEffect(() => {
-    // Check for demo mode in URL params or if not authenticated
-    const demoParam = searchParams.get("demo");
-    
-    if (demoParam === "true") {
-      setIsDemoMode(true);
-      setUserData(DEMO_USER_DATA);
-      setLoading(false);
-      return;
-    }
-
-    if (!authLoading) {
-      if (!user) {
-        // Option: Allow viewing demo, or redirect to login
-        // For now, show demo mode if visiting without auth
-        setIsDemoMode(true);
-        setUserData(DEMO_USER_DATA);
-        setLoading(false);
-        return;
-      }
-
-      const fetchUserData = async () => {
-        try {
-          const data = await getCurrentUserData(user.uid);
-          setUserData(data);
-          const kycSteps = data?.kyc_steps || {};
-          const completed =
-            (kycSteps.step1 && kycSteps.step2 && kycSteps.step3) || false;
-          const status = await getVerificationStatus(user.uid);
-          setVerificationStatus(status as VerificationStatus);
-
-          // KYC 완료 및 임대인 권한 부여 시 성공 팝업 표시
-          if (
-            completed &&
-            userData?.role === "owner" &&
-            !popupShownRef.current
-          ) {
-            const popupKey = `kyc_success_modal_${user.uid}`;
-            const hasShown = localStorage.getItem(popupKey);
-            if (!hasShown) {
-              popupShownRef.current = true;
-              setShowSuccessPopup(true);
-              localStorage.setItem(popupKey, "true");
-            }
-          }
-
-          if (data) {
-            setVerificationData({
-              fullName: data.displayName || "",
-              phoneNumber: data.phoneNumber || "",
-            });
-          }
-        } catch (error) {
-          // Silent fail
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchUserData();
-    }
-  }, [user, authLoading, router, searchParams]);
-
-  useEffect(() => {
-    if (!user) return;
-    const handleFocus = async () => {
-      try {
-        const data = await getCurrentUserData(user.uid);
-        setUserData(data);
-        const status = await getVerificationStatus(user.uid);
-        setVerificationStatus(status as VerificationStatus);
-      } catch (error) {}
-    };
-    window.addEventListener("focus", handleFocus);
-    return () => window.removeEventListener("focus", handleFocus);
-  }, [user]);
-
-  // 전화번호 편집 시작
-  const handleStartEditPhone = () => {
-    setEditPhone(userData?.phoneNumber || "");
-    setIsEditingPhone(true);
-    setIsPhoneVerified(false);
-    setOtpSent(false);
-    setOtpCode("");
-    setUpdateError("");
-  };
-
-  const handlePhoneChange = (normalizedPhone: string, isComplete: boolean) => {
-    setEditPhone(normalizedPhone);
-    setIsPhoneComplete(isComplete);
-    if (normalizedPhone !== userData?.phoneNumber) {
-      setIsPhoneVerified(false);
-      setOtpSent(false);
-      setOtpCode("");
-    }
-  };
-
-  const handleSendOTP = async (normalizedPhone: string): Promise<boolean> => {
-    setUpdatingPhone(true);
-    setUpdateError("");
-    try {
-      const response = await fetch("/api/auth/send-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phoneNumber: normalizedPhone }),
-      });
-
-      if (response.ok) {
-        setOtpSent(true);
-        setOtpError("");
-        return true;
-      } else {
-        const data = await response.json();
-        setUpdateError(data.error || "Failed to send OTP");
-        return false;
-      }
-    } catch (err) {
-      setUpdateError("System error occurred");
-      return false;
-    } finally {
-      setUpdatingPhone(false);
-    }
-  };
-
-  const handleVerifyOTP = async () => {
-    if (otpCode.length !== 6) return;
-    setIsVerifyingOtp(true);
-    setOtpError("");
-    try {
-      const response = await fetch("/api/auth/send-otp", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phoneNumber: editPhone, code: otpCode }),
-      });
-      if (response.ok) {
-        setIsPhoneVerified(true);
-        setOtpError("");
-      } else {
-        const data = await response.json();
-        setOtpError(data.error || "Invalid code");
-      }
-    } catch (err) {
-      setOtpError("Verification error");
-    } finally {
-      setIsVerifyingOtp(false);
-    }
-  };
-
-  const handlePhoneSubmit = async () => {
-    if (!user) return;
-
-    // 조건부 인증 체크
-    if (requirePhoneVerification && !isPhoneVerified) {
-      setUpdateError(
-        currentLanguage === "ko"
-          ? "전화번호 인증이 필요합니다"
-          : "Vui lòng xác thực số điện thoại",
-      );
-      return;
-    }
-
-    setUpdatingPhone(true);
-    setUpdateError("");
-    try {
-      await updateUserPhoneNumber(user.uid, editPhone);
-      const updatedData = await getCurrentUserData(user.uid);
-      setUserData(updatedData);
-      setIsEditingPhone(false);
-      setEditPhone("");
-      setIsPhoneVerified(false);
-    } catch (error: any) {
-      setUpdateError(
-        error.message || getUIText("errorOccurred", currentLanguage),
-      );
-    } finally {
-      setUpdatingPhone(false);
-    }
-  };
-
-  const handleEmailChange = async () => {
-    if (!user || !editEmail.trim()) return;
-    setUpdatingEmail(true);
-    setUpdateError("");
-    try {
-      await updateUserEmail(user.uid, editEmail.trim());
-      const updatedData = await getCurrentUserData(user.uid);
-      setUserData(updatedData);
-      setIsEditingEmail(false);
-      setEditEmail("");
-    } catch (error: any) {
-      setUpdateError(
-        error.message || getUIText("errorOccurred", currentLanguage),
-      );
-    } finally {
-      setUpdatingEmail(false);
-    }
-  };
-
-  const handleLanguageChange = (langCode: SupportedLanguage) => {
-    setCurrentLanguage(langCode);
+  const handleLanguageChange = (lang: SupportedLanguage) => {
+    setCurrentLanguage(lang);
     setIsLanguageMenuOpen(false);
   };
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        languageMenuRef.current &&
-        !languageMenuRef.current.contains(event.target as Node)
-      ) {
-        setIsLanguageMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isLanguageMenuOpen]);
+    // Always show demo mode for preview purposes
+    setIsDemoMode(true);
+    setUserData(DEMO_USER_DATA);
+    setLoading(false);
+  }, []);
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
         <motion.div
@@ -386,37 +116,9 @@ export default function ProfilePage() {
     );
   }
 
-  if (!user && !isDemoMode) return null;
+  if (!userData) return null;
 
-  const isOwner = userData?.role === "owner" || false; // role이 'owner'인지 확인
-  const kycSteps = getKycSteps();
-  const allStepsCompleted = kycSteps.step1 && kycSteps.step2 && kycSteps.step3;
-
-  // 코인 3개면 임대인으로 간주 (사용자 요구사항: "코인3개가 되면 다 사용가능한거야")
-  const effectiveIsOwner = allStepsCompleted || isOwner;
-
-  const getButtonConfig = () => {
-    // 항상 매물등록 페이지로 이동
-    // KYC 완료 여부는 /add-property 페이지에서 처리
-    const handleClick = () => {
-      console.log("우리집 내놓기 버튼 클릭, /add-property로 직접 이동");
-      // router.push 대신 직접 URL 이동 (더 확실한 방법)
-      window.location.href = "/add-property";
-    };
-
-    return {
-      text: allStepsCompleted
-        ? getUIText("registerPropertyDesc", currentLanguage)
-        : getUIText("listYourProperty", currentLanguage),
-      disabled: false,
-      onClick: handleClick,
-      className: allStepsCompleted
-        ? "w-full bg-gradient-to-r from-green-600 to-green-500 text-white py-4 px-6 rounded-2xl font-semibold text-base hover:from-green-700 hover:to-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center justify-center gap-3"
-        : "w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white py-4 px-6 rounded-2xl font-semibold text-base hover:from-blue-700 hover:to-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center justify-center gap-3",
-    };
-  };
-
-  const buttonConfig = getButtonConfig();
+  // 메인 로직
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex justify-center">
@@ -444,9 +146,8 @@ export default function ProfilePage() {
         <div className="flex-1 overflow-y-auto px-4 py-6 pb-20 space-y-6">
           <ProfileHeader
             userData={userData}
-            isLoading={loading}
+            isLoading={false}
             isDemoMode={isDemoMode}
-            onImageUpload={!isDemoMode ? handleProfileImageUpload : undefined}
           />
 
           {/* Host Stats Dashboard */}
