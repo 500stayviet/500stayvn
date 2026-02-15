@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import {
   Home,
   Calendar,
-  DollarSign,
   Building2,
   ChevronRight,
   User,
@@ -13,22 +12,17 @@ import {
   CreditCard,
   Tag,
   LogOut,
-  MapPin,
-  Phone,
-  CheckCircle2,
-  FileCheck,
-  Users,
   Lock,
-  TrendingUp,
   Wallet,
   Star,
-  Key,
+  Languages,
+  Coins,
+  CheckCircle2,
 } from "lucide-react";
 
 const DEMO_USER = {
   name: "김민준",
-  phone: "+84 (123) 456-789",
-  address: "호치민시 1군",
+  email: "kimminjun@example.com",
   verified: true,
 };
 
@@ -41,7 +35,7 @@ export default function ProfileDemoPage() {
 
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="w-12 h-12 border-4 border-gray-200 border-t-blue-500 rounded-full animate-spin" />
       </div>
     );
@@ -60,14 +54,13 @@ export default function ProfileDemoPage() {
               {DEMO_USER.name}
             </p>
             <p className="text-xs text-gray-500 mt-0.5">
-              이메일 주소
+              {DEMO_USER.email}
             </p>
           </button>
         </div>
 
         {/* 메인 콘텐츠 */}
         <div className="px-4 py-6 space-y-6">
-
           {/* Host Dashboard 섹션 */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -81,6 +74,18 @@ export default function ProfileDemoPage() {
               </div>
               <h3 className="text-lg font-bold text-gray-900">호스트 대시보드</h3>
             </div>
+
+            {/* 코인 인증 배지 */}
+            {DEMO_USER.verified && (
+              <div className="flex items-center gap-2 px-4 py-2 bg-yellow-50 border border-yellow-200 rounded-xl">
+                <Coins className="w-5 h-5 text-yellow-600" />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-gray-900">코인 3개</p>
+                  <p className="text-xs text-gray-600">인증됨</p>
+                </div>
+                <CheckCircle2 className="w-5 h-5 text-green-600" />
+              </div>
+            )}
 
             <div className="grid grid-cols-1 gap-3 space-y-3">
               {/* 우리집 내놓기 */}
@@ -288,6 +293,25 @@ export default function ProfileDemoPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-3 space-y-3">
+              {/* 언어 변경 */}
+              <motion.div
+                whileHover={{ y: -2 }}
+                className="bg-gradient-to-br from-cyan-50 to-cyan-100 rounded-2xl p-4 border border-cyan-200 hover:border-cyan-400 transition-all cursor-pointer hover:shadow-lg"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-start gap-3">
+                    <div className="p-3 bg-white rounded-xl">
+                      <Languages className="w-5 h-5 text-cyan-600" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-gray-900">언어 변경</h4>
+                      <p className="text-sm text-gray-600 mt-1">KO | 한국어</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-gray-400" />
+                </div>
+              </motion.div>
+
               {/* 개인정보 변경 */}
               <motion.div
                 whileHover={{ y: -2 }}
