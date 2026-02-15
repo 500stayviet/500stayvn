@@ -8,7 +8,7 @@ import {
   DollarSign,
   Building2,
   AlertCircle,
-  ChevronRight,
+  Zap,
   User,
   Heart,
   CreditCard,
@@ -23,7 +23,6 @@ interface StatCardProps {
   value: string;
   color: string;
   bgColor: string;
-  index?: number;
 }
 
 interface MenuCardProps {
@@ -33,22 +32,13 @@ interface MenuCardProps {
   color: string;
   bgColor: string;
   disabled?: boolean;
-  index?: number;
 }
 
-function StatCard({
-  icon,
-  label,
-  value,
-  color,
-  bgColor,
-  index = 0,
-}: StatCardProps) {
+function StatCard({ icon: Icon, label, value, color, bgColor }: StatCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.1 }}
       className={`${bgColor} rounded-xl p-4 border border-opacity-20`}
     >
       <div className="flex items-start justify-between">
@@ -58,26 +48,24 @@ function StatCard({
           </p>
           <p className={`text-2xl font-bold mt-2 ${color}`}>{value}</p>
         </div>
-        <div className={`p-2 rounded-lg ${bgColor}`}>{icon}</div>
+        <div className={`p-2 rounded-lg ${bgColor}`}>{Icon}</div>
       </div>
     </motion.div>
   );
 }
 
 function MenuCard({
-  icon,
+  icon: Icon,
   title,
   description,
   color,
   bgColor,
   disabled = false,
-  index = 0,
 }: MenuCardProps) {
   return (
     <motion.button
       initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: index * 0.05 }}
       disabled={disabled}
       className="w-full"
     >
@@ -87,36 +75,24 @@ function MenuCard({
         }`}
       >
         <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-lg ${bgColor}`}>{icon}</div>
+          <div className={`p-2 rounded-lg ${bgColor}`}>{Icon}</div>
           <div className="text-left">
             <p className="text-sm font-semibold text-gray-900">{title}</p>
             <p className="text-xs text-gray-500">{description}</p>
           </div>
         </div>
-        <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
+        <Zap className="w-5 h-5 text-gray-400 flex-shrink-0" />
       </div>
     </motion.button>
   );
 }
 
 export default function ProfilePage() {
-  const [mounted, setMounted] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
+    setLoading(false);
   }, []);
-
-  if (!mounted) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-          className="w-12 h-12 border-4 border-gray-200 border-t-blue-500 rounded-full"
-        />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex justify-center">
@@ -136,7 +112,7 @@ export default function ProfilePage() {
         {/* Header */}
         <div className="bg-white border-b border-gray-100 px-4 py-4 sticky top-0 z-10">
           <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold text-gray-900">My Profile</h1>
+            <h1 className="text-xl font-bold text-gray-900">Profile</h1>
             <button className="p-2 hover:bg-gray-100 rounded-lg transition">
               <Languages className="w-5 h-5 text-gray-600" />
             </button>
@@ -150,7 +126,7 @@ export default function ProfilePage() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100"
+            className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 mb-6 border border-blue-100"
           >
             <div className="flex items-center gap-4">
               <div className="relative">
@@ -185,7 +161,6 @@ export default function ProfilePage() {
               value="8"
               color="text-emerald-600"
               bgColor="bg-emerald-50"
-              index={0}
             />
             <StatCard
               icon={<Calendar className="w-5 h-5" />}
@@ -193,7 +168,6 @@ export default function ProfilePage() {
               value="24"
               color="text-blue-600"
               bgColor="bg-blue-50"
-              index={1}
             />
             <StatCard
               icon={<DollarSign className="w-5 h-5" />}
@@ -201,7 +175,6 @@ export default function ProfilePage() {
               value="$2.4k"
               color="text-purple-600"
               bgColor="bg-purple-50"
-              index={2}
             />
           </motion.div>
 
@@ -227,7 +200,6 @@ export default function ProfilePage() {
                 description="새로운 숙소를 등록하세요"
                 color="text-blue-600"
                 bgColor="bg-blue-50"
-                index={0}
               />
               <MenuCard
                 icon={<Building2 className="w-5 h-5 text-purple-600" />}
@@ -235,7 +207,6 @@ export default function ProfilePage() {
                 description="등록된 숙소를 관리하세요"
                 color="text-purple-600"
                 bgColor="bg-purple-50"
-                index={1}
               />
               <MenuCard
                 icon={<Calendar className="w-5 h-5 text-orange-600" />}
@@ -243,7 +214,6 @@ export default function ProfilePage() {
                 description="예약 현황을 확인하세요"
                 color="text-orange-600"
                 bgColor="bg-orange-50"
-                index={2}
               />
               <MenuCard
                 icon={<DollarSign className="w-5 h-5 text-purple-600" />}
@@ -251,7 +221,6 @@ export default function ProfilePage() {
                 description="정산 계좌를 관리하세요"
                 color="text-purple-600"
                 bgColor="bg-purple-50"
-                index={3}
               />
             </div>
           </motion.div>
@@ -275,7 +244,6 @@ export default function ProfilePage() {
                 description="예약한 숙소를 확인하세요"
                 color="text-teal-600"
                 bgColor="bg-teal-50"
-                index={0}
               />
               <MenuCard
                 icon={<Heart className="w-5 h-5 text-pink-600" />}
@@ -283,7 +251,6 @@ export default function ProfilePage() {
                 description="관심 숙소를 저장하세요"
                 color="text-pink-600"
                 bgColor="bg-pink-50"
-                index={1}
               />
               <MenuCard
                 icon={<CreditCard className="w-5 h-5 text-blue-600" />}
@@ -292,7 +259,6 @@ export default function ProfilePage() {
                 color="text-blue-600"
                 bgColor="bg-blue-50"
                 disabled={true}
-                index={2}
               />
               <MenuCard
                 icon={<Tag className="w-5 h-5 text-yellow-600" />}
@@ -301,7 +267,6 @@ export default function ProfilePage() {
                 color="text-yellow-600"
                 bgColor="bg-yellow-50"
                 disabled={true}
-                index={3}
               />
             </div>
           </motion.div>
@@ -325,7 +290,6 @@ export default function ProfilePage() {
                 description="이메일, 전화, 언어 설정"
                 color="text-blue-600"
                 bgColor="bg-blue-50"
-                index={0}
               />
               <MenuCard
                 icon={<LogOut className="w-5 h-5 text-red-600" />}
@@ -333,7 +297,6 @@ export default function ProfilePage() {
                 description="계정에서 로그아웃합니다"
                 color="text-red-600"
                 bgColor="bg-red-50"
-                index={1}
               />
             </div>
           </motion.div>
