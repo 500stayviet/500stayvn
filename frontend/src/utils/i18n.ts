@@ -261,7 +261,8 @@ export type UITextKey =
   | 'logoutDesc'
   | 'languageChange'
   | 'close'
-  | 'selectLanguageDesc';
+  | 'selectLanguageDesc'
+  | 'settings';
 
 /**
  * 언어별 UI 텍스트 사전
@@ -517,6 +518,7 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     languageChange: '언어 변경',
     close: '닫기',
     selectLanguageDesc: '5개 국어 중에서 선택하세요',
+    settings: '설정',
   },
   vi: {
     login: 'Đăng nhập',
@@ -768,6 +770,7 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     languageChange: 'Thay đổi ngôn ngữ',
     close: 'Đóng',
     selectLanguageDesc: 'Chọn từ 5 ngôn ngữ',
+    settings: 'Cài đặt',
   },
   en: {
     login: 'Login',
@@ -1019,6 +1022,7 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     languageChange: 'Language Change',
     close: 'Close',
     selectLanguageDesc: 'Choose from 5 languages',
+    settings: 'Settings',
   },
   ja: {
     login: 'ログイン',
@@ -1208,7 +1212,7 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     revenueHistoryDesc: '売上 & 収益の確認',
     withdrawalRequest: '出金リクエスト',
     withdrawalRequestDesc: '収益の出金リクエスト',
-    bankAccountSetup: '銀行口座設定',
+    bankAccountSetup: '銀行口座���定',
     bankAccountSetupDesc: '出金口座の登録',
     reviewManagement: 'レビュー管理',
     reviewManagementDesc: '受け取ったレビューの確認・管理',
@@ -1266,10 +1270,11 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     propertyDescription: '物件説明',
     propertyDescriptionPlaceholder: '物件の詳細な説明を入力してください。',
     confirmLogout: 'ログアウト確認',
-    logoutDesc: '本当にログアウトしますか？',
+    logoutDesc: 'ログアウトしてもよろしいですか？',
     languageChange: '言語変更',
     close: '閉じる',
     selectLanguageDesc: '5つの言語から選択してください',
+    settings: '設定',
   },
   zh: {
     login: '登录',
@@ -1397,7 +1402,7 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     kycRequired: '需要KYC认证',
     manageMyProperties: '管理我的房产',
     manageMyPropertiesDesc: '管理已发布的房源',
-    bookingManagement: '预订管理',
+    bookingManagement: '预订管���',
     bookingManagementDesc: '确认/批准预订',
     hostFeaturesNotice: '完成KYC认证后即可使用所有房东功能',
     guestMenu: '租客菜单',
@@ -1521,6 +1526,7 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     languageChange: '语言更改',
     close: '关闭',
     selectLanguageDesc: '从5种语言中选择',
+    settings: '设置',
   },
 };
 
