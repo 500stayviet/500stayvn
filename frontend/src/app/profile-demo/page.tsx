@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import {
   Home,
@@ -22,16 +22,21 @@ import {
   FileCheck,
   TrendingUp,
   Users,
+  Edit2,
+  X,
+  MapPin,
 } from "lucide-react";
 
 const DEMO_USER = {
-  name: "Demo Host",
+  name: "김민준",
   email: "demo@500stayviet.com",
   phone: "+84 (123) 456-789",
+  address: "호치민시 1군",
   verified: true,
+  // 임대인 기준 통계
   properties: 8,
-  bookings: 24,
-  revenue: "$2,450",
+  bookings: 24, // 임대인의 예약 수
+  revenue: "$2,450", // 임대인의 수익
 };
 
 const MENU_ITEMS = [
@@ -99,8 +104,8 @@ const MENU_ITEMS = [
         bgColor: "bg-pink-50",
       },
       {
-        title: "결제 수단",
-        desc: "결제 수단을 관리하세요",
+        title: "결제 수단 관리",
+        desc: "결제 수단을 설정하세요",
         icon: CreditCard,
         color: "text-blue-600",
         bgColor: "bg-blue-50",
@@ -115,14 +120,14 @@ const MENU_ITEMS = [
     ],
   },
   {
-    section: "Settings",
+    section: "설정",
     icon: Lock,
     color: "text-indigo-600",
     bgColor: "bg-indigo-50",
     items: [
       {
-        title: "프로필 편집",
-        desc: "이메일, 휴대폰, 언어 설정",
+        title: "개인정보 변경",
+        desc: "프로필 정보를 수정하세요",
         icon: Mail,
         color: "text-blue-600",
         bgColor: "bg-blue-50",
@@ -139,152 +144,229 @@ const MENU_ITEMS = [
 ];
 
 export default function ProfileDemoPage() {
-  const [mounted, setMounted] = useState(false);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editedUser, setEditedUser] = useState(DEMO_USER);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const handleEditSave = () => {
+    setIsEditingProfile(false);
+  };
 
-  if (!mounted) return null;
+  const handleEditCancel = () => {
+    setEditedUser(DEMO_USER);
+    setIsEditingProfile(false);
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex justify-center">
       <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col">
-        {/* Demo Banner */}
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-center"
-        >
-          <p className="text-xs text-amber-700 font-semibold">
-            데모 모드 - 디자인 미리보기
-          </p>
-        </motion.div>
-
-        {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-500 text-white px-6 py-8">
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-2xl font-bold">마이페이지</h1>
-            <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
-              <User className="w-8 h-8 text-white" />
-            </div>
+        {/* TopBar */}
+        <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-10">
+          <h1 className="text-lg font-bold text-gray-900">마이페이지</h1>
+          <div className="flex items-center gap-2">
+            <span className="text-xs px-2.5 py-1 bg-green-100 text-green-700 rounded-full font-semibold">
+              인증됨
+            </span>
           </div>
-          <h2 className="text-xl font-bold mb-4">{DEMO_USER.name}</h2>
-          <div className="space-y-2 text-sm">
-            <div className="flex items-center gap-2">
-              <Mail className="w-4 h-4" />
-              <span>{DEMO_USER.email}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Phone className="w-4 h-4" />
-              <span>{DEMO_USER.phone}</span>
-            </div>
-          </div>
-          {DEMO_USER.verified && (
-            <div className="mt-4 flex items-center gap-2 px-3 py-1.5 bg-green-500/20 rounded-full w-fit">
-              <CheckCircle2 className="w-4 h-4" />
-              <span className="text-xs font-semibold">Verified Host</span>
-            </div>
-          )}
         </div>
 
-        {/* Stats Cards */}
-        <div className="px-6 py-6">
+        <div className="flex-1 overflow-y-auto px-4 py-6 pb-20 space-y-6">
+          {/* 개인정보 섹션 - 간단하게 개선 */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ staggerChildren: 0.1 }}
-            className="grid grid-cols-3 gap-3 mb-6"
+            className="space-y-4"
           >
-            {[
-              {
-                label: "Properties",
-                value: DEMO_USER.properties,
-                icon: Home,
-                color: "text-emerald-600",
-                bgColor: "bg-emerald-50",
-              },
-              {
-                label: "Bookings",
-                value: DEMO_USER.bookings,
-                icon: Calendar,
-                color: "text-blue-600",
-                bgColor: "bg-blue-50",
-              },
-              {
-                label: "Revenue",
-                value: DEMO_USER.revenue,
-                icon: DollarSign,
-                color: "text-purple-600",
-                bgColor: "bg-purple-50",
-              },
-            ].map((stat, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: i * 0.1 }}
-                className={`${stat.bgColor} rounded-lg p-3 text-center`}
-              >
-                <stat.icon className={`${stat.color} w-6 h-6 mx-auto mb-2`} />
-                <div className="text-lg font-bold text-gray-900">
-                  {stat.value}
-                </div>
-                <div className="text-xs text-gray-600">{stat.label}</div>
-              </motion.div>
-            ))}
-          </motion.div>
-
-          {/* Menu Sections */}
-          <div className="space-y-6 pb-20">
-            {MENU_ITEMS.map((section, sectionIndex) => (
-              <motion.div
-                key={sectionIndex}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.3 + sectionIndex * 0.1 }}
-              >
-                <div className="flex items-center gap-2 mb-4">
-                  <div className={`${section.bgColor} p-2 rounded-lg`}>
-                    <section.icon
-                      className={`${section.color} w-5 h-5`}
-                    />
-                  </div>
-                  <h3 className="text-lg font-bold text-gray-900">
-                    {section.section}
-                  </h3>
-                </div>
-                <div className="space-y-2">
-                  {section.items.map((item, itemIndex) => (
-                    <motion.div
-                      key={itemIndex}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{
-                        delay: 0.4 + sectionIndex * 0.1 + itemIndex * 0.05,
-                      }}
-                      className={`${item.bgColor} rounded-lg p-4 flex items-center justify-between hover:shadow-md transition-shadow cursor-pointer`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-white rounded-lg">
-                          <item.icon className={`${item.color} w-5 h-5`} />
+            {!isEditingProfile ? (
+              <>
+                {/* 프로필 정보 카드 */}
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h2 className="text-lg font-bold text-gray-900">
+                        {editedUser.name}
+                      </h2>
+                      <div className="mt-2 space-y-2 text-sm text-gray-600">
+                        <div className="flex items-center gap-2">
+                          <Phone className="w-4 h-4 text-blue-600" />
+                          <span>{editedUser.phone}</span>
                         </div>
-                        <div>
-                          <div className="font-semibold text-gray-900">
-                            {item.title}
-                          </div>
-                          <div className="text-xs text-gray-600">
-                            {item.desc}
-                          </div>
+                        <div className="flex items-center gap-2">
+                          <MapPin className="w-4 h-4 text-blue-600" />
+                          <span>{editedUser.address}</span>
                         </div>
                       </div>
-                      <ChevronRight className="w-5 h-5 text-gray-400" />
-                    </motion.div>
-                  ))}
+                    </div>
+                    <button
+                      onClick={() => setIsEditingProfile(true)}
+                      className="flex items-center gap-1 px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                      수정
+                    </button>
+                  </div>
                 </div>
-              </motion.div>
-            ))}
-          </div>
+
+                {/* 임대인 통계 (임대인 기준) */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-center">
+                    <div className="text-xs text-emerald-600 font-medium mb-1">
+                      임대 매물
+                    </div>
+                    <div className="text-2xl font-bold text-emerald-700">
+                      {editedUser.properties}
+                    </div>
+                  </div>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
+                    <div className="text-xs text-blue-600 font-medium mb-1">
+                      예약 수
+                    </div>
+                    <div className="text-2xl font-bold text-blue-700">
+                      {editedUser.bookings}
+                    </div>
+                  </div>
+                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 text-center">
+                    <div className="text-xs text-purple-600 font-medium mb-1">
+                      수익
+                    </div>
+                    <div className="text-2xl font-bold text-purple-700">
+                      {editedUser.revenue}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded text-center">
+                  ℹ️ 통계는 임대인 기준입니다
+                </div>
+              </>
+            ) : (
+              // 편집 모드
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-gray-900">개인정보 변경</h3>
+                  <button
+                    onClick={handleEditCancel}
+                    className="p-1 hover:bg-gray-200 rounded"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      이름
+                    </label>
+                    <input
+                      type="text"
+                      value={editedUser.name}
+                      onChange={(e) =>
+                        setEditedUser({ ...editedUser, name: e.target.value })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      전화번호
+                    </label>
+                    <input
+                      type="tel"
+                      value={editedUser.phone}
+                      onChange={(e) =>
+                        setEditedUser({ ...editedUser, phone: e.target.value })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      주소
+                    </label>
+                    <input
+                      type="text"
+                      value={editedUser.address}
+                      onChange={(e) =>
+                        setEditedUser({ ...editedUser, address: e.target.value })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    onClick={handleEditCancel}
+                    className="flex-1 py-2 px-4 bg-gray-200 text-gray-700 rounded-lg font-medium text-sm hover:bg-gray-300"
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={handleEditSave}
+                    className="flex-1 py-2 px-4 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700"
+                  >
+                    저장
+                  </button>
+                </div>
+              </div>
+            )}
+          </motion.div>
+
+          {/* 메뉴 섹션들 */}
+          {MENU_ITEMS.map((section, sectionIdx) => (
+            <motion.div
+              key={section.section}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.1 * (sectionIdx + 1) }}
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <div className={`p-2 rounded-lg ${section.bgColor}`}>
+                  <section.icon className={`w-5 h-5 ${section.color}`} />
+                </div>
+                <h2 className="text-base font-bold text-gray-900">
+                  {section.section}
+                </h2>
+              </div>
+
+              <div className="space-y-2">
+                {section.items.map((item, itemIdx) => {
+                  const IconComponent = item.icon;
+                  return (
+                    <motion.button
+                      key={itemIdx}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.05 * itemIdx }}
+                      className="w-full p-3 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors cursor-pointer group"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-start gap-3 text-left">
+                          <div
+                            className={`p-2 rounded-lg ${item.bgColor} flex-shrink-0 mt-1`}
+                          >
+                            <IconComponent
+                              className={`w-4 h-4 ${item.color}`}
+                            />
+                          </div>
+                          <div>
+                            <div className="text-sm font-semibold text-gray-900">
+                              {item.title}
+                            </div>
+                            <div className="text-xs text-gray-600">
+                              {item.desc}
+                            </div>
+                          </div>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600 flex-shrink-0" />
+                      </div>
+                    </motion.button>
+                  );
+                })}
+              </div>
+            </motion.div>
+          ))}
         </div>
       </div>
     </div>
