@@ -25,13 +25,13 @@ const beVietnamPro = Be_Vietnam_Pro({
 
 const notoSansKR = Noto_Sans_KR({
   variable: "--font-noto-kr",
-  subsets: ["korean"],
+  subsets: ["latin"],
   weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
 });
 
 const notoSansJP = Noto_Sans_JP({
   variable: "--font-noto-jp",
-  subsets: ["japanese"],
+  subsets: ["latin"],
   weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
 });
 
