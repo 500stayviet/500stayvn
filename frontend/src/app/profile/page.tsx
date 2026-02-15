@@ -7,8 +7,6 @@
  */
 
 "use client";
-import { uploadToS3 } from "@/lib/s3-client";
-import { updateUserData } from "@/lib/api/auth";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -107,27 +105,6 @@ export default function ProfilePage() {
       fullName: "",
       phoneNumber: "",
     });
-
-  // 프로필 사진 업로드 및 DB 저장 핸들러
-  const handleProfileImageUpload = async (
-    e: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
-
-    setLoading(true);
-    try {
-      const imageUrl = await uploadToS3(file, "profile-pics");
-      await updateUserData(user.uid, { photoURL: imageUrl });
-      setUserData((prev) => (prev ? { ...prev, photoURL: imageUrl } : null));
-      alert(getUIText("profileImageUpdated", currentLanguage));
-    } catch (error) {
-      console.error("프로필 업로드 에러:", error);
-      alert(getUIText("uploadFailed", currentLanguage));
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
     if (!authLoading) {
@@ -380,24 +357,49 @@ export default function ProfilePage() {
           onLanguageChange={setCurrentLanguage}
         />
 
-        <div className="px-6 py-6">
-          <div className="mb-6 flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-gray-900">
-              {getUIText("myPage", currentLanguage)}
-            </h1>
+        {/* 마이페이지 + 사용자 이름·이메일 + 프로필 이미지: 칸 전체 한 덩어리, 클릭 시 개인정보 수정 (매물등록과 동일 애니메이션) */}
+        <motion.button
+          type="button"
+          onClick={() => router.push("/profile/edit")}
+          className="w-full text-left bg-gradient-to-r from-blue-600 to-blue-500 text-white px-4 py-3 shadow-md rounded-none ring-2 ring-transparent hover:ring-white/50 focus:ring-white/50 focus:outline-none transition-all"
+          whileTap={{ scale: 0.98 }}
+          whileHover={{ backgroundColor: "rgb(37 99 235)" }}
+        >
+          <div className="flex items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-base font-bold text-white mb-0.5">
+                {getUIText("myPage", currentLanguage)}
+              </h1>
+              <p className="text-xs font-medium text-white truncate">
+                {userData?.displayName || user?.email?.split("@")[0] || "—"}
+              </p>
+              <p className="text-[11px] text-white/80 truncate mt-0.5">
+                {userData?.email || user?.email || "—"}
+              </p>
+            </div>
+            <div className="flex-shrink-0 w-11 h-11 rounded-lg bg-white/20 flex items-center justify-center overflow-hidden ring-1 ring-white/30">
+              {userData?.photoURL ? (
+                <img src={userData.photoURL} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <User className="w-5 h-5 text-white" />
+              )}
+            </div>
           </div>
+        </motion.button>
 
-          {/* 임대인 메뉴 */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-3">
+        <div className="px-5 py-4">
+          {/* 임대인 메뉴 - 슬림, 테두리 없음 */}
+          <div className="mb-5">
+            <div className="flex items-center justify-between mb-2 px-1">
               <div className="flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-purple-600" />
-                <h2 className="text-lg font-bold text-gray-900">
+                <div className="p-2 bg-gradient-to-br from-blue-100 to-blue-50 rounded-lg">
+                  <Building2 className="w-5 h-5 text-blue-600" />
+                </div>
+                <h2 className="text-base font-bold text-gray-900">
                   {getUIText("hostMenu", currentLanguage)}
                 </h2>
               </div>
               <div className="flex items-center gap-2">
-                {/* 코인 표시 */}
                 {allStepsCompleted ? (
                   <div className="flex items-center gap-1 px-2 py-1 bg-green-50 border border-green-200 rounded-lg">
                     <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
@@ -423,128 +425,92 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-              <button
-                onClick={buttonConfig.onClick}
-                disabled={buttonConfig.disabled}
-                className={`w-full py-4 px-5 flex items-center justify-between border-b border-gray-100 ${buttonConfig.disabled ? "opacity-60 cursor-not-allowed" : "hover:bg-gray-50"}`}
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`p-2 rounded-lg ${verificationStatus === "verified" && effectiveIsOwner ? "bg-green-100" : verificationStatus === "pending" ? "bg-yellow-100" : "bg-blue-100"}`}
-                  >
-                    <Home
-                      className={`w-5 h-5 ${verificationStatus === "verified" && effectiveIsOwner ? "text-green-600" : verificationStatus === "pending" ? "text-yellow-600" : "text-blue-600"}`}
-                    />
-                  </div>
-                  <div className="text-left">
-                    <p className="text-sm font-semibold text-gray-900">
-                      {getUIText("listYourProperty", currentLanguage)}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {allStepsCompleted
-                        ? getUIText("registerPropertyDesc", currentLanguage)
-                        : getUIText("kycRequired", currentLanguage)}
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-gray-400" />
-              </button>
-
-              {/* 매물 관리하기 - 코인 3개(1~3단계 완료) 시에만 표시 */}
-              {allStepsCompleted && (
+            <div className="space-y-2">
+              <motion.div whileHover={{ y: -1 }} className="rounded-xl overflow-hidden">
                 <button
-                  onClick={() => router.push("/profile/my-properties")}
-                  className="w-full py-4 px-5 flex items-center justify-between border-b border-gray-100 hover:bg-gray-50"
+                  onClick={buttonConfig.onClick}
+                  disabled={buttonConfig.disabled}
+                  className={`w-full rounded-xl py-3 px-4 flex items-center justify-between transition-all ${buttonConfig.disabled ? "opacity-60 cursor-not-allowed bg-gray-50" : "bg-gradient-to-br from-green-50 to-green-100 hover:shadow cursor-pointer"}`}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-purple-100 rounded-lg">
-                      <Building2 className="w-5 h-5 text-purple-600" />
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-white rounded-lg">
+                      <Home className={`w-4 h-4 ${verificationStatus === "verified" && effectiveIsOwner ? "text-green-600" : verificationStatus === "pending" ? "text-yellow-600" : "text-blue-600"}`} />
                     </div>
                     <div className="text-left">
-                      <p className="text-sm font-semibold text-gray-900">
-                        {getUIText("manageMyProperties", currentLanguage)}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {getUIText("manageMyPropertiesDesc", currentLanguage)}
-                      </p>
+                      <p className="text-sm font-semibold text-gray-900">{getUIText("listYourProperty", currentLanguage)}</p>
+                      <p className="text-xs text-gray-600 mt-0.5">{allStepsCompleted ? getUIText("registerPropertyDesc", currentLanguage) : getUIText("kycRequired", currentLanguage)}</p>
                     </div>
                   </div>
-                  <ChevronRight className="w-5 h-5 text-gray-400" />
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
                 </button>
-              )}
+              </motion.div>
 
-              {/* 예약 관리 - 코인 3개(1~3단계 완료) 시에만 표시 */}
               {allStepsCompleted && (
-                <button
-                  onClick={() => router.push("/host/bookings")}
-                  className="w-full py-4 px-5 flex items-center justify-between border-b border-gray-100 hover:bg-gray-50"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-orange-100 rounded-lg">
-                      <Calendar className="w-5 h-5 text-orange-600" />
-                    </div>
-                    <div className="text-left">
-                      <p className="text-sm font-semibold text-gray-900">
-                        {getUIText("bookingManagement", currentLanguage)}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {getUIText("bookingManagementDesc", currentLanguage)}
-                      </p>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-gray-400" />
-                </button>
-              )}
+                <>
+                  <motion.div whileHover={{ y: -1 }}>
+                    <button onClick={() => router.push("/profile/my-properties")} className="w-full rounded-xl py-3 px-4 bg-gradient-to-br from-purple-50 to-purple-100 transition-all cursor-pointer hover:shadow flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="p-2 bg-white rounded-lg">
+                          <Building2 className="w-4 h-4 text-purple-600" />
+                        </div>
+                        <div className="text-left">
+                          <p className="text-sm font-semibold text-gray-900">{getUIText("manageMyProperties", currentLanguage)}</p>
+                          <p className="text-xs text-gray-600 mt-0.5">{getUIText("manageMyPropertiesDesc", currentLanguage)}</p>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-gray-400" />
+                    </button>
+                  </motion.div>
 
-              {/* 정산 및 계좌 - 코인 3개(1~3단계 완료) 시에만 표시 */}
-              {allStepsCompleted && (
-                <button
-                  onClick={() => router.push("/profile/settlement")}
-                  className="w-full py-4 px-5 flex items-center justify-between border-b border-gray-100 hover:bg-gray-50"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-purple-100 rounded-lg">
-                      <Wallet className="w-5 h-5 text-purple-600" />
-                    </div>
-                    <div className="text-left">
-                      <p className="text-sm font-semibold text-gray-900">
-                        {getUIText("settlementAccount", currentLanguage)}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {getUIText("settlementAccountDesc", currentLanguage)}
-                      </p>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-gray-400" />
-                </button>
-              )}
+                  <motion.div whileHover={{ y: -1 }}>
+                    <button onClick={() => router.push("/host/bookings")} className="w-full rounded-xl py-3 px-4 bg-gradient-to-br from-orange-50 to-orange-100 transition-all cursor-pointer hover:shadow flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="p-2 bg-white rounded-lg">
+                          <Calendar className="w-4 h-4 text-orange-600" />
+                        </div>
+                        <div className="text-left">
+                          <p className="text-sm font-semibold text-gray-900">{getUIText("bookingManagement", currentLanguage)}</p>
+                          <p className="text-xs text-gray-600 mt-0.5">{getUIText("bookingManagementDesc", currentLanguage)}</p>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-gray-400" />
+                    </button>
+                  </motion.div>
 
-              {/* 리뷰 관리 - 코인 3개(1~3단계 완료) 시에만 표시 */}
-              {allStepsCompleted && (
-                <button
-                  onClick={() => {}}
-                  className="w-full py-4 px-5 flex items-center justify-between hover:bg-gray-50"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-yellow-100 rounded-lg">
-                      <Star className="w-5 h-5 text-yellow-600" />
-                    </div>
-                    <div className="text-left">
-                      <p className="text-sm font-semibold text-gray-900">
-                        {getUIText("reviewManagement", currentLanguage)}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {getUIText("reviewManagementDesc", currentLanguage)}
-                      </p>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-gray-400" />
-                </button>
+                  <motion.div whileHover={{ y: -1 }}>
+                    <button onClick={() => router.push("/profile/settlement")} className="w-full rounded-xl py-3 px-4 bg-gradient-to-br from-amber-50 to-amber-100 transition-all cursor-pointer hover:shadow flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="p-2 bg-white rounded-lg">
+                          <Wallet className="w-4 h-4 text-amber-600" />
+                        </div>
+                        <div className="text-left">
+                          <p className="text-sm font-semibold text-gray-900">{getUIText("settlementAccount", currentLanguage)}</p>
+                          <p className="text-xs text-gray-600 mt-0.5">{getUIText("settlementAccountDesc", currentLanguage)}</p>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-gray-400" />
+                    </button>
+                  </motion.div>
+
+                  <motion.div whileHover={{ y: -1 }}>
+                    <button onClick={() => {}} className="w-full rounded-xl py-3 px-4 bg-gradient-to-br from-yellow-50 to-yellow-100 transition-all cursor-pointer hover:shadow flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="p-2 bg-white rounded-lg">
+                          <Star className="w-4 h-4 text-yellow-600" />
+                        </div>
+                        <div className="text-left">
+                          <p className="text-sm font-semibold text-gray-900">{getUIText("reviewManagement", currentLanguage)}</p>
+                          <p className="text-xs text-gray-600 mt-0.5">{getUIText("reviewManagementDesc", currentLanguage)}</p>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-gray-400" />
+                    </button>
+                  </motion.div>
+                </>
               )}
 
               {!allStepsCompleted && (
-                <div className="px-5 py-3 bg-gray-50">
+                <div className="px-4 py-2.5 bg-gray-50 rounded-xl">
                   <p className="text-xs text-gray-500 text-center">
                     {currentLanguage === "ko"
                       ? `KYC 인증을 완료하여 코인 3개를 모으세요! (현재 ${Object.values(kycSteps).filter(Boolean).length}/3)`
@@ -561,193 +527,128 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* 임차인 메뉴 */}
-          <div className="mb-6">
-            <div className="flex items-center gap-2 mb-3">
-              <User className="w-5 h-5 text-teal-600" />
-              <h2 className="text-lg font-bold text-gray-900">
+          {/* 임차인 메뉴 - 슬림, 테두리 없음 */}
+          <div className="mb-5">
+            <div className="flex items-center gap-2 mb-2 px-1">
+              <div className="p-2 bg-gradient-to-br from-teal-100 to-teal-50 rounded-lg">
+                <User className="w-5 h-5 text-teal-600" />
+              </div>
+              <h2 className="text-base font-bold text-gray-900">
                 {getUIText("guestMenu", currentLanguage)}
               </h2>
             </div>
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-              <button
-                onClick={() => router.push("/my-bookings")}
-                className="w-full py-4 px-5 flex items-center justify-between border-b border-gray-100 hover:bg-gray-50"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-teal-100 rounded-lg">
-                    <Calendar className="w-5 h-5 text-teal-600" />
+            <div className="space-y-2">
+              <motion.div whileHover={{ y: -1 }}>
+                <button onClick={() => router.push("/my-bookings")} className="w-full rounded-xl py-3 px-4 bg-gradient-to-br from-teal-50 to-teal-100 transition-all cursor-pointer hover:shadow flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-white rounded-lg">
+                      <Calendar className="w-4 h-4 text-teal-600" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-sm font-semibold text-gray-900">{getUIText("myBookings", currentLanguage)}</p>
+                      <p className="text-xs text-gray-600 mt-0.5">{getUIText("myBookingsDesc", currentLanguage)}</p>
+                    </div>
                   </div>
-                  <div className="text-left">
-                    <p className="text-sm font-semibold text-gray-900">
-                      {getUIText("myBookings", currentLanguage)}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {getUIText("myBookingsDesc", currentLanguage)}
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-gray-400" />
-              </button>
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
+                </button>
+              </motion.div>
 
-              {/* 위시리스트 */}
-              <button
-                onClick={() => {}}
-                className="w-full py-4 px-5 flex items-center justify-between border-b border-gray-100 hover:bg-gray-50"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-pink-100 rounded-lg">
-                    <Heart className="w-5 h-5 text-pink-600" />
+              <motion.div whileHover={{ y: -1 }}>
+                <button onClick={() => {}} className="w-full rounded-xl py-3 px-4 bg-gradient-to-br from-pink-50 to-pink-100 transition-all cursor-pointer hover:shadow flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-white rounded-lg">
+                      <Heart className="w-4 h-4 text-pink-600" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-sm font-semibold text-gray-900">{getUIText("wishlist", currentLanguage)}</p>
+                      <p className="text-xs text-gray-600 mt-0.5">{getUIText("wishlistDesc", currentLanguage)}</p>
+                    </div>
                   </div>
-                  <div className="text-left">
-                    <p className="text-sm font-semibold text-gray-900">
-                      {getUIText("wishlist", currentLanguage)}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {getUIText("wishlistDesc", currentLanguage)}
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-gray-400" />
-              </button>
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
+                </button>
+              </motion.div>
 
-              {/* 결제 수단 관리 */}
-              <button
-                onClick={() => {}}
-                className="w-full py-4 px-5 flex items-center justify-between border-b border-gray-100 hover:bg-gray-50"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <CreditCard className="w-5 h-5 text-blue-600" />
+              <motion.div whileHover={{ y: -1 }}>
+                <button onClick={() => {}} className="w-full rounded-xl py-3 px-4 bg-gradient-to-br from-blue-50 to-blue-100 transition-all cursor-pointer hover:shadow flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-white rounded-lg">
+                      <CreditCard className="w-4 h-4 text-blue-600" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-sm font-semibold text-gray-900">{getUIText("paymentMethodManagement", currentLanguage)}</p>
+                      <p className="text-xs text-gray-600 mt-0.5">{getUIText("paymentMethodManagementDesc", currentLanguage)}</p>
+                    </div>
                   </div>
-                  <div className="text-left">
-                    <p className="text-sm font-semibold text-gray-900">
-                      {getUIText("paymentMethodManagement", currentLanguage)}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {getUIText(
-                        "paymentMethodManagementDesc",
-                        currentLanguage,
-                      )}
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-gray-400" />
-              </button>
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
+                </button>
+              </motion.div>
 
-              {/* 쿠폰 */}
-              <button
-                onClick={() => {}}
-                className="w-full py-4 px-5 flex items-center justify-between hover:bg-gray-50"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-yellow-100 rounded-lg">
-                    <Tag className="w-5 h-5 text-yellow-600" />
+              <motion.div whileHover={{ y: -1 }}>
+                <button onClick={() => {}} className="w-full rounded-xl py-3 px-4 bg-gradient-to-br from-yellow-50 to-yellow-100 transition-all cursor-pointer hover:shadow flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-white rounded-lg">
+                      <Tag className="w-4 h-4 text-yellow-600" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-sm font-semibold text-gray-900">{getUIText("coupons", currentLanguage)}</p>
+                      <p className="text-xs text-gray-600 mt-0.5">{getUIText("couponsDesc", currentLanguage)}</p>
+                    </div>
                   </div>
-                  <div className="text-left">
-                    <p className="text-sm font-semibold text-gray-900">
-                      {getUIText("coupons", currentLanguage)}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {getUIText("couponsDesc", currentLanguage)}
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-gray-400" />
-              </button>
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
+                </button>
+              </motion.div>
 
-              {/* 결제 수단 등록 필요 안내 */}
-              <div className="px-5 py-3 bg-gray-50 border-t border-gray-100">
+              <div className="px-4 py-2.5 bg-gray-50 rounded-xl">
                 <p className="text-xs text-gray-500 text-center">
-                  {getUIText("paymentMethodRequired", currentLanguage)}:{" "}
-                  {getUIText("paymentMethodRequiredDesc", currentLanguage)}
+                  {getUIText("paymentMethodRequired", currentLanguage)}: {getUIText("paymentMethodRequiredDesc", currentLanguage)}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* 개인정보 수정 메뉴 */}
-          <div className="mb-6">
-            <div className="flex items-center gap-2 mb-3">
-              <User className="w-5 h-5 text-blue-600" />
-              <h2 className="text-lg font-bold text-gray-900">
-                {getUIText("profile", currentLanguage)}
+          {/* 언어 - 슬림, 테두리 없음 */}
+          <div className="mb-5">
+            <div className="flex items-center gap-2 mb-2 px-1">
+              <div className="p-2 bg-gradient-to-br from-indigo-100 to-indigo-50 rounded-lg">
+                <Languages className="w-5 h-5 text-indigo-600" />
+              </div>
+              <h2 className="text-base font-bold text-gray-900">
+                {getUIText("language", currentLanguage)}
               </h2>
             </div>
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-              <button
-                onClick={() => router.push("/profile/edit")}
-                className="w-full py-4 px-5 flex items-center justify-between hover:bg-gray-50"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <Mail className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <div className="text-left">
-                    <p className="text-sm font-semibold text-gray-900">
-                      {getUIText("editProfile", currentLanguage)}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {currentLanguage === "ko"
-                        ? "이메일, 전화번호, 언어 등 개인정보 수정"
-                        : currentLanguage === "vi"
-                          ? "Chỉnh sửa thông tin cá nhân như email, số điện thoại, ngôn ngữ"
-                          : currentLanguage === "ja"
-                            ? "メール、電話番号、言語などの個人情報を編集"
-                            : currentLanguage === "zh"
-                              ? "编辑邮箱、电话号码、语言等个人信息"
-                              : "Edit personal information such as email, phone number, language"}
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-gray-400" />
-              </button>
-
-              {/* 언어 변경 섹션 */}
-              <div className="border-t border-gray-100">
-                <button
-                  onClick={() => setIsLanguageMenuOpen(true)}
-                  className="w-full py-4 px-5 flex items-center justify-between hover:bg-gray-50"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <Languages className="w-5 h-5 text-blue-600" />
+            <div className="space-y-2">
+              <motion.div whileHover={{ y: -1 }}>
+                <button onClick={() => setIsLanguageMenuOpen(true)} className="w-full rounded-xl py-3 px-4 bg-gradient-to-br from-indigo-50 to-indigo-100 transition-all cursor-pointer hover:shadow flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-white rounded-lg">
+                      <Languages className="w-4 h-4 text-indigo-600" />
                     </div>
                     <div className="text-left flex-1">
-                      <div className="flex items-center gap-6">
-                        <p className="text-sm font-semibold text-gray-900">
-                          {getUIText("languageChange", currentLanguage)}
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-blue-600">
-                            {currentLanguage.toUpperCase()}
-                          </span>
-                          <span className="text-sm text-gray-700">
-                            {currentLanguage === "ko"
-                              ? "한국어"
-                              : currentLanguage === "vi"
-                                ? "Tiếng Việt"
-                                : currentLanguage === "ja"
-                                  ? "日本語"
-                                  : currentLanguage === "zh"
-                                    ? "中文"
-                                    : "English"}
-                          </span>
-                        </div>
-                      </div>
+                      <p className="text-sm font-semibold text-gray-900">{getUIText("languageChange", currentLanguage)}</p>
+                      <p className="text-xs text-gray-600 mt-0.5">
+                        {currentLanguage === "ko"
+                          ? "한국어"
+                          : currentLanguage === "vi"
+                            ? "Tiếng Việt"
+                            : currentLanguage === "ja"
+                              ? "日本語"
+                              : currentLanguage === "zh"
+                                ? "中文"
+                                : "English"}
+                      </p>
                     </div>
                   </div>
-                  <ChevronRight className="w-5 h-5 text-gray-400" />
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
                 </button>
-              </div>
+              </motion.div>
             </div>
           </div>
 
+          {/* 로그아웃 - 기존 위치, 시그니처 빨강 */}
           <div className="pt-4 border-t border-gray-200">
-            {/* 로그아웃 버튼 */}
             <button
               onClick={() => setShowLogoutConfirm(true)}
-              className="w-full py-3 px-6 bg-gray-100 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-200 flex items-center justify-center gap-2"
+              className="w-full py-3 px-6 rounded-xl font-medium text-sm flex items-center justify-center gap-2 bg-[#E63946] text-white hover:opacity-90 transition-opacity"
             >
               <LogOut className="w-4 h-4" />
               {getUIText("logout", currentLanguage)}

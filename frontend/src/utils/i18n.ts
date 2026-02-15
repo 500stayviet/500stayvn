@@ -151,6 +151,7 @@ export type UITextKey =
   | 'congratulations'
   | 'nowOwnerDesc'
   | 'profileImageUpdated'
+  | 'profilePhoto'
   | 'uploadFailed'
   | 'notRegistered'
   | 'chat'
@@ -260,8 +261,16 @@ export type UITextKey =
   | 'confirmLogout'
   | 'logoutDesc'
   | 'languageChange'
+  | 'language'
   | 'close'
-  | 'selectLanguageDesc';
+  | 'selectLanguageDesc'
+  | 'selectPhoto'
+  | 'photoSelectConsentTitle'
+  | 'photoSelectConsentDesc'
+  | 'agree'
+  | 'photoSourceMenuTitle'
+  | 'selectFromLibrary'
+  | 'takePhoto';
 
 /**
  * 언어별 UI 텍스트 사전
@@ -408,6 +417,7 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     congratulations: '축하합니다!',
     nowOwnerDesc: '이제 임대인이 되었습니다. 정상적으로 매물 등록이 가능합니다.',
     profileImageUpdated: '프로필 사진이 변경되었습니다.',
+    profilePhoto: '프로필 사진',
     uploadFailed: '업로드 실패',
     notRegistered: '등록되지 않음',
     chat: '채팅',
@@ -515,8 +525,16 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     confirmLogout: '로그아웃 확인',
     logoutDesc: '정말 로그아웃 하시겠습니까?',
     languageChange: '언어 변경',
+    language: '언어',
     close: '닫기',
     selectLanguageDesc: '5개 국어 중에서 선택하세요',
+    selectPhoto: '사진을 선택하세요',
+    photoSelectConsentTitle: '사진첩 접근 허용',
+    photoSelectConsentDesc: '프로필 사진을 등록하기 위해 사진첩(갤러리)으로 이동하는 것을 허용하시겠습니까?',
+    agree: '동의',
+    photoSourceMenuTitle: '사진 추가 방법 선택',
+    selectFromLibrary: '사진첩에서 선택',
+    takePhoto: '카메라로 촬영',
   },
   vi: {
     login: 'Đăng nhập',
@@ -659,6 +677,7 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     congratulations: 'Chúc mừng!',
     nowOwnerDesc: 'Bây giờ bạn đã trở thành chủ nhà. Bạn có thể đăng ký bất động sản bình thường.',
     profileImageUpdated: 'Ảnh đại diện đã được thay đổi.',
+    profilePhoto: 'Ảnh đại diện',
     uploadFailed: 'Tải lên thất bại',
     notRegistered: 'Chưa đăng ký',
     chat: 'Trò chuyện',
@@ -766,8 +785,16 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     confirmLogout: 'Xác nhận đăng xuất',
     logoutDesc: 'Bạn có chắc chắn muốn đăng xuất không?',
     languageChange: 'Thay đổi ngôn ngữ',
+    language: 'Ngôn ngữ',
     close: 'Đóng',
     selectLanguageDesc: 'Chọn từ 5 ngôn ngữ',
+    selectPhoto: 'Chọn ảnh',
+    photoSelectConsentTitle: 'Cho phép truy cập thư viện ảnh',
+    photoSelectConsentDesc: 'Bạn có cho phép chuyển đến thư viện ảnh để đăng ảnh đại diện không?',
+    agree: 'Đồng ý',
+    photoSourceMenuTitle: 'Chọn cách thêm ảnh',
+    selectFromLibrary: 'Chọn từ thư viện ảnh',
+    takePhoto: 'Chụp ảnh',
   },
   en: {
     login: 'Login',
@@ -910,6 +937,7 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     congratulations: 'Congratulations!',
     nowOwnerDesc: 'You are now an owner. You can register properties normally.',
     profileImageUpdated: 'Profile picture updated.',
+    profilePhoto: 'Profile Photo',
     uploadFailed: 'Upload failed',
     notRegistered: 'Not registered',
     chat: 'Chat',
@@ -1017,8 +1045,16 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     confirmLogout: 'Confirm Logout',
     logoutDesc: 'Are you sure you want to logout?',
     languageChange: 'Language Change',
+    language: 'Language',
     close: 'Close',
     selectLanguageDesc: 'Choose from 5 languages',
+    selectPhoto: 'Select photo',
+    photoSelectConsentTitle: 'Allow access to photo gallery',
+    photoSelectConsentDesc: 'Do you allow access to your photo gallery to register a profile photo?',
+    agree: 'Agree',
+    photoSourceMenuTitle: 'Select Photo Source',
+    selectFromLibrary: 'Select from Photo Library',
+    takePhoto: 'Take Photo',
   },
   ja: {
     login: 'ログイン',
@@ -1161,6 +1197,7 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     congratulations: 'おめでとうございます！',
     nowOwnerDesc: '貸主として認証されました。物件の登録が可能です。',
     profileImageUpdated: 'プロフィール写真が更新されました。',
+    profilePhoto: 'プロフィール写真',
     uploadFailed: 'アップロードに失敗しました',
     notRegistered: '未登録',
     chat: 'チャット',
@@ -1268,8 +1305,16 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     confirmLogout: 'ログアウト確認',
     logoutDesc: '本当にログアウトしますか？',
     languageChange: '言語変更',
+    language: '言語',
     close: '閉じる',
     selectLanguageDesc: '5つの言語から選択してください',
+    selectPhoto: '写真を選択',
+    photoSelectConsentTitle: '写真ライブラリへのアクセスを許可',
+    photoSelectConsentDesc: 'プロフィール写真を登録するため、写真ライブラリへ移動することを許可しますか？',
+    agree: '同意',
+    photoSourceMenuTitle: '写真追加方法の選択',
+    selectFromLibrary: '写真ライブラリから選択',
+    takePhoto: 'カメラで撮影',
   },
   zh: {
     login: '登录',
@@ -1412,6 +1457,7 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     congratulations: '恭喜！',
     nowOwnerDesc: '您现在已成为房东。可以正常注册房源了。',
     profileImageUpdated: '个人资料照片已更新。',
+    profilePhoto: '个人资料照片',
     uploadFailed: '上传失败',
     notRegistered: '未注册',
     chat: '聊天',
@@ -1519,8 +1565,16 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     confirmLogout: '确认登出',
     logoutDesc: '您确定要登出吗？',
     languageChange: '语言更改',
+    language: '语言',
     close: '关闭',
     selectLanguageDesc: '从5种语言中选择',
+    selectPhoto: '选择照片',
+    photoSelectConsentTitle: '允许访问相册',
+    photoSelectConsentDesc: '为注册个人资料照片，是否允许前往相册选择照片？',
+    agree: '同意',
+    photoSourceMenuTitle: '选择照片添加方式',
+    selectFromLibrary: '从照片库选择',
+    takePhoto: '用相机拍摄',
   },
 };
 

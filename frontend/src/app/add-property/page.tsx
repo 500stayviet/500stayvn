@@ -928,11 +928,11 @@ export default function AddPropertyPage() {
               {/* 이미지 소스 선택 메뉴 */}
               {showImageSourceMenu && (
                 <div
-                  className="fixed inset-0 bg-black/50 flex items-end z-50"
+                  className="fixed inset-0 bg-black/50 flex items-end justify-center z-50"
                   onClick={() => setShowImageSourceMenu(false)}
                 >
                   <div
-                    className="w-full bg-white rounded-t-2xl p-6"
+                    className="w-full bg-white rounded-t-2xl p-6 max-w-[430px]"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">
