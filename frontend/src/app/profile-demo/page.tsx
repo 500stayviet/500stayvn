@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   Home,
@@ -19,354 +20,304 @@ import {
   Mail,
   Phone,
   Lock,
-  FileCheck,
-  TrendingUp,
-  Users,
-  Edit2,
-  X,
   MapPin,
+  AlertCircle,
+  Coins,
 } from "lucide-react";
 
 const DEMO_USER = {
   name: "김민준",
   email: "demo@500stayviet.com",
-  phone: "+84 (123) 456-789",
+  phone: "+84 (0)123 456 789",
   address: "호치민시 1군",
   verified: true,
-  // 임대인 기준 통계
-  properties: 8,
-  bookings: 24, // 임대인의 예약 수
-  revenue: "$2,450", // 임대인의 수익
+  kycCompleted: true, // 코인 3개 완료 여부
 };
 
-const MENU_ITEMS = [
-  {
-    section: "Host Dashboard",
-    icon: Building2,
-    color: "text-blue-600",
-    bgColor: "bg-blue-50",
-    items: [
-      {
-        title: "우리집 내놓기",
-        desc: "새로운 매물을 등록하세요",
-        icon: Home,
-        color: "text-green-600",
-        bgColor: "bg-green-50",
-      },
-      {
-        title: "내 매물 관리",
-        desc: "등록된 매물들을 관리하세요",
-        icon: Building2,
-        color: "text-purple-600",
-        bgColor: "bg-purple-50",
-      },
-      {
-        title: "예약 관리",
-        desc: "고객 예약을 관리하세요",
-        icon: Calendar,
-        color: "text-orange-600",
-        bgColor: "bg-orange-50",
-      },
-      {
-        title: "정산 계좌",
-        desc: "정산 계좌를 설정하세요",
-        icon: Wallet,
-        color: "text-purple-600",
-        bgColor: "bg-purple-50",
-      },
-      {
-        title: "평가 관리",
-        desc: "고객 평가를 확인하세요",
-        icon: Star,
-        color: "text-yellow-600",
-        bgColor: "bg-yellow-50",
-      },
-    ],
-  },
-  {
-    section: "Guest Menu",
-    icon: User,
-    color: "text-teal-600",
-    bgColor: "bg-teal-50",
-    items: [
-      {
-        title: "내 예약",
-        desc: "예약한 숙소들을 확인하세요",
-        icon: Calendar,
-        color: "text-teal-600",
-        bgColor: "bg-teal-50",
-      },
-      {
-        title: "위시리스트",
-        desc: "저장한 숙소들을 확인하세요",
-        icon: Heart,
-        color: "text-pink-600",
-        bgColor: "bg-pink-50",
-      },
-      {
-        title: "결제 수단 관리",
-        desc: "결제 수단을 설정하세요",
-        icon: CreditCard,
-        color: "text-blue-600",
-        bgColor: "bg-blue-50",
-      },
-      {
-        title: "쿠폰",
-        desc: "사용 가능한 쿠폰을 확인하세요",
-        icon: Tag,
-        color: "text-yellow-600",
-        bgColor: "bg-yellow-50",
-      },
-    ],
-  },
-  {
-    section: "설정",
-    icon: Lock,
-    color: "text-indigo-600",
-    bgColor: "bg-indigo-50",
-    items: [
-      {
-        title: "개인정보 변경",
-        desc: "프로필 정보를 수정하세요",
-        icon: Mail,
-        color: "text-blue-600",
-        bgColor: "bg-blue-50",
-      },
-      {
-        title: "로그아웃",
-        desc: "계정에서 로그아웃합니다",
-        icon: LogOut,
-        color: "text-red-600",
-        bgColor: "bg-red-50",
-      },
-    ],
-  },
-];
+interface MenuCardProps {
+  icon: React.ReactNode;
+  title: string;
+  desc: string;
+  color: string;
+  bgColor: string;
+  disabled?: boolean;
+  onClick?: () => void;
+  index?: number;
+}
+
+function MenuCard({
+  icon: Icon,
+  title,
+  desc,
+  color,
+  bgColor,
+  disabled = false,
+  onClick,
+  index = 0,
+}: MenuCardProps) {
+  return (
+    <motion.button
+      initial={{ opacity: 0, x: -10 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: index * 0.05 }}
+      disabled={disabled}
+      onClick={onClick}
+      className="w-full"
+    >
+      <div
+        className={`${bgColor} rounded-xl p-4 flex items-center justify-between border border-opacity-10 transition-all ${
+          disabled
+            ? "opacity-50 cursor-not-allowed"
+            : "hover:shadow-lg active:scale-95 cursor-pointer"
+        }`}
+      >
+        <div className="flex items-center gap-3">
+          <div className={`p-2.5 rounded-lg ${bgColor}`}>
+            <Icon className={`w-5 h-5 ${color}`} />
+          </div>
+          <div className="text-left">
+            <p className="text-sm font-semibold text-gray-900">{title}</p>
+            <p className="text-xs text-gray-500">{desc}</p>
+          </div>
+        </div>
+        <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
+      </div>
+    </motion.button>
+  );
+}
 
 export default function ProfileDemoPage() {
-  const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [editedUser, setEditedUser] = useState(DEMO_USER);
+  const router = useRouter();
+  const [mounted, setMounted] = useState(false);
 
-  const handleEditSave = () => {
-    setIsEditingProfile(false);
-  };
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-  const handleEditCancel = () => {
-    setEditedUser(DEMO_USER);
-    setIsEditingProfile(false);
-  };
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+          className="w-12 h-12 border-4 border-gray-200 border-t-blue-500 rounded-full"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex justify-center">
-      <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col">
-        {/* TopBar */}
-        <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-10">
-          <h1 className="text-lg font-bold text-gray-900">마이페이지</h1>
-          <div className="flex items-center gap-2">
-            <span className="text-xs px-2.5 py-1 bg-green-100 text-green-700 rounded-full font-semibold">
-              인증됨
-            </span>
-          </div>
+      <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative">
+        {/* Demo Banner */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center gap-2"
+        >
+          <AlertCircle className="w-4 h-4 text-amber-600" />
+          <p className="text-xs text-amber-700 font-medium">
+            미리보기 모드 - 로그인하여 실제 프로필 확인
+          </p>
+        </motion.div>
+
+        {/* Header */}
+        <div className="bg-white border-b border-gray-100 px-4 py-4 sticky top-0 z-10">
+          <h1 className="text-xl font-bold text-gray-900">마이페이지</h1>
         </div>
 
+        {/* Main Content */}
         <div className="flex-1 overflow-y-auto px-4 py-6 pb-20 space-y-6">
-          {/* 개인정보 섹션 - 간단하게 개선 */}
+          {/* Welcome Section */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="space-y-4"
+            onClick={() => router.push("/profile/edit")}
+            className="cursor-pointer group"
           >
-            {!isEditingProfile ? (
-              <>
-                {/* 프로필 정보 카드 */}
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 space-y-3">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h2 className="text-lg font-bold text-gray-900">
-                        {editedUser.name}
-                      </h2>
-                      <div className="mt-2 space-y-2 text-sm text-gray-600">
-                        <div className="flex items-center gap-2">
-                          <Phone className="w-4 h-4 text-blue-600" />
-                          <span>{editedUser.phone}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4 text-blue-600" />
-                          <span>{editedUser.address}</span>
-                        </div>
-                      </div>
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-5 border border-blue-100 hover:shadow-md transition-all active:scale-98">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm text-blue-600 font-medium mb-1">
+                    프로필
+                  </p>
+                  <h2 className="text-lg font-bold text-gray-900">
+                    {DEMO_USER.name}님 환영합니다
+                  </h2>
+                  <div className="flex items-center gap-2 mt-3">
+                    <div className="flex items-center gap-1 text-xs text-gray-600">
+                      <Phone className="w-3.5 h-3.5" />
+                      {DEMO_USER.phone}
                     </div>
-                    <button
-                      onClick={() => setIsEditingProfile(true)}
-                      className="flex items-center gap-1 px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                      수정
-                    </button>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <MapPin className="w-3.5 h-3.5 text-gray-600" />
+                    <span className="text-xs text-gray-600">
+                      {DEMO_USER.address}
+                    </span>
                   </div>
                 </div>
-
-                {/* 임대인 통계 (임대인 기준) */}
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-center">
-                    <div className="text-xs text-emerald-600 font-medium mb-1">
-                      임대 매물
-                    </div>
-                    <div className="text-2xl font-bold text-emerald-700">
-                      {editedUser.properties}
-                    </div>
-                  </div>
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
-                    <div className="text-xs text-blue-600 font-medium mb-1">
-                      예약 수
-                    </div>
-                    <div className="text-2xl font-bold text-blue-700">
-                      {editedUser.bookings}
-                    </div>
-                  </div>
-                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 text-center">
-                    <div className="text-xs text-purple-600 font-medium mb-1">
-                      수익
-                    </div>
-                    <div className="text-2xl font-bold text-purple-700">
-                      {editedUser.revenue}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded text-center">
-                  ℹ️ 통계는 임대인 기준입니다
-                </div>
-              </>
-            ) : (
-              // 편집 모드
-              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-bold text-gray-900">개인정보 변경</h3>
-                  <button
-                    onClick={handleEditCancel}
-                    className="p-1 hover:bg-gray-200 rounded"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      이름
-                    </label>
-                    <input
-                      type="text"
-                      value={editedUser.name}
-                      onChange={(e) =>
-                        setEditedUser({ ...editedUser, name: e.target.value })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      전화번호
-                    </label>
-                    <input
-                      type="tel"
-                      value={editedUser.phone}
-                      onChange={(e) =>
-                        setEditedUser({ ...editedUser, phone: e.target.value })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      주소
-                    </label>
-                    <input
-                      type="text"
-                      value={editedUser.address}
-                      onChange={(e) =>
-                        setEditedUser({ ...editedUser, address: e.target.value })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex gap-2 pt-2">
-                  <button
-                    onClick={handleEditCancel}
-                    className="flex-1 py-2 px-4 bg-gray-200 text-gray-700 rounded-lg font-medium text-sm hover:bg-gray-300"
-                  >
-                    취소
-                  </button>
-                  <button
-                    onClick={handleEditSave}
-                    className="flex-1 py-2 px-4 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700"
-                  >
-                    저장
-                  </button>
-                </div>
+                <ChevronRight className="w-5 h-5 text-blue-400 group-hover:translate-x-1 transition-transform" />
               </div>
-            )}
+            </div>
           </motion.div>
 
-          {/* 메뉴 섹션들 */}
-          {MENU_ITEMS.map((section, sectionIdx) => (
-            <motion.div
-              key={section.section}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.1 * (sectionIdx + 1) }}
-            >
-              <div className="flex items-center gap-2 mb-3">
-                <div className={`p-2 rounded-lg ${section.bgColor}`}>
-                  <section.icon className={`w-5 h-5 ${section.color}`} />
-                </div>
-                <h2 className="text-base font-bold text-gray-900">
-                  {section.section}
-                </h2>
+          {/* Host Dashboard */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.1 }}
+          >
+            <div className="flex items-center gap-2 mb-4">
+              <div className="p-2.5 bg-blue-100 rounded-lg">
+                <Building2 className="w-5 h-5 text-blue-600" />
               </div>
+              <h2 className="text-lg font-bold text-gray-900">
+                호스트 대시보드
+              </h2>
+              {DEMO_USER.kycCompleted && (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.3 }}
+                  className="ml-auto flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  인증됨
+                </motion.div>
+              )}
+            </div>
 
-              <div className="space-y-2">
-                {section.items.map((item, itemIdx) => {
-                  const IconComponent = item.icon;
-                  return (
-                    <motion.button
-                      key={itemIdx}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.05 * itemIdx }}
-                      className="w-full p-3 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors cursor-pointer group"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-start gap-3 text-left">
-                          <div
-                            className={`p-2 rounded-lg ${item.bgColor} flex-shrink-0 mt-1`}
-                          >
-                            <IconComponent
-                              className={`w-4 h-4 ${item.color}`}
-                            />
-                          </div>
-                          <div>
-                            <div className="text-sm font-semibold text-gray-900">
-                              {item.title}
-                            </div>
-                            <div className="text-xs text-gray-600">
-                              {item.desc}
-                            </div>
-                          </div>
-                        </div>
-                        <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600 flex-shrink-0" />
-                      </div>
-                    </motion.button>
-                  );
-                })}
+            <div className="space-y-2">
+              <MenuCard
+                icon={Home}
+                title="우리집 내놓기"
+                desc="새로운 매물을 등록하세요"
+                color="text-green-600"
+                bgColor="bg-green-50"
+                index={0}
+              />
+              <MenuCard
+                icon={Building2}
+                title="내 매물 관리"
+                desc="등록된 매물들을 관리하세요"
+                color="text-purple-600"
+                bgColor="bg-purple-50"
+                index={1}
+              />
+              <MenuCard
+                icon={Calendar}
+                title="예약 관리"
+                desc="고객 예약을 관리하세요"
+                color="text-orange-600"
+                bgColor="bg-orange-50"
+                index={2}
+              />
+              <MenuCard
+                icon={Wallet}
+                title="정산 계좌"
+                desc="정산 계좌를 설정하세요"
+                color="text-purple-600"
+                bgColor="bg-purple-50"
+                index={3}
+              />
+              <MenuCard
+                icon={Star}
+                title="평가 관리"
+                desc="고객 평가를 확인하세요"
+                color="text-yellow-600"
+                bgColor="bg-yellow-50"
+                index={4}
+                disabled
+              />
+            </div>
+          </motion.div>
+
+          {/* Guest Menu */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+          >
+            <div className="flex items-center gap-2 mb-4">
+              <div className="p-2.5 bg-teal-100 rounded-lg">
+                <User className="w-5 h-5 text-teal-600" />
               </div>
-            </motion.div>
-          ))}
+              <h2 className="text-lg font-bold text-gray-900">게스트 메뉴</h2>
+            </div>
+
+            <div className="space-y-2">
+              <MenuCard
+                icon={Calendar}
+                title="내 예약"
+                desc="예약한 숙소를 확인하세요"
+                color="text-teal-600"
+                bgColor="bg-teal-50"
+                index={0}
+              />
+              <MenuCard
+                icon={Heart}
+                title="찜 목록"
+                desc="관심있는 숙소를 저장하세요"
+                color="text-pink-600"
+                bgColor="bg-pink-50"
+                index={1}
+                disabled
+              />
+              <MenuCard
+                icon={CreditCard}
+                title="결제 수단 관리"
+                desc="결제 수단을 설정하세요"
+                color="text-blue-600"
+                bgColor="bg-blue-50"
+                index={2}
+                disabled
+              />
+              <MenuCard
+                icon={Tag}
+                title="쿠폰"
+                desc="사용 가능한 쿠폰을 확인하세요"
+                color="text-yellow-600"
+                bgColor="bg-yellow-50"
+                index={3}
+                disabled
+              />
+            </div>
+          </motion.div>
+
+          {/* Settings */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+          >
+            <div className="flex items-center gap-2 mb-4">
+              <div className="p-2.5 bg-indigo-100 rounded-lg">
+                <Lock className="w-5 h-5 text-indigo-600" />
+              </div>
+              <h2 className="text-lg font-bold text-gray-900">설정</h2>
+            </div>
+
+            <div className="space-y-2">
+              <MenuCard
+                icon={Mail}
+                title="개인정보 수정"
+                desc="이메일, 전화번호 등을 변경하세요"
+                color="text-blue-600"
+                bgColor="bg-blue-50"
+                onClick={() => router.push("/profile/edit")}
+                index={0}
+              />
+              <MenuCard
+                icon={LogOut}
+                title="로그아웃"
+                desc="계정에서 로그아웃합니다"
+                color="text-red-600"
+                bgColor="bg-red-50"
+                index={1}
+              />
+            </div>
+          </motion.div>
         </div>
       </div>
     </div>
