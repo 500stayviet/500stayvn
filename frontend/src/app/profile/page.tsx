@@ -16,13 +16,11 @@ import {
   User,
   Mail,
   Phone,
-  Globe,
   Home,
   CheckCircle2,
   Building2,
   Calendar,
   ChevronRight,
-  ShieldCheck,
   Wallet,
   Star,
   Heart,
@@ -30,6 +28,7 @@ import {
   Tag,
   LogOut,
   Languages,
+  Lock,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -380,6 +379,21 @@ export default function ProfilePage() {
           onLanguageChange={setCurrentLanguage}
         />
 
+        {/* 개인정보 바 */}
+        <div className="border-b border-gray-100 px-4 py-3 bg-white">
+          <button
+            onClick={() => router.push("/profile/edit")}
+            className="w-full text-left hover:opacity-70 transition-opacity"
+          >
+            <p className="text-sm font-semibold text-gray-900">
+              {userData?.displayName || user?.displayName || getUIText("user", currentLanguage)}
+            </p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {userData?.email || user?.email}
+            </p>
+          </button>
+        </div>
+
         <div className="px-6 py-6">
           <div className="mb-6 flex items-center gap-3">
             <h1 className="text-2xl font-bold text-gray-900">
@@ -666,93 +680,95 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* 개인정보 수정 메뉴 */}
+          {/* 설정 메뉴 */}
           <div className="mb-6">
             <div className="flex items-center gap-2 mb-3">
-              <User className="w-5 h-5 text-blue-600" />
+              <Lock className="w-5 h-5 text-gray-600" />
               <h2 className="text-lg font-bold text-gray-900">
-                {getUIText("profile", currentLanguage)}
+                {currentLanguage === "ko"
+                  ? "설정"
+                  : currentLanguage === "vi"
+                    ? "Cài đặt"
+                    : currentLanguage === "ja"
+                      ? "設定"
+                      : currentLanguage === "zh"
+                        ? "设置"
+                        : "Settings"}
               </h2>
             </div>
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+              {/* 언어 변경 섹션 */}
               <button
-                onClick={() => router.push("/profile/edit")}
-                className="w-full py-4 px-5 flex items-center justify-between hover:bg-gray-50"
+                onClick={() => setIsLanguageMenuOpen(true)}
+                className="w-full py-4 px-5 flex items-center justify-between hover:bg-gray-50 border-b border-gray-100"
               >
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-blue-100 rounded-lg">
-                    <Mail className="w-5 h-5 text-blue-600" />
+                    <Languages className="w-5 h-5 text-blue-600" />
                   </div>
-                  <div className="text-left">
-                    <p className="text-sm font-semibold text-gray-900">
-                      {getUIText("editProfile", currentLanguage)}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {currentLanguage === "ko"
-                        ? "이메일, 전화번호, 언어 등 개인정보 수정"
-                        : currentLanguage === "vi"
-                          ? "Chỉnh sửa thông tin cá nhân như email, số điện thoại, ngôn ngữ"
-                          : currentLanguage === "ja"
-                            ? "メール、電話番号、言語などの個人情報を編集"
-                            : currentLanguage === "zh"
-                              ? "编辑邮箱、电话号码、语言等个人信息"
-                              : "Edit personal information such as email, phone number, language"}
-                    </p>
+                  <div className="text-left flex-1">
+                    <div className="flex items-center gap-6">
+                      <p className="text-sm font-semibold text-gray-900">
+                        {getUIText("languageChange", currentLanguage)}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-blue-600">
+                          {currentLanguage.toUpperCase()}
+                        </span>
+                        <span className="text-sm text-gray-700">
+                          {currentLanguage === "ko"
+                            ? "한국어"
+                            : currentLanguage === "vi"
+                              ? "Tiếng Việt"
+                              : currentLanguage === "ja"
+                                ? "日本語"
+                                : currentLanguage === "zh"
+                                  ? "中文"
+                                  : "English"}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <ChevronRight className="w-5 h-5 text-gray-400" />
               </button>
 
-              {/* 언어 변경 섹션 */}
-              <div className="border-t border-gray-100">
-                <button
-                  onClick={() => setIsLanguageMenuOpen(true)}
-                  className="w-full py-4 px-5 flex items-center justify-between hover:bg-gray-50"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <Languages className="w-5 h-5 text-blue-600" />
-                    </div>
-                    <div className="text-left flex-1">
-                      <div className="flex items-center gap-6">
-                        <p className="text-sm font-semibold text-gray-900">
-                          {getUIText("languageChange", currentLanguage)}
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-blue-600">
-                            {currentLanguage.toUpperCase()}
-                          </span>
-                          <span className="text-sm text-gray-700">
-                            {currentLanguage === "ko"
-                              ? "한국어"
-                              : currentLanguage === "vi"
-                                ? "Tiếng Việt"
-                                : currentLanguage === "ja"
-                                  ? "日本語"
-                                  : currentLanguage === "zh"
-                                    ? "中文"
-                                    : "English"}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+              {/* 계정 삭제 */}
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="w-full py-4 px-5 flex items-center justify-between hover:bg-gray-50"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-red-100 rounded-lg">
+                    <User className="w-5 h-5 text-red-600" />
                   </div>
-                  <ChevronRight className="w-5 h-5 text-gray-400" />
-                </button>
-              </div>
+                  <div className="text-left">
+                    <p className="text-sm font-semibold text-gray-900">
+                      {currentLanguage === "ko"
+                        ? "계정 삭제"
+                        : currentLanguage === "vi"
+                          ? "Xóa tài khoản"
+                          : currentLanguage === "ja"
+                            ? "アカウント削除"
+                            : currentLanguage === "zh"
+                              ? "删除账户"
+                              : "Delete Account"}
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-gray-400" />
+              </button>
             </div>
           </div>
 
-          <div className="pt-4 border-t border-gray-200">
-            {/* 로그아웃 버튼 */}
-            <button
-              onClick={() => setShowLogoutConfirm(true)}
-              className="w-full py-3 px-6 bg-gray-100 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-200 flex items-center justify-center gap-2"
-            >
-              <LogOut className="w-4 h-4" />
-              {getUIText("logout", currentLanguage)}
-            </button>
-          </div>
+          {/* 로그아웃 버튼 */}
+          <button
+            onClick={() => setShowLogoutConfirm(true)}
+            className="w-full py-3 px-6 bg-red-50 text-red-600 rounded-2xl font-medium text-sm hover:bg-red-100 flex items-center justify-center gap-2 border border-red-100"
+          >
+            <LogOut className="w-4 h-4" />
+            {getUIText("logout", currentLanguage)}
+          </button>
         </div>
       </div>
 
