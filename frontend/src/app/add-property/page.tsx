@@ -43,7 +43,6 @@ import {
   FULL_ELECTRONICS_IDS,
 } from "@/lib/constants/facilities";
 import {
-  getDistrictIdForCoord,
   getDistrictsByCityId,
   searchRegions,
   VIETNAM_CITIES,
@@ -220,28 +219,15 @@ export default function AddPropertyPage() {
   }) => {
     setAddress(data.address);
     setCoordinates({ lat: data.lat, lng: data.lng });
-    const districtId = getDistrictIdForCoord(data.lat, data.lng);
-    if (districtId) {
-      const district = ALL_REGIONS.find((r) => r.id === districtId);
-      if (district?.parentCity) {
-        setSelectedDistrictId(districtId);
-        setSelectedCityId(district.parentCity);
-        return;
-      }
-    }
+
+    // 요구사항:
+    // - 구(district)는 주소에 구 정보가 없어 항상 빈 값으로 두고, 사용자가 선택하게 함.
+    // - 도시(city)는 주소 텍스트에서 city 키워드가 있는 경우에만 프리필.
+    setSelectedDistrictId("");
+
     const matches = searchRegions(data.address);
-    const districtMatch = matches.find((r) => r.type === "district");
     const cityMatch = matches.find((r) => r.type === "city");
-    if (districtMatch) {
-      setSelectedDistrictId(districtMatch.id);
-      setSelectedCityId(districtMatch.parentCity ?? "");
-    } else if (cityMatch) {
-      setSelectedCityId(cityMatch.id);
-      setSelectedDistrictId("");
-    } else {
-      setSelectedCityId("");
-      setSelectedDistrictId("");
-    }
+    setSelectedCityId(cityMatch ? cityMatch.id : "");
   };
 
   // 사진첩 열기 핸들러
@@ -462,6 +448,37 @@ export default function AddPropertyPage() {
               : currentLanguage === "zh"
                 ? "请选择地址以设置坐标。请点击地址输入按钮确认地址。"
                 : "Please select an address to set coordinates. Please click the address input button to verify the address.",
+      );
+      return;
+    }
+
+    // 도시/구 필수 검증
+    if (!selectedCityId) {
+      alert(
+        currentLanguage === "ko"
+          ? "도시를 선택해주세요."
+          : currentLanguage === "vi"
+            ? "Vui lòng chọn thành phố."
+            : currentLanguage === "ja"
+              ? "都市を選択してください。"
+              : currentLanguage === "zh"
+                ? "请选择城市。"
+                : "Please select a city.",
+      );
+      return;
+    }
+
+    if (!selectedDistrictId) {
+      alert(
+        currentLanguage === "ko"
+          ? "구를 선택해주세요."
+          : currentLanguage === "vi"
+            ? "Vui lòng chọn quận."
+            : currentLanguage === "ja"
+              ? "区を選択してください。"
+              : currentLanguage === "zh"
+                ? "请选择区。"
+                : "Please select a district.",
       );
       return;
     }
@@ -1490,39 +1507,46 @@ export default function AddPropertyPage() {
                           ? "Thành phố"
                           : "City"}
                     </label>
-                    <div
-                      className="w-full px-2 py-2 rounded-md text-sm min-h-[36px] flex items-center"
+                    <select
+                      value={selectedCityId}
+                      onChange={(e) => {
+                        setSelectedCityId(e.target.value);
+                        setSelectedDistrictId("");
+                      }}
+                      disabled={!address || !coordinates}
+                      className="w-full px-2 py-2 rounded-md text-sm min-h-[36px] focus:outline-none transition-all"
                       style={{
                         backgroundColor: COLORS.white,
                         border: `1px solid ${COLORS.border}`,
                         color: COLORS.text,
                       }}
                     >
-                      {address && coordinates && selectedCityId ? (
-                        (() => {
-                          const city = VIETNAM_CITIES.find(
-                            (c) => c.id === selectedCityId,
-                          );
-                          if (!city) return "—";
-                          const langMap: Record<string, string> = {
-                            ko: city.nameKo,
-                            vi: city.nameVi,
-                            en: city.name,
-                            ja: city.nameJa ?? city.name,
-                            zh: city.nameZh ?? city.name,
-                          };
-                          return langMap[currentLanguage] ?? city.name;
-                        })()
-                      ) : (
-                        <span style={{ color: COLORS.textMuted }}>
-                          {currentLanguage === "ko" ? "자동 입력" : 
-                           currentLanguage === "vi" ? "Tự động" :
-                           currentLanguage === "ja" ? "自動入力" :
-                           currentLanguage === "zh" ? "自动输入" :
-                           "Auto"}
-                        </span>
-                      )}
-                    </div>
+                      <option value="">
+                        {currentLanguage === "ko"
+                          ? "선택"
+                          : currentLanguage === "vi"
+                            ? "Chọn"
+                            : currentLanguage === "ja"
+                              ? "選択"
+                              : currentLanguage === "zh"
+                                ? "选择"
+                                : "Select"}
+                      </option>
+                      {VIETNAM_CITIES.map((c) => {
+                        const langMap: Record<string, string> = {
+                          ko: c.nameKo,
+                          vi: c.nameVi,
+                          en: c.name,
+                          ja: c.nameJa ?? c.name,
+                          zh: c.nameZh ?? c.name,
+                        };
+                        return (
+                          <option key={c.id} value={c.id}>
+                            {langMap[currentLanguage] ?? c.name}
+                          </option>
+                        );
+                      })}
+                    </select>
                   </div>
                   <div>
                     <label
@@ -1538,7 +1562,7 @@ export default function AddPropertyPage() {
                     <select
                       value={selectedDistrictId}
                       onChange={(e) => setSelectedDistrictId(e.target.value)}
-                      disabled={!address || !coordinates}
+                      disabled={!address || !coordinates || !selectedCityId}
                       className="w-full px-2 py-2 rounded-md text-sm min-h-[36px] focus:outline-none transition-all"
                       style={{
                         backgroundColor: COLORS.white,
