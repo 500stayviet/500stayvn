@@ -690,7 +690,8 @@ export default function AddressVerificationModal({
         if (isBuildingInfo) {
           // 첫 번째 쉼표 앞부분이 동 정보
           let buildingInfo = firstCommaPart;
-          buildingInfo = translateBuildingTerms(buildingInfo, currentLanguage);
+          // 부동산 주소 표기는 번역하지 않고 원문(베트남어) 유지
+          buildingInfo = translateBuildingTerms(buildingInfo, 'vi');
           
           // 제목: [단지명] - [가공된 동 정보] (명칭만)
           title = `${complexName} - ${buildingInfo}`;
@@ -743,7 +744,8 @@ export default function AddressVerificationModal({
     
     if (isBuildingInfo) {
       // 첫 번째 부분이 명칭이면 제목으로 (다국어 변환 적용)
-      title = translateBuildingTerms(firstPart, currentLanguage);
+      // 부동산 주소 표기는 번역하지 않고 원문(베트남어) 유지
+      title = translateBuildingTerms(firstPart, 'vi');
       
       // 부제목: 나머지 주소 정보 (도로명, 행정 구역)
       subtitle = parts.slice(1).join(', ');
@@ -788,9 +790,10 @@ export default function AddressVerificationModal({
     
     debounceTimerRef.current = setTimeout(async () => {
       try {
+        // 주소 검색 결과는 항상 베트남어로 고정
         const results = await searchPlaceIndexForSuggestions(
           searchText.trim(),
-          currentLanguage as any,
+          'vi',
         );
 
         // suggestions API는 Text/Label/PlaceId를 포함하는 형태로 내려오지만,
@@ -852,7 +855,8 @@ export default function AddressVerificationModal({
     setIsValidating(true);
 
     try {
-      const language = currentLanguage as any;
+      // 상세 주소 조회도 항상 베트남어로 고정
+      const language = 'vi';
       
       // PlaceId로 상세 정보 조회 (Grab 앱 방식)
       if (!placeId) {
