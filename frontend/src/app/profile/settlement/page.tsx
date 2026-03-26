@@ -32,7 +32,17 @@ import {
   aggregateRentalIncome,
 } from '@/lib/utils/rentalIncome';
 import { formatDate } from '@/lib/utils/dateUtils';
-import type { SupportedLanguage } from '@/lib/api/translation';
+import {
+  addBankAccount,
+  BankAccount,
+  createWithdrawalRequest,
+  getBankAccounts,
+  getOwnerBalances,
+  getWithdrawalRequests,
+  removeBankAccount,
+  setPrimaryBankAccount,
+  WithdrawalRequest,
+} from '@/lib/api/adminFinance';
 
 type TabType = 'revenue' | 'withdrawal' | 'bank';
 
@@ -48,13 +58,6 @@ interface RevenueEntry {
   status: RentalIncomeStatus;
 }
 
-/** 출금 대기/완료용 플레이스홀더 (API 연동 전) */
-const WITHDRAWAL_PLACEHOLDER = {
-  pendingAmount: 0,
-  completedAmount: 0,
-  history: [] as { id: string; date: string; amount: number; status: 'pending' | 'completed'; bank?: string }[],
-};
-
 export default function SettlementPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
@@ -63,6 +66,14 @@ export default function SettlementPage() {
   const [revenueEntries, setRevenueEntries] = useState<RevenueEntry[]>([]);
   const [revenueLoading, setRevenueLoading] = useState(true);
   const [serverTimeError, setServerTimeError] = useState<boolean>(false);
+  const [withdrawalAmount, setWithdrawalAmount] = useState('');
+  const [selectedBankId, setSelectedBankId] = useState('');
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const [withdrawalHistory, setWithdrawalHistory] = useState<WithdrawalRequest[]>([]);
+  const [newBankName, setNewBankName] = useState('');
+  const [newAccountNumber, setNewAccountNumber] = useState('');
+  const [newAccountHolder, setNewAccountHolder] = useState('');
+  const [setAsPrimaryOnCreate, setSetAsPrimaryOnCreate] = useState(true);
 
   useEffect(() => {
     if (!user?.uid) {
@@ -154,13 +165,75 @@ export default function SettlementPage() {
     };
   }, [user?.uid]);
 
-  const { totalRevenue, availableBalance } = useMemo(() => {
+  const { totalRevenue } = useMemo(() => {
     return aggregateRentalIncome(revenueEntries);
   }, [revenueEntries]);
+  const ownerBalances = useMemo(() => {
+    return user?.uid
+      ? getOwnerBalances(user.uid)
+      : { totalApprovedRevenue: 0, pendingWithdrawal: 0, availableBalance: 0 };
+  }, [user?.uid, withdrawalHistory, bankAccounts, revenueEntries]);
+  const availableBalance = ownerBalances.availableBalance;
+  const withdrawalPendingAmount = ownerBalances.pendingWithdrawal;
 
-  const withdrawalPendingAmount = WITHDRAWAL_PLACEHOLDER.pendingAmount;
-  const withdrawalHistory = WITHDRAWAL_PLACEHOLDER.history;
-  const bankAccounts: { id: string; bankName: string; accountNumber: string; accountHolder: string; isPrimary: boolean }[] = [];
+  const refreshFinanceData = () => {
+    if (!user?.uid) return;
+    const accounts = getBankAccounts(user.uid);
+    const withdrawals = getWithdrawalRequests(user.uid).sort(
+      (a, b) => new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime()
+    );
+    setBankAccounts(accounts);
+    setWithdrawalHistory(withdrawals);
+    if (!selectedBankId) {
+      const primary = accounts.find((a) => a.isPrimary);
+      if (primary) setSelectedBankId(primary.id);
+    }
+  };
+
+  useEffect(() => {
+    refreshFinanceData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid]);
+
+  const handleSubmitWithdrawal = () => {
+    if (!user?.uid) return;
+    const amount = parseInt(withdrawalAmount.replace(/\D/g, ''), 10) || 0;
+    if (amount <= 0) {
+      alert(currentLanguage === 'ko' ? '출금 금액을 입력해주세요.' : 'Vui lòng nhập số tiền rút.');
+      return;
+    }
+    if (!selectedBankId) {
+      alert(currentLanguage === 'ko' ? '계좌를 선택해주세요.' : 'Vui lòng chọn tài khoản.');
+      return;
+    }
+    const result = createWithdrawalRequest(user.uid, amount, selectedBankId);
+    if (!result.ok) {
+      alert(result.message || 'Withdrawal request failed');
+      return;
+    }
+    setWithdrawalAmount('');
+    refreshFinanceData();
+    alert(currentLanguage === 'ko' ? '출금 신청이 접수되었습니다.' : 'Yêu cầu rút tiền đã được gửi.');
+  };
+
+  const handleAddBankAccount = () => {
+    if (!user?.uid) return;
+    if (!newBankName.trim() || !newAccountNumber.trim() || !newAccountHolder.trim()) {
+      alert(currentLanguage === 'ko' ? '계좌 정보를 모두 입력해주세요.' : 'Vui lòng nhập đầy đủ thông tin tài khoản.');
+      return;
+    }
+    addBankAccount(user.uid, {
+      bankName: newBankName.trim(),
+      accountNumber: newAccountNumber.trim(),
+      accountHolder: newAccountHolder.trim(),
+      isPrimary: setAsPrimaryOnCreate,
+    });
+    setNewBankName('');
+    setNewAccountNumber('');
+    setNewAccountHolder('');
+    setSetAsPrimaryOnCreate(false);
+    refreshFinanceData();
+  };
 
   if (authLoading) {
     return (
@@ -348,7 +421,9 @@ export default function SettlementPage() {
                     </label>
                     <div className="relative">
                       <input
-                        type="number"
+                        type="text"
+                        value={withdrawalAmount}
+                        onChange={(e) => setWithdrawalAmount(e.target.value.replace(/\D/g, ''))}
                         className="w-full px-4 py-3 text-lg border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
                         placeholder="0"
                       />
@@ -365,7 +440,11 @@ export default function SettlementPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       {getUIText('selectBankAccount', currentLanguage)}
                     </label>
-                    <select className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none">
+                    <select
+                      value={selectedBankId}
+                      onChange={(e) => setSelectedBankId(e.target.value)}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
+                    >
                       <option value="">{getUIText('selectAccount', currentLanguage)}</option>
                       {bankAccounts.map((account) => (
                         <option key={account.id} value={account.id}>
@@ -375,7 +454,10 @@ export default function SettlementPage() {
                     </select>
                   </div>
                   
-                  <button className="w-full py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors">
+                  <button
+                    onClick={handleSubmitWithdrawal}
+                    className="w-full py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors"
+                  >
                     {getUIText('submitWithdrawalRequest', currentLanguage)}
                   </button>
                 </div>
@@ -395,18 +477,40 @@ export default function SettlementPage() {
                       <div>
                         <div className="flex items-center gap-2">
                           <p className="font-semibold text-gray-900">{item.amount.toLocaleString()} ₫</p>
-                          <span className={`px-2 py-1 text-xs rounded-full ${
-                            item.status === 'completed' 
-                              ? 'bg-green-100 text-green-700' 
-                              : 'bg-yellow-100 text-yellow-700'
-                          }`}>
-                            {item.status === 'completed' 
-                              ? getUIText('completed', currentLanguage) 
-                              : getUIText('pending', currentLanguage)}
+                          <span
+                            className={`px-2 py-1 text-xs rounded-full ${
+                              item.status === 'completed'
+                                ? 'bg-green-100 text-green-700'
+                                : item.status === 'rejected'
+                                ? 'bg-red-100 text-red-700'
+                                : item.status === 'held'
+                                ? 'bg-yellow-100 text-yellow-700'
+                                : 'bg-blue-100 text-blue-700'
+                            }`}
+                          >
+                            {item.status === 'completed'
+                              ? getUIText('completed', currentLanguage)
+                              : item.status === 'pending'
+                              ? getUIText('pending', currentLanguage)
+                              : item.status === 'processing' || item.status === 'approved'
+                              ? currentLanguage === 'ko'
+                                ? '처리중'
+                                : currentLanguage === 'vi'
+                                ? 'Đang xử lý'
+                                : 'Processing'
+                              : item.status === 'held'
+                              ? currentLanguage === 'ko'
+                                ? '보류'
+                                : currentLanguage === 'vi'
+                                ? 'Tạm giữ'
+                                : 'On hold'
+                              : currentLanguage === 'ko'
+                              ? '반려'
+                              : 'Rejected'}
                           </span>
                         </div>
-                        <p className="text-sm text-gray-500 mt-1">{item.date}</p>
-                        <p className="text-sm text-gray-600 mt-1">{item.bank}</p>
+                        <p className="text-sm text-gray-500 mt-1">{new Date(item.requestedAt).toLocaleString()}</p>
+                        <p className="text-sm text-gray-600 mt-1">{item.bankLabel}</p>
                       </div>
                       {item.status === 'completed' && (
                         <CheckCircle2 className="w-5 h-5 text-green-500" />
@@ -453,11 +557,25 @@ export default function SettlementPage() {
                       </div>
                       <div className="flex gap-2">
                         {!account.isPrimary && (
-                          <button className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-lg">
+                          <button
+                            onClick={() => {
+                              if (!user?.uid) return;
+                              setPrimaryBankAccount(user.uid, account.id);
+                              refreshFinanceData();
+                            }}
+                            className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-lg"
+                          >
                             {getUIText('setAsPrimary', currentLanguage)}
                           </button>
                         )}
-                        <button className="px-3 py-1 text-sm bg-red-50 text-red-600 rounded-lg">
+                        <button
+                          onClick={() => {
+                            if (!user?.uid) return;
+                            removeBankAccount(user.uid, account.id);
+                            refreshFinanceData();
+                          }}
+                          className="px-3 py-1 text-sm bg-red-50 text-red-600 rounded-lg"
+                        >
                           {getUIText('delete', currentLanguage)}
                         </button>
                       </div>
@@ -477,6 +595,8 @@ export default function SettlementPage() {
                     </label>
                     <input
                       type="text"
+                      value={newBankName}
+                      onChange={(e) => setNewBankName(e.target.value)}
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
                       placeholder={getUIText('enterBankName', currentLanguage)}
                     />
@@ -488,6 +608,8 @@ export default function SettlementPage() {
                     </label>
                     <input
                       type="text"
+                      value={newAccountNumber}
+                      onChange={(e) => setNewAccountNumber(e.target.value)}
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
                       placeholder={getUIText('enterAccountNumber', currentLanguage)}
                     />
@@ -499,19 +621,30 @@ export default function SettlementPage() {
                     </label>
                     <input
                       type="text"
+                      value={newAccountHolder}
+                      onChange={(e) => setNewAccountHolder(e.target.value)}
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
                       placeholder={getUIText('enterAccountHolder', currentLanguage)}
                     />
                   </div>
                   
                   <div className="flex items-center gap-2">
-                    <input type="checkbox" id="setAsPrimary" className="w-4 h-4" />
+                    <input
+                      type="checkbox"
+                      id="setAsPrimary"
+                      checked={setAsPrimaryOnCreate}
+                      onChange={(e) => setSetAsPrimaryOnCreate(e.target.checked)}
+                      className="w-4 h-4"
+                    />
                     <label htmlFor="setAsPrimary" className="text-sm text-gray-700">
                       {getUIText('setAsPrimaryAccount', currentLanguage)}
                     </label>
                   </div>
                   
-                  <button className="w-full py-3 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 transition-colors">
+                  <button
+                    onClick={handleAddBankAccount}
+                    className="w-full py-3 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 transition-colors"
+                  >
                     {getUIText('registerAccount', currentLanguage)}
                   </button>
                 </div>

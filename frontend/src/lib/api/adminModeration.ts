@@ -1,0 +1,218 @@
+'use client';
+
+import { getUsers, saveUsers, UserData } from '@/lib/api/auth';
+import { PropertyData } from '@/types/property';
+
+const PROPERTIES_KEY = 'properties';
+const MODERATION_AUDIT_KEY = 'admin_moderation_audit_v1';
+
+export interface ModerationAuditEntry {
+  id: string;
+  action:
+    | 'user_blocked'
+    | 'user_restored'
+    | 'property_hidden'
+    | 'property_restored';
+  targetType: 'user' | 'property';
+  targetId: string;
+  ownerId?: string;
+  reason?: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+function genId(prefix: string): string {
+  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function readModerationAudits(): ModerationAuditEntry[] {
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(MODERATION_AUDIT_KEY);
+    return raw ? (JSON.parse(raw) as ModerationAuditEntry[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveModerationAudits(rows: ModerationAuditEntry[]): void {
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
+  localStorage.setItem(MODERATION_AUDIT_KEY, JSON.stringify(rows));
+}
+
+function appendModerationAudit(
+  action: ModerationAuditEntry['action'],
+  targetType: ModerationAuditEntry['targetType'],
+  targetId: string,
+  createdBy: string,
+  reason?: string,
+  ownerId?: string
+): void {
+  const rows = readModerationAudits();
+  rows.push({
+    id: genId('mad'),
+    action,
+    targetType,
+    targetId,
+    ownerId,
+    reason,
+    createdBy,
+    createdAt: new Date().toISOString(),
+  });
+  saveModerationAudits(rows);
+}
+
+function readAllPropertiesRaw(): PropertyData[] {
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(PROPERTIES_KEY);
+    return raw ? (JSON.parse(raw) as PropertyData[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveAllPropertiesRaw(rows: PropertyData[]): void {
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
+  localStorage.setItem(PROPERTIES_KEY, JSON.stringify(rows));
+  window.dispatchEvent(new CustomEvent('propertiesUpdated'));
+}
+
+export function getModerationAudits(): ModerationAuditEntry[] {
+  return readModerationAudits().slice().reverse();
+}
+
+export function getAdminUsers(search = '', status: 'all' | 'active' | 'blocked' = 'all'): UserData[] {
+  const keyword = search.trim().toLowerCase();
+  return getUsers()
+    .filter((u) => {
+      if (status === 'blocked' && !u.blocked) return false;
+      if (status === 'active' && u.blocked) return false;
+      if (!keyword) return true;
+      return (
+        u.uid.toLowerCase().includes(keyword) ||
+        (u.email || '').toLowerCase().includes(keyword) ||
+        (u.displayName || '').toLowerCase().includes(keyword)
+      );
+    })
+    .sort((a, b) => {
+      const at = new Date(a.updatedAt || a.createdAt || 0).getTime();
+      const bt = new Date(b.updatedAt || b.createdAt || 0).getTime();
+      return bt - at;
+    });
+}
+
+export function setUserBlocked(uid: string, blocked: boolean, adminId: string, reason?: string): boolean {
+  const users = getUsers();
+  const index = users.findIndex((u) => u.uid === uid);
+  if (index === -1) return false;
+
+  users[index] = {
+    ...users[index],
+    blocked,
+    blockedAt: blocked ? new Date().toISOString() : undefined,
+    blockedReason: blocked ? reason : undefined,
+    updatedAt: new Date().toISOString(),
+  };
+  saveUsers(users);
+
+  // 계정 차단 시 해당 사용자의 매물을 자동 숨김 처리 (데이터는 유지)
+  if (blocked) {
+    const props = readAllPropertiesRaw();
+    let changed = 0;
+    const now = new Date().toISOString();
+    for (let i = 0; i < props.length; i++) {
+      if (props[i].ownerId !== uid) continue;
+      if (props[i].hidden) continue;
+      props[i] = {
+        ...props[i],
+        hidden: true,
+        updatedAt: now,
+        history: [
+          ...(props[i].history || []),
+          {
+            action: 'ADMIN_HIDE_BY_OWNER_BLOCK',
+            timestamp: now,
+            details: `Auto hidden due to owner block(${adminId})${reason ? `: ${reason}` : ''}`,
+          },
+        ],
+      };
+      changed += 1;
+      appendModerationAudit('property_hidden', 'property', props[i].id || '-', adminId, reason, uid);
+    }
+    if (changed > 0) saveAllPropertiesRaw(props);
+  }
+
+  appendModerationAudit(
+    blocked ? 'user_blocked' : 'user_restored',
+    'user',
+    uid,
+    adminId,
+    reason
+  );
+  return true;
+}
+
+export function getAdminProperties(
+  search = '',
+  status: 'all' | 'active' | 'hidden' = 'all'
+): PropertyData[] {
+  const keyword = search.trim().toLowerCase();
+  return readAllPropertiesRaw()
+    .filter((p) => {
+      if (status === 'hidden' && !p.hidden) return false;
+      if (status === 'active' && p.hidden) return false;
+      if (!keyword) return true;
+      return (
+        (p.id || '').toLowerCase().includes(keyword) ||
+        (p.title || '').toLowerCase().includes(keyword) ||
+        (p.ownerId || '').toLowerCase().includes(keyword) ||
+        (p.address || '').toLowerCase().includes(keyword)
+      );
+    })
+    .sort((a, b) => {
+      const at = new Date(a.updatedAt || a.createdAt || 0).getTime();
+      const bt = new Date(b.updatedAt || b.createdAt || 0).getTime();
+      return bt - at;
+    });
+}
+
+export function setPropertyHidden(
+  propertyId: string,
+  hidden: boolean,
+  adminId: string,
+  reason?: string
+): boolean {
+  const rows = readAllPropertiesRaw();
+  const index = rows.findIndex((p) => p.id === propertyId);
+  if (index === -1) return false;
+
+  const history = rows[index].history || [];
+  rows[index] = {
+    ...rows[index],
+    hidden,
+    updatedAt: new Date().toISOString(),
+    history: [
+      ...history,
+      {
+        action: hidden ? 'ADMIN_HIDE' : 'ADMIN_RESTORE',
+        timestamp: new Date().toISOString(),
+        details: hidden
+          ? `Hidden by admin(${adminId})${reason ? `: ${reason}` : ''}`
+          : `Restored by admin(${adminId})`,
+      },
+    ],
+  };
+  saveAllPropertiesRaw(rows);
+
+  appendModerationAudit(
+    hidden ? 'property_hidden' : 'property_restored',
+    'property',
+    propertyId,
+    adminId,
+    reason,
+    rows[index].ownerId
+  );
+  return true;
+}
+

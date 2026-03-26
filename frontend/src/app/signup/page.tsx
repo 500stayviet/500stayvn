@@ -232,7 +232,6 @@ function SignupContent() {
         <TopBar 
           currentLanguage={currentLanguage}
           onLanguageChange={setCurrentLanguage}
-          hideLanguageSelector={true}
         />
 
         <motion.div

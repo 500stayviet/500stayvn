@@ -33,6 +33,9 @@ export interface UserData {
   password?: string; // LocalStorage용 (실제로는 해시되어야 하지만 테스트용)
   deleted?: boolean; // 탈퇴 여부
   deletedAt?: string; // 탈퇴 일시
+  blocked?: boolean; // 관리자 차단 여부 (복구 가능)
+  blockedAt?: string; // 차단 일시
+  blockedReason?: string; // 차단 사유
 }
 
 /**
@@ -127,7 +130,12 @@ export function getCurrentUserData(
     if (!userId) return null;
 
     const users = getUsers();
-    return users.find((u) => u.uid === userId) || null;
+    const current = users.find((u) => u.uid === userId) || null;
+    if (current?.blocked) {
+      setCurrentUser(null);
+      return null;
+    }
+    return current;
   }
 }
 
@@ -232,6 +240,12 @@ export async function signInWithEmail(
       // 이메일이 존재하지 않음
       return {
         error: { code: "auth/user-not-found", message: "User not found" },
+      };
+    }
+
+    if (userByEmail.blocked) {
+      return {
+        error: { code: "auth/user-blocked", message: "This account is blocked by admin" },
       };
     }
 

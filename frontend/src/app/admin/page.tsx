@@ -1,238 +1,116 @@
 'use client';
 
-import { useState } from 'react';
-import { translate, SupportedLanguage } from '@/lib/api/translation';
-import { Loader2, CheckCircle2, XCircle, Languages } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { ShieldCheck, LogOut, Wallet, ArrowUpRight, ClipboardList, Users, Home } from 'lucide-react';
+import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
+import { logoutAdmin } from '@/lib/api/adminAuth';
 
 export default function AdminPage() {
-  const [text, setText] = useState('Căn hộ 2PN Quận 7, Miễn phí quản lý, Không cần đặt cọc');
-  const [sourceLang, setSourceLang] = useState<SupportedLanguage | ''>('');
-  const [targetLang, setTargetLang] = useState<SupportedLanguage>('en');
-  const [result, setResult] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [supportedLangs, setSupportedLangs] = useState<SupportedLanguage[]>([]);
-
-  const languages: SupportedLanguage[] = ['en', 'ko', 'vi', 'ja', 'zh'];
-  const languageNames: Record<SupportedLanguage, string> = {
-    en: 'English',
-    ko: '한국어',
-    vi: 'Tiếng Việt',
-    ja: '日本語',
-    zh: '中文',
-  };
-
-  // 지원 언어 목록 조회 (하드코딩된 목록 반환)
-  const handleGetSupportedLanguages = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      // Gemini API에서 지원하는 언어 목록 (현재 구현된 언어)
-      const langs: SupportedLanguage[] = ['en', 'ko', 'vi', 'ja', 'zh'];
-      setSupportedLangs(langs);
-      setResult({ languages: langs });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 언어 감지 (단순히 Gemini API를 통해 번역 시도)
-  const handleDetectLanguage = async () => {
-    if (!text.trim()) {
-      setError('텍스트를 입력해주세요.');
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      // Gemini API는 언어 감지 기능이 없으므로, 영어로 번역 시도하여 결과 확인
-      const translation = await translate(text, 'en');
-      setResult({ 
-        detectedLanguage: translation.sourceLanguage,
-        confidence: translation.confidence || 0.9 
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 단일 번역
-  const handleTranslate = async () => {
-    if (!text.trim()) {
-      setError('텍스트를 입력해주세요.');
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      const translation = await translate(
-        text,
-        targetLang,
-        sourceLang || undefined
-      );
-      setResult(translation);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 배치 번역 (여러 줄을 개별적으로 번역)
-  const handleTranslateBatch = async () => {
-    const texts = text.split('\n').filter(t => t.trim());
-    if (texts.length === 0) {
-      setError('번역할 텍스트를 입력해주세요. (줄바꿈으로 구분)');
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      const batchResult = await Promise.all(
-        texts.map(async (text) => {
-          const translation = await translate(
-            text,
-            targetLang,
-            sourceLang || undefined
-          );
-          return translation;
-        })
-      );
-      setResult({ translations: batchResult });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const router = useRouter();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white p-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="bg-white rounded-lg shadow-lg p-8">
-          <div className="flex items-center gap-3 mb-8">
-            <Languages className="w-8 h-8 text-blue-600" />
-            <h1 className="text-3xl font-bold text-gray-900">번역 API 테스트 (관리자 페이지)</h1>
-          </div>
-
-          {/* 입력 영역 */}
-          <div className="space-y-6 mb-8">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                번역할 텍스트
-              </label>
-              <textarea
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                className="w-full h-32 p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                placeholder="번역할 텍스트를 입력하세요..."
-              />
+    <AdminRouteGuard>
+      <div className="min-h-screen bg-gray-100 flex justify-center">
+        <div className="w-full max-w-[430px] min-h-screen bg-white shadow-xl p-5">
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-6 h-6 text-blue-700" />
+              <h1 className="text-xl font-bold text-gray-900">관리자 대시보드</h1>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  출발 언어 (선택)
-                </label>
-                <select
-                  value={sourceLang}
-                  onChange={(e) => setSourceLang(e.target.value as SupportedLanguage | '')}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">자동 감지</option>
-                  {languages.map((lang) => (
-                    <option key={lang} value={lang}>
-                      {languageNames[lang]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  목표 언어
-                </label>
-                <select
-                  value={targetLang}
-                  onChange={(e) => setTargetLang(e.target.value as SupportedLanguage)}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  {languages.map((lang) => (
-                    <option key={lang} value={lang}>
-                      {languageNames[lang]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* 버튼 영역 */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             <button
-              onClick={handleGetSupportedLanguages}
-              disabled={loading}
-              className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+              onClick={() => {
+                logoutAdmin();
+                router.replace('/admin/login');
+              }}
+              className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200"
+              title="로그아웃"
             >
-              {loading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <Languages className="w-5 h-5" />
-              )}
-              지원 언어 조회
-            </button>
-
-            <button
-              onClick={handleDetectLanguage}
-              disabled={loading}
-              className="px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : '언어 감지'}
-            </button>
-
-            <button
-              onClick={handleTranslate}
-              disabled={loading}
-              className="px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : '단일 번역'}
-            </button>
-
-            <button
-              onClick={handleTranslateBatch}
-              disabled={loading}
-              className="px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : '배치 번역'}
+              <LogOut className="w-4 h-4 text-gray-700" />
             </button>
           </div>
 
-          {/* 에러 메시지 */}
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
-              <XCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-              <p className="text-red-800">{error}</p>
-            </div>
-          )}
-
-          {/* 결과 영역 */}
-          {result && (
-            <div className="p-6 bg-gray-50 rounded-lg border border-gray-200">
-              <div className="flex items-center gap-2 mb-4">
-                <CheckCircle2 className="w-5 h-5 text-green-600" />
-                <h2 className="text-xl font-semibold text-gray-900">결과</h2>
+          <div className="space-y-3">
+            <Link href="/admin/settlements" className="block">
+              <div className="rounded-xl border border-gray-200 p-4 flex items-center justify-between hover:bg-gray-50">
+                <div className="flex items-center gap-3">
+                  <Wallet className="w-5 h-5 text-purple-600" />
+                  <div>
+                    <p className="font-semibold text-gray-900">정산 승인</p>
+                    <p className="text-xs text-gray-500">출금 가능 금액 반영 승인</p>
+                  </div>
+                </div>
+                <ArrowUpRight className="w-4 h-4 text-gray-400" />
               </div>
-              <pre className="bg-white p-4 rounded-lg border border-gray-200 overflow-auto text-sm">
-                {JSON.stringify(result, null, 2)}
-              </pre>
-            </div>
-          )}
+            </Link>
+
+            <Link href="/admin/withdrawals" className="block">
+              <div className="rounded-xl border border-gray-200 p-4 flex items-center justify-between hover:bg-gray-50">
+                <div className="flex items-center gap-3">
+                  <ClipboardList className="w-5 h-5 text-blue-600" />
+                  <div>
+                    <p className="font-semibold text-gray-900">출금 요청 승인</p>
+                    <p className="text-xs text-gray-500">사용자 출금 요청 처리</p>
+                  </div>
+                </div>
+                <ArrowUpRight className="w-4 h-4 text-gray-400" />
+              </div>
+            </Link>
+
+            <Link href="/admin/audit" className="block">
+              <div className="rounded-xl border border-gray-200 p-4 flex items-center justify-between hover:bg-gray-50">
+                <div className="flex items-center gap-3">
+                  <Users className="w-5 h-5 text-emerald-600" />
+                  <div>
+                    <p className="font-semibold text-gray-900">감사 로그</p>
+                    <p className="text-xs text-gray-500">금전 이동 이력 조회</p>
+                  </div>
+                </div>
+                <ArrowUpRight className="w-4 h-4 text-gray-400" />
+              </div>
+            </Link>
+
+            <Link href="/admin/users" className="block">
+              <div className="rounded-xl border border-gray-200 p-4 flex items-center justify-between hover:bg-gray-50">
+                <div className="flex items-center gap-3">
+                  <Users className="w-5 h-5 text-indigo-600" />
+                  <div>
+                    <p className="font-semibold text-gray-900">계정 관리</p>
+                    <p className="text-xs text-gray-500">차단/복구 및 검색</p>
+                  </div>
+                </div>
+                <ArrowUpRight className="w-4 h-4 text-gray-400" />
+              </div>
+            </Link>
+
+            <Link href="/admin/properties" className="block">
+              <div className="rounded-xl border border-gray-200 p-4 flex items-center justify-between hover:bg-gray-50">
+                <div className="flex items-center gap-3">
+                  <Home className="w-5 h-5 text-rose-600" />
+                  <div>
+                    <p className="font-semibold text-gray-900">매물 관리</p>
+                    <p className="text-xs text-gray-500">숨김/복구 및 검색</p>
+                  </div>
+                </div>
+                <ArrowUpRight className="w-4 h-4 text-gray-400" />
+              </div>
+            </Link>
+
+            <Link href="/admin/kyc" className="block">
+              <div className="rounded-xl border border-gray-200 p-4 flex items-center justify-between hover:bg-gray-50">
+                <div className="flex items-center gap-3">
+                  <Users className="w-5 h-5 text-orange-600" />
+                  <div>
+                    <p className="font-semibold text-gray-900">KYC 데이터</p>
+                    <p className="text-xs text-gray-500">기존 관리자 KYC 페이지</p>
+                  </div>
+                </div>
+                <ArrowUpRight className="w-4 h-4 text-gray-400" />
+              </div>
+            </Link>
+          </div>
         </div>
       </div>
-    </div>
+    </AdminRouteGuard>
   );
 }

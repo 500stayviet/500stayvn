@@ -770,7 +770,7 @@ export default function PropertyDetailView({
                                     <div className="w-full mt-1 text-center">
                                       <p className="text-[10px]" style={{ color: COLORS.textSecondary }}>
                                         {property.maxPets != null && `${currentLanguage === 'ko' ? '최대 ' : ''}${property.maxPets}${currentLanguage === 'ko' ? '마리' : currentLanguage === 'vi' ? ' con' : ''}`}
-                                        {property.petFee != null && ` · ${property.priceUnit === 'vnd' ? `${property.petFee.toLocaleString('vi-VN')} VND` : `$${property.petFee.toLocaleString()}`}`}
+                                        {property.petFee != null && ` · ${property.priceUnit === 'vnd' ? `${property.petFee.toLocaleString('vi-VN')} VND` : `$${property.petFee.toLocaleString()}`} (${currentLanguage === 'ko' ? '마리당' : currentLanguage === 'vi' ? 'mỗi con' : 'per pet'})`}
                                       </p>
                                     </div>
                                   )}
@@ -1202,7 +1202,7 @@ export default function PropertyDetailView({
                                     <div className="w-full mt-1 text-center">
                                       <p className="text-[10px]" style={{ color: COLORS.textSecondary }}>
                                         {property.maxPets != null && `${currentLanguage === 'ko' ? '최대 ' : ''}${property.maxPets}${currentLanguage === 'ko' ? '마리' : currentLanguage === 'vi' ? ' con' : ''}`}
-                                        {property.petFee != null && ` · ${property.priceUnit === 'vnd' ? `${property.petFee.toLocaleString('vi-VN')} VND` : `$${property.petFee.toLocaleString()}`}`}
+                                        {property.petFee != null && ` · ${property.priceUnit === 'vnd' ? `${property.petFee.toLocaleString('vi-VN')} VND` : `$${property.petFee.toLocaleString()}`} (${currentLanguage === 'ko' ? '마리당' : currentLanguage === 'vi' ? 'mỗi con' : 'per pet'})`}
                                       </p>
                                     </div>
                                   )}

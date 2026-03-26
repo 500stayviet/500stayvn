@@ -426,8 +426,8 @@ export async function getAllProperties(): Promise<PropertyData[]> {
     
     const properties = JSON.parse(stored) as PropertyData[];
     
-    // 삭제된 매물 제외
-    const activeProperties = properties.filter((p) => !p.deleted);
+    // 삭제/숨김 매물 제외
+    const activeProperties = properties.filter((p) => !p.deleted && !p.hidden);
     
     // 날짜는 ISO 문자열 그대로 반환 (필요시 컴포넌트에서 Date로 변환)
     return activeProperties.map((prop) => ({
@@ -456,7 +456,7 @@ export async function getAvailableProperties(): Promise<PropertyData[]> {
     
     // 1. 광고 후보(부모 매물) 필터링: 자식(_child_)은 제외
     const candidateProps = allProps.filter(p => 
-      !p.deleted && !p.id?.includes('_child_') && (p.status === 'active' || p.status === 'INACTIVE_SHORT_TERM')
+      !p.deleted && !p.hidden && !p.id?.includes('_child_') && (p.status === 'active' || p.status === 'INACTIVE_SHORT_TERM')
     );
 
     for (const property of candidateProps) {

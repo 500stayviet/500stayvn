@@ -30,6 +30,7 @@ export interface PropertyData {
   createdAt?: any; // 생성 시간 (Date 또는 Timestamp-like 객체)
   updatedAt?: any; // 수정 시간 (Date 또는 Timestamp-like 객체)
   status?: 'active' | 'pending' | 'sold' | 'rented' | 'inactive' | 'INACTIVE_SHORT_TERM' | 'closed'; // 상태
+  hidden?: boolean; // 관리자 숨김 여부 (복구 가능)
   deleted?: boolean; // 삭제 여부
   deletedAt?: string; // 삭제 시간 (ISO 문자열)
   history?: {

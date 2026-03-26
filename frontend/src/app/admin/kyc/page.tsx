@@ -8,13 +8,12 @@
 
 import { useState, useEffect } from 'react';
 import { Download, RefreshCw, Users } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getAllKYCUsers, downloadAllKYCData, KYCUserData } from '@/lib/api/admin';
 import TopBar from '@/components/TopBar';
+import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
 
 export default function AdminKYCPage() {
-  const { user, loading: authLoading } = useAuth();
   const { currentLanguage, setCurrentLanguage } = useLanguage();
   const [kycUsers, setKycUsers] = useState<KYCUserData[]>([]);
   const [loading, setLoading] = useState(false);
@@ -51,12 +50,10 @@ export default function AdminKYCPage() {
   };
 
   useEffect(() => {
-    if (!authLoading && user) {
-      loadKYCData();
-    }
-  }, [user, authLoading]);
+    loadKYCData();
+  }, []);
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-gray-500">{currentLanguage === 'ko' ? '로딩 중...' : 'Đang tải...'}</div>
@@ -65,8 +62,9 @@ export default function AdminKYCPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
-      <div className="w-full max-w-[430px] mx-auto bg-white min-h-screen shadow-lg">
+    <AdminRouteGuard>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
+        <div className="w-full max-w-[430px] mx-auto bg-white min-h-screen shadow-lg">
         {/* 상단 바 */}
         <TopBar 
           currentLanguage={currentLanguage}
@@ -207,7 +205,8 @@ export default function AdminKYCPage() {
             </div>
           )}
         </div>
+        </div>
       </div>
-    </div>
+    </AdminRouteGuard>
   );
 }
