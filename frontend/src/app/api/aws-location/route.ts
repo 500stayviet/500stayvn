@@ -67,9 +67,6 @@ export async function POST(request: NextRequest) {
         // 거리 기반 가중치: BiasPosition 추가 (호치민 좌표 또는 사용자 위치)
         if (latitude && longitude) {
           requestBody.BiasPosition = [longitude, latitude];
-        } else {
-          // 기본값: 호치민 좌표 (10.776, 106.701)
-          requestBody.BiasPosition = [106.701, 10.776];
         }
         break;
 

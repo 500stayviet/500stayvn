@@ -27,10 +27,12 @@ export async function searchPlaceIndexForText(
       return [];
     }
 
+    const locationLanguage = getLocationServiceLanguage(language);
+
     const requestBody: any = {
       action: 'search',
       text: text.trim(),
-      language,
+      language: locationLanguage,
     };
 
     const response = await fetch(API_BASE_URL, {
@@ -80,10 +82,12 @@ export async function searchPlaceIndexForSuggestions(
       return [];
     }
 
+    const locationLanguage = getLocationServiceLanguage(language);
+
     const requestBody: any = {
       action: 'suggestions',
       text: text.trim(),
-      language,
+      language: locationLanguage,
     };
 
     // 거리 기반 가중치: 사용자 위치를 BiasPosition으로 전달

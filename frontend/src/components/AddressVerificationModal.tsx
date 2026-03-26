@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { X, MapPin, Loader2, Check } from 'lucide-react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { searchPlaceIndexForSuggestions, getPlaceById, searchPlaceIndexForPosition, searchPlaceIndexForText } from '@/lib/api/aws-location';
+import { getPlaceById, searchPlaceIndexForPosition, searchPlaceIndexForSuggestions } from '@/lib/api/aws-location';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { SupportedLanguage } from '@/lib/api/translation';
 
@@ -788,13 +788,27 @@ export default function AddressVerificationModal({
     
     debounceTimerRef.current = setTimeout(async () => {
       try {
-        const language = 'vi';
-        const results = await searchPlaceIndexForSuggestions(searchText.trim(), language);
-        
-        // Grab 데이터 그대로 사용 (좌표 null 체크 제거, 필터링 제거)
-        // Text가 있으면 무조건 리스트에 표시
-        const validResults = results.filter((item: any) => {
-          const text = item.Text || item.text || item.Label || item.label || '';
+        const results = await searchPlaceIndexForSuggestions(
+          searchText.trim(),
+          currentLanguage as any,
+        );
+
+        // suggestions API는 Text/Label/PlaceId를 포함하는 형태로 내려오지만,
+        // 안전을 위해 Text 필드를 확실히 통일합니다.
+        const normalizedResults = (results || []).map((item: any) => {
+          const text =
+            item?.Text || item?.text || item?.Label || item?.label || '';
+          return {
+            ...item,
+            Text: text,
+            text,
+            label: text,
+            Label: text,
+          };
+        });
+
+        const validResults = normalizedResults.filter((item: any) => {
+          const text = item.Text || '';
           return text && text.trim().length > 0;
         });
         
@@ -823,8 +837,14 @@ export default function AddressVerificationModal({
 
   // 주소 선택 및 지도 이동 (PlaceId 기반 - Grab 앱 방식)
   const handleSelectSuggestion = async (suggestion: any) => {
-    const text = suggestion.Text || suggestion.text || suggestion.label || '';
-    const placeId = suggestion.PlaceId || '';
+    const text =
+      suggestion.Text || suggestion.text || suggestion.Label || suggestion.label || '';
+    const placeId =
+      suggestion.PlaceId ||
+      suggestion.placeId ||
+      suggestion.Place?.PlaceId ||
+      suggestion.Place?.placeId ||
+      '';
     
     setSearchText(text);
     setSelectedAddress(text);
@@ -832,7 +852,7 @@ export default function AddressVerificationModal({
     setIsValidating(true);
 
     try {
-      const language = 'vi';
+      const language = currentLanguage as any;
       
       // PlaceId로 상세 정보 조회 (Grab 앱 방식)
       if (!placeId) {
