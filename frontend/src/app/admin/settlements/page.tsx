@@ -10,6 +10,7 @@ import { getAdminSession } from '@/lib/api/adminAuth';
 import {
   approveSettlement,
   getSettlementCandidates,
+  holdPendingSettlement,
   SettlementCandidate,
   holdSettlement,
   resumeSettlement,
@@ -112,8 +113,8 @@ export default function AdminSettlementsPage() {
           <div>
             <h1 className="text-lg font-bold text-slate-900">정산 승인</h1>
             <p className="text-sm text-slate-500">
-              체크아웃+24시간 후 승인 시 출금 가능 금액에 반영됩니다. · 대기 {needApproval.length} · 완료{' '}
-              {approvedActive.length} · 보류 {heldRows.length}
+              체크아웃+24시간 후 승인 시 출금 가능 금액에 반영됩니다. 보류 해제 시 해당 건은 승인 대기로
+              돌아갑니다. · 대기 {needApproval.length} · 완료 {approvedActive.length} · 보류 {heldRows.length}
             </p>
           </div>
           <button
@@ -173,19 +174,33 @@ export default function AdminSettlementsPage() {
               return card(
                 row,
                 'text-emerald-600',
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!admin?.username) return;
-                    const ok = approveSettlement(row, admin.username);
-                    if (!ok) return;
-                    load();
-                  }}
-                  className="mt-2 flex w-full items-center justify-center gap-2 rounded-md bg-blue-600 py-2 text-xs font-semibold text-white hover:bg-blue-700"
-                >
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                  승인 후 반영
-                </button>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!admin?.username) return;
+                      const ok = approveSettlement(row, admin.username);
+                      if (!ok) return;
+                      load();
+                    }}
+                    className="flex items-center justify-center gap-1.5 rounded-md bg-blue-600 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    승인
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!admin?.username) return;
+                      const ok = holdPendingSettlement(row, admin.username, '관리자 보류');
+                      if (!ok) return;
+                      load();
+                    }}
+                    className="rounded-md border border-amber-200 bg-amber-50 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+                  >
+                    보류
+                  </button>
+                </div>
               );
             }
             if (tab === 'approved') {
@@ -196,12 +211,12 @@ export default function AdminSettlementsPage() {
                   type="button"
                   onClick={() => {
                     if (!admin?.username) return;
-                    holdSettlement(row.bookingId, admin.username, '관리자 홀딩');
+                    holdSettlement(row.bookingId, admin.username, '관리자 보류');
                     load();
                   }}
                   className="mt-2 w-full rounded-md bg-amber-50 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-100"
                 >
-                  홀딩
+                  보류
                 </button>
               );
             }
@@ -217,7 +232,7 @@ export default function AdminSettlementsPage() {
                 }}
                 className="mt-2 w-full rounded-md bg-blue-600 py-2 text-xs font-semibold text-white hover:bg-blue-700"
               >
-                재개
+                복구(승인 대기)
               </button>
             );
           })

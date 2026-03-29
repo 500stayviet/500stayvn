@@ -530,6 +530,14 @@ export async function approveRefundBooking(bookingId: string, adminId: string): 
     updatedAt: new Date().toISOString(),
   };
   localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(bookings));
+
+  const { appendRefundLedgerEntry } = await import('@/lib/api/adminFinance');
+  appendRefundLedgerEntry({
+    ownerId: b.ownerId,
+    amount: b.totalPrice,
+    bookingId: b.id!,
+    adminId,
+  });
   return true;
 }
 

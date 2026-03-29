@@ -246,6 +246,8 @@ export type UITextKey =
   | 'incomeStatusPending'
   | 'incomeStatusConfirmed'
   | 'incomeStatusPayable'
+  | 'incomeStatusSettlementHeld'
+  | 'incomeStatusWithdrawable'
   | 'rentalPeriod'
   | 'title'
   | 'rentingInProgress'
@@ -510,6 +512,8 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     incomeStatusPending: '대기금액',
     incomeStatusConfirmed: '확정금액',
     incomeStatusPayable: '지급됨',
+    incomeStatusSettlementHeld: '정산 보류',
+    incomeStatusWithdrawable: '출금가능',
     rentalPeriod: '임대 기간',
     title: '매물명',
     rentingInProgress: '임대중',
@@ -770,6 +774,8 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     incomeStatusPending: 'Số tiền chờ',
     incomeStatusConfirmed: 'Số tiền xác nhận',
     incomeStatusPayable: 'Đã thanh toán',
+    incomeStatusSettlementHeld: 'Tạm giữ quyết toán',
+    incomeStatusWithdrawable: 'Có thể rút',
     rentalPeriod: 'Thời gian thuê',
     title: 'Tên bất động sản',
     rentingInProgress: 'Đang cho thuê',
@@ -1030,6 +1036,8 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     incomeStatusPending: 'Pending',
     incomeStatusConfirmed: 'Confirmed',
     incomeStatusPayable: 'Payable',
+    incomeStatusSettlementHeld: 'Settlement on hold',
+    incomeStatusWithdrawable: 'Withdrawable',
     rentalPeriod: 'Rental period',
     title: 'Property name',
     rentingInProgress: 'In stay',
@@ -1290,6 +1298,8 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     incomeStatusPending: '保留金額',
     incomeStatusConfirmed: '確定金額',
     incomeStatusPayable: '支払済',
+    incomeStatusSettlementHeld: '精算保留',
+    incomeStatusWithdrawable: '出金可能',
     rentalPeriod: '賃貸期間',
     title: '物件名',
     rentingInProgress: '滞在中',
@@ -1550,6 +1560,8 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     incomeStatusPending: '待定金额',
     incomeStatusConfirmed: '确认金额',
     incomeStatusPayable: '已支付',
+    incomeStatusSettlementHeld: '结算暂缓',
+    incomeStatusWithdrawable: '可提现',
     rentalPeriod: '租期',
     title: '房源名称',
     rentingInProgress: '租住中',

@@ -223,11 +223,11 @@ export default function AdminWithdrawalsPage() {
                       type="button"
                       onClick={() => {
                         if (!admin?.username) return;
-                        run(() => holdWithdrawal(r.id, admin.username, '관리자 홀딩'));
+                        run(() => holdWithdrawal(r.id, admin.username, '관리자 보류'));
                       }}
                       className="rounded-md bg-amber-50 py-1.5 text-[10px] font-semibold text-amber-900 hover:bg-amber-100"
                     >
-                      홀딩
+                      보류
                     </button>
                     <button
                       type="button"

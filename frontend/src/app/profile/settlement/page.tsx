@@ -38,6 +38,7 @@ import {
   createWithdrawalRequest,
   getBankAccounts,
   getOwnerBalances,
+  getSettlementApprovals,
   getWithdrawalRequests,
   removeBankAccount,
   setPrimaryBankAccount,
@@ -56,6 +57,10 @@ interface RevenueEntry {
   checkOutTime: string;
   amount: number;
   status: RentalIncomeStatus;
+  /** 관리자 정산이 보류(held)인 경우 임대인에게 보류 표시 */
+  settlementHeld: boolean;
+  /** 관리자 정산 승인(approved) — 출금 가능 잔액에 반영되는 건 */
+  settlementApproved: boolean;
 }
 
 export default function SettlementPage() {
@@ -94,6 +99,8 @@ export default function SettlementPage() {
         if (cancelled) return;
         const serverTimeISO = toISO8601ForAudit(now);
         const serverTimeMs = now.getTime();
+        const settlementApprovals = getSettlementApprovals();
+
         const eligible = bookings.filter((b) =>
           isEligibleForRentalIncome({
             paymentStatus: b.paymentStatus ?? 'pending',
@@ -134,6 +141,11 @@ export default function SettlementPage() {
           } catch {
             // keep propertyTitle fallback
           }
+          const sa = settlementApprovals.find((a) => a.bookingId === (b.id ?? ''));
+          const st = sa?.status ?? 'approved';
+          const settlementHeld = st === 'held';
+          const settlementApproved = !!sa && st === 'approved';
+
           entries.push({
             bookingId: b.id ?? '',
             propertyName,
@@ -143,6 +155,8 @@ export default function SettlementPage() {
             checkOutTime: b.checkOutTime ?? '12:00',
             amount: getRentalIncomeAmount(b),
             status,
+            settlementHeld,
+            settlementApproved,
           });
         }
         if (!cancelled) {
@@ -379,18 +393,26 @@ export default function SettlementPage() {
                         </p>
                         <span
                           className={`inline-block mt-2 px-2 py-1 text-xs font-medium rounded-full ${
-                            entry.status === 'pending'
-                              ? 'bg-amber-100 text-amber-800'
-                              : entry.status === 'confirmed'
-                              ? 'bg-blue-100 text-blue-800'
-                              : 'bg-green-100 text-green-800'
+                            entry.settlementHeld
+                              ? 'bg-slate-200 text-slate-800'
+                              : entry.settlementApproved
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : entry.status === 'pending'
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : entry.status === 'confirmed'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : 'bg-green-100 text-green-800'
                           }`}
                         >
-                          {entry.status === 'pending'
-                            ? getUIText('incomeStatusPending', currentLanguage)
-                            : entry.status === 'confirmed'
-                            ? getUIText('incomeStatusConfirmed', currentLanguage)
-                            : getUIText('incomeStatusPayable', currentLanguage)}
+                          {entry.settlementHeld
+                            ? getUIText('incomeStatusSettlementHeld', currentLanguage)
+                            : entry.settlementApproved
+                              ? getUIText('incomeStatusWithdrawable', currentLanguage)
+                              : entry.status === 'pending'
+                                ? getUIText('incomeStatusPending', currentLanguage)
+                                : entry.status === 'confirmed'
+                                  ? getUIText('incomeStatusConfirmed', currentLanguage)
+                                  : getUIText('incomeStatusPayable', currentLanguage)}
                         </span>
                       </div>
                       <div className="text-right shrink-0 ml-2">

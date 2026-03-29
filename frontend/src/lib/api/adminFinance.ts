@@ -26,12 +26,14 @@ export interface LedgerEntry {
     | 'settlement_approved'
     | 'settlement_held'
     | 'settlement_resumed'
+    | 'settlement_reverted_pending'
     | 'withdrawal_requested'
     | 'withdrawal_processing'
     | 'withdrawal_held'
     | 'withdrawal_resumed'
     | 'withdrawal_completed'
-    | 'withdrawal_rejected_refund';
+    | 'withdrawal_rejected_refund'
+    | 'refund_approved';
   refId?: string;
   note?: string;
   createdBy?: string;
@@ -110,6 +112,27 @@ function saveSettlementApprovals(items: SettlementApproval[]) {
 
 export function getLedgerEntries(): LedgerEntry[] {
   return readLS<LedgerEntry>(LEDGER_KEY);
+}
+
+/** 관리자 환불 승인 — 원장 기록(감사용). bookings 쪽에서 동적 import로 호출 가능. */
+export function appendRefundLedgerEntry(input: {
+  ownerId: string;
+  amount: number;
+  bookingId: string;
+  adminId: string;
+}): void {
+  const ledger = getLedgerEntries();
+  ledger.push({
+    id: genId('led'),
+    ownerId: input.ownerId,
+    amount: input.amount,
+    type: 'refund_approved',
+    refId: input.bookingId,
+    createdBy: input.adminId,
+    createdAt: new Date().toISOString(),
+    note: '관리자 환불 승인(게스트)',
+  });
+  saveLedgerEntries(ledger);
 }
 
 function saveLedgerEntries(items: LedgerEntry[]) {
@@ -250,6 +273,40 @@ export async function getSettlementCandidates(): Promise<SettlementCandidate[]> 
     .filter((r) => r.bookingId);
 }
 
+/**
+ * 승인 대기 건을 보류 탭으로 이동(승인 기록 없이 held만 생성). 출금 가능 반영 없음.
+ */
+export function holdPendingSettlement(candidate: SettlementCandidate, adminId: string, reason?: string): boolean {
+  const approvals = getSettlementApprovals();
+  if (approvals.some((a) => a.bookingId === candidate.bookingId)) return false;
+
+  const approval: SettlementApproval = {
+    bookingId: candidate.bookingId,
+    ownerId: candidate.ownerId,
+    amount: candidate.amount,
+    approvedBy: adminId,
+    approvedAt: new Date().toISOString(),
+    status: 'held',
+    reason: reason || '관리자 보류(승인 전)',
+  };
+  approvals.push(approval);
+  saveSettlementApprovals(approvals);
+
+  const ledger = getLedgerEntries();
+  ledger.push({
+    id: genId('led'),
+    ownerId: candidate.ownerId,
+    amount: 0,
+    type: 'settlement_held',
+    refId: candidate.bookingId,
+    createdBy: adminId,
+    createdAt: new Date().toISOString(),
+    note: reason || '정산 보류(승인 대기 건)',
+  });
+  saveLedgerEntries(ledger);
+  return true;
+}
+
 export function approveSettlement(candidate: SettlementCandidate, adminId: string): boolean {
   const approvals = getSettlementApprovals();
   if (approvals.some((a) => a.bookingId === candidate.bookingId)) return false;
@@ -290,7 +347,7 @@ export function holdSettlement(bookingId: string, adminId: string, reason?: stri
   approvals[index] = {
     ...approvals[index],
     status: 'held',
-    reason: reason || 'Held by admin',
+    reason: reason || '관리자 보류',
   };
   saveSettlementApprovals(approvals);
 
@@ -303,12 +360,15 @@ export function holdSettlement(bookingId: string, adminId: string, reason?: stri
     refId: bookingId,
     createdBy: adminId,
     createdAt: new Date().toISOString(),
-    note: reason || 'Settlement held',
+    note: reason || '정산 보류(승인 완료 건)',
   });
   saveLedgerEntries(ledger);
   return true;
 }
 
+/**
+ * 보류 중인 정산 건을 승인 대기로 복구: 승인 기록을 제거하고 관리자가 다시 승인하도록 함.
+ */
 export function resumeSettlement(bookingId: string, adminId: string): boolean {
   const approvals = getSettlementApprovals();
   const index = approvals.findIndex((a) => a.bookingId === bookingId);
@@ -316,23 +376,20 @@ export function resumeSettlement(bookingId: string, adminId: string): boolean {
   const currentStatus = approvals[index].status ?? 'approved';
   if (currentStatus !== 'held') return false;
 
-  approvals[index] = {
-    ...approvals[index],
-    status: 'approved',
-    reason: undefined,
-  };
+  const row = approvals[index];
+  approvals.splice(index, 1);
   saveSettlementApprovals(approvals);
 
   const ledger = getLedgerEntries();
   ledger.push({
     id: genId('led'),
-    ownerId: approvals[index].ownerId,
+    ownerId: row.ownerId,
     amount: 0,
-    type: 'settlement_resumed',
+    type: 'settlement_reverted_pending',
     refId: bookingId,
     createdBy: adminId,
     createdAt: new Date().toISOString(),
-    note: 'Settlement resumed',
+    note: `보류 해제 → 승인 대기로 복구 (해당 건 금액 ${row.amount.toLocaleString()} ₫ 재승인 필요)`,
   });
   saveLedgerEntries(ledger);
   return true;
