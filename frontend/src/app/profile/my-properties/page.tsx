@@ -8,6 +8,7 @@ import {
   getPropertiesByOwner,
   deleteProperty,
   permanentlyDeleteProperty,
+  getAvailableProperties,
 } from "@/lib/api/properties";
 import { PropertyData } from "@/types/property";
 import { getCurrentUserData } from "@/lib/api/auth";
@@ -15,21 +16,16 @@ import { ArrowLeft, MapPin, Trash2, CheckCircle2, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import TopBar from "@/components/TopBar";
 import Image from "next/image";
-import {
-  formatPrice,
-  isAdvertisingProperty,
-  hasAvailableBookingPeriod,
-  PropertyDateRange,
-} from "@/lib/utils/propertyUtils";
+import { formatPrice, isInHostPortfolio } from "@/lib/utils/propertyUtils";
 import { getUIText } from "@/utils/i18n";
 
 type PropertyFetchResult = {
   activeData: PropertyData[];
   deletedData: PropertyData[];
-  visibleActiveData: PropertyData[];
-  bookedDateRanges: Map<string, PropertyDateRange[]>;
-  excludedFromAdvertising: Set<string>;
-  reservedIds: Set<string>;
+  /** 등록 매물 탭: 포트폴리오(active + INACTIVE_SHORT_TERM) 전체 */
+  portfolioData: PropertyData[];
+  listedLiveCount: number;
+  adPausedCount: number;
 };
 
 // --- 실제 로직을 담당하는 컴포넌트 ---
@@ -48,53 +44,35 @@ function MyPropertiesContent() {
   const [showPermanentDeleteConfirm, setShowPermanentDeleteConfirm] = useState<
     string | null
   >(null);
-  const [advertisingCount, setAdvertisingCount] = useState(0);
+  const [listedLiveCount, setListedLiveCount] = useState(0);
+  const [adPausedCount, setAdPausedCount] = useState(0);
+  const [portfolioTotal, setPortfolioTotal] = useState(0);
   const [deletedCount, setDeletedCount] = useState(0);
-
-  const shouldShowPropertyInActiveTab = (
-    property: PropertyData,
-    bookedDateRanges: Map<string, PropertyDateRange[]>,
-  ) => {
-    if (!isAdvertisingProperty(property)) return false;
-    if (!property.id) return true;
-    const bookedRanges = bookedDateRanges.get(property.id) || [];
-    if (bookedRanges.length === 0) return true;
-    return hasAvailableBookingPeriod(property, bookedRanges);
-  };
 
   const fetchAndFilterPropertyData = async (): Promise<PropertyFetchResult> => {
     if (!user) throw new Error("User is not authenticated");
+    await getAvailableProperties();
     const [activeResult, deletedResult] = await Promise.all([
       getPropertiesByOwner(user.uid, false),
       getPropertiesByOwner(user.uid, true),
     ]);
 
-    const excludedFromAdvertising = new Set<string>();
-    const bookedDateRanges = activeResult.bookedDateRanges;
+    const portfolioData = activeResult.properties.filter((p) => isInHostPortfolio(p));
 
-    activeResult.properties.forEach((property) => {
-      if (
-        property.id &&
-        (!isAdvertisingProperty(property) ||
-          !hasAvailableBookingPeriod(
-            property,
-            bookedDateRanges.get(property.id) || [],
-          ))
-      ) {
-        excludedFromAdvertising.add(property.id);
-      }
+    let listed = 0;
+    let paused = 0;
+    portfolioData.forEach((p) => {
+      if (!p.id || p.hidden) return;
+      if (p.status === "active") listed += 1;
+      else if (p.status === "INACTIVE_SHORT_TERM") paused += 1;
     });
 
-    const visibleActiveData = activeResult.properties.filter((p) =>
-      shouldShowPropertyInActiveTab(p, bookedDateRanges),
-    );
     return {
       activeData: activeResult.properties,
       deletedData: deletedResult.properties,
-      visibleActiveData,
-      bookedDateRanges,
-      excludedFromAdvertising,
-      reservedIds: excludedFromAdvertising,
+      portfolioData,
+      listedLiveCount: listed,
+      adPausedCount: paused,
     };
   };
 
@@ -102,16 +80,15 @@ function MyPropertiesContent() {
     result: PropertyFetchResult,
     tab: "active" | "deleted",
   ) => {
-    const excludedProperties = result.activeData.filter((p) =>
-      result.excludedFromAdvertising.has(p.id!),
-    );
     if (tab === "active") {
-      setProperties(result.visibleActiveData);
+      setProperties(result.portfolioData);
     } else {
-      setProperties([...result.deletedData, ...excludedProperties]);
+      setProperties(result.deletedData);
     }
-    setAdvertisingCount(result.visibleActiveData.length);
-    setDeletedCount(result.deletedData.length + excludedProperties.length);
+    setListedLiveCount(result.listedLiveCount);
+    setAdPausedCount(result.adPausedCount);
+    setPortfolioTotal(result.portfolioData.length);
+    setDeletedCount(result.deletedData.length);
   };
 
   useEffect(() => {
@@ -140,6 +117,17 @@ function MyPropertiesContent() {
     };
     init();
   }, [user, authLoading, searchParams]);
+
+  useEffect(() => {
+    if (!user || authLoading) return;
+    const onInventoryChange = () => {
+      fetchAndFilterPropertyData().then((result) => {
+        applyPropertyResult(result, activeTab);
+      });
+    };
+    window.addEventListener("propertiesUpdated", onInventoryChange);
+    return () => window.removeEventListener("propertiesUpdated", onInventoryChange);
+  }, [user, authLoading, activeTab]);
 
   // 수정 페이지에서 뒤로 시: my-properties?open=id 로 들어오면 해당 매물 상세(인터셉팅)로 이동
   const openId = searchParams.get("open");
@@ -176,20 +164,36 @@ function MyPropertiesContent() {
     }
   };
 
-  const getStatusConfig = (status?: string) => {
-    if (status === "rented") {
+  const getStatusConfig = (property: PropertyData) => {
+    if (property.hidden) {
+      return {
+        borderColor: "border-amber-500",
+        bgColor: "bg-amber-500",
+        text: getUIText("adminHiddenProperty", currentLanguage),
+        icon: <Clock className="w-3 h-3" />,
+      };
+    }
+    if (property.status === "INACTIVE_SHORT_TERM") {
+      return {
+        borderColor: "border-orange-500",
+        bgColor: "bg-orange-500",
+        text: getUIText("adPausedByRule", currentLanguage),
+        icon: <Clock className="w-3 h-3" />,
+      };
+    }
+    if (property.status === "rented") {
       return {
         borderColor: "border-green-500",
         bgColor: "bg-green-500",
-        text: getUIText('rented', currentLanguage),
+        text: getUIText("rented", currentLanguage),
         icon: <CheckCircle2 className="w-3 h-3" />,
       };
     }
     return {
-      borderColor: "border-red-500",
-      bgColor: "bg-red-500",
-      text: getUIText('notRented', currentLanguage),
-      icon: <Clock className="w-3 h-3" />,
+      borderColor: "border-emerald-500",
+      bgColor: "bg-emerald-500",
+      text: getUIText("listingLive", currentLanguage),
+      icon: <CheckCircle2 className="w-3 h-3" />,
     };
   };
 
@@ -239,14 +243,21 @@ function MyPropertiesContent() {
                   }`}
                 >
                   {tab === "active"
-                    ? getUIText('activeProperties', currentLanguage)
-                    : getUIText('expiredProperties', currentLanguage)}
+                    ? getUIText("activeProperties", currentLanguage)
+                    : getUIText("expiredProperties", currentLanguage)}
                   <span className="ml-1.5 opacity-60">
-                    ({tab === "active" ? advertisingCount : deletedCount})
+                    ({tab === "active" ? portfolioTotal : deletedCount})
                   </span>
                 </button>
               ))}
             </div>
+            {activeTab === "active" && portfolioTotal > 0 ? (
+              <p className="mt-2 text-xs text-gray-500 leading-relaxed">
+                {getUIText("listingLive", currentLanguage)} {listedLiveCount}
+                {" · "}
+                {getUIText("adPausedByRule", currentLanguage)} {adPausedCount}
+              </p>
+            ) : null}
           </div>
 
           <div className="space-y-5">
@@ -256,7 +267,7 @@ function MyPropertiesContent() {
               </div>
             ) : (
               properties.map((property) => {
-                const config = getStatusConfig(property.status);
+                const config = getStatusConfig(property);
                 const mainImage =
                   property.images?.[0] ||
                   "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800&fit=crop";

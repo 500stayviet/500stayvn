@@ -3,6 +3,7 @@
 import { getSettlementCandidates } from '@/lib/api/adminFinance';
 import { getUsers } from '@/lib/api/auth';
 import { isPropertyNew, isUserNew } from '@/lib/adminNewUtils';
+import { isParentPropertyRecord } from '@/lib/utils/propertyUtils';
 import type { PropertyData } from '@/types/property';
 
 /** adminModeration.ts 와 동일 키 (순환 참조 방지 위해 직접 읽기) */
@@ -50,8 +51,9 @@ export function getUnseenNewUserCount(): number {
 export function getUnseenNewPropertyCount(): number {
   if (typeof window === 'undefined') return 0;
   const ack = readIdSet(KEY_PROP_IDS);
-  return readPropsRaw().filter((p) => p.id && !p.deleted && isPropertyNew(p) && !ack.has(p.id))
-    .length;
+  return readPropsRaw().filter(
+    (p) => p.id && !p.deleted && isParentPropertyRecord(p) && isPropertyNew(p) && !ack.has(p.id)
+  ).length;
 }
 
 /** 신규 탭 진입 시 현재 신규 목록을 확인 처리 → 해당 알림 제거 */
@@ -68,7 +70,7 @@ export function acknowledgeCurrentNewProperties(): void {
   if (typeof window === 'undefined') return;
   const ack = readIdSet(KEY_PROP_IDS);
   readPropsRaw()
-    .filter((p) => p.id && !p.deleted && isPropertyNew(p))
+    .filter((p) => p.id && !p.deleted && isParentPropertyRecord(p) && isPropertyNew(p))
     .forEach((p) => {
       if (p.id) ack.add(p.id);
     });

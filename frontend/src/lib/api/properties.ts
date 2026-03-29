@@ -9,7 +9,7 @@ import { PropertyData } from '@/types/property';
 import { getReservationsByOwner, ReservationData } from './reservations';
 import { parseDate, toISODateString } from '@/lib/utils/dateUtils';
 import { isDateRangeBooked, getAllBookings, BookingData } from './bookings';
-import { hasAvailableBookingPeriod, isAdvertisingProperty } from '@/lib/utils/propertyUtils';
+import { hasAvailableBookingPeriod, isParentPropertyRecord } from '@/lib/utils/propertyUtils';
 
 /**
  * 사용자의 동적 광고 한도 조회 (유료화 대비)
@@ -30,10 +30,12 @@ export async function getActiveAdCount(userId: string): Promise<number> {
   if (!stored) return 0;
   const properties = JSON.parse(stored) as PropertyData[];
   
-  return properties.filter(p => 
-    !p.deleted && 
-    p.ownerId === userId && 
-    p.status === 'active'
+  return properties.filter(
+    (p) =>
+      !p.deleted &&
+      isParentPropertyRecord(p) &&
+      p.ownerId === userId &&
+      p.status === 'active'
   ).length;
 }
 
@@ -58,6 +60,65 @@ export type PropertiesByOwnerResult = {
   properties: PropertyData[];
   bookedDateRanges: Map<string, PropertyDateRange[]>;
 };
+
+const RESERVATIONS_STORAGE_KEY = 'reservations';
+
+function readAllReservationsSync(): ReservationData[] {
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return [];
+  try {
+    const stored = localStorage.getItem(RESERVATIONS_STORAGE_KEY);
+    return stored ? (JSON.parse(stored) as ReservationData[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function groupReservationsByOwner(reservations: ReservationData[]): Map<string, ReservationData[]> {
+  const map = new Map<string, ReservationData[]>();
+  for (const r of reservations) {
+    const oid = r.ownerId;
+    if (!oid) continue;
+    if (!map.has(oid)) map.set(oid, []);
+    map.get(oid)!.push(r);
+  }
+  return map;
+}
+
+/** 부모 매물 + 동일 주소·호실 예약 구간 (pending/confirmed) — getAvailableProperties / 호스트·관리자 동기 기준 */
+export function buildBookedRangesForParentListing(
+  property: PropertyData,
+  allProps: PropertyData[],
+  reservations: ReservationData[]
+): PropertyDateRange[] {
+  const normalize = (s: string | undefined) => (s || '').trim().replace(/\s+/g, ' ').toLowerCase();
+  const targetAddress = normalize(property.address);
+  const targetTitle = normalize(property.title);
+  const targetUnit = normalize(property.unitNumber);
+
+  return reservations
+    .filter((r) => {
+      if (r.status !== 'pending' && r.status !== 'confirmed') return false;
+      const targetProp = allProps.find((p) => p.id === r.propertyId);
+      if (targetProp) {
+        const bookedAddress = normalize(targetProp.address);
+        const bookedTitle = normalize(targetProp.title);
+        const bookedUnit = normalize(targetProp.unitNumber);
+
+        return (
+          ((targetAddress !== '' && bookedAddress !== '' && targetAddress === bookedAddress) ||
+            (targetTitle !== '' && bookedTitle !== '' && targetTitle === bookedTitle)) &&
+          targetUnit === bookedUnit
+        );
+      }
+      return false;
+    })
+    .map((r) => {
+      const checkIn = parseDate(r.checkInDate);
+      const checkOut = parseDate(r.checkOutDate);
+      return checkIn && checkOut ? { checkIn, checkOut } : null;
+    })
+    .filter((r): r is PropertyDateRange => r != null);
+}
 
 /**
  * LocalStorage 키
@@ -232,9 +293,16 @@ export async function handleCancellationRelist(propertyId: string, ownerId: stri
     .map(r => ({ checkIn: new Date(toISODateString(r.checkInDate)), checkOut: new Date(toISODateString(r.checkOutDate)) }));
 
   if (!hasAvailableBookingPeriod(property, bookedRanges)) {
-    await updateProperty(propertyId, { 
-      status: 'closed',
-      history: [...(property.history || []), { action: 'AUTO_CLOSE_SHORT', timestamp: new Date().toISOString(), details: 'Available period < 7 days' }]
+    await updateProperty(propertyId, {
+      status: 'INACTIVE_SHORT_TERM',
+      history: [
+        ...(property.history || []),
+        {
+          action: 'AUTO_SUSPEND_GAP',
+          timestamp: new Date().toISOString(),
+          details: 'Cancel flow: Gap < 7d — 규칙상 광고종료·데이터 보존',
+        },
+      ],
     });
     return { type: 'short_term' };
   }
@@ -453,57 +521,52 @@ export async function getAvailableProperties(): Promise<PropertyData[]> {
     const allStored = localStorage.getItem(STORAGE_KEY);
     const allProps: PropertyData[] = allStored ? JSON.parse(allStored) : [];
     const availableProperties: PropertyData[] = [];
-    
-    // 1. 광고 후보(부모 매물) 필터링: 자식(_child_)은 제외
-    const candidateProps = allProps.filter(p => 
-      !p.deleted && !p.hidden && !p.id?.includes('_child_') && (p.status === 'active' || p.status === 'INACTIVE_SHORT_TERM')
+    const allReservations = readAllReservationsSync();
+    const byOwner = groupReservationsByOwner(allReservations);
+
+    const candidateProps = allProps.filter(
+      (p) =>
+        !p.deleted &&
+        !p.hidden &&
+        isParentPropertyRecord(p) &&
+        (p.status === 'active' || p.status === 'INACTIVE_SHORT_TERM')
     );
 
     for (const property of candidateProps) {
-      // 2. 해당 집(주소+호수)과 관련된 모든 예약(자식들의 예약 포함) 합산
-      // 'all'을 사용하여 모든 예약 상태를 가져온 뒤 나중에 pending/confirmed만 필터링
-      const reservations = await getReservationsByOwner(property.ownerId!, 'all');
-      
-      const normalize = (s: string | undefined) => (s || '').trim().replace(/\s+/g, ' ').toLowerCase();
-      const targetAddress = normalize(property.address);
-      const targetTitle = normalize(property.title);
-      const targetUnit = normalize(property.unitNumber);
+      if (!property.ownerId) continue;
+      const reservations = byOwner.get(property.ownerId) || [];
+      const bookedRanges = buildBookedRangesForParentListing(property, allProps, reservations);
 
-      const bookedRanges: PropertyDateRange[] = reservations
-        .filter(r => {
-          if (r.status !== 'pending' && r.status !== 'confirmed') return false;
-          
-          // r.propertyId가 현재 property.id이거나, 동일한 물리적 주소/동호수를 가진 매물인 경우
-          const targetProp = allProps.find(p => p.id === r.propertyId);
-          if (targetProp) {
-            const bookedAddress = normalize(targetProp.address);
-            const bookedTitle = normalize(targetProp.title);
-            const bookedUnit = normalize(targetProp.unitNumber);
-
-            return (
-              (targetAddress !== '' && bookedAddress !== '' && targetAddress === bookedAddress) || 
-              (targetTitle !== '' && bookedTitle !== '' && targetTitle === bookedTitle)
-            ) && (targetUnit === bookedUnit);
-          }
-          return false;
-        })
-        .map(r => ({ checkIn: parseDate(r.checkInDate)!, checkOut: parseDate(r.checkOutDate)! }));
-      
-      // 3. 7일 이상 연속 Gap이 있는지 확인
       if (hasAvailableBookingPeriod(property, bookedRanges)) {
         if (property.status !== 'active') {
-          await updateProperty(property.id!, { 
+          await updateProperty(property.id!, {
             status: 'active',
-            history: [...(property.history || []), { action: 'AUTO_RESUME_GAP', timestamp: new Date().toISOString(), details: 'Resumed: Gap >= 7d' }]
+            history: [
+              ...(property.history || []),
+              {
+                action: 'AUTO_RESUME_GAP',
+                timestamp: new Date().toISOString(),
+                details: 'Resumed: Gap >= 7d',
+              },
+            ],
           });
+          property.status = 'active';
         }
         availableProperties.push(property);
       } else {
         if (property.status !== 'INACTIVE_SHORT_TERM') {
-          await updateProperty(property.id!, { 
+          await updateProperty(property.id!, {
             status: 'INACTIVE_SHORT_TERM',
-            history: [...(property.history || []), { action: 'AUTO_SUSPEND_GAP', timestamp: new Date().toISOString(), details: 'Suspended: Gap < 7d' }]
+            history: [
+              ...(property.history || []),
+              {
+                action: 'AUTO_SUSPEND_GAP',
+                timestamp: new Date().toISOString(),
+                details: 'Suspended: Gap < 7d (규칙상 광고종료·데이터 보존)',
+              },
+            ],
           });
+          property.status = 'INACTIVE_SHORT_TERM';
         }
       }
     }
@@ -512,6 +575,104 @@ export async function getAvailableProperties(): Promise<PropertyData[]> {
     console.error('Error getting available properties:', error);
     return [];
   }
+}
+
+export type AdminInventoryFilter = 'all' | 'new' | 'listed' | 'paused' | 'hidden';
+
+/**
+ * 관리자 매물 탭: 고객 노출(listed) / 규칙상 광고종료·보존(paused) / 기타
+ * getAvailableProperties로 부모 상태를 한 번 동기화한 뒤 부모 행만 반환합니다.
+ */
+function sortPropsNewestFirst(arr: PropertyData[]): PropertyData[] {
+  return [...arr].sort((a, b) => {
+    const at = new Date(a.updatedAt || a.createdAt || 0).getTime();
+    const bt = new Date(b.updatedAt || b.createdAt || 0).getTime();
+    return bt - at;
+  });
+}
+
+function matchesAdminInventoryKeyword(
+  p: PropertyData,
+  keyword: string,
+  ownerEmailByUid: Map<string, string>
+): boolean {
+  if (!keyword) return true;
+  const oid = (p.ownerId || '').toLowerCase();
+  if (oid.includes(keyword)) return true;
+  const em = ownerEmailByUid.get(p.ownerId || '');
+  if (em && em.includes(keyword)) return true;
+  if ((p.id || '').toLowerCase().includes(keyword)) return true;
+  if ((p.title || '').toLowerCase().includes(keyword)) return true;
+  if ((p.address || '').toLowerCase().includes(keyword)) return true;
+  return false;
+}
+
+function propertyMatchesAdminTab(p: PropertyData, status: AdminInventoryFilter, isPropertyNew: (x: PropertyData) => boolean): boolean {
+  switch (status) {
+    case 'all':
+      return true;
+    case 'new':
+      return isPropertyNew(p);
+    case 'listed':
+      return !p.hidden && p.status === 'active';
+    case 'paused':
+      return !p.hidden && p.status === 'INACTIVE_SHORT_TERM';
+    case 'hidden':
+      return !!p.hidden;
+    default:
+      return true;
+  }
+}
+
+/**
+ * 관리자 매물 화면용: getAvailableProperties 1회로 동기화 후 탭별 행·건수 반환 (중복 호출 최소화)
+ */
+export async function loadAdminInventoryPage(
+  search = '',
+  filter: AdminInventoryFilter = 'all'
+): Promise<{
+  rows: PropertyData[];
+  nAll: number;
+  nNew: number;
+  nListed: number;
+  nPaused: number;
+  nHidden: number;
+}> {
+  await getAvailableProperties();
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+    return { rows: [], nAll: 0, nNew: 0, nListed: 0, nPaused: 0, nHidden: 0 };
+  }
+  const raw = localStorage.getItem(STORAGE_KEY);
+  const rows: PropertyData[] = raw ? JSON.parse(raw) : [];
+  const { isPropertyNew } = await import('@/lib/adminNewUtils');
+  const keyword = search.trim().toLowerCase();
+
+  const ownerEmailByUid = new Map<string, string>();
+  if (keyword) {
+    const { getUsers } = await import('@/lib/api/auth');
+    getUsers().forEach((u) => {
+      if (u.uid && !u.deleted) ownerEmailByUid.set(u.uid, (u.email || '').toLowerCase());
+    });
+  }
+
+  const base = rows.filter((p) => !p.deleted && isParentPropertyRecord(p));
+  const keywordMatched = base.filter((p) => matchesAdminInventoryKeyword(p, keyword, ownerEmailByUid));
+
+  const nAll = keywordMatched.length;
+  const nNew = keywordMatched.filter((p) => propertyMatchesAdminTab(p, 'new', isPropertyNew)).length;
+  const nListed = keywordMatched.filter((p) => propertyMatchesAdminTab(p, 'listed', isPropertyNew)).length;
+  const nPaused = keywordMatched.filter((p) => propertyMatchesAdminTab(p, 'paused', isPropertyNew)).length;
+  const nHidden = keywordMatched.filter((p) => propertyMatchesAdminTab(p, 'hidden', isPropertyNew)).length;
+
+  const tabRows = keywordMatched.filter((p) => propertyMatchesAdminTab(p, filter, isPropertyNew));
+  return {
+    rows: sortPropsNewestFirst(tabRows),
+    nAll,
+    nNew,
+    nListed,
+    nPaused,
+    nHidden,
+  };
 }
 
 /**
@@ -666,10 +827,9 @@ export async function getPropertyCountByOwner(ownerId: string): Promise<number> 
 
     let count = 0;
     for (const property of properties) {
-      // 매물이 광고 가능한 상태이고, 7일 이상 예약 가능 기간이 남아있는 경우에만 카운트
-      // hasAvailableBookingPeriod는 PropertyData와 PropertyDateRange[]를 인자로 받음
+      if (!property.id || !isParentPropertyRecord(property)) continue;
       if (
-        isAdvertisingProperty(property) &&
+        property.status === 'active' &&
         hasAvailableBookingPeriod(property, bookedDateRanges.get(property.id!) || [])
       ) {
         count++;
@@ -731,6 +891,9 @@ export async function getPropertiesByOwner(ownerId: string, includeDeleted: bool
       
       return true;
     });
+
+    // 예약 분리 자식(prop_child_)은 호스트 '내 매물'에서 제외 — 부모만 관리
+    filtered = filtered.filter((p) => isParentPropertyRecord(p));
     
     // 클라이언트 측에서 정렬 (updatedAt 우선, 없으면 createdAt 기준)
     filtered.sort((a, b) => {

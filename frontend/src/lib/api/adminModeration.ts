@@ -158,8 +158,9 @@ export function setUserBlocked(uid: string, blocked: boolean, adminId: string, r
   return true;
 }
 
-export type AdminPropertyFilter = 'all' | 'new' | 'active' | 'hidden';
+export type AdminPropertyFilter = 'all' | 'new' | 'listed' | 'paused' | 'hidden';
 
+/** @deprecated 동기 목록 — UI는 loadAdminInventoryPage( properties.ts ) 사용 권장 */
 export function getAdminProperties(
   search = '',
   status: AdminPropertyFilter = 'all'
@@ -174,9 +175,11 @@ export function getAdminProperties(
   return readAllPropertiesRaw()
     .filter((p) => {
       if (p.deleted) return false;
+      if (String(p.id || '').includes('_child_')) return false;
       if (status === 'new' && !isPropertyNew(p)) return false;
       if (status === 'hidden' && !p.hidden) return false;
-      if (status === 'active' && p.hidden) return false;
+      if (status === 'listed' && (p.hidden || p.status !== 'active')) return false;
+      if (status === 'paused' && (p.hidden || p.status !== 'INACTIVE_SHORT_TERM')) return false;
       if (!keyword) return true;
       const oid = (p.ownerId || '').toLowerCase();
       if (oid.includes(keyword)) return true;

@@ -45,6 +45,9 @@ export type UITextKey =
   | 'myProperties'
   | 'back'
   | 'activeProperties'
+  | 'listingLive'
+  | 'adPausedByRule'
+  | 'adminHiddenProperty'
   | 'expiredProperties'
   | 'rented'
   | 'notRented'
@@ -313,6 +316,9 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     myProperties: '내 매물 관리',
     back: '뒤로',
     activeProperties: '등록 매물',
+    listingLive: '노출 중',
+    adPausedByRule: '규칙상 광고종료(보존)',
+    adminHiddenProperty: '관리자 숨김',
     expiredProperties: '광고 종료',
     rented: '계약 완료',
     notRented: '계약 전',
@@ -575,6 +581,9 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     myProperties: 'Quản lý bất động sản',
     back: 'Quay lại',
     activeProperties: 'Đang hoạt động',
+    listingLive: 'Đang hiển thị',
+    adPausedByRule: 'Tạm dừng QC (lưu dữ liệu)',
+    adminHiddenProperty: 'Admin ẩn',
     expiredProperties: 'Đã hết hạn',
     rented: 'Đã cho thuê',
     notRented: 'Chưa thuê',
@@ -837,6 +846,9 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     myProperties: 'My Properties',
     back: 'Back',
     activeProperties: 'Active',
+    listingLive: 'Live listing',
+    adPausedByRule: 'Paused (rules, data kept)',
+    adminHiddenProperty: 'Hidden by admin',
     expiredProperties: 'Expired',
     rented: 'Rented',
     notRented: 'Active',
@@ -1099,6 +1111,9 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     myProperties: '物件管理',
     back: '戻る',
     activeProperties: '掲載中',
+    listingLive: '公開中',
+    adPausedByRule: 'ルール上停止（データ保持）',
+    adminHiddenProperty: '管理者非表示',
     expiredProperties: '掲載終了',
     rented: '成約済み',
     notRented: '掲載中',
@@ -1361,6 +1376,9 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     myProperties: '我的房产',
     back: '返回',
     activeProperties: '发布中',
+    listingLive: '展示中',
+    adPausedByRule: '规则暂停（保留数据）',
+    adminHiddenProperty: '管理员隐藏',
     expiredProperties: '已下架',
     rented: '已租出',
     notRented: '发布中',

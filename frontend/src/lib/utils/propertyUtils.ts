@@ -140,6 +140,19 @@ export const isAdvertisingProperty = (property: PropertyData) => {
   return normalizedStatus === 'active';
 };
 
+/** 예약 분리용 자식 매물(prop_child_)이 아닌 부모(또는 독립) 레코드인지 */
+export function isParentPropertyRecord(p: Pick<PropertyData, 'id'>): boolean {
+  return !String(p.id || '').includes('_child_');
+}
+
+/**
+ * 호스트 포트폴리오에 남아 있는 매물(고객 노출 가능 active + 규칙상 광고종료 보존 INACTIVE_SHORT_TERM)
+ */
+export function isInHostPortfolio(property: PropertyData): boolean {
+  const s = property.status ?? 'active';
+  return s === 'active' || s === 'INACTIVE_SHORT_TERM';
+}
+
 /**
  * 전체 임대 기간에서 이미 예약된 기간을 제외한 "실제 예약 가능한 구간" 배열 계산
  * Stay-over: 예약 구간의 체크아웃일 당일은 비어있음(다음 예약 가능 시작일).
