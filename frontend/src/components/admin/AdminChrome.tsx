@@ -1,9 +1,16 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LogOut } from 'lucide-react';
 import { ADMIN_NAV_ITEMS } from '@/lib/adminNav';
+import {
+  ADMIN_BADGES_REFRESH_EVENT,
+  badgeCountForNav,
+  fetchAdminBadgeCounts,
+  type AdminBadgeCounts,
+} from '@/lib/adminBadgeCounts';
 import { logoutAdmin } from '@/lib/api/adminAuth';
 
 function navActive(pathname: string | null, href: string) {
@@ -14,9 +21,75 @@ function navActive(pathname: string | null, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+function formatBadge(n: number): string {
+  if (n <= 0) return '';
+  return n > 99 ? '99+' : String(n);
+}
+
+function NavBadge({ count }: { count: number }) {
+  if (count <= 0) return null;
+  return (
+    <span
+      className="ml-1 inline-flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white tabular-nums"
+      aria-label={`알림 ${formatBadge(count)}건`}
+    >
+      {formatBadge(count)}
+    </span>
+  );
+}
+
 export default function AdminChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [badges, setBadges] = useState<AdminBadgeCounts | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = () => {
+      fetchAdminBadgeCounts().then((c) => {
+        if (!cancelled) setBadges(c);
+      });
+    };
+    load();
+    const interval = setInterval(load, 45000);
+    window.addEventListener('focus', load);
+    window.addEventListener(ADMIN_BADGES_REFRESH_EVENT, load);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      window.removeEventListener('focus', load);
+      window.removeEventListener(ADMIN_BADGES_REFRESH_EVENT, load);
+    };
+  }, []);
+
+  const countFor = (href: string) => (badges ? badgeCountForNav(href, badges) : 0);
+
+  const renderNav = (compact: boolean) => (
+    <>
+      {ADMIN_NAV_ITEMS.map((item) => {
+        const active = navActive(pathname, item.href);
+        const n = countFor(item.href);
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={`inline-flex items-center rounded-md font-medium transition-colors ${
+              compact
+                ? `shrink-0 whitespace-nowrap px-2.5 py-1.5 text-xs ${
+                    active ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-200/80'
+                  }`
+                : `px-2.5 py-1.5 text-sm ${
+                    active ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  }`
+            }`}
+          >
+            {item.label}
+            <NavBadge count={n} />
+          </Link>
+        );
+      })}
+    </>
+  );
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -32,22 +105,7 @@ export default function AdminChrome({ children }: { children: React.ReactNode })
             className="hidden min-w-0 flex-1 flex-wrap items-center gap-1 lg:flex"
             aria-label="관리자 메뉴"
           >
-            {ADMIN_NAV_ITEMS.map((item) => {
-              const active = navActive(pathname, item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors ${
-                    active
-                      ? 'bg-slate-900 text-white'
-                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
+            {renderNav(false)}
           </nav>
           <div className="ml-auto flex shrink-0 items-center gap-2">
             <button
@@ -68,22 +126,7 @@ export default function AdminChrome({ children }: { children: React.ReactNode })
             className="mx-auto flex max-w-[1600px] gap-1 overflow-x-auto px-4 py-2"
             aria-label="관리자 메뉴"
           >
-            {ADMIN_NAV_ITEMS.map((item) => {
-              const active = navActive(pathname, item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`shrink-0 rounded-md px-2.5 py-1.5 text-xs font-medium whitespace-nowrap ${
-                    active
-                      ? 'bg-slate-900 text-white'
-                      : 'text-slate-600 hover:bg-slate-200/80'
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
+            {renderNav(true)}
           </nav>
         </div>
       </header>

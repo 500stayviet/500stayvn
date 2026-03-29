@@ -2,17 +2,25 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
+import { acknowledgeCurrentNewUsers } from '@/lib/adminAckState';
+import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
 import { getAdminSession } from '@/lib/api/adminAuth';
+import type { AdminUserFilter } from '@/lib/api/adminModeration';
 import { getAdminUsers, setUserBlocked } from '@/lib/api/adminModeration';
 
-type FilterType = 'all' | 'active' | 'blocked';
-
 const PAGE_SIZE = 20;
+
+const FILTER_TABS: { id: AdminUserFilter; label: string }[] = [
+  { id: 'all', label: '전체' },
+  { id: 'new', label: '신규' },
+  { id: 'active', label: '정상' },
+  { id: 'blocked', label: '차단' },
+];
 
 export default function AdminUsersPage() {
   const admin = getAdminSession();
   const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState<FilterType>('all');
+  const [filter, setFilter] = useState<AdminUserFilter>('all');
   const [tick, setTick] = useState(0);
   const [page, setPage] = useState(1);
 
@@ -23,32 +31,50 @@ export default function AdminUsersPage() {
     [rows, page]
   );
 
+  const nAll = useMemo(() => getAdminUsers(query, 'all').length, [query, tick]);
+  const nNew = useMemo(() => getAdminUsers(query, 'new').length, [query, tick]);
+  const nActive = useMemo(() => getAdminUsers(query, 'active').length, [query, tick]);
+  const nBlocked = useMemo(() => getAdminUsers(query, 'blocked').length, [query, tick]);
+
+  const tabCount = (id: AdminUserFilter) =>
+    id === 'all' ? nAll : id === 'new' ? nNew : id === 'active' ? nActive : nBlocked;
+
   useEffect(() => {
     setPage(1);
   }, [query, filter]);
 
+  useEffect(() => {
+    if (filter !== 'new') return;
+    acknowledgeCurrentNewUsers();
+    refreshAdminBadges();
+  }, [filter]);
+
   return (
     <AdminRouteGuard>
       <div>
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-lg font-bold text-slate-900">계정 관리</h1>
-            <p className="text-sm text-slate-500">차단·복구 및 검색 · 총 {rows.length}건</p>
+            <p className="text-sm text-slate-500">
+              신규는 가입 후 24시간 이내 · 전체 {nAll} · 신규 {nNew} · 정상 {nActive} · 차단 {nBlocked}
+            </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {(['all', 'active', 'blocked'] as const).map((f) => (
-              <button
-                key={f}
-                type="button"
-                onClick={() => setFilter(f)}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-                  filter === f ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                }`}
-              >
-                {f === 'all' ? '전체' : f === 'active' ? '정상' : '차단'}
-              </button>
-            ))}
-          </div>
+        </div>
+
+        <div className="mb-4 flex flex-wrap gap-2">
+          {FILTER_TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setFilter(t.id)}
+              className={`rounded-md px-3 py-1.5 text-sm font-medium ${
+                filter === t.id ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              {t.label}
+              <span className="ml-1 tabular-nums opacity-80">({tabCount(t.id)})</span>
+            </button>
+          ))}
         </div>
 
         <input
@@ -95,6 +121,7 @@ export default function AdminUsersPage() {
                             if (!admin?.username) return;
                             setUserBlocked(u.uid, false, admin.username);
                             setTick((v) => v + 1);
+                            refreshAdminBadges();
                           }}
                           className="rounded-md bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-blue-700"
                         >
@@ -109,6 +136,7 @@ export default function AdminUsersPage() {
                               window.prompt('차단 사유를 입력하세요.', '관리자 차단') || '관리자 차단';
                             setUserBlocked(u.uid, true, admin.username, reason);
                             setTick((v) => v + 1);
+                            refreshAdminBadges();
                           }}
                           className="rounded-md bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-100"
                         >

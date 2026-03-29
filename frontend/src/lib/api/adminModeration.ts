@@ -1,6 +1,7 @@
 'use client';
 
 import { getUsers, saveUsers, UserData } from '@/lib/api/auth';
+import { isPropertyNew, isUserNew } from '@/lib/adminNewUtils';
 import { PropertyData } from '@/types/property';
 
 const PROPERTIES_KEY = 'properties';
@@ -82,10 +83,14 @@ export function getModerationAudits(): ModerationAuditEntry[] {
   return readModerationAudits().slice().reverse();
 }
 
-export function getAdminUsers(search = '', status: 'all' | 'active' | 'blocked' = 'all'): UserData[] {
+export type AdminUserFilter = 'all' | 'new' | 'active' | 'blocked';
+
+export function getAdminUsers(search = '', status: AdminUserFilter = 'all'): UserData[] {
   const keyword = search.trim().toLowerCase();
   return getUsers()
     .filter((u) => {
+      if (u.deleted) return false;
+      if (status === 'new' && !isUserNew(u)) return false;
       if (status === 'blocked' && !u.blocked) return false;
       if (status === 'active' && u.blocked) return false;
       if (!keyword) return true;
@@ -153,13 +158,17 @@ export function setUserBlocked(uid: string, blocked: boolean, adminId: string, r
   return true;
 }
 
+export type AdminPropertyFilter = 'all' | 'new' | 'active' | 'hidden';
+
 export function getAdminProperties(
   search = '',
-  status: 'all' | 'active' | 'hidden' = 'all'
+  status: AdminPropertyFilter = 'all'
 ): PropertyData[] {
   const keyword = search.trim().toLowerCase();
   return readAllPropertiesRaw()
     .filter((p) => {
+      if (p.deleted) return false;
+      if (status === 'new' && !isPropertyNew(p)) return false;
       if (status === 'hidden' && !p.hidden) return false;
       if (status === 'active' && p.hidden) return false;
       if (!keyword) return true;

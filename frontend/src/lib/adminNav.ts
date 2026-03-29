@@ -16,13 +16,13 @@ export type AdminNavItem = {
   description: string;
 };
 
-/** 관리자 상단 내비 + 대시보드 카드 공통 */
+/** 관리자 상단 내비 + 대시보드 카드 공통 (순서: 대시보드 → 계정 → 매물 → 정산 → 출금 → 감사 → KYC) */
 export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { href: '/admin', label: '대시보드', icon: LayoutDashboard, description: '업무 요약·바로가기' },
+  { href: '/admin/users', label: '계정', icon: Users, description: '차단·복구 및 검색' },
+  { href: '/admin/properties', label: '매물', icon: Home, description: '숨김·복구' },
   { href: '/admin/settlements', label: '정산', icon: Wallet, description: '출금 가능 반영 승인' },
   { href: '/admin/withdrawals', label: '출금', icon: ClipboardList, description: '출금 요청 처리' },
   { href: '/admin/audit', label: '감사', icon: ScrollText, description: '금전·조치 로그' },
-  { href: '/admin/users', label: '계정', icon: Users, description: '차단·복구' },
-  { href: '/admin/properties', label: '매물', icon: Home, description: '숨김·복구' },
-  { href: '/admin/kyc', label: 'KYC', icon: ShieldCheck, description: '본인확인 데이터' },
+  { href: '/admin/kyc', label: 'KYC', icon: ShieldCheck, description: '본인확인·검수' },
 ];

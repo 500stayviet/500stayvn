@@ -2,18 +2,26 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
+import { acknowledgeCurrentNewProperties } from '@/lib/adminAckState';
+import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
 import { getAdminSession } from '@/lib/api/adminAuth';
+import type { AdminPropertyFilter } from '@/lib/api/adminModeration';
 import { getAdminProperties, setPropertyHidden } from '@/lib/api/adminModeration';
-
-type FilterType = 'all' | 'active' | 'hidden';
 
 const PAGE_SIZE = 20;
 const PROPERTY_HIDDEN_REASON = '법규를 위반했으니 관리자에게 문의 하시기 바랍니다';
 
+const FILTER_TABS: { id: AdminPropertyFilter; label: string }[] = [
+  { id: 'all', label: '전체' },
+  { id: 'new', label: '신규' },
+  { id: 'active', label: '노출' },
+  { id: 'hidden', label: '숨김' },
+];
+
 export default function AdminPropertiesPage() {
   const admin = getAdminSession();
   const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState<FilterType>('all');
+  const [filter, setFilter] = useState<AdminPropertyFilter>('all');
   const [tick, setTick] = useState(0);
   const [page, setPage] = useState(1);
 
@@ -24,32 +32,50 @@ export default function AdminPropertiesPage() {
     [rows, page]
   );
 
+  const nAll = useMemo(() => getAdminProperties(query, 'all').length, [query, tick]);
+  const nNew = useMemo(() => getAdminProperties(query, 'new').length, [query, tick]);
+  const nActive = useMemo(() => getAdminProperties(query, 'active').length, [query, tick]);
+  const nHidden = useMemo(() => getAdminProperties(query, 'hidden').length, [query, tick]);
+
+  const tabCount = (id: AdminPropertyFilter) =>
+    id === 'all' ? nAll : id === 'new' ? nNew : id === 'active' ? nActive : nHidden;
+
   useEffect(() => {
     setPage(1);
   }, [query, filter]);
 
+  useEffect(() => {
+    if (filter !== 'new') return;
+    acknowledgeCurrentNewProperties();
+    refreshAdminBadges();
+  }, [filter]);
+
   return (
     <AdminRouteGuard>
       <div>
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-lg font-bold text-slate-900">매물 관리</h1>
-            <p className="text-sm text-slate-500">숨김·복구 · 총 {rows.length}건</p>
+            <p className="text-sm text-slate-500">
+              신규는 등록 후 24시간 이내 · 전체 {nAll} · 신규 {nNew} · 노출 {nActive} · 숨김 {nHidden}
+            </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {(['all', 'active', 'hidden'] as const).map((f) => (
-              <button
-                key={f}
-                type="button"
-                onClick={() => setFilter(f)}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-                  filter === f ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                }`}
-              >
-                {f === 'all' ? '전체' : f === 'active' ? '노출' : '숨김'}
-              </button>
-            ))}
-          </div>
+        </div>
+
+        <div className="mb-4 flex flex-wrap gap-2">
+          {FILTER_TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setFilter(t.id)}
+              className={`rounded-md px-3 py-1.5 text-sm font-medium ${
+                filter === t.id ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              {t.label}
+              <span className="ml-1 tabular-nums opacity-80">({tabCount(t.id)})</span>
+            </button>
+          ))}
         </div>
 
         <input
@@ -100,6 +126,7 @@ export default function AdminPropertiesPage() {
                             if (!admin?.username || !p.id) return;
                             setPropertyHidden(p.id, false, admin.username);
                             setTick((v) => v + 1);
+                            refreshAdminBadges();
                           }}
                           className="rounded-md bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-blue-700"
                         >
@@ -112,6 +139,7 @@ export default function AdminPropertiesPage() {
                             if (!admin?.username || !p.id) return;
                             setPropertyHidden(p.id, true, admin.username, PROPERTY_HIDDEN_REASON);
                             setTick((v) => v + 1);
+                            refreshAdminBadges();
                           }}
                           className="rounded-md bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-900 hover:bg-amber-100"
                         >

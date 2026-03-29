@@ -10,6 +10,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import type { SupportedLanguage } from '@/lib/api/translation';
 import { getAllKYCUsers, downloadAllKYCData, KYCUserData } from '@/lib/api/admin';
 import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
+import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
 
 const LANG_OPTIONS = [
   { code: 'ko', label: 'KO' },
@@ -81,6 +82,7 @@ export default function AdminKYCPage() {
     } finally {
       setInitialLoading(false);
       setRefreshing(false);
+      refreshAdminBadges();
     }
   };
 

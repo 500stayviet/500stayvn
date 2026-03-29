@@ -5,17 +5,20 @@ import { ArrowUpRight } from 'lucide-react';
 import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
 import { ADMIN_NAV_ITEMS } from '@/lib/adminNav';
 
+/** 대시보드 홈에서는 자기 자신으로 가는 카드(중복) 제외 */
+const DASHBOARD_CARDS = ADMIN_NAV_ITEMS.filter((item) => item.href !== '/admin');
+
 export default function AdminPage() {
   return (
     <AdminRouteGuard>
       <div>
         <div className="mb-5 flex flex-col gap-1 border-b border-slate-100 pb-4">
           <h1 className="text-lg font-bold text-slate-900 sm:text-xl">관리자 대시보드</h1>
-          <p className="text-sm text-slate-500">업무 메뉴를 선택하세요. 상단 바에서도 이동할 수 있습니다.</p>
+          <p className="text-sm text-slate-500">아래 메뉴 또는 상단 바에서 업무 화면으로 이동할 수 있습니다.</p>
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {ADMIN_NAV_ITEMS.map((item) => {
+          {DASHBOARD_CARDS.map((item) => {
             const Icon = item.icon;
             return (
               <Link

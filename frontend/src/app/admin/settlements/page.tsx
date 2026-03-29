@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
+import { acknowledgeCurrentSettlementPending } from '@/lib/adminAckState';
+import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
 import { getAdminSession } from '@/lib/api/adminAuth';
 import {
   approveSettlement,
@@ -12,9 +14,18 @@ import {
   resumeSettlement,
 } from '@/lib/api/adminFinance';
 
+type SettlementTab = 'pending' | 'approved' | 'held';
+
+const TABS: { id: SettlementTab; label: string }[] = [
+  { id: 'pending', label: '승인 대기' },
+  { id: 'approved', label: '승인 완료' },
+  { id: 'held', label: '보류' },
+];
+
 export default function AdminSettlementsPage() {
   const [items, setItems] = useState<SettlementCandidate[]>([]);
   const [loading, setLoading] = useState(false);
+  const [tab, setTab] = useState<SettlementTab>('pending');
   const admin = getAdminSession();
 
   const load = async () => {
@@ -22,11 +33,17 @@ export default function AdminSettlementsPage() {
     const rows = await getSettlementCandidates();
     setItems(rows);
     setLoading(false);
+    refreshAdminBadges();
   };
 
   useEffect(() => {
     load();
   }, []);
+
+  useEffect(() => {
+    if (tab !== 'pending') return;
+    void acknowledgeCurrentSettlementPending().then(() => refreshAdminBadges());
+  }, [tab]);
 
   const needApproval = useMemo(() => items.filter((i) => i.approvalStatus === null), [items]);
   const approvedActive = useMemo(
@@ -35,14 +52,24 @@ export default function AdminSettlementsPage() {
   );
   const heldRows = useMemo(() => items.filter((i) => i.approvalStatus === 'held'), [items]);
 
-  const column = (title: string, empty: string, list: SettlementCandidate[], body: ReactNode) => (
-    <div className="flex min-h-0 flex-col rounded-lg border border-slate-200 bg-slate-50/40 lg:max-h-[min(75vh,920px)] lg:overflow-y-auto">
-      <h2 className="sticky top-0 z-10 border-b border-slate-200 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-600">
-        {title}
-      </h2>
+  const activeList = useMemo(() => {
+    if (tab === 'pending') return needApproval;
+    if (tab === 'approved') return approvedActive;
+    return heldRows;
+  }, [tab, needApproval, approvedActive, heldRows]);
+
+  const emptyMsg =
+    tab === 'pending'
+      ? '승인 대기 정산 건이 없습니다.'
+      : tab === 'approved'
+        ? '승인 완료(활성) 건이 없습니다.'
+        : '보류 중인 정산 건이 없습니다.';
+
+  const column = (list: SettlementCandidate[], body: ReactNode) => (
+    <div className="flex min-h-0 max-h-[min(75vh,920px)] flex-col overflow-y-auto rounded-lg border border-slate-200 bg-slate-50/40">
       <div className="space-y-2 p-2">
         {list.length === 0 ? (
-          <p className="py-8 text-center text-sm text-slate-500">{empty}</p>
+          <p className="py-10 text-center text-sm text-slate-500">{emptyMsg}</p>
         ) : (
           body
         )}
@@ -65,11 +92,12 @@ export default function AdminSettlementsPage() {
   return (
     <AdminRouteGuard>
       <div>
-        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-lg font-bold text-slate-900">정산 승인</h1>
             <p className="text-sm text-slate-500">
-              체크아웃+24시간 후 승인 시 출금 가능 금액에 반영됩니다.
+              체크아웃+24시간 후 승인 시 출금 가능 금액에 반영됩니다. · 대기 {needApproval.length} · 완료{' '}
+              {approvedActive.length} · 보류 {heldRows.length}
             </p>
           </div>
           <button
@@ -81,47 +109,70 @@ export default function AdminSettlementsPage() {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:items-start">
-          {column('승인 대기', '승인 대기 정산 건이 없습니다.', needApproval, needApproval.map((row) =>
-            card(
-              row,
-              'text-emerald-600',
-              <button
-                type="button"
-                onClick={() => {
-                  if (!admin?.username) return;
-                  const ok = approveSettlement(row, admin.username);
-                  if (!ok) return;
-                  load();
-                }}
-                className="mt-2 flex w-full items-center justify-center gap-2 rounded-md bg-blue-600 py-2 text-xs font-semibold text-white hover:bg-blue-700"
-              >
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                승인 후 반영
-              </button>
-            )
+        <div className="mb-4 flex flex-wrap gap-2">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              className={`rounded-md px-3 py-1.5 text-sm font-medium ${
+                tab === t.id ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              {t.label}
+              <span className="ml-1 tabular-nums opacity-80">
+                (
+                {t.id === 'pending'
+                  ? needApproval.length
+                  : t.id === 'approved'
+                    ? approvedActive.length
+                    : heldRows.length}
+                )
+              </span>
+            </button>
           ))}
+        </div>
 
-          {column('승인 완료', '활성 승인 건이 없습니다.', approvedActive, approvedActive.map((row) =>
-            card(
-              row,
-              'text-emerald-600',
-              <button
-                type="button"
-                onClick={() => {
-                  if (!admin?.username) return;
-                  holdSettlement(row.bookingId, admin.username, '관리자 홀딩');
-                  load();
-                }}
-                className="mt-2 w-full rounded-md bg-amber-50 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-100"
-              >
-                홀딩
-              </button>
-            )
-          ))}
-
-          {column('보류', '보류 건이 없습니다.', heldRows, heldRows.map((row) =>
-            card(
+        {column(
+          activeList,
+          activeList.map((row) => {
+            if (tab === 'pending') {
+              return card(
+                row,
+                'text-emerald-600',
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!admin?.username) return;
+                    const ok = approveSettlement(row, admin.username);
+                    if (!ok) return;
+                    load();
+                  }}
+                  className="mt-2 flex w-full items-center justify-center gap-2 rounded-md bg-blue-600 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  승인 후 반영
+                </button>
+              );
+            }
+            if (tab === 'approved') {
+              return card(
+                row,
+                'text-emerald-600',
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!admin?.username) return;
+                    holdSettlement(row.bookingId, admin.username, '관리자 홀딩');
+                    load();
+                  }}
+                  className="mt-2 w-full rounded-md bg-amber-50 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+                >
+                  홀딩
+                </button>
+              );
+            }
+            return card(
               row,
               'text-amber-600',
               <button
@@ -135,9 +186,9 @@ export default function AdminSettlementsPage() {
               >
                 재개
               </button>
-            )
-          ))}
-        </div>
+            );
+          })
+        )}
       </div>
     </AdminRouteGuard>
   );
