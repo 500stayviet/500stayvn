@@ -1,114 +1,41 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { ShieldCheck, LogOut, Wallet, ArrowUpRight, ClipboardList, Users, Home } from 'lucide-react';
+import { ArrowUpRight } from 'lucide-react';
 import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
-import { logoutAdmin } from '@/lib/api/adminAuth';
+import { ADMIN_NAV_ITEMS } from '@/lib/adminNav';
 
 export default function AdminPage() {
-  const router = useRouter();
-
   return (
     <AdminRouteGuard>
-      <div className="min-h-screen bg-gray-100 flex justify-center">
-        <div className="w-full max-w-[430px] min-h-screen bg-white shadow-xl p-5">
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="w-6 h-6 text-blue-700" />
-              <h1 className="text-xl font-bold text-gray-900">관리자 대시보드</h1>
-            </div>
-            <button
-              onClick={() => {
-                logoutAdmin();
-                router.replace('/admin/login');
-              }}
-              className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200"
-              title="로그아웃"
-            >
-              <LogOut className="w-4 h-4 text-gray-700" />
-            </button>
-          </div>
+      <div>
+        <div className="mb-5 flex flex-col gap-1 border-b border-slate-100 pb-4">
+          <h1 className="text-lg font-bold text-slate-900 sm:text-xl">관리자 대시보드</h1>
+          <p className="text-sm text-slate-500">업무 메뉴를 선택하세요. 상단 바에서도 이동할 수 있습니다.</p>
+        </div>
 
-          <div className="space-y-3">
-            <Link href="/admin/settlements" className="block">
-              <div className="rounded-xl border border-gray-200 p-4 flex items-center justify-between hover:bg-gray-50">
-                <div className="flex items-center gap-3">
-                  <Wallet className="w-5 h-5 text-purple-600" />
-                  <div>
-                    <p className="font-semibold text-gray-900">정산 승인</p>
-                    <p className="text-xs text-gray-500">출금 가능 금액 반영 승인</p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {ADMIN_NAV_ITEMS.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="group flex items-start justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50/50 p-4 transition-colors hover:border-slate-300 hover:bg-white"
+              >
+                <div className="flex min-w-0 items-start gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white shadow-sm ring-1 ring-slate-200/80">
+                    <Icon className="h-5 w-5 text-slate-700" aria-hidden />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-slate-900">{item.label}</p>
+                    <p className="mt-0.5 text-xs leading-snug text-slate-500">{item.description}</p>
                   </div>
                 </div>
-                <ArrowUpRight className="w-4 h-4 text-gray-400" />
-              </div>
-            </Link>
-
-            <Link href="/admin/withdrawals" className="block">
-              <div className="rounded-xl border border-gray-200 p-4 flex items-center justify-between hover:bg-gray-50">
-                <div className="flex items-center gap-3">
-                  <ClipboardList className="w-5 h-5 text-blue-600" />
-                  <div>
-                    <p className="font-semibold text-gray-900">출금 요청 승인</p>
-                    <p className="text-xs text-gray-500">사용자 출금 요청 처리</p>
-                  </div>
-                </div>
-                <ArrowUpRight className="w-4 h-4 text-gray-400" />
-              </div>
-            </Link>
-
-            <Link href="/admin/audit" className="block">
-              <div className="rounded-xl border border-gray-200 p-4 flex items-center justify-between hover:bg-gray-50">
-                <div className="flex items-center gap-3">
-                  <Users className="w-5 h-5 text-emerald-600" />
-                  <div>
-                    <p className="font-semibold text-gray-900">감사 로그</p>
-                    <p className="text-xs text-gray-500">금전 이동 이력 조회</p>
-                  </div>
-                </div>
-                <ArrowUpRight className="w-4 h-4 text-gray-400" />
-              </div>
-            </Link>
-
-            <Link href="/admin/users" className="block">
-              <div className="rounded-xl border border-gray-200 p-4 flex items-center justify-between hover:bg-gray-50">
-                <div className="flex items-center gap-3">
-                  <Users className="w-5 h-5 text-indigo-600" />
-                  <div>
-                    <p className="font-semibold text-gray-900">계정 관리</p>
-                    <p className="text-xs text-gray-500">차단/복구 및 검색</p>
-                  </div>
-                </div>
-                <ArrowUpRight className="w-4 h-4 text-gray-400" />
-              </div>
-            </Link>
-
-            <Link href="/admin/properties" className="block">
-              <div className="rounded-xl border border-gray-200 p-4 flex items-center justify-between hover:bg-gray-50">
-                <div className="flex items-center gap-3">
-                  <Home className="w-5 h-5 text-rose-600" />
-                  <div>
-                    <p className="font-semibold text-gray-900">매물 관리</p>
-                    <p className="text-xs text-gray-500">숨김/복구 및 검색</p>
-                  </div>
-                </div>
-                <ArrowUpRight className="w-4 h-4 text-gray-400" />
-              </div>
-            </Link>
-
-            <Link href="/admin/kyc" className="block">
-              <div className="rounded-xl border border-gray-200 p-4 flex items-center justify-between hover:bg-gray-50">
-                <div className="flex items-center gap-3">
-                  <Users className="w-5 h-5 text-orange-600" />
-                  <div>
-                    <p className="font-semibold text-gray-900">KYC 데이터</p>
-                    <p className="text-xs text-gray-500">기존 관리자 KYC 페이지</p>
-                  </div>
-                </div>
-                <ArrowUpRight className="w-4 h-4 text-gray-400" />
-              </div>
-            </Link>
-          </div>
+                <ArrowUpRight className="h-4 w-4 shrink-0 text-slate-400 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+              </Link>
+            );
+          })}
         </div>
       </div>
     </AdminRouteGuard>

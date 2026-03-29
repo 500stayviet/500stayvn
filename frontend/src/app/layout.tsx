@@ -4,8 +4,7 @@ import "./globals.css";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { TranslationProvider } from "@/contexts/TranslationProvider";
 import NextAuthProvider from "@/components/providers/NextAuthProvider";
-import BottomNavigation from "@/components/BottomNavigation";
-import AppBox from "@/components/AppBox";
+import ConditionalRootShell from "@/components/ConditionalRootShell";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -105,14 +104,7 @@ export default function RootLayout({
         <NextAuthProvider>
           <LanguageProvider>
             <TranslationProvider>
-              <div className="min-h-screen bg-[#F3F4F6] flex justify-center">
-                <AppBox className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col">
-                  <main className="flex-1 pb-14">
-                    {children}
-                  </main>
-                  <BottomNavigation />
-                </AppBox>
-              </div>
+              <ConditionalRootShell>{children}</ConditionalRootShell>
             </TranslationProvider>
           </LanguageProvider>
         </NextAuthProvider>

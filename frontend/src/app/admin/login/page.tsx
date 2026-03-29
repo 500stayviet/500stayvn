@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { ShieldCheck } from 'lucide-react';
 import { loginAdmin } from '@/lib/api/adminAuth';
 
@@ -23,52 +24,58 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-[430px] bg-white rounded-2xl shadow-xl p-6">
-        <div className="flex items-center gap-3 mb-5">
-          <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
-            <ShieldCheck className="w-6 h-6 text-blue-700" />
+    <div className="flex min-h-screen items-center justify-center bg-slate-100 p-4 sm:p-8">
+      <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-lg sm:p-8">
+        <div className="mb-6 flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-slate-900 text-white">
+            <ShieldCheck className="h-6 w-6" aria-hidden />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">관리자 로그인</h1>
-            <p className="text-xs text-gray-500">Admin Portal</p>
+            <h1 className="text-lg font-bold text-slate-900 sm:text-xl">관리자 로그인</h1>
+            <p className="text-xs text-slate-500">500 STAY Admin · PC 전용</p>
           </div>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">아이디</label>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">아이디</label>
             <input
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-200"
+              className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-slate-300"
               placeholder="admin"
+              autoComplete="username"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">비밀번호</label>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">비밀번호</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-200"
+              className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-slate-300"
               placeholder="••••••••"
+              autoComplete="current-password"
             />
           </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error ? <p className="text-sm text-red-600">{error}</p> : null}
           <button
             type="submit"
-            className="w-full py-3 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700"
+            className="w-full rounded-lg bg-slate-900 py-3 text-sm font-semibold text-white hover:bg-slate-800"
           >
             로그인
           </button>
         </form>
 
-        <p className="text-[11px] text-gray-400 mt-4">
-          환경변수: NEXT_PUBLIC_ADMIN_USERNAME / NEXT_PUBLIC_ADMIN_PASSWORD
+        <p className="mt-4 text-center text-[11px] text-slate-400">
+          NEXT_PUBLIC_ADMIN_USERNAME / NEXT_PUBLIC_ADMIN_PASSWORD
+        </p>
+        <p className="mt-3 text-center">
+          <Link href="/" className="text-sm text-slate-600 underline-offset-2 hover:text-slate-900 hover:underline">
+            서비스 홈으로
+          </Link>
         </p>
       </div>
     </div>
   );
 }
-

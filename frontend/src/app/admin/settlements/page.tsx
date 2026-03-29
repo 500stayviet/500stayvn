@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
 import { getAdminSession } from '@/lib/api/adminAuth';
@@ -36,128 +35,110 @@ export default function AdminSettlementsPage() {
   );
   const heldRows = useMemo(() => items.filter((i) => i.approvalStatus === 'held'), [items]);
 
+  const column = (title: string, empty: string, list: SettlementCandidate[], body: ReactNode) => (
+    <div className="flex min-h-0 flex-col rounded-lg border border-slate-200 bg-slate-50/40 lg:max-h-[min(75vh,920px)] lg:overflow-y-auto">
+      <h2 className="sticky top-0 z-10 border-b border-slate-200 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-600">
+        {title}
+      </h2>
+      <div className="space-y-2 p-2">
+        {list.length === 0 ? (
+          <p className="py-8 text-center text-sm text-slate-500">{empty}</p>
+        ) : (
+          body
+        )}
+      </div>
+    </div>
+  );
+
+  const card = (row: SettlementCandidate, amountClass: string, actions: ReactNode) => (
+    <div key={row.bookingId} className="rounded-md border border-slate-200 bg-white p-3 text-sm shadow-sm">
+      <p className="font-semibold text-slate-900">{row.propertyTitle || 'Untitled'}</p>
+      <p className="mt-0.5 font-mono text-[11px] text-slate-500">
+        {row.checkInDate} ~ {row.checkOutDate}
+      </p>
+      <p className="mt-1 text-slate-700">Owner: {row.ownerId}</p>
+      <p className={`mt-1.5 text-base font-bold ${amountClass}`}>{row.amount.toLocaleString()} ₫</p>
+      {actions}
+    </div>
+  );
+
   return (
     <AdminRouteGuard>
-      <div className="min-h-screen bg-gray-100 flex justify-center">
-        <div className="w-full max-w-[430px] min-h-screen bg-white shadow-xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-xl font-bold text-gray-900">정산 승인</h1>
-            <Link href="/admin" className="text-sm text-blue-600">대시보드</Link>
+      <div>
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-lg font-bold text-slate-900">정산 승인</h1>
+            <p className="text-sm text-slate-500">
+              체크아웃+24시간 후 승인 시 출금 가능 금액에 반영됩니다.
+            </p>
           </div>
-
-          <p className="text-xs text-gray-500 mb-4">
-            체크아웃+24시간 조건을 통과한 건을 관리자가 승인하면 출금 가능 금액으로 반영됩니다.
-          </p>
-
           <button
+            type="button"
             onClick={load}
-            className="w-full mb-4 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-medium"
+            className="shrink-0 rounded-md bg-slate-100 px-4 py-2 text-sm font-medium hover:bg-slate-200"
           >
             {loading ? '불러오는 중...' : '새로고침'}
           </button>
+        </div>
 
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-sm font-bold text-gray-700 mb-2">승인 대기</h2>
-              <div className="space-y-3">
-                {needApproval.length === 0 ? (
-                  <p className="text-sm text-gray-500 py-4 text-center">승인 대기 정산 건이 없습니다.</p>
-                ) : (
-                  needApproval.map((row) => (
-                    <div key={row.bookingId} className="border border-gray-200 rounded-xl p-3">
-                      <p className="font-semibold text-gray-900">{row.propertyTitle || 'Untitled'}</p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {row.checkInDate} ~ {row.checkOutDate}
-                      </p>
-                      <p className="text-sm text-gray-800 mt-1">Owner: {row.ownerId}</p>
-                      <p className="text-lg font-bold text-emerald-600 mt-2">
-                        {row.amount.toLocaleString()} ₫
-                      </p>
-                      <button
-                        onClick={() => {
-                          if (!admin?.username) return;
-                          const ok = approveSettlement(row, admin.username);
-                          if (!ok) return;
-                          load();
-                        }}
-                        className="mt-3 w-full py-2.5 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 flex items-center justify-center gap-2"
-                      >
-                        <CheckCircle2 className="w-4 h-4" />
-                        승인 후 출금가능 반영
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:items-start">
+          {column('승인 대기', '승인 대기 정산 건이 없습니다.', needApproval, needApproval.map((row) =>
+            card(
+              row,
+              'text-emerald-600',
+              <button
+                type="button"
+                onClick={() => {
+                  if (!admin?.username) return;
+                  const ok = approveSettlement(row, admin.username);
+                  if (!ok) return;
+                  load();
+                }}
+                className="mt-2 flex w-full items-center justify-center gap-2 rounded-md bg-blue-600 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                승인 후 반영
+              </button>
+            )
+          ))}
 
-            <div>
-              <h2 className="text-sm font-bold text-gray-700 mb-2">승인 완료(활성)</h2>
-              <div className="space-y-3">
-                {approvedActive.length === 0 ? (
-                  <p className="text-sm text-gray-500 py-4 text-center">홀딩되지 않은 승인 완료 건이 없습니다.</p>
-                ) : (
-                  approvedActive.map((row) => (
-                    <div key={row.bookingId} className="border border-gray-200 rounded-xl p-3">
-                      <p className="font-semibold text-gray-900">{row.propertyTitle || 'Untitled'}</p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {row.checkInDate} ~ {row.checkOutDate}
-                      </p>
-                      <p className="text-sm text-gray-800 mt-1">Owner: {row.ownerId}</p>
-                      <p className="text-lg font-bold text-emerald-600 mt-2">
-                        {row.amount.toLocaleString()} ₫
-                      </p>
-                      <button
-                        onClick={() => {
-                          if (!admin?.username) return;
-                          holdSettlement(row.bookingId, admin.username, '관리자 홀딩');
-                          load();
-                        }}
-                        className="mt-3 w-full py-2.5 rounded-lg bg-yellow-50 text-yellow-700 font-semibold hover:bg-yellow-100 flex items-center justify-center"
-                      >
-                        홀딩 (출금가능 반영 중단)
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
+          {column('승인 완료', '활성 승인 건이 없습니다.', approvedActive, approvedActive.map((row) =>
+            card(
+              row,
+              'text-emerald-600',
+              <button
+                type="button"
+                onClick={() => {
+                  if (!admin?.username) return;
+                  holdSettlement(row.bookingId, admin.username, '관리자 홀딩');
+                  load();
+                }}
+                className="mt-2 w-full rounded-md bg-amber-50 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+              >
+                홀딩
+              </button>
+            )
+          ))}
 
-            <div>
-              <h2 className="text-sm font-bold text-gray-700 mb-2">보류(홀딩)</h2>
-              <div className="space-y-3">
-                {heldRows.length === 0 ? (
-                  <p className="text-sm text-gray-500 py-4 text-center">보류 중인 정산 건이 없습니다.</p>
-                ) : (
-                  heldRows.map((row) => (
-                    <div key={row.bookingId} className="border border-gray-200 rounded-xl p-3">
-                      <p className="font-semibold text-gray-900">{row.propertyTitle || 'Untitled'}</p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {row.checkInDate} ~ {row.checkOutDate}
-                      </p>
-                      <p className="text-sm text-gray-800 mt-1">Owner: {row.ownerId}</p>
-                      <p className="text-lg font-bold text-amber-600 mt-2">
-                        {row.amount.toLocaleString()} ₫
-                      </p>
-                      <button
-                        onClick={() => {
-                          if (!admin?.username) return;
-                          resumeSettlement(row.bookingId, admin.username);
-                          load();
-                        }}
-                        className="mt-3 w-full py-2.5 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 flex items-center justify-center"
-                      >
-                        재개 (출금가능 반영 복구)
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
+          {column('보류', '보류 건이 없습니다.', heldRows, heldRows.map((row) =>
+            card(
+              row,
+              'text-amber-600',
+              <button
+                type="button"
+                onClick={() => {
+                  if (!admin?.username) return;
+                  resumeSettlement(row.bookingId, admin.username);
+                  load();
+                }}
+                className="mt-2 w-full rounded-md bg-blue-600 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+              >
+                재개
+              </button>
+            )
+          ))}
         </div>
       </div>
     </AdminRouteGuard>
   );
 }
-
