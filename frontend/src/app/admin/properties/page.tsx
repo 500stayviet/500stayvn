@@ -78,12 +78,17 @@ export default function AdminPropertiesPage() {
           ))}
         </div>
 
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="id / 제목 / owner / 주소 검색"
-          className="mb-4 w-full max-w-xl rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-300"
-        />
+        <div className="mb-4 max-w-xl">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="id / 제목 / owner(UID·이메일) / 주소 검색"
+            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-300"
+          />
+          <p className="mt-1 text-xs text-slate-500">
+            선택한 탭(전체·신규·노출·숨김) 안에서만 검색됩니다.
+          </p>
+        </div>
 
         {rows.length === 0 ? (
           <p className="py-12 text-center text-sm text-slate-500">조회 결과가 없습니다.</p>

@@ -13,6 +13,7 @@ import {
   holdSettlement,
   resumeSettlement,
 } from '@/lib/api/adminFinance';
+import { filterSettlementsBySearch, getOwnerEmailMap } from '@/lib/adminSearchHelpers';
 
 type SettlementTab = 'pending' | 'approved' | 'held';
 
@@ -26,6 +27,7 @@ export default function AdminSettlementsPage() {
   const [items, setItems] = useState<SettlementCandidate[]>([]);
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<SettlementTab>('pending');
+  const [searchQuery, setSearchQuery] = useState('');
   const admin = getAdminSession();
 
   const load = async () => {
@@ -58,6 +60,13 @@ export default function AdminSettlementsPage() {
     return heldRows;
   }, [tab, needApproval, approvedActive, heldRows]);
 
+  const emailMap = useMemo(() => getOwnerEmailMap(), [items]);
+
+  const filteredList = useMemo(
+    () => filterSettlementsBySearch(activeList, searchQuery, emailMap),
+    [activeList, searchQuery, emailMap]
+  );
+
   const emptyMsg =
     tab === 'pending'
       ? '승인 대기 정산 건이 없습니다.'
@@ -77,17 +86,21 @@ export default function AdminSettlementsPage() {
     </div>
   );
 
-  const card = (row: SettlementCandidate, amountClass: string, actions: ReactNode) => (
-    <div key={row.bookingId} className="rounded-md border border-slate-200 bg-white p-3 text-sm shadow-sm">
-      <p className="font-semibold text-slate-900">{row.propertyTitle || 'Untitled'}</p>
-      <p className="mt-0.5 font-mono text-[11px] text-slate-500">
-        {row.checkInDate} ~ {row.checkOutDate}
-      </p>
-      <p className="mt-1 text-slate-700">Owner: {row.ownerId}</p>
-      <p className={`mt-1.5 text-base font-bold ${amountClass}`}>{row.amount.toLocaleString()} ₫</p>
-      {actions}
-    </div>
-  );
+  const card = (row: SettlementCandidate, amountClass: string, actions: ReactNode) => {
+    const email = emailMap.get(row.ownerId) || '—';
+    return (
+      <div key={row.bookingId} className="rounded-md border border-slate-200 bg-white p-3 text-sm shadow-sm">
+        <p className="font-mono text-[11px] text-slate-800 break-all">UID: {row.ownerId}</p>
+        <p className="mt-0.5 text-xs text-slate-700 break-all">{email}</p>
+        <p className="mt-1 font-semibold text-slate-900">{row.propertyTitle || 'Untitled'}</p>
+        <p className="mt-0.5 font-mono text-[11px] text-slate-500">
+          {row.checkInDate} ~ {row.checkOutDate}
+        </p>
+        <p className={`mt-1.5 text-base font-bold ${amountClass}`}>{row.amount.toLocaleString()} ₫</p>
+        {actions}
+      </div>
+    );
+  };
 
   return (
     <AdminRouteGuard>
@@ -133,9 +146,26 @@ export default function AdminSettlementsPage() {
           ))}
         </div>
 
+        <div className="mb-4">
+          <label htmlFor="settlement-search" className="sr-only">
+            검색
+          </label>
+          <input
+            id="settlement-search"
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="이메일, UID, 예약·매물명, 금액…"
+            className="w-full max-w-md rounded-md border border-slate-200 bg-white px-3 py-2 text-sm placeholder:text-slate-400"
+          />
+          <p className="mt-1 text-xs text-slate-500">
+            선택한 탭(승인 대기·승인 완료·보류) 안에서만 검색됩니다.
+          </p>
+        </div>
+
         {column(
-          activeList,
-          activeList.map((row) => {
+          filteredList,
+          filteredList.map((row) => {
             if (tab === 'pending') {
               return card(
                 row,

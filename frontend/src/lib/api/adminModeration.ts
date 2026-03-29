@@ -165,6 +165,12 @@ export function getAdminProperties(
   status: AdminPropertyFilter = 'all'
 ): PropertyData[] {
   const keyword = search.trim().toLowerCase();
+  const ownerEmailByUid = new Map<string, string>();
+  if (keyword) {
+    getUsers().forEach((u) => {
+      if (u.uid && !u.deleted) ownerEmailByUid.set(u.uid, (u.email || '').toLowerCase());
+    });
+  }
   return readAllPropertiesRaw()
     .filter((p) => {
       if (p.deleted) return false;
@@ -172,12 +178,14 @@ export function getAdminProperties(
       if (status === 'hidden' && !p.hidden) return false;
       if (status === 'active' && p.hidden) return false;
       if (!keyword) return true;
-      return (
-        (p.id || '').toLowerCase().includes(keyword) ||
-        (p.title || '').toLowerCase().includes(keyword) ||
-        (p.ownerId || '').toLowerCase().includes(keyword) ||
-        (p.address || '').toLowerCase().includes(keyword)
-      );
+      const oid = (p.ownerId || '').toLowerCase();
+      if (oid.includes(keyword)) return true;
+      const em = ownerEmailByUid.get(p.ownerId || '');
+      if (em && em.includes(keyword)) return true;
+      if ((p.id || '').toLowerCase().includes(keyword)) return true;
+      if ((p.title || '').toLowerCase().includes(keyword)) return true;
+      if ((p.address || '').toLowerCase().includes(keyword)) return true;
+      return false;
     })
     .sort((a, b) => {
       const at = new Date(a.updatedAt || a.createdAt || 0).getTime();
