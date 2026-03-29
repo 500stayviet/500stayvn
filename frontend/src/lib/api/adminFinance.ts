@@ -66,6 +66,8 @@ export interface SettlementCandidate {
   bookingId: string;
   ownerId: string;
   propertyTitle: string;
+  /** 예약에 캐시된 매물 주소 */
+  propertyAddress?: string;
   checkInDate: string;
   checkOutDate: string;
   amount: number;
@@ -236,6 +238,7 @@ export async function getSettlementCandidates(): Promise<SettlementCandidate[]> 
         bookingId: b.id ?? '',
         ownerId: b.ownerId,
         propertyTitle: b.propertyTitle ?? '',
+        propertyAddress: b.propertyAddress,
         checkInDate: b.checkInDate,
         checkOutDate: b.checkOutDate,
         amount: getRentalIncomeAmount(b),

@@ -12,8 +12,8 @@ const PAGE_SIZE = 20;
 const PROPERTY_HIDDEN_REASON = '법규를 위반했으니 관리자에게 문의 하시기 바랍니다';
 
 const FILTER_TABS: { id: AdminPropertyFilter; label: string }[] = [
-  { id: 'all', label: '전체' },
   { id: 'new', label: '신규' },
+  { id: 'all', label: '전체' },
   { id: 'active', label: '노출' },
   { id: 'hidden', label: '숨김' },
 ];
@@ -86,7 +86,7 @@ export default function AdminPropertiesPage() {
             className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-300"
           />
           <p className="mt-1 text-xs text-slate-500">
-            선택한 탭(전체·신규·노출·숨김) 안에서만 검색됩니다.
+            선택한 탭(신규·전체·노출·숨김) 안에서만 검색됩니다.
           </p>
         </div>
 

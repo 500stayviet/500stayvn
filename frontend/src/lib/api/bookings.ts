@@ -66,6 +66,11 @@ export interface BookingData {
   confirmedAt?: string; // 확정 시간 (ISO 문자열)
   cancelledAt?: string; // 취소 시간 (ISO 문자열)
   cancelReason?: string; // 취소 사유
+
+  /** 관리자 환불 승인(결제 상태가 refunded 로 전환됨) */
+  refundAdminApproved?: boolean;
+  refundAdminApprovedAt?: string;
+  refundAdminApprovedBy?: string;
 }
 
 /**
@@ -503,6 +508,29 @@ export async function deleteBooking(bookingId: string): Promise<void> {
     console.error('예약 삭제 실패:', error);
     throw error;
   }
+}
+
+/**
+ * 취소되었고 결제는 완료됐으나 관리자 환불 승인 전인 건에 대해 환불 처리(상태 반영).
+ */
+export async function approveRefundBooking(bookingId: string, adminId: string): Promise<boolean> {
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return false;
+  const bookings = await getAllBookings();
+  const index = bookings.findIndex((b) => b.id === bookingId);
+  if (index === -1) return false;
+  const b = bookings[index];
+  if (b.status !== 'cancelled' || b.paymentStatus !== 'paid' || b.refundAdminApproved) return false;
+
+  bookings[index] = {
+    ...b,
+    paymentStatus: 'refunded',
+    refundAdminApproved: true,
+    refundAdminApprovedAt: new Date().toISOString(),
+    refundAdminApprovedBy: adminId,
+    updatedAt: new Date().toISOString(),
+  };
+  localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(bookings));
+  return true;
 }
 
 /**

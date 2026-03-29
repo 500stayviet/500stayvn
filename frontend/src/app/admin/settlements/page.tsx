@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
+import AdminSettlementStyleCard from '@/components/admin/AdminSettlementStyleCard';
 import { acknowledgeCurrentSettlementPending } from '@/lib/adminAckState';
 import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
 import { getAdminSession } from '@/lib/api/adminAuth';
@@ -88,17 +89,19 @@ export default function AdminSettlementsPage() {
 
   const card = (row: SettlementCandidate, amountClass: string, actions: ReactNode) => {
     const email = emailMap.get(row.ownerId) || '—';
+    const addressLine = (row.propertyAddress || '').trim() || row.propertyTitle || '—';
     return (
-      <div key={row.bookingId} className="rounded-md border border-slate-200 bg-white p-3 text-sm shadow-sm">
-        <p className="font-mono text-[11px] text-slate-800 break-all">UID: {row.ownerId}</p>
-        <p className="mt-0.5 text-xs text-slate-700 break-all">{email}</p>
-        <p className="mt-1 font-semibold text-slate-900">{row.propertyTitle || 'Untitled'}</p>
-        <p className="mt-0.5 font-mono text-[11px] text-slate-500">
-          {row.checkInDate} ~ {row.checkOutDate}
-        </p>
-        <p className={`mt-1.5 text-base font-bold ${amountClass}`}>{row.amount.toLocaleString()} ₫</p>
-        {actions}
-      </div>
+      <AdminSettlementStyleCard
+        key={row.bookingId}
+        checkInDate={row.checkInDate}
+        checkOutDate={row.checkOutDate}
+        addressLine={addressLine}
+        email={email}
+        ownerUid={row.ownerId}
+        amount={row.amount}
+        amountClassName={amountClass}
+        footer={actions}
+      />
     );
   };
 

@@ -11,8 +11,8 @@ import { getAdminUsers, setUserBlocked } from '@/lib/api/adminModeration';
 const PAGE_SIZE = 20;
 
 const FILTER_TABS: { id: AdminUserFilter; label: string }[] = [
-  { id: 'all', label: '전체' },
   { id: 'new', label: '신규' },
+  { id: 'all', label: '전체' },
   { id: 'active', label: '정상' },
   { id: 'blocked', label: '차단' },
 ];
@@ -56,7 +56,7 @@ export default function AdminUsersPage() {
           <div>
             <h1 className="text-lg font-bold text-slate-900">계정 관리</h1>
             <p className="text-sm text-slate-500">
-              신규는 가입 후 24시간 이내 · 전체 {nAll} · 신규 {nNew} · 정상 {nActive} · 차단 {nBlocked}
+              신규는 가입 후 24시간 이내 · 신규 {nNew} · 전체 {nAll} · 정상 {nActive} · 차단 {nBlocked}
             </p>
           </div>
         </div>
@@ -85,7 +85,7 @@ export default function AdminUsersPage() {
             className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-300"
           />
           <p className="mt-1 text-xs text-slate-500">
-            선택한 탭(전체·신규·정상·차단) 안에서만 검색됩니다.
+            선택한 탭(신규·전체·정상·차단) 안에서만 검색됩니다.
           </p>
         </div>
 
