@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getCurrentUserData } from "@/lib/api/auth";
 import { addProperty, getPropertyCountByOwner } from "@/lib/api/properties";
+import { isOwnerSupplyLengthDays } from "@/lib/constants/listingCalendar";
 import { getUIText } from "@/utils/i18n";
 import {
   Camera,
@@ -593,17 +594,17 @@ export default function AddPropertyPage() {
 
     const diffTime = checkOutDate.getTime() - checkInDate.getTime();
     const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-    if (![7, 14, 21, 28].includes(diffDays)) {
+    if (!isOwnerSupplyLengthDays(diffDays)) {
       alert(
         currentLanguage === "ko"
-          ? "임대 기간은 7, 14, 21, 28일 단위여야 합니다."
+          ? "임대 기간은 7일 단위이며, 최대 약 3개월(91일)까지 선택할 수 있습니다."
           : currentLanguage === "vi"
-            ? "Thời hạn thuê phải theo đơn vị 7, 14, 21, 28 ngày."
+            ? "Thời hạn thuê theo bội 7 ngày, tối đa ~3 tháng (91 ngày)."
             : currentLanguage === "ja"
-              ? "賃貸期間は7、14、21、28日単位でなければなりません。"
+              ? "賃貸期間は7日単位で、最長約3か月（91日）までです。"
               : currentLanguage === "zh"
-                ? "租赁期限必须为7、14、21、28天单位。"
-                : "Rental period must be in units of 7, 14, 21, 28 days.",
+                ? "租期为7天倍数，最长约3个月（91天）。"
+                : "Rental length must be in 7-day steps, up to ~3 months (91 days).",
       );
       return;
     }

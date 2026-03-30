@@ -33,7 +33,9 @@ import {
   FULL_ELECTRONICS_IDS,
 } from "@/lib/constants/facilities";
 import { parseDate } from "@/lib/utils/dateUtils";
+import { LISTING_MAX_SUPPLY_DAYS } from "@/lib/constants/listingCalendar";
 import { getUIText } from "@/utils/i18n";
+import { getAvailableDateSegments } from "@/lib/utils/propertyUtils";
 import {
   getDistrictIdForCoord,
   getDistrictsByCityId,
@@ -72,6 +74,14 @@ function EditPropertyContent() {
 
   const fromDeletedTab = searchParams.get("tab") === "deleted";
   const fromModal = searchParams.get("from") === "modal";
+  const autoExtend = searchParams.get("extend") === "1";
+  const didAutoExtendRef = useRef(false);
+  const extensionMaxDate = (() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + LISTING_MAX_SUPPLY_DAYS);
+    return d;
+  })();
   const [loading, setLoading] = useState(false);
   const [loadingProperty, setLoadingProperty] = useState(true);
   const [propertyLoaded, setPropertyLoaded] = useState(false);
@@ -265,6 +275,25 @@ function EditPropertyContent() {
     };
     loadData();
   }, [propertyId, user, authLoading, propertyLoaded, router]);
+
+  // pending(짤투리) 확장: 달력 모달을 즉시 열고, '꼬리 짜투리'의 첫날을 기준으로 종료일만 선택하게 함
+  useEffect(() => {
+    if (!autoExtend) return;
+    if (!propertyLoaded) return;
+    if (didAutoExtendRef.current) return;
+    if (!checkInDate || !checkOutDate) return;
+
+    const segments = getAvailableDateSegments(checkInDate, checkOutDate, bookedRanges);
+    if (!segments.length) return;
+
+    const tailSegment = segments[segments.length - 1]; // 예약 뒤쪽에 남은 꼬리 구간 기준
+    didAutoExtendRef.current = true;
+
+    setCalendarMode("checkout");
+    setCheckInDate(new Date(tailSegment.start));
+    setCheckOutDate(null);
+    setShowCalendar(true);
+  }, [autoExtend, propertyLoaded, checkInDate, checkOutDate, bookedRanges, getAvailableDateSegments]);
 
   const handleAddressConfirm = (data: {
     address: string;
@@ -1830,6 +1859,9 @@ function EditPropertyContent() {
             <CalendarComponent
               checkInDate={checkInDate}
               checkOutDate={checkOutDate}
+              minDate={autoExtend && checkInDate ? checkInDate : undefined}
+              maxDate={autoExtend ? extensionMaxDate : undefined}
+              lockCheckInForOwnerMode={autoExtend}
               onCheckInSelect={(d) => {
                 setCheckInDate(d);
                 setCheckOutDate(null);

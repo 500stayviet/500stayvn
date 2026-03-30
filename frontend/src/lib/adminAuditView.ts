@@ -36,6 +36,8 @@ const MOD_LABEL: Record<ModerationAuditEntry['action'], string> = {
   user_restored: '계정 복구',
   property_hidden: '매물 숨김',
   property_restored: '매물 복구',
+  property_ad_ended_by_host: '매물 광고종료(호스트)',
+  property_deleted_by_host: '매물 삭제(호스트)',
 };
 
 export function ledgerTypeToCategory(t: LedgerEntry['type']): AuditTabId {

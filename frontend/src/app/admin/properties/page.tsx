@@ -77,7 +77,15 @@ export default function AdminPropertiesPage() {
   );
 
   const tabCount = (id: AdminInventoryFilter) =>
-    id === 'all' ? nAll : id === 'new' ? nNew : id === 'listed' ? nListed : id === 'paused' ? nPaused : nHidden;
+    id === 'all'
+      ? nAll
+      : id === 'new'
+        ? nNew
+        : id === 'listed'
+          ? nListed
+          : id === 'paused'
+            ? nPaused
+            : nHidden;
 
   useEffect(() => {
     setPage(1);
@@ -97,7 +105,7 @@ export default function AdminPropertiesPage() {
             <h1 className="text-lg font-bold text-slate-900">매물 관리</h1>
             <p className="text-sm text-slate-500">
               부모 매물만 표시 · 신규 24h · 전체 {nAll} · 신규 {nNew} · 노출(고객) {nListed} · 광고종료 {nPaused}{' '}
-              · 숨김 {nHidden}
+                · 숨김 {nHidden}
             </p>
           </div>
         </div>

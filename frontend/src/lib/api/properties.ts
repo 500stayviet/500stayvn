@@ -201,11 +201,171 @@ export async function handleCancellationRelist(propertyId: string, ownerId: stri
 
   // [Gaps Logic] 자식 매물(rented) 취소 시: 자식 레코드만 삭제하면 부모의 Gap이 자동으로 회복됨
   if (propertyId.includes('_child_')) {
-    console.log('[handleCancellationRelist] Child property cancelled, deleting child record:', propertyId);
-    const finalProperties = allProperties.filter(p => p.id !== propertyId);
+    const normalize = (s: string | undefined) => (s || '').trim().replace(/\s+/g, ' ').toLowerCase();
+    const targetAddress = normalize(property.address);
+    const targetTitle = normalize(property.title);
+    const targetUnit = normalize(property.unitNumber);
+
+    const reservations = await getReservationsByOwner(ownerId, 'all');
+    const bookedRanges = reservations
+      .filter((r) => {
+        if (r.status !== 'pending' && r.status !== 'confirmed') return false;
+        const reservedProp = allProperties.find((p) => p.id === r.propertyId);
+        if (!reservedProp) return false;
+        const bookedAddress = normalize(reservedProp.address);
+        const bookedTitle = normalize(reservedProp.title);
+        const bookedUnit = normalize(reservedProp.unitNumber);
+
+        return (
+          ((targetAddress !== '' && bookedAddress !== '' && targetAddress === bookedAddress) ||
+            (targetTitle !== '' && bookedTitle !== '' && targetTitle === bookedTitle)) &&
+          targetUnit === bookedUnit
+        );
+      })
+      .map((r) => ({
+        checkIn: new Date(toISODateString(r.checkInDate)),
+        checkOut: new Date(toISODateString(r.checkOutDate)),
+      }));
+
+    const childStart = toISODateString(property.checkInDate);
+    const childEnd = toISODateString(property.checkOutDate);
+
+    // 기존 부모(같은 ownerId + 동일 address/호수)가 있으면 해당 부모로 귀속
+    const parentCandidates = allProperties.filter(
+      (p) =>
+        !p.deleted &&
+        isParentPropertyRecord(p) &&
+        p.ownerId === ownerId &&
+        normalize(p.address) === targetAddress &&
+        normalize(p.unitNumber) === targetUnit
+    );
+
+    const pickMostRecentParent = (arr: PropertyData[]) => {
+      return [...arr].sort((a, b) => {
+        const at = new Date(a.updatedAt || a.createdAt || 0).getTime();
+        const bt = new Date(b.updatedAt || b.createdAt || 0).getTime();
+        return bt - at;
+      })[0];
+    };
+
+    const nowISO = new Date().toISOString();
+
+    // 1) 부모가 있으면: parent 범위를 늘리고(취소된 구간 포함), gap/한도에 따라 status 결정
+    if (parentCandidates.length > 0) {
+      const parent = pickMostRecentParent(parentCandidates);
+      const parentIndex = allProperties.findIndex((p) => p.id === parent.id);
+      if (parentIndex === -1) return { type: 'merged' };
+
+      const parentStart = toISODateString(parent.checkInDate);
+      const parentEnd = toISODateString(parent.checkOutDate);
+      const mergedStart = parentStart < childStart ? parentStart : childStart;
+      const mergedEnd = parentEnd > childEnd ? parentEnd : childEnd;
+
+      const wasActive = parent.status === 'active';
+      const willHave7Days = hasAvailableBookingPeriod(
+        { ...parent, checkInDate: mergedStart, checkOutDate: mergedEnd } as any,
+        bookedRanges
+      );
+
+      let newStatus: PropertyData['status'] = 'INACTIVE_SHORT_TERM';
+      let resultType: 'merged' | 'short_term' | 'limit_exceeded' = 'short_term';
+
+      if (willHave7Days) {
+        const [activeCount, adLimit] = await Promise.all([getActiveAdCount(ownerId), getUserAdLimit(ownerId)]);
+        const projectedActiveCount = activeCount + (wasActive ? 0 : 1);
+
+        if (projectedActiveCount >= adLimit) {
+          newStatus = 'closed';
+          resultType = 'limit_exceeded';
+        } else {
+          newStatus = 'active';
+          resultType = 'merged';
+        }
+      } else {
+        newStatus = 'INACTIVE_SHORT_TERM';
+        resultType = 'short_term';
+      }
+
+      allProperties[parentIndex] = {
+        ...allProperties[parentIndex],
+        checkInDate: mergedStart,
+        checkOutDate: mergedEnd,
+        status: newStatus,
+        updatedAt: nowISO,
+        history: [
+          ...(allProperties[parentIndex].history || []),
+          {
+            action: 'CHILD_CANCELLED_ATTACH',
+            timestamp: nowISO,
+            details: `Attached cancelled child (${propertyId}) to existing parent (${parent.id})`,
+          },
+        ],
+      };
+
+      const finalProperties = allProperties.filter((p) => p.id !== propertyId);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(finalProperties));
+      window.dispatchEvent(new CustomEvent('propertiesUpdated'));
+      return {
+        type: resultType,
+        targetId: parent.id,
+      };
+    }
+
+    // 2) 부모가 없으면: 취소된 구간만으로 새 부모를 생성
+    const willHave7Days = hasAvailableBookingPeriod(
+      { ...property, checkInDate: childStart, checkOutDate: childEnd, status: 'active' } as any,
+      bookedRanges
+    );
+
+    let newStatus: PropertyData['status'] = 'INACTIVE_SHORT_TERM';
+    let resultType: 'relisted' | 'short_term' | 'limit_exceeded' = 'short_term';
+
+    if (willHave7Days) {
+      const [activeCount, adLimit] = await Promise.all([getActiveAdCount(ownerId), getUserAdLimit(ownerId)]);
+      const projectedActiveCount = activeCount + 1;
+      if (projectedActiveCount >= adLimit) {
+        newStatus = 'closed';
+        resultType = 'limit_exceeded';
+      } else {
+        newStatus = 'active';
+        resultType = 'relisted';
+      }
+    } else {
+      newStatus = 'INACTIVE_SHORT_TERM';
+      resultType = 'short_term';
+    }
+
+    const newParentId = `prop_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
+
+    const newParent: PropertyData = {
+      ...property,
+      id: newParentId,
+      checkInDate: childStart,
+      checkOutDate: childEnd,
+      status: newStatus,
+      deleted: false,
+      deletedAt: undefined,
+      hidden: false,
+      createdAt: property.createdAt || nowISO,
+      updatedAt: nowISO,
+      history: [
+        ...(property.history || []),
+        {
+          action: 'CHILD_CANCELLED_PROMOTED_TO_PARENT',
+          timestamp: nowISO,
+          details: `Promoted cancelled child (${propertyId}) to a parent listing`,
+        },
+      ],
+    };
+
+    const finalProperties = allProperties
+      .filter((p) => p.id !== propertyId)
+      .concat(newParent);
+
     localStorage.setItem(STORAGE_KEY, JSON.stringify(finalProperties));
     window.dispatchEvent(new CustomEvent('propertiesUpdated'));
-    return { type: 'merged' }; // 부모에게 자동으로 가용 기간이 돌아가므로 '병합'과 유사함
+
+    return { type: resultType, targetId: newParentId };
   }
 
   // 2. 부모/독립 매물 취소 처리: 병합 대상 확인 (기존 로직 유지)
@@ -993,11 +1153,14 @@ export async function addProperty(
     }
     
     // 동일 매물 확인 (임대인 ID, 주소, 호수 일치 여부)
-    const existingIndex = properties.findIndex(p => 
-      !p.deleted && 
-      p.ownerId === payload.ownerId && 
-      (p.address === payload.address || p.title === payload.title) && 
-      p.unitNumber === payload.unitNumber
+    // 요구사항: "동일 주소 + 호수" 기준 중복 등록 방지
+    const normalize = (s?: string) => (s || '').trim().replace(/\s+/g, ' ').toLowerCase();
+    const existingIndex = properties.findIndex(
+      (p) =>
+        !p.deleted &&
+        p.ownerId === payload.ownerId &&
+        normalize(p.address) === normalize(payload.address) &&
+        normalize(p.unitNumber) === normalize(payload.unitNumber)
     );
 
     const now = new Date();
@@ -1234,6 +1397,81 @@ export async function deleteProperty(id: string): Promise<void> {
   } catch (error) {
     console.error('Error deleting property:', error);
     throw error;
+  }
+}
+
+/**
+ * 호스트: 광고 종료(고객 노출 중단) — 데이터는 유지
+ * 관리자 감사 로그에도 남김.
+ */
+export async function hostEndAdvertisingProperty(
+  propertyId: string,
+  ownerId: string,
+  reason?: string
+): Promise<void> {
+  const property = await getProperty(propertyId);
+  if (!property) throw new Error('PropertyNotFound');
+  if (property.deleted) return;
+
+  const nowISO = new Date().toISOString();
+  const history = property.history || [];
+
+  await updateProperty(propertyId, {
+    status: 'INACTIVE_SHORT_TERM',
+    hidden: false,
+    history: [
+      ...history,
+      {
+        action: 'HOST_MANUAL_END_AD',
+        timestamp: nowISO,
+        details: reason ? `Host ended: ${reason}` : 'Host ended advertisement',
+      },
+    ],
+  });
+
+  // 관리자 감사 로그(매물 카테고리)에도 기록
+  const MODERATION_AUDIT_KEY = 'admin_moderation_audit_v1';
+  try {
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
+    const raw = localStorage.getItem(MODERATION_AUDIT_KEY);
+    const rows = raw ? (JSON.parse(raw) as any[]) : [];
+    const id = `mad_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+    rows.push({
+      id,
+      action: 'property_ad_ended_by_host',
+      targetType: 'property',
+      targetId: propertyId,
+      ownerId,
+      reason,
+      createdBy: ownerId,
+      createdAt: nowISO,
+    });
+    localStorage.setItem(MODERATION_AUDIT_KEY, JSON.stringify(rows));
+  } catch {
+    // 감사 로그 저장 실패는 운영 흐름을 막지 않음
+  }
+}
+
+/**
+ * 호스트: 광고종료 상태에서 삭제(소프트 삭제) — 관리자 감사 로그에도 남김.
+ */
+export async function hostDeletePropertySoft(
+  propertyId: string,
+  ownerId: string,
+  reason?: string
+): Promise<void> {
+  const property = await getProperty(propertyId);
+  if (!property) throw new Error('PropertyNotFound');
+  if (property.deleted) return;
+
+  await deleteProperty(propertyId);
+  // 다른 화면 즉시 반영용
+  try {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('propertiesUpdated'));
+    }
+  } catch {
+    // ignore
   }
 }
 

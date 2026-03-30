@@ -13,7 +13,9 @@ export interface ModerationAuditEntry {
     | 'user_blocked'
     | 'user_restored'
     | 'property_hidden'
-    | 'property_restored';
+    | 'property_restored'
+    | 'property_ad_ended_by_host'
+    | 'property_deleted_by_host';
   targetType: 'user' | 'property';
   targetId: string;
   ownerId?: string;

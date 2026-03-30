@@ -1,95 +1,89 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react"; // 1. Suspense 추가
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   getPropertiesByOwner,
-  deleteProperty,
-  permanentlyDeleteProperty,
   getAvailableProperties,
+  hostEndAdvertisingProperty,
+  hostDeletePropertySoft,
 } from "@/lib/api/properties";
 import { PropertyData } from "@/types/property";
 import { getCurrentUserData } from "@/lib/api/auth";
-import { ArrowLeft, MapPin, Trash2, CheckCircle2, Clock } from "lucide-react";
+import { ArrowLeft, MapPin, Trash2, CheckCircle2, Clock, Pencil } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import TopBar from "@/components/TopBar";
 import Image from "next/image";
-import { formatPrice, isInHostPortfolio } from "@/lib/utils/propertyUtils";
+import { formatPrice } from "@/lib/utils/propertyUtils";
 import { getUIText } from "@/utils/i18n";
 
-type PropertyFetchResult = {
-  activeData: PropertyData[];
-  deletedData: PropertyData[];
-  /** 등록 매물 탭: 포트폴리오(active + INACTIVE_SHORT_TERM) 전체 */
-  portfolioData: PropertyData[];
-  listedLiveCount: number;
-  adPausedCount: number;
+type HostInventoryTab = "live" | "pending" | "ended";
+
+function parseHostTab(s: string | null): HostInventoryTab {
+  if (s === "pending" || s === "ended") return s;
+  if (s === "hidden") return "ended"; // legacy: hidden -> ended
+  return "live";
+}
+
+type InventoryBuckets = {
+  liveList: PropertyData[];
+  pendingList: PropertyData[];
+  endedList: PropertyData[];
 };
 
-// --- 실제 로직을 담당하는 컴포넌트 ---
 function MyPropertiesContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
   const { currentLanguage, setCurrentLanguage } = useLanguage();
-  const [properties, setProperties] = useState<PropertyData[]>([]);
+  const [inventory, setInventory] = useState<InventoryBuckets | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"active" | "deleted">("active");
+  const [activeTab, setActiveTab] = useState<HostInventoryTab>("live");
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(
-    null,
-  );
-  const [showPermanentDeleteConfirm, setShowPermanentDeleteConfirm] = useState<
-    string | null
-  >(null);
-  const [listedLiveCount, setListedLiveCount] = useState(0);
-  const [adPausedCount, setAdPausedCount] = useState(0);
-  const [portfolioTotal, setPortfolioTotal] = useState(0);
-  const [deletedCount, setDeletedCount] = useState(0);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
-  const fetchAndFilterPropertyData = async (): Promise<PropertyFetchResult> => {
+  const fetchInventory = async (): Promise<InventoryBuckets> => {
     if (!user) throw new Error("User is not authenticated");
     await getAvailableProperties();
-    const [activeResult, deletedResult] = await Promise.all([
-      getPropertiesByOwner(user.uid, false),
-      getPropertiesByOwner(user.uid, true),
-    ]);
+    const [activeResult] = await Promise.all([getPropertiesByOwner(user.uid, false)]);
+    const rows = activeResult.properties.filter((p) => !p.deleted);
 
-    const portfolioData = activeResult.properties.filter((p) => isInHostPortfolio(p));
-
-    let listed = 0;
-    let paused = 0;
-    portfolioData.forEach((p) => {
-      if (!p.id || p.hidden) return;
-      if (p.status === "active") listed += 1;
-      else if (p.status === "INACTIVE_SHORT_TERM") paused += 1;
-    });
+    const isManualEnded = (p: PropertyData) =>
+      !!p.history?.some((h) => h.action === "HOST_MANUAL_END_AD");
 
     return {
-      activeData: activeResult.properties,
-      deletedData: deletedResult.properties,
-      portfolioData,
-      listedLiveCount: listed,
-      adPausedCount: paused,
+      liveList: rows.filter((p) => !p.hidden && p.status === "active"),
+      pendingList: rows.filter(
+        (p) => !p.hidden && p.status === "INACTIVE_SHORT_TERM" && !isManualEnded(p),
+      ),
+      endedList: rows.filter(
+        (p) =>
+          p.hidden ||
+          p.status === "closed" ||
+          (p.status === "INACTIVE_SHORT_TERM" && isManualEnded(p)),
+      ),
     };
   };
 
-  const applyPropertyResult = (
-    result: PropertyFetchResult,
-    tab: "active" | "deleted",
-  ) => {
-    if (tab === "active") {
-      setProperties(result.portfolioData);
-    } else {
-      setProperties(result.deletedData);
+  const properties = useMemo(() => {
+    if (!inventory) return [];
+    switch (activeTab) {
+      case "live":
+        return inventory.liveList;
+      case "pending":
+        return inventory.pendingList;
+      case "ended":
+        return inventory.endedList;
+      default:
+        return [];
     }
-    setListedLiveCount(result.listedLiveCount);
-    setAdPausedCount(result.adPausedCount);
-    setPortfolioTotal(result.portfolioData.length);
-    setDeletedCount(result.deletedData.length);
-  };
+  }, [inventory, activeTab]);
+
+  useEffect(() => {
+    setActiveTab(parseHostTab(searchParams.get("tab")));
+  }, [searchParams]);
 
   useEffect(() => {
     const init = async () => {
@@ -105,43 +99,42 @@ function MyPropertiesContent() {
           router.push("/profile");
           return;
         }
-        const tab =
-          searchParams.get("tab") === "deleted" ? "deleted" : "active";
-        setActiveTab(tab);
-        const result = await fetchAndFilterPropertyData();
-        applyPropertyResult(result, tab);
+        const inv = await fetchInventory();
+        setInventory(inv);
         setLoading(false);
       } else if (!authLoading && !user) {
         router.push("/login");
       }
     };
     init();
-  }, [user, authLoading, searchParams]);
+  }, [user, authLoading, router]);
 
   useEffect(() => {
     if (!user || authLoading) return;
     const onInventoryChange = () => {
-      fetchAndFilterPropertyData().then((result) => {
-        applyPropertyResult(result, activeTab);
-      });
+      fetchInventory().then(setInventory);
     };
     window.addEventListener("propertiesUpdated", onInventoryChange);
     return () => window.removeEventListener("propertiesUpdated", onInventoryChange);
-  }, [user, authLoading, activeTab]);
+  }, [user, authLoading]);
 
-  // 수정 페이지에서 뒤로 시: my-properties?open=id 로 들어오면 해당 매물 상세(인터셉팅)로 이동
   const openId = searchParams.get("open");
   useEffect(() => {
     if (!openId || !user || loading) return;
     router.replace(`/profile/my-properties/${openId}`);
   }, [openId, user, loading, router]);
 
+  const goTab = (t: HostInventoryTab) => {
+    setActiveTab(t);
+    if (t === "live") router.push("/profile/my-properties");
+    else router.push(`/profile/my-properties?tab=${t}`);
+  };
+
   const handleDelete = async (id: string) => {
     setDeletingId(id);
     try {
-      await deleteProperty(id);
-      const result = await fetchAndFilterPropertyData();
-      applyPropertyResult(result, activeTab);
+      await hostDeletePropertySoft(id, user!.uid);
+      setInventory(await fetchInventory());
       setShowDeleteConfirm(null);
     } catch (e) {
       alert("Error deleting property");
@@ -150,30 +143,23 @@ function MyPropertiesContent() {
     }
   };
 
-  const handlePermanentDelete = async (id: string) => {
-    setDeletingId(id);
-    try {
-      await permanentlyDeleteProperty(id, user!.uid);
-      const result = await fetchAndFilterPropertyData();
-      applyPropertyResult(result, activeTab);
-      setShowPermanentDeleteConfirm(null);
-    } catch (e) {
-      alert("Error permanently deleting property");
-    } finally {
-      setDeletingId(null);
-    }
+  const handleEndAd = async (propertyId: string) => {
+    await hostEndAdvertisingProperty(propertyId, user!.uid);
+    setActiveTab("ended");
+    router.push(`/profile/my-properties?tab=ended`);
+    setInventory(await fetchInventory());
   };
 
   const getStatusConfig = (property: PropertyData) => {
     if (property.hidden) {
       return {
-        borderColor: "border-amber-500",
-        bgColor: "bg-amber-500",
+        borderColor: "border-orange-500",
+        bgColor: "bg-orange-500",
         text: getUIText("adminHiddenProperty", currentLanguage),
         icon: <Clock className="w-3 h-3" />,
       };
     }
-    if (property.status === "INACTIVE_SHORT_TERM") {
+    if (property.status === "INACTIVE_SHORT_TERM" || property.status === "closed") {
       return {
         borderColor: "border-orange-500",
         bgColor: "bg-orange-500",
@@ -197,20 +183,37 @@ function MyPropertiesContent() {
     };
   };
 
+  const tabItems = [
+    { id: "live" as const, labelKey: "tabAdvertLive" as const },
+    { id: "pending" as const, labelKey: "tabAdvertPending" as const },
+    { id: "ended" as const, labelKey: "tabAdvertSuspended" as const },
+  ];
+
+  const tabCount = (t: HostInventoryTab) => {
+    if (!inventory) return 0;
+    switch (t) {
+      case "live":
+        return inventory.liveList.length;
+      case "pending":
+        return inventory.pendingList.length;
+      case "ended":
+        return inventory.endedList.length;
+      default:
+        return 0;
+    }
+  };
+
   if (authLoading || loading)
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        {getUIText('loading', currentLanguage)}
+        {getUIText("loading", currentLanguage)}
       </div>
     );
 
   return (
     <div className="min-h-screen bg-gray-100 flex justify-center">
       <div className="w-full max-w-[430px] bg-white min-h-screen shadow-2xl flex flex-col relative pb-10">
-        <TopBar
-          currentLanguage={currentLanguage}
-          onLanguageChange={setCurrentLanguage}
-        />
+        <TopBar currentLanguage={currentLanguage} onLanguageChange={setCurrentLanguage} />
 
         <div className="px-5 py-6">
           <div className="mb-6">
@@ -218,53 +221,34 @@ function MyPropertiesContent() {
               onClick={() => router.push("/profile")}
               className="flex items-center gap-1 text-gray-500 mb-4"
             >
-              <ArrowLeft className="w-4 h-4" />{" "}
-              <span>{getUIText('back', currentLanguage)}</span>
+              <ArrowLeft className="w-4 h-4" /> <span>{getUIText("back", currentLanguage)}</span>
             </button>
-            <h1 className="text-2xl font-bold text-gray-900">
-              {getUIText('myProperties', currentLanguage)}
-            </h1>
+            <h1 className="text-2xl font-bold text-gray-900">{getUIText("myProperties", currentLanguage)}</h1>
 
-            <div className="flex gap-2 mt-5 bg-gray-100 p-1.5 rounded-xl">
-              {(["active", "deleted"] as const).map((tab) => (
+            <div className="grid grid-cols-2 gap-2 mt-5 sm:grid-cols-4">
+              {tabItems.map(({ id, labelKey }) => (
                 <button
-                  key={tab}
-                  onClick={() =>
-                    router.push(
-                      tab === "active"
-                        ? "/profile/my-properties"
-                        : "?tab=deleted",
-                    )
-                  }
-                  className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-                    activeTab === tab
-                      ? "bg-white text-blue-600 shadow-sm"
-                      : "text-gray-500"
+                  key={id}
+                  type="button"
+                  onClick={() => goTab(id)}
+                  className={`py-2.5 rounded-lg text-xs sm:text-sm font-semibold transition-all ${
+                    activeTab === id ? "bg-blue-600 text-white shadow-sm" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                   }`}
                 >
-                  {tab === "active"
-                    ? getUIText("activeProperties", currentLanguage)
-                    : getUIText("expiredProperties", currentLanguage)}
-                  <span className="ml-1.5 opacity-60">
-                    ({tab === "active" ? portfolioTotal : deletedCount})
-                  </span>
+                  {getUIText(labelKey, currentLanguage)}
+                  <span className="ml-1 tabular-nums opacity-80">({tabCount(id)})</span>
                 </button>
               ))}
             </div>
-            {activeTab === "active" && portfolioTotal > 0 ? (
-              <p className="mt-2 text-xs text-gray-500 leading-relaxed">
-                {getUIText("listingLive", currentLanguage)} {listedLiveCount}
-                {" · "}
-                {getUIText("adPausedByRule", currentLanguage)} {adPausedCount}
-              </p>
+
+            {activeTab === "pending" ? (
+              <p className="mt-3 text-xs text-gray-500 leading-relaxed">{getUIText("minRentablePeriodHint", currentLanguage)}</p>
             ) : null}
           </div>
 
           <div className="space-y-5">
             {properties.length === 0 ? (
-              <div className="text-center py-20 text-gray-400">
-                {getUIText('noProperties', currentLanguage)}
-              </div>
+              <div className="text-center py-20 text-gray-400">{getUIText("noProperties", currentLanguage)}</div>
             ) : (
               properties.map((property) => {
                 const config = getStatusConfig(property);
@@ -296,9 +280,7 @@ function MyPropertiesContent() {
                           {config.icon} {config.text}
                         </div>
                         <div className="bg-black/70 backdrop-blur-md text-white px-3 py-1.5 rounded-lg text-right">
-                          <div className="text-sm font-bold leading-none">
-                            {formatPrice(property.price, property.priceUnit)}
-                          </div>
+                          <div className="text-sm font-bold leading-none">{formatPrice(property.price, property.priceUnit)}</div>
                           <div className="text-[10px] text-gray-300 mt-1">
                             {currentLanguage === "ko" ? "주당 비용" : "/ week"}
                           </div>
@@ -309,13 +291,9 @@ function MyPropertiesContent() {
                         <div className="flex items-center gap-2 text-white">
                           <MapPin className="w-3.5 h-3.5 text-blue-400" />
                           <div className="min-w-0">
-                            <p className="text-sm font-semibold truncate">
-                              {property.title || property.address}
-                            </p>
+                            <p className="text-sm font-semibold truncate">{property.title || property.address}</p>
                             {property.unitNumber && (
-                              <p className="text-xs text-gray-300 opacity-80">
-                                {property.unitNumber}
-                              </p>
+                              <p className="text-xs text-gray-300 opacity-80">{property.unitNumber}</p>
                             )}
                           </div>
                         </div>
@@ -325,15 +303,33 @@ function MyPropertiesContent() {
                     <div className="absolute top-3 right-3 flex gap-2">
                       {property.status !== "rented" && (
                         <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            activeTab === "active"
-                              ? setShowDeleteConfirm(property.id!)
-                              : setShowPermanentDeleteConfirm(property.id!);
+                            if (!property.id) return;
+                            if (activeTab === "ended") {
+                              setShowDeleteConfirm(property.id);
+                              return;
+                            }
+                            if (activeTab === "pending") {
+                              router.push(`/profile/my-properties/${property.id}/edit?extend=1`);
+                              return;
+                            }
+                            void handleEndAd(property.id);
                           }}
-                          className="bg-white/90 hover:bg-red-50 text-red-500 p-2 rounded-full shadow-xl transition-colors"
+                          className={`bg-white/90 p-2 rounded-full shadow-xl transition-colors ${
+                            activeTab === "ended"
+                              ? "hover:bg-red-50 text-red-500"
+                              : activeTab === "pending"
+                                ? "hover:bg-blue-50 text-blue-600"
+                                : "hover:bg-orange-50 text-orange-600"
+                          }`}
                         >
-                          <Trash2 className="w-4 h-4" />
+                          {activeTab === "pending" ? (
+                            <Pencil className="w-4 h-4" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
                         </button>
                       )}
                     </div>
@@ -344,9 +340,8 @@ function MyPropertiesContent() {
           </div>
         </div>
 
-
         <AnimatePresence>
-          {(showDeleteConfirm || showPermanentDeleteConfirm) && (
+          {showDeleteConfirm ? (
             <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -355,54 +350,44 @@ function MyPropertiesContent() {
                 className="bg-white rounded-3xl p-6 w-full max-w-xs shadow-2xl"
               >
                 <h3 className="text-xl font-bold text-gray-900 mb-2">
-                  {showPermanentDeleteConfirm 
-                    ? getUIText('permanentDeleteConfirmTitle', currentLanguage) 
-                    : getUIText('deleteConfirmTitle', currentLanguage)}
+                  {getUIText("deleteConfirmTitle", currentLanguage)}
                 </h3>
                 <p className="text-gray-500 text-sm mb-6 leading-relaxed">
-                  {showPermanentDeleteConfirm
-                    ? getUIText('permanentDeleteConfirmDesc', currentLanguage)
-                    : getUIText('deleteConfirmDesc', currentLanguage)}
+                  {getUIText("deleteConfirmDesc", currentLanguage)}
                 </p>
                 <div className="flex gap-3">
                   <button
-                    onClick={() => {
-                      setShowDeleteConfirm(null);
-                      setShowPermanentDeleteConfirm(null);
-                    }}
+                    type="button"
+                    onClick={() => setShowDeleteConfirm(null)}
                     className="flex-1 py-3 bg-gray-100 text-gray-600 rounded-xl font-semibold"
                   >
-                    {getUIText('cancel', currentLanguage)}
+                    {getUIText("cancel", currentLanguage)}
                   </button>
                   <button
-                    onClick={() =>
-                      showPermanentDeleteConfirm
-                        ? handlePermanentDelete(showPermanentDeleteConfirm)
-                        : handleDelete(showDeleteConfirm!)
-                    }
+                    type="button"
+                    onClick={() => void handleDelete(showDeleteConfirm!)}
                     disabled={!!deletingId}
                     className="flex-1 py-3 bg-red-500 text-white rounded-xl font-semibold disabled:bg-red-300"
                   >
-                    {deletingId ? getUIText('processing', currentLanguage) : getUIText('delete', currentLanguage)}
+                    {deletingId ? getUIText("processing", currentLanguage) : getUIText("delete", currentLanguage)}
                   </button>
                 </div>
               </motion.div>
             </div>
-          )}
+          ) : null}
         </AnimatePresence>
       </div>
     </div>
   );
 }
 
-// --- Next.js 빌드 에러 해결을 위한 외부 래퍼 컴포넌트 ---
 export default function MyPropertiesPage() {
   const { currentLanguage } = useLanguage();
   return (
     <Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          {getUIText('loading', currentLanguage)}
+          {getUIText("loading", currentLanguage)}
         </div>
       }
     >
