@@ -12,34 +12,6 @@ import { isDateRangeBooked, getAllBookings, BookingData } from './bookings';
 import { hasAvailableBookingPeriod, isParentPropertyRecord } from '@/lib/utils/propertyUtils';
 
 /**
- * 사용자의 동적 광고 한도 조회 (유료화 대비)
- */
-export async function getUserAdLimit(userId: string): Promise<number> {
-  // TODO: 나중에 DB의 user_settings 또는 plan_type에 따라 다른 한도 반환
-  // const userData = await getUserData(userId);
-  // return userData.plan === 'premium' ? 20 : 5;
-  return 5; // 현재 기본 한도는 5개
-}
-
-/**
- * 현재 광고 중인 매물 개수 실시간 조회 (status: 'active'만 카운트)
- */
-export async function getActiveAdCount(userId: string): Promise<number> {
-  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return 0;
-  const stored = localStorage.getItem(STORAGE_KEY);
-  if (!stored) return 0;
-  const properties = JSON.parse(stored) as PropertyData[];
-  
-  return properties.filter(
-    (p) =>
-      !p.deleted &&
-      isParentPropertyRecord(p) &&
-      p.ownerId === userId &&
-      p.status === 'active'
-  ).length;
-}
-
-/**
  * 날짜 중복 체크 (엄격한 ISO 날짜 기준)
  */
 export function isDateOverlap(range1: {start: Date | string, end: Date | string}, range2: {start: Date | string, end: Date | string}): boolean {
@@ -250,7 +222,7 @@ export async function handleCancellationRelist(propertyId: string, ownerId: stri
 
     const nowISO = new Date().toISOString();
 
-    // 1) 부모가 있으면: parent 범위를 늘리고(취소된 구간 포함), gap/한도에 따라 status 결정
+    // 1) 부모가 있으면: parent 범위를 늘리고(취소된 구간 포함), 상태는 pending 고정
     if (parentCandidates.length > 0) {
       const parent = pickMostRecentParent(parentCandidates);
       const parentIndex = allProperties.findIndex((p) => p.id === parent.id);
@@ -260,31 +232,9 @@ export async function handleCancellationRelist(propertyId: string, ownerId: stri
       const parentEnd = toISODateString(parent.checkOutDate);
       const mergedStart = parentStart < childStart ? parentStart : childStart;
       const mergedEnd = parentEnd > childEnd ? parentEnd : childEnd;
-
-      const wasActive = parent.status === 'active';
-      const willHave7Days = hasAvailableBookingPeriod(
-        { ...parent, checkInDate: mergedStart, checkOutDate: mergedEnd } as any,
-        bookedRanges
-      );
-
-      let newStatus: PropertyData['status'] = 'INACTIVE_SHORT_TERM';
-      let resultType: 'merged' | 'short_term' | 'limit_exceeded' = 'short_term';
-
-      if (willHave7Days) {
-        const [activeCount, adLimit] = await Promise.all([getActiveAdCount(ownerId), getUserAdLimit(ownerId)]);
-        const projectedActiveCount = activeCount + (wasActive ? 0 : 1);
-
-        if (projectedActiveCount >= adLimit) {
-          newStatus = 'closed';
-          resultType = 'limit_exceeded';
-        } else {
-          newStatus = 'active';
-          resultType = 'merged';
-        }
-      } else {
-        newStatus = 'INACTIVE_SHORT_TERM';
-        resultType = 'short_term';
-      }
+      // 예약 취소로 인해 생긴 상태는 절대 자동 광고 복귀(active)가 되지 않게 pending으로 고정
+      const newStatus: PropertyData['status'] = 'pending';
+      const resultType: 'short_term' = 'short_term';
 
       allProperties[parentIndex] = {
         ...allProperties[parentIndex],
@@ -295,7 +245,7 @@ export async function handleCancellationRelist(propertyId: string, ownerId: stri
         history: [
           ...(allProperties[parentIndex].history || []),
           {
-            action: 'CHILD_CANCELLED_ATTACH',
+            action: 'RESERVATION_CANCEL_PENDING',
             timestamp: nowISO,
             details: `Attached cancelled child (${propertyId}) to existing parent (${parent.id})`,
           },
@@ -312,28 +262,9 @@ export async function handleCancellationRelist(propertyId: string, ownerId: stri
     }
 
     // 2) 부모가 없으면: 취소된 구간만으로 새 부모를 생성
-    const willHave7Days = hasAvailableBookingPeriod(
-      { ...property, checkInDate: childStart, checkOutDate: childEnd, status: 'active' } as any,
-      bookedRanges
-    );
-
-    let newStatus: PropertyData['status'] = 'INACTIVE_SHORT_TERM';
-    let resultType: 'relisted' | 'short_term' | 'limit_exceeded' = 'short_term';
-
-    if (willHave7Days) {
-      const [activeCount, adLimit] = await Promise.all([getActiveAdCount(ownerId), getUserAdLimit(ownerId)]);
-      const projectedActiveCount = activeCount + 1;
-      if (projectedActiveCount >= adLimit) {
-        newStatus = 'closed';
-        resultType = 'limit_exceeded';
-      } else {
-        newStatus = 'active';
-        resultType = 'relisted';
-      }
-    } else {
-      newStatus = 'INACTIVE_SHORT_TERM';
-      resultType = 'short_term';
-    }
+    // 예약 취소로 인해 생긴 상태는 절대 자동 광고 복귀(active)가 되지 않게 pending으로 고정
+    const newStatus: PropertyData['status'] = 'pending';
+    const resultType: 'short_term' = 'short_term';
 
     const newParentId = `prop_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
 
@@ -351,7 +282,7 @@ export async function handleCancellationRelist(propertyId: string, ownerId: stri
       history: [
         ...(property.history || []),
         {
-          action: 'CHILD_CANCELLED_PROMOTED_TO_PARENT',
+          action: 'RESERVATION_CANCEL_PENDING',
           timestamp: nowISO,
           details: `Promoted cancelled child (${propertyId}) to a parent listing`,
         },
@@ -373,7 +304,7 @@ export async function handleCancellationRelist(propertyId: string, ownerId: stri
     !p.deleted && 
     p.id !== propertyId &&
     p.ownerId === ownerId &&
-    p.status === 'active' &&
+    (p.status === 'active' || p.status === 'pending') &&
     (p.address === property.address || p.title === property.title) &&
     p.unitNumber === property.unitNumber
   );
@@ -404,6 +335,7 @@ export async function handleCancellationRelist(propertyId: string, ownerId: stri
         const newEnd = range1.end > range2.end ? range1.end : range2.end;
         target.checkInDate = newStart;
         target.checkOutDate = newEnd;
+        target.status = 'pending';
 
         target.history = [
           ...(target.history || []),
@@ -417,7 +349,7 @@ export async function handleCancellationRelist(propertyId: string, ownerId: stri
         const finalProperties = allProperties.filter(p => p.id !== propertyId);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(finalProperties));
         window.dispatchEvent(new CustomEvent('propertiesUpdated'));
-        return { type: 'merged', targetId: target.id };
+        return { type: 'short_term', targetId: target.id };
       }
     }
   }
@@ -452,36 +384,19 @@ export async function handleCancellationRelist(propertyId: string, ownerId: stri
     })
     .map(r => ({ checkIn: new Date(toISODateString(r.checkInDate)), checkOut: new Date(toISODateString(r.checkOutDate)) }));
 
-  if (!hasAvailableBookingPeriod(property, bookedRanges)) {
-    await updateProperty(propertyId, {
-      status: 'INACTIVE_SHORT_TERM',
-      history: [
-        ...(property.history || []),
-        {
-          action: 'AUTO_SUSPEND_GAP',
-          timestamp: new Date().toISOString(),
-          details: 'Cancel flow: Gap < 7d — 규칙상 광고종료·데이터 보존',
-        },
-      ],
-    });
-    return { type: 'short_term' };
-  }
-
-  const [activeCount, adLimit] = await Promise.all([
-    getActiveAdCount(ownerId),
-    getUserAdLimit(ownerId)
-  ]);
-
-  if (activeCount >= adLimit) {
-    await updateProperty(propertyId, { 
-      status: 'closed',
-      history: [...(property.history || []), { action: 'AUTO_CLOSE_LIMIT', timestamp: new Date().toISOString(), details: `Ad limit exceeded (${adLimit})` }]
-    });
-    return { type: 'limit_exceeded' };
-  }
-
-  await updateProperty(propertyId, { status: 'active' });
-  return { type: 'relisted' };
+  // 기존 자동 승격(active/closed) 흐름을 끊고, 취소 결과는 항상 pending으로 고정
+  await updateProperty(propertyId, {
+    status: 'pending',
+    history: [
+      ...(property.history || []),
+      {
+        action: 'RESERVATION_CANCEL_PENDING',
+        timestamp: new Date().toISOString(),
+        details: 'Reservation cancelled — pending relist required',
+      },
+    ],
+  });
+  return { type: 'short_term' };
 }
 
 /**
@@ -684,12 +599,15 @@ export async function getAvailableProperties(): Promise<PropertyData[]> {
     const allReservations = readAllReservationsSync();
     const byOwner = groupReservationsByOwner(allReservations);
 
+    // 자동 승격(active 복귀)을 100% 차단하기 위해,
+    // 고객 노출 후보는 오직 `status: 'active'`만으로 제한한다.
+    // (gap이 다시 생겨도 INACTIVE_SHORT_TERM -> active 자동 전환은 하지 않음)
     const candidateProps = allProps.filter(
       (p) =>
         !p.deleted &&
         !p.hidden &&
         isParentPropertyRecord(p) &&
-        (p.status === 'active' || p.status === 'INACTIVE_SHORT_TERM')
+        p.status === 'active'
     );
 
     for (const property of candidateProps) {
@@ -698,36 +616,19 @@ export async function getAvailableProperties(): Promise<PropertyData[]> {
       const bookedRanges = buildBookedRangesForParentListing(property, allProps, reservations);
 
       if (hasAvailableBookingPeriod(property, bookedRanges)) {
-        if (property.status !== 'active') {
-          await updateProperty(property.id!, {
-            status: 'active',
-            history: [
-              ...(property.history || []),
-              {
-                action: 'AUTO_RESUME_GAP',
-                timestamp: new Date().toISOString(),
-                details: 'Resumed: Gap >= 7d',
-              },
-            ],
-          });
-          property.status = 'active';
-        }
         availableProperties.push(property);
       } else {
-        if (property.status !== 'INACTIVE_SHORT_TERM') {
-          await updateProperty(property.id!, {
-            status: 'INACTIVE_SHORT_TERM',
-            history: [
-              ...(property.history || []),
-              {
-                action: 'AUTO_SUSPEND_GAP',
-                timestamp: new Date().toISOString(),
-                details: 'Suspended: Gap < 7d (규칙상 광고종료·데이터 보존)',
-              },
-            ],
-          });
-          property.status = 'INACTIVE_SHORT_TERM';
-        }
+        await updateProperty(property.id!, {
+          status: 'INACTIVE_SHORT_TERM',
+          history: [
+            ...(property.history || []),
+            {
+              action: 'AUTO_SUSPEND_GAP',
+              timestamp: new Date().toISOString(),
+              details: 'Suspended: Gap < 7d (규칙상 광고종료·데이터 보존)',
+            },
+          ],
+        });
       }
     }
     return availableProperties;

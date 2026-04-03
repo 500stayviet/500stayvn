@@ -33,9 +33,11 @@ import {
   FULL_ELECTRONICS_IDS,
 } from "@/lib/constants/facilities";
 import { parseDate } from "@/lib/utils/dateUtils";
-import { LISTING_MAX_SUPPLY_DAYS } from "@/lib/constants/listingCalendar";
+import {
+  LISTING_MAX_SUPPLY_DAYS,
+  LISTING_MIN_STAY_DAYS,
+} from "@/lib/constants/listingCalendar";
 import { getUIText } from "@/utils/i18n";
-import { getAvailableDateSegments } from "@/lib/utils/propertyUtils";
 import {
   getDistrictIdForCoord,
   getDistrictsByCityId,
@@ -75,7 +77,20 @@ function EditPropertyContent() {
   const fromDeletedTab = searchParams.get("tab") === "deleted";
   const fromModal = searchParams.get("from") === "modal";
   const autoExtend = searchParams.get("extend") === "1";
-  const didAutoExtendRef = useRef(false);
+  const returnTab = searchParams.get("returnTab");
+  /** 광고대기/광고종료에서 연 장소로 뒤로가기 */
+  const returnTabSafe =
+    returnTab === "pending" || returnTab === "ended" ? returnTab : null;
+  const dismissSiblingRaw = searchParams.get("dismissSiblingId");
+  const dismissSiblingId =
+    dismissSiblingRaw &&
+    dismissSiblingRaw.trim() !== propertyId &&
+    dismissSiblingRaw.trim().length > 0
+      ? dismissSiblingRaw.trim()
+      : null;
+  /** 재등록·날짜 확인 플로우: 달력에서 유효한 날짜를 다시 선택해야 저장 가능 */
+  const needsRentalCalendarAck =
+    autoExtend || returnTabSafe === "pending" || returnTabSafe === "ended";
   const extensionMaxDate = (() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -86,6 +101,7 @@ function EditPropertyContent() {
   const [loadingProperty, setLoadingProperty] = useState(true);
   const [propertyLoaded, setPropertyLoaded] = useState(false);
   const [isDeleted, setIsDeleted] = useState(false);
+  const [propertyStatus, setPropertyStatus] = useState<import("@/types/property").PropertyData["status"] | undefined>(undefined);
 
   // --- 폼 상태 (원본 보존) ---
   const [images, setImages] = useState<File[]>([]);
@@ -105,6 +121,7 @@ function EditPropertyContent() {
   const [bathrooms, setBathrooms] = useState(1);
 
   const [showCalendar, setShowCalendar] = useState(false);
+  const [rentalCalendarAcknowledged, setRentalCalendarAcknowledged] = useState(false);
   const [calendarMode, setCalendarMode] = useState<"checkin" | "checkout">(
     "checkin",
   );
@@ -192,6 +209,7 @@ function EditPropertyContent() {
         }
 
         setIsDeleted(!!p.deleted || p.status !== "active");
+        setPropertyStatus(p.status);
         setAddress(p.address || "");
         setWeeklyRent(p.price?.toString() || "");
         setSelectedAmenities(p.amenities || []);
@@ -276,25 +294,6 @@ function EditPropertyContent() {
     loadData();
   }, [propertyId, user, authLoading, propertyLoaded, router]);
 
-  // pending(짤투리) 확장: 달력 모달을 즉시 열고, '꼬리 짜투리'의 첫날을 기준으로 종료일만 선택하게 함
-  useEffect(() => {
-    if (!autoExtend) return;
-    if (!propertyLoaded) return;
-    if (didAutoExtendRef.current) return;
-    if (!checkInDate || !checkOutDate) return;
-
-    const segments = getAvailableDateSegments(checkInDate, checkOutDate, bookedRanges);
-    if (!segments.length) return;
-
-    const tailSegment = segments[segments.length - 1]; // 예약 뒤쪽에 남은 꼬리 구간 기준
-    didAutoExtendRef.current = true;
-
-    setCalendarMode("checkout");
-    setCheckInDate(new Date(tailSegment.start));
-    setCheckOutDate(null);
-    setShowCalendar(true);
-  }, [autoExtend, propertyLoaded, checkInDate, checkOutDate, bookedRanges, getAvailableDateSegments]);
-
   const handleAddressConfirm = (data: {
     address: string;
     lat: number;
@@ -333,6 +332,35 @@ function EditPropertyContent() {
     return num.toString().padStart(4, "0");
   };
 
+  const stripTime = (d: Date) =>
+    new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+  const isValidRentalDates = (checkIn: Date | null, checkOut: Date | null) => {
+    if (!checkIn || !checkOut) return false;
+
+    const inDay = stripTime(checkIn);
+    const outDay = stripTime(checkOut);
+    if (!(outDay.getTime() > inDay.getTime())) return false;
+
+    const diffDays = Math.round(
+      (outDay.getTime() - inDay.getTime()) / (1000 * 60 * 60 * 24),
+    );
+
+    // 최소 7일 + 7일 배수
+    if (diffDays < LISTING_MIN_STAY_DAYS) return false;
+    if (diffDays % LISTING_MIN_STAY_DAYS !== 0) return false;
+
+    // 체크인은 과거 불가
+    const today = stripTime(new Date());
+    if (inDay.getTime() < today.getTime()) return false;
+
+    // 종료일 상한 (maxDate: 약 91일)
+    const maxDay = stripTime(extensionMaxDate);
+    if (outDay.getTime() > maxDay.getTime()) return false;
+
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!coordinates || !user) {
@@ -352,6 +380,21 @@ function EditPropertyContent() {
     setLoading(true);
 
     try {
+      if (needsRentalCalendarAck && !rentalCalendarAcknowledged) {
+        alert(
+          currentLanguage === "ko"
+            ? "임대날짜를 다시 확인하세요."
+            : currentLanguage === "vi"
+              ? "Vui lòng mở lịch và kiểm tra/chỉnh ngày thuê."
+              : currentLanguage === "ja"
+                ? "賃貸日程をカレンダーで確認・修正してください。"
+                : currentLanguage === "zh"
+                  ? "请打开日历检查或修改租赁日期。"
+                  : "Open the calendar and confirm rental dates.",
+        );
+        return;
+      }
+
       const existingUrls = imagePreviews.filter(
         (url) =>
           typeof url === "string" &&
@@ -412,8 +455,33 @@ function EditPropertyContent() {
         ...(icalUrl.trim() && { icalUrl: icalUrl.trim() }),
       };
 
+      // 예약 취소(pending) 상태에서 기간을 다시 조정하고 저장하면, 수동 재등록으로 '광고중(active)'로 전환
+      if (propertyStatus === "pending") {
+        (updates as any).status = "active";
+      }
+
       if (isDeleted) await restoreProperty(propertyId);
       await updateProperty(propertyId, updates);
+
+      if (dismissSiblingId && user?.uid) {
+        const shadow = await getProperty(dismissSiblingId);
+        if (shadow?.ownerId === user.uid) {
+          const nowISO = new Date().toISOString();
+          await updateProperty(dismissSiblingId, {
+            deleted: true,
+            deletedAt: nowISO,
+            status: "inactive",
+            history: [
+              ...(shadow.history || []),
+              {
+                action: "SUPERSEDED_BY_LIVE_EDIT",
+                timestamp: nowISO,
+                details: `광고중 매물(${propertyId}) 수정으로 이 카드는 종료 처리됨`,
+              },
+            ],
+          });
+        }
+      }
 
       alert(
         currentLanguage === "ko"
@@ -426,7 +494,7 @@ function EditPropertyContent() {
                 ? "編集完了！"
                 : "Updated!",
       );
-      router.push("/profile/my-properties");
+      router.push("/profile/my-properties?tab=live");
     } catch (err) {
       console.error("Update failed:", err);
       const errorMessage = (err as any).message || String(err);
@@ -480,7 +548,10 @@ function EditPropertyContent() {
           >
             <button
               onClick={() => {
-                // 모달 상세에서 들어온 경우: 뒤로 시 my-properties + 해당 매물 모달 다시 열기
+                if (returnTabSafe) {
+                  router.push(`/profile/my-properties?tab=${returnTabSafe}`);
+                  return;
+                }
                 if (fromModal && propertyId) {
                   router.push(`/profile/my-properties?open=${propertyId}`);
                   return;
@@ -1182,7 +1253,11 @@ function EditPropertyContent() {
                     setCalendarMode("checkin");
                     setShowCalendar(true);
                   }}
-                  className="flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border-2 border-gray-200"
+                  className={`flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border-2 ${
+                    needsRentalCalendarAck && !rentalCalendarAcknowledged
+                      ? "border-red-500"
+                      : "border-gray-200"
+                  }`}
                 >
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-gray-600" />
@@ -1280,7 +1355,11 @@ function EditPropertyContent() {
                     setCalendarMode("checkout");
                     setShowCalendar(true);
                   }}
-                  className="flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border-2 border-gray-200"
+                  className={`flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border-2 ${
+                    needsRentalCalendarAck && !rentalCalendarAcknowledged
+                      ? "border-red-500"
+                      : "border-gray-200"
+                  }`}
                 >
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-gray-600" />
@@ -1371,6 +1450,19 @@ function EditPropertyContent() {
                   </div>
                 </button>
               </div>
+              {needsRentalCalendarAck && !rentalCalendarAcknowledged && (
+                <p className="text-[11px] text-red-600 mt-2">
+                  {currentLanguage === "ko"
+                    ? "임대날짜를 다시 확인하세요."
+                    : currentLanguage === "vi"
+                      ? "Vui lòng kiểm tra lại ngày thuê."
+                      : currentLanguage === "ja"
+                        ? "賃貸日程を再確認してください。"
+                        : currentLanguage === "zh"
+                          ? "请再次确认租赁日期。"
+                          : "Please confirm rental dates again."}
+                </p>
+              )}
             </div>
 
             {/* 1주일 임대료 */}
@@ -1863,17 +1955,23 @@ function EditPropertyContent() {
               maxDate={autoExtend ? extensionMaxDate : undefined}
               lockCheckInForOwnerMode={autoExtend}
               onCheckInSelect={(d) => {
+                if (needsRentalCalendarAck) setRentalCalendarAcknowledged(false);
                 setCheckInDate(d);
                 setCheckOutDate(null);
                 setCalendarMode("checkout");
               }}
               onCheckOutSelect={(d) => {
                 setCheckOutDate(d);
+                if (needsRentalCalendarAck) {
+                  const valid = isValidRentalDates(checkInDate, d);
+                  setRentalCalendarAcknowledged(valid);
+                }
                 setShowCalendar(false);
               }}
               onCheckInReset={() => {
                 setCheckInDate(null);
                 setCheckOutDate(null);
+                if (needsRentalCalendarAck) setRentalCalendarAcknowledged(false);
                 setCalendarMode("checkin");
               }}
               mode={calendarMode}

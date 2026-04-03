@@ -43,6 +43,18 @@ function MyPropertiesContent() {
   const [activeTab, setActiveTab] = useState<HostInventoryTab>("live");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  /** 동일 주소·호실의 광고중 매물이 있을 때: 광고중 편집으로 이동(대기·종료 카드 데이터를 가져오지 않음) */
+  const [liveExistsConfirm, setLiveExistsConfirm] = useState<{
+    activeId: string;
+    /** 수정 버튼을 누른 대기·종료 카드(저장 시 광고중 편집으로 대체되어 제거) */
+    shadowId: string;
+    activeLabel: string;
+    activeAddress: string;
+    activeUnit?: string;
+    returnTab: HostInventoryTab;
+  } | null>(null);
+  /** 광고대기: 휴지통 → 광고종료(데이터 유지) */
+  const [showEndAdFromPendingConfirm, setShowEndAdFromPendingConfirm] = useState<string | null>(null);
 
   const fetchInventory = async (): Promise<InventoryBuckets> => {
     if (!user) throw new Error("User is not authenticated");
@@ -50,19 +62,12 @@ function MyPropertiesContent() {
     const [activeResult] = await Promise.all([getPropertiesByOwner(user.uid, false)]);
     const rows = activeResult.properties.filter((p) => !p.deleted);
 
-    const isManualEnded = (p: PropertyData) =>
-      !!p.history?.some((h) => h.action === "HOST_MANUAL_END_AD");
-
     return {
       liveList: rows.filter((p) => !p.hidden && p.status === "active"),
-      pendingList: rows.filter(
-        (p) => !p.hidden && p.status === "INACTIVE_SHORT_TERM" && !isManualEnded(p),
-      ),
+      pendingList: rows.filter((p) => !p.hidden && p.status === "pending"),
       endedList: rows.filter(
         (p) =>
-          p.hidden ||
-          p.status === "closed" ||
-          (p.status === "INACTIVE_SHORT_TERM" && isManualEnded(p)),
+          p.hidden || p.status === "closed" || p.status === "INACTIVE_SHORT_TERM",
       ),
     };
   };
@@ -150,12 +155,54 @@ function MyPropertiesContent() {
     setInventory(await fetchInventory());
   };
 
+  const normalizeKey = (s?: string) =>
+    (s || "").trim().replace(/\s+/g, " ").toLowerCase();
+
+  const findLiveSibling = (property: PropertyData) =>
+    inventory?.liveList.find(
+      (p) =>
+        p.ownerId === user!.uid &&
+        normalizeKey(p.address) === normalizeKey(property.address) &&
+        normalizeKey(p.unitNumber) === normalizeKey(property.unitNumber),
+    );
+
+  const openEditWithLiveDuplicateCheck = (
+    property: PropertyData,
+    returnTab: HostInventoryTab,
+  ) => {
+    if (!property.id || !user) return;
+    const activeMatch = findLiveSibling(property);
+    if (activeMatch?.id) {
+      setLiveExistsConfirm({
+        activeId: activeMatch.id,
+        shadowId: property.id,
+        activeLabel: (activeMatch.title || activeMatch.address || "").trim(),
+        activeAddress: (activeMatch.address || "").trim(),
+        activeUnit: activeMatch.unitNumber,
+        returnTab,
+      });
+      return;
+    }
+    const rt = returnTab === "pending" || returnTab === "ended" ? returnTab : "pending";
+    router.push(
+      `/profile/my-properties/${property.id}/edit?extend=1&returnTab=${rt}`,
+    );
+  };
+
   const getStatusConfig = (property: PropertyData) => {
     if (property.hidden) {
       return {
         borderColor: "border-orange-500",
         bgColor: "bg-orange-500",
         text: getUIText("adminHiddenProperty", currentLanguage),
+        icon: <Clock className="w-3 h-3" />,
+      };
+    }
+    if (property.status === "pending") {
+      return {
+        borderColor: "border-blue-500",
+        bgColor: "bg-blue-500",
+        text: getUIText("tabAdvertPending", currentLanguage),
         icon: <Clock className="w-3 h-3" />,
       };
     }
@@ -302,35 +349,78 @@ function MyPropertiesContent() {
 
                     <div className="absolute top-3 right-3 flex gap-2">
                       {property.status !== "rented" && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (!property.id) return;
-                            if (activeTab === "ended") {
-                              setShowDeleteConfirm(property.id);
-                              return;
-                            }
-                            if (activeTab === "pending") {
-                              router.push(`/profile/my-properties/${property.id}/edit?extend=1`);
-                              return;
-                            }
-                            void handleEndAd(property.id);
-                          }}
-                          className={`bg-white/90 p-2 rounded-full shadow-xl transition-colors ${
-                            activeTab === "ended"
-                              ? "hover:bg-red-50 text-red-500"
-                              : activeTab === "pending"
-                                ? "hover:bg-blue-50 text-blue-600"
-                                : "hover:bg-orange-50 text-orange-600"
-                          }`}
-                        >
+                        <>
+                          {activeTab === "live" ? (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (!property.id) return;
+                                void handleEndAd(property.id);
+                              }}
+                              className="bg-white/90 p-2 rounded-full shadow-xl transition-colors hover:bg-orange-50 text-orange-600"
+                              aria-label="end-ad"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          ) : null}
+
                           {activeTab === "pending" ? (
-                            <Pencil className="w-4 h-4" />
-                          ) : (
-                            <Trash2 className="w-4 h-4" />
-                          )}
-                        </button>
+                            <>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openEditWithLiveDuplicateCheck(property, "pending");
+                                }}
+                                className="bg-white/90 p-2 rounded-full shadow-xl transition-colors hover:bg-blue-50 text-blue-600"
+                                aria-label="edit-pending"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!property.id) return;
+                                  setShowEndAdFromPendingConfirm(property.id);
+                                }}
+                                className="bg-white/90 p-2 rounded-full shadow-xl transition-colors hover:bg-orange-50 text-orange-600"
+                                aria-label="pending-to-ended"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </>
+                          ) : null}
+
+                          {activeTab === "ended" ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openEditWithLiveDuplicateCheck(property, "ended");
+                                }}
+                                className="bg-white/90 p-2 rounded-full shadow-xl transition-colors hover:bg-blue-50 text-blue-600"
+                                aria-label="edit-ended"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!property.id) return;
+                                  setShowDeleteConfirm(property.id);
+                                }}
+                                className="bg-white/90 p-2 rounded-full shadow-xl transition-colors hover:bg-red-50 text-red-500"
+                                aria-label="permanent-delete"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </>
+                          ) : null}
+                        </>
                       )}
                     </div>
                   </motion.div>
@@ -350,10 +440,10 @@ function MyPropertiesContent() {
                 className="bg-white rounded-3xl p-6 w-full max-w-xs shadow-2xl"
               >
                 <h3 className="text-xl font-bold text-gray-900 mb-2">
-                  {getUIText("deleteConfirmTitle", currentLanguage)}
+                  {getUIText("permanentDeleteConfirmTitle", currentLanguage)}
                 </h3>
                 <p className="text-gray-500 text-sm mb-6 leading-relaxed">
-                  {getUIText("deleteConfirmDesc", currentLanguage)}
+                  {getUIText("permanentDeleteConfirmDesc", currentLanguage)}
                 </p>
                 <div className="flex gap-3">
                   <button
@@ -370,6 +460,144 @@ function MyPropertiesContent() {
                     className="flex-1 py-3 bg-red-500 text-white rounded-xl font-semibold disabled:bg-red-300"
                   >
                     {deletingId ? getUIText("processing", currentLanguage) : getUIText("delete", currentLanguage)}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          ) : null}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {showEndAdFromPendingConfirm ? (
+            <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 20 }}
+                className="bg-white rounded-3xl p-6 w-full max-w-xs shadow-2xl"
+              >
+                <h3 className="text-xl font-bold text-gray-900 mb-2">
+                  {currentLanguage === "ko"
+                    ? "광고종료로 이동"
+                    : currentLanguage === "vi"
+                      ? "Chuyển sang đã tạm dừng"
+                      : "Move to ended listings"}
+                </h3>
+                <p className="text-gray-500 text-sm mb-6 leading-relaxed">
+                  {currentLanguage === "ko"
+                    ? "이 매물을 광고종료 탭으로 옮깁니다. 데이터는 유지됩니다."
+                    : currentLanguage === "vi"
+                      ? "Tin sẽ chuyển sang mục đã tạm dừng. Dữ liệu được giữ."
+                      : "This listing will move to ended. Data is kept."}
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowEndAdFromPendingConfirm(null)}
+                    className="flex-1 py-3 bg-gray-100 text-gray-600 rounded-xl font-semibold"
+                  >
+                    {getUIText("cancel", currentLanguage)}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const id = showEndAdFromPendingConfirm;
+                      setShowEndAdFromPendingConfirm(null);
+                      if (id) void handleEndAd(id);
+                    }}
+                    className="flex-1 py-3 bg-orange-500 text-white rounded-xl font-semibold"
+                  >
+                    {getUIText("confirm", currentLanguage)}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          ) : null}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {liveExistsConfirm ? (
+            <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 20 }}
+                className="bg-white rounded-3xl p-6 w-full max-w-xs shadow-2xl"
+              >
+                <h3 className="text-xl font-bold text-gray-900 mb-2">
+                  {currentLanguage === "ko"
+                    ? "동일 매물이 광고중입니다"
+                    : currentLanguage === "vi"
+                      ? "Cùng một BĐS đang được hiển thị"
+                      : currentLanguage === "ja"
+                        ? "同一物件が掲載中です"
+                        : currentLanguage === "zh"
+                          ? "同一房源正在展示中"
+                          : "Same unit is already live"}
+                </h3>
+                <div className="rounded-xl bg-gray-50 border border-gray-100 p-3 mb-3 text-xs text-gray-800 space-y-1">
+                  <p className="font-semibold">{liveExistsConfirm.activeLabel}</p>
+                  {liveExistsConfirm.activeAddress ? (
+                    <p className="text-gray-600">{liveExistsConfirm.activeAddress}</p>
+                  ) : null}
+                  {liveExistsConfirm.activeUnit ? (
+                    <p className="text-gray-600">{liveExistsConfirm.activeUnit}</p>
+                  ) : null}
+                </div>
+                <p className="text-gray-500 text-sm mb-6 leading-relaxed">
+                  {currentLanguage === "ko"
+                    ? "예: 위 광고중 매물의 수정 화면으로 이동합니다. 임대 날짜는 달력에서 직접 확인·수정해야 합니다. 아니오: 이 목록에 그대로 있습니다(중복 편집 방지)."
+                    : currentLanguage === "vi"
+                      ? "Có: mở chỉnh sửa tin đang hiển thị, chọn lại ngày trên lịch. Không: ở lại danh sách."
+                      : currentLanguage === "ja"
+                        ? "はい: 掲載中の編集へ。日付はカレンダーで確認。いいえ: このまま。"
+                        : currentLanguage === "zh"
+                          ? "是：去编辑展示中房源，请在日历中确认日期。否：留在列表。"
+                          : "Yes: edit the live listing; confirm dates in the calendar. No: stay on this list."}
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLiveExistsConfirm(null);
+                    }}
+                    className="flex-1 py-3 bg-gray-100 text-gray-600 rounded-xl font-semibold"
+                  >
+                    {currentLanguage === "ko"
+                      ? "아니오"
+                      : currentLanguage === "vi"
+                        ? "Không"
+                        : currentLanguage === "ja"
+                          ? "いいえ"
+                          : currentLanguage === "zh"
+                            ? "否"
+                            : "No"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const { activeId, shadowId, returnTab } = liveExistsConfirm;
+                      setLiveExistsConfirm(null);
+                      const q = new URLSearchParams({
+                        extend: "1",
+                        returnTab,
+                        dismissSiblingId: shadowId,
+                      });
+                      router.push(
+                        `/profile/my-properties/${activeId}/edit?${q.toString()}`,
+                      );
+                    }}
+                    className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-semibold"
+                  >
+                    {currentLanguage === "ko"
+                      ? "예"
+                      : currentLanguage === "vi"
+                        ? "Có"
+                        : currentLanguage === "ja"
+                          ? "はい"
+                          : currentLanguage === "zh"
+                            ? "是"
+                            : "Yes"}
                   </button>
                 </div>
               </motion.div>

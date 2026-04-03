@@ -205,14 +205,14 @@ function ReservationsContent() {
               break;
             case 'limit_exceeded':
               message = currentLanguage === 'ko' 
-                ? '광고 가능한 매물 한도(5개) 초과로 인해 해당 매물은 광고종료 탭으로 이동되었습니다.'
-                : 'Moved to Expired Listings due to ad limit (5 properties).';
-              targetTab = 'ended';
+                ? '예약이 취소되어 광고대기 탭에서 다시 등록해 주세요.'
+                : 'Reservation cancelled — open Waiting to relist and re-submit.';
+              targetTab = 'pending';
               break;
             case 'short_term':
               message = currentLanguage === 'ko' 
-                ? '남은 가용 기간이 7일 미만이라 광고종료 탭으로 이동되었습니다.'
-                : 'Moved to Expired Listings as the available period is less than 7 days.';
+                ? '예약이 취소되어 광고대기 탭으로 이동되었습니다. 펜(수정)으로 기간을 맞춘 뒤 다시 올리세요.'
+                : 'Reservation cancelled — moved to waiting. Edit dates then relist.';
               targetTab = 'pending';
               break;
           }

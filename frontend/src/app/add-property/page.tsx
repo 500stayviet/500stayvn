@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getCurrentUserData } from "@/lib/api/auth";
-import { addProperty, getPropertyCountByOwner } from "@/lib/api/properties";
+import { addProperty } from "@/lib/api/properties";
 import { isOwnerSupplyLengthDays } from "@/lib/constants/listingCalendar";
 import { getUIText } from "@/utils/i18n";
 import {
@@ -631,24 +631,6 @@ export default function AddPropertyPage() {
         );
         setLoading(false);
         router.push("/kyc");
-        return;
-      }
-
-      // 인당 매물 수 제한 확인 (최대 5개)
-      const propertyCount = await getPropertyCountByOwner(user.uid);
-      if (propertyCount >= 5) {
-        alert(
-          currentLanguage === "ko"
-            ? "매물은 인당 최대 5개까지 등록할 수 있습니다."
-            : currentLanguage === "vi"
-              ? "Bạn chỉ có thể đăng tối đa 5 bất động sản."
-              : currentLanguage === "ja"
-                ? "物件は1人あたり最大5件まで登録できます。"
-              : currentLanguage === "zh"
-                ? "每人最多可注册5个物业。"
-              : "You can only register up to 5 properties.",
-        );
-        setLoading(false);
         return;
       }
 
