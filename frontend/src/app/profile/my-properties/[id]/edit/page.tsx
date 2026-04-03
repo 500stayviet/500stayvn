@@ -38,6 +38,7 @@ import {
   LISTING_MIN_STAY_DAYS,
 } from "@/lib/constants/listingCalendar";
 import { getUIText } from "@/utils/i18n";
+import { areSamePropertyValues } from "@/lib/utils/propertyDedup";
 import {
   getDistrictIdForCoord,
   getDistrictsByCityId,
@@ -466,20 +467,42 @@ function EditPropertyContent() {
       if (dismissSiblingId && user?.uid) {
         const shadow = await getProperty(dismissSiblingId);
         if (shadow?.ownerId === user.uid) {
-          const nowISO = new Date().toISOString();
-          await updateProperty(dismissSiblingId, {
-            deleted: true,
-            deletedAt: nowISO,
-            status: "inactive",
-            history: [
-              ...(shadow.history || []),
-              {
-                action: "SUPERSEDED_BY_LIVE_EDIT",
-                timestamp: nowISO,
-                details: `광고중 매물(${propertyId}) 수정으로 이 카드는 종료 처리됨`,
-              },
-            ],
-          });
+          const isSame = areSamePropertyValues(
+            { address: shadow.address, unitNumber: shadow.unitNumber },
+            { address: publicAddress, unitNumber: unitNumber || undefined },
+          );
+
+          if (!isSame) {
+            // 안전장치: URL 조작/동시성 이슈로 dismissSiblingId가 다른 카드일 경우, 삭제하지 않음
+            if (process.env.NODE_ENV !== "production") {
+              console.warn(
+                "[dismissSiblingId] skip delete: property mismatch",
+                {
+                  dismissSiblingId,
+                  propertyId,
+                  shadowAddress: shadow.address,
+                  shadowUnitNumber: shadow.unitNumber,
+                  editedAddress: publicAddress,
+                  editedUnitNumber: unitNumber,
+                },
+              );
+            }
+          } else {
+            const nowISO = new Date().toISOString();
+            await updateProperty(dismissSiblingId, {
+              deleted: true,
+              deletedAt: nowISO,
+              status: "inactive",
+              history: [
+                ...(shadow.history || []),
+                {
+                  action: "SUPERSEDED_BY_LIVE_EDIT",
+                  timestamp: nowISO,
+                  details: `광고중 매물(${propertyId}) 수정으로 이 카드는 종료 처리됨`,
+                },
+              ],
+            });
+          }
         }
       }
 
@@ -1952,7 +1975,7 @@ function EditPropertyContent() {
               checkInDate={checkInDate}
               checkOutDate={checkOutDate}
               minDate={autoExtend && checkInDate ? checkInDate : undefined}
-              maxDate={autoExtend ? extensionMaxDate : undefined}
+              maxDate={extensionMaxDate}
               lockCheckInForOwnerMode={autoExtend}
               onCheckInSelect={(d) => {
                 if (needsRentalCalendarAck) setRentalCalendarAcknowledged(false);

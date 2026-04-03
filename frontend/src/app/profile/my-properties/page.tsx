@@ -17,6 +17,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import TopBar from "@/components/TopBar";
 import Image from "next/image";
 import { formatPrice } from "@/lib/utils/propertyUtils";
+import { areSamePropertyValues } from "@/lib/utils/propertyDedup";
 import { getUIText } from "@/utils/i18n";
 
 type HostInventoryTab = "live" | "pending" | "ended";
@@ -155,15 +156,14 @@ function MyPropertiesContent() {
     setInventory(await fetchInventory());
   };
 
-  const normalizeKey = (s?: string) =>
-    (s || "").trim().replace(/\s+/g, " ").toLowerCase();
-
   const findLiveSibling = (property: PropertyData) =>
     inventory?.liveList.find(
       (p) =>
         p.ownerId === user!.uid &&
-        normalizeKey(p.address) === normalizeKey(property.address) &&
-        normalizeKey(p.unitNumber) === normalizeKey(property.unitNumber),
+        areSamePropertyValues(
+          { address: p.address, unitNumber: p.unitNumber },
+          { address: property.address, unitNumber: property.unitNumber },
+        ),
     );
 
   const openEditWithLiveDuplicateCheck = (

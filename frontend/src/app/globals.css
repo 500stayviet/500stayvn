@@ -135,6 +135,31 @@ input[type="reset"] {
   touch-action: manipulation;
 }
 
+/* 아이콘 원형 버튼(쓰레기통/X/연필 등) 정렬/사이즈 통일 */
+button.rounded-full.p-1,
+button.rounded-full.p-1\\.5,
+button.rounded-full.p-2 {
+  /* 전역 min-size(44px) 영향 제거 */
+  min-height: unset !important;
+  min-width: unset !important;
+
+  /* "사이즈 3 -> 2"에 해당하는 작은 원 크기 */
+  width: 24px;
+  height: 24px;
+
+  padding: 0 !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+button.rounded-full.p-1 svg,
+button.rounded-full.p-1\\.5 svg,
+button.rounded-full.p-2 svg {
+  display: block;
+}
+
 /* 예외: 매물 카드 슬라이더 네비(앞뒤·도트)는 의도된 작은 크기 유지 */
 .card-slider-nav button,
 .card-slider-nav [role="button"] {

@@ -6,7 +6,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getCurrentUserData } from "@/lib/api/auth";
 import { addProperty } from "@/lib/api/properties";
-import { isOwnerSupplyLengthDays } from "@/lib/constants/listingCalendar";
+import {
+  isOwnerSupplyLengthDays,
+  LISTING_MAX_SUPPLY_DAYS,
+} from "@/lib/constants/listingCalendar";
 import { getUIText } from "@/utils/i18n";
 import {
   Camera,
@@ -76,6 +79,17 @@ export default function AddPropertyPage() {
   const [checkingAccess, setCheckingAccess] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   const [isOwnerMode, setIsOwnerMode] = useState(false); // 임대인 모드 여부
+
+  const todayOnly = (() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  })();
+  const maxRentalDay = (() => {
+    const d = new Date(todayOnly);
+    d.setDate(d.getDate() + LISTING_MAX_SUPPLY_DAYS);
+    return d;
+  })();
   // 폼 상태
   const [images, setImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
@@ -594,6 +608,40 @@ export default function AddPropertyPage() {
 
     const diffTime = checkOutDate.getTime() - checkInDate.getTime();
     const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+    const inDayOnly = new Date(
+      checkInDate.getFullYear(),
+      checkInDate.getMonth(),
+      checkInDate.getDate(),
+    );
+    const outDayOnly = new Date(
+      checkOutDate.getFullYear(),
+      checkOutDate.getMonth(),
+      checkOutDate.getDate(),
+    );
+
+    const inOk =
+      inDayOnly.getTime() >= todayOnly.getTime() &&
+      inDayOnly.getTime() <= maxRentalDay.getTime();
+    const outOk =
+      outDayOnly.getTime() >= todayOnly.getTime() &&
+      outDayOnly.getTime() <= maxRentalDay.getTime();
+
+    if (!inOk || !outOk) {
+      alert(
+        currentLanguage === "ko"
+          ? "임대 시작일과 종료일은 오늘 기준 최대 91일 이내에서 선택해주세요."
+          : currentLanguage === "vi"
+            ? "Vui lòng chọn ngày bắt đầu và kết thúc thuê trong vòng 91 ngày tính từ hôm nay."
+            : currentLanguage === "ja"
+              ? "賃貸開始日と終了日は、今日基準で最大91日以内で選択してください。"
+              : currentLanguage === "zh"
+                ? "请在以今天为基准的91天以内选择入住和退房日期。"
+                : "Please select rental start/end dates within 91 days from today.",
+      );
+      return;
+    }
+
     if (!isOwnerSupplyLengthDays(diffDays)) {
       alert(
         currentLanguage === "ko"
@@ -2486,6 +2534,7 @@ export default function AddPropertyPage() {
             <CalendarComponent
               checkInDate={checkInDate}
               checkOutDate={checkOutDate}
+              maxDate={maxRentalDay}
               onCheckInSelect={(date) => {
                 setCheckInDate(date);
                 setCheckOutDate(null);
