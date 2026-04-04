@@ -19,7 +19,7 @@ export function isContractInProgressTab(b: BookingData, now: Date): boolean {
   return t >= checkIn.getTime() && t < checkOut.getTime();
 }
 
-/** 계약완료: 이용완료 상태이거나 체크아웃 시각이 지난 확정 예약 */
+/** 계약종료: 이용완료 상태이거나 체크아웃 시각이 지난 확정 예약 */
 export function isContractCompletedTab(b: BookingData, now: Date): boolean {
   if (b.status === 'cancelled') return false;
   if (b.paymentStatus !== 'paid') return false;

@@ -919,9 +919,9 @@ export default function AddPropertyPage() {
                     <button
                       type="button"
                       onClick={() => handleImageRemove(index)}
-                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                      className="property-register-icon-btn property-register-icon-btn--photo absolute top-1 right-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
                     >
-                      <X className="w-4 h-4" />
+                      <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 ))}
@@ -1108,7 +1108,7 @@ export default function AddPropertyPage() {
                                 e.stopPropagation();
                                 handleViewFullScreen(index);
                               }}
-                              className="absolute bottom-1 right-1 bg-black/50 text-white rounded-full p-1.5 hover:bg-black/70 transition-colors"
+                              className="property-register-icon-btn property-register-icon-btn--library absolute bottom-1 right-1 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors"
                             >
                               <Maximize2 className="w-3 h-3" />
                             </button>
@@ -1171,7 +1171,7 @@ export default function AddPropertyPage() {
                   <button
                     type="button"
                     onClick={handleBackToLibrary}
-                    className="absolute top-6 left-6 bg-white/90 text-gray-900 rounded-full p-2 hover:bg-white transition-colors"
+                    className="property-register-icon-btn property-register-icon-btn--fullscreen absolute top-6 left-6 bg-white/90 text-gray-900 rounded-full hover:bg-white transition-colors"
                   >
                     <X className="w-6 h-6" />
                   </button>
@@ -1488,11 +1488,11 @@ export default function AddPropertyPage() {
                           setSelectedCityId("");
                           setSelectedDistrictId("");
                         }}
-                        className="p-1 rounded-full transition-colors flex-shrink-0"
+                        className="property-register-icon-btn property-register-icon-btn--photo rounded-full transition-colors flex-shrink-0"
                         style={{ backgroundColor: `${COLORS.success}20` }}
                       >
                         <X
-                          className="w-4 h-4"
+                          className="w-3.5 h-3.5"
                           style={{ color: COLORS.textSecondary }}
                         />
                       </button>

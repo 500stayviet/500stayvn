@@ -109,7 +109,18 @@ export async function getAllBookings(): Promise<BookingData[]> {
   
   try {
     const data = localStorage.getItem(BOOKINGS_STORAGE_KEY);
-    return data ? JSON.parse(data) : [];
+    const bookings: BookingData[] = data ? JSON.parse(data) : [];
+    let changed = false;
+    for (const b of bookings) {
+      if (!b.id || !(String(b.id).trim())) {
+        b.id = generateId();
+        changed = true;
+      }
+    }
+    if (changed) {
+      localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(bookings));
+    }
+    return bookings;
   } catch (error) {
     console.error('예약 데이터 로드 실패:', error);
     return [];
@@ -504,6 +515,13 @@ export async function deleteBooking(bookingId: string): Promise<void> {
     const filtered = bookings.filter(b => b.id !== bookingId);
     
     localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(filtered));
+
+    try {
+      const { purgeSettlementStateForDeletedBooking } = await import('./adminFinance');
+      purgeSettlementStateForDeletedBooking(bookingId);
+    } catch (e) {
+      console.error('정산 큐/승인 정리 실패:', e);
+    }
   } catch (error) {
     console.error('예약 삭제 실패:', error);
     throw error;

@@ -135,29 +135,65 @@ input[type="reset"] {
   touch-action: manipulation;
 }
 
-/* 아이콘 원형 버튼(쓰레기통/X/연필 등) 정렬/사이즈 통일 */
-button.rounded-full.p-1,
-button.rounded-full.p-1\\.5,
-button.rounded-full.p-2 {
-  /* 전역 min-size(44px) 영향 제거 */
+/*
+ * 매물등록/수정: 사진 X, 라이브러리 확대 등 — 전역과 분리
+ * 내 매물관리 카드: 휴지통/연필 — 별도 크기·정렬
+ */
+button.property-register-icon-btn {
   min-height: unset !important;
   min-width: unset !important;
-
-  /* "사이즈 3 -> 2"에 해당하는 작은 원 크기 */
-  width: 24px;
-  height: 24px;
-
   padding: 0 !important;
-  display: inline-flex;
+  display: inline-flex !important;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
+  line-height: 0;
+  -webkit-tap-highlight-color: transparent;
 }
 
-button.rounded-full.p-1 svg,
-button.rounded-full.p-1\\.5 svg,
-button.rounded-full.p-2 svg {
+button.property-register-icon-btn svg {
   display: block;
+  flex-shrink: 0;
+  pointer-events: none;
+  vertical-align: middle;
+}
+
+button.property-register-icon-btn--photo {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+button.property-register-icon-btn--library {
+  width: 2rem;
+  height: 2rem;
+}
+
+button.property-register-icon-btn--fullscreen {
+  width: 2.75rem;
+  height: 2.75rem;
+}
+
+button.my-properties-card-icon-btn {
+  min-height: unset !important;
+  min-width: unset !important;
+  padding: 0 !important;
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  line-height: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button.my-properties-card-icon-btn svg {
+  display: block;
+  flex-shrink: 0;
+  pointer-events: none;
+  width: 1rem;
+  height: 1rem;
+  vertical-align: middle;
 }
 
 /* 예외: 매물 카드 슬라이더 네비(앞뒤·도트)는 의도된 작은 크기 유지 */

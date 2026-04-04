@@ -1,10 +1,11 @@
 'use client';
 
+import { isContractCompletedTab } from '@/lib/adminBookingFilters';
 import { getAllBookings } from '@/lib/api/bookings';
+import type { BookingData } from '@/lib/api/bookings';
 import {
   getRentalIncomeAmount,
   getRentalIncomeStatus,
-  isEligibleForRentalIncome,
   RentalIncomeStatus,
 } from '@/lib/utils/rentalIncome';
 
@@ -79,6 +80,8 @@ export interface SettlementCandidate {
 }
 
 const SETTLEMENT_APPROVALS_KEY = 'admin_settlement_approvals_v1';
+/** 승인요청 → 승인대기로 넘긴 bookingId (체크아웃·계약종료 후) */
+const SETTLEMENT_PENDING_QUEUE_KEY = 'admin_settlement_pending_queue_booking_ids_v1';
 const LEDGER_KEY = 'admin_finance_ledger_v1';
 const BANK_ACCOUNTS_KEY = 'bank_accounts_v1';
 const WITHDRAWALS_KEY = 'withdrawal_requests_v1';
@@ -102,12 +105,133 @@ function genId(prefix: string) {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/** 동일 bookingId 승인 행이 중복되면 잔액 합산이 뻥튀기됨 — 한 건으로 병합 */
+function pickBetterSettlementRow(a: SettlementApproval, b: SettlementApproval): SettlementApproval {
+  const stA = a.status ?? 'approved';
+  const stB = b.status ?? 'approved';
+  const rank = (s: string) => (s === 'approved' ? 2 : s === 'held' ? 1 : 0);
+  if (rank(stB) !== rank(stA)) return rank(stB) > rank(stA) ? b : a;
+  return new Date(b.approvedAt).getTime() >= new Date(a.approvedAt).getTime() ? b : a;
+}
+
+export function normalizeSettlementApprovals(approvals: SettlementApproval[]): SettlementApproval[] {
+  const map = new Map<string, SettlementApproval>();
+  const sorted = [...approvals].sort(
+    (x, y) => new Date(x.approvedAt).getTime() - new Date(y.approvedAt).getTime()
+  );
+  for (const raw of sorted) {
+    const id = (raw.bookingId || '').trim();
+    if (!id) continue;
+    const cur = { ...raw, bookingId: id };
+    const prev = map.get(id);
+    if (!prev) {
+      map.set(id, cur);
+      continue;
+    }
+    map.set(id, pickBetterSettlementRow(prev, cur));
+  }
+  return [...map.values()];
+}
+
+const settlementBookingLocks = new Set<string>();
+
+function withSettlementBookingLock<T>(bookingId: string, fn: () => T): T | null {
+  const id = (bookingId || '').trim();
+  if (!id) return null;
+  if (settlementBookingLocks.has(id)) return null;
+  settlementBookingLocks.add(id);
+  try {
+    return fn();
+  } finally {
+    settlementBookingLocks.delete(id);
+  }
+}
+
+export function getSettlementPendingQueueIds(): Set<string> {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const raw = localStorage.getItem(SETTLEMENT_PENDING_QUEUE_KEY);
+    const arr = raw ? (JSON.parse(raw) as string[]) : [];
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveSettlementPendingQueueIds(ids: Set<string>): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(SETTLEMENT_PENDING_QUEUE_KEY, JSON.stringify([...ids]));
+}
+
+/** 승인요청에서 확인 후 승인대기 탭으로 넘김 */
+export function moveBookingToSettlementPendingQueue(bookingId: string): void {
+  if (!bookingId) return;
+  const s = getSettlementPendingQueueIds();
+  s.add(bookingId);
+  saveSettlementPendingQueueIds(s);
+}
+
+function removeBookingFromSettlementPendingQueue(bookingId: string): void {
+  const s = getSettlementPendingQueueIds();
+  if (!s.delete(bookingId)) return;
+  saveSettlementPendingQueueIds(s);
+}
+
+/**
+ * 예약이 없거나 취소된 ID는 승인 대기 큐에서 제거 (목록과 큐 불일치 방지).
+ */
+export async function reconcileSettlementPendingQueueWithBookings(): Promise<void> {
+  const bookings = await getAllBookings();
+  const byId = new Map(bookings.map((b) => [b.id ?? '', b] as const));
+  const queue = getSettlementPendingQueueIds();
+  let changed = false;
+  for (const id of [...queue]) {
+    if (!id) {
+      queue.delete(id);
+      changed = true;
+      continue;
+    }
+    const b = byId.get(id);
+    if (!b || b.status === 'cancelled') {
+      queue.delete(id);
+      changed = true;
+    }
+  }
+  if (changed) saveSettlementPendingQueueIds(queue);
+}
+
+/** 예약 영구 삭제 시 큐·승인 요약 제거(원장은 유지). */
+export function purgeSettlementStateForDeletedBooking(bookingId: string): void {
+  if (!bookingId) return;
+  removeBookingFromSettlementPendingQueue(bookingId);
+  const approvals = readLS<SettlementApproval>(SETTLEMENT_APPROVALS_KEY);
+  const before = normalizeSettlementApprovals(approvals);
+  const filtered = before.filter((a) => a.bookingId !== bookingId);
+  if (filtered.length !== before.length) {
+    saveSettlementApprovals(filtered);
+  }
+}
+
+/** 정산 목록: 계약종료(체크아웃 이후) 예약만 — 체크인 직후 유입 제외 */
+function isEligibleForSettlementContractEnded(b: BookingData, now: Date): boolean {
+  return isContractCompletedTab(b, now);
+}
+
 export function getSettlementApprovals(): SettlementApproval[] {
-  return readLS<SettlementApproval>(SETTLEMENT_APPROVALS_KEY);
+  const raw = readLS<SettlementApproval>(SETTLEMENT_APPROVALS_KEY);
+  const normalized = normalizeSettlementApprovals(raw);
+  const withIds = raw.filter((r) => (r.bookingId || '').trim());
+  const dupOrEmpty =
+    normalized.length !== raw.length ||
+    new Set(withIds.map((r) => r.bookingId)).size !== withIds.length;
+  if (dupOrEmpty) {
+    writeLS(SETTLEMENT_APPROVALS_KEY, normalized);
+  }
+  return normalized;
 }
 
 function saveSettlementApprovals(items: SettlementApproval[]) {
-  writeLS(SETTLEMENT_APPROVALS_KEY, items);
+  writeLS(SETTLEMENT_APPROVALS_KEY, normalizeSettlementApprovals(items));
 }
 
 export function getLedgerEntries(): LedgerEntry[] {
@@ -236,17 +360,7 @@ export async function getSettlementCandidates(): Promise<SettlementCandidate[]> 
   const now = new Date();
 
   return bookings
-    .filter((b) =>
-      isEligibleForRentalIncome({
-        paymentStatus: b.paymentStatus ?? 'pending',
-        status: b.status ?? 'pending',
-        checkInDate: b.checkInDate,
-        checkOutDate: b.checkOutDate,
-        checkInTime: b.checkInTime ?? '14:00',
-        checkOutTime: b.checkOutTime ?? '12:00',
-        now,
-      })
-    )
+    .filter((b) => isEligibleForSettlementContractEnded(b as BookingData, now))
     .map((b) => {
       const approval = approvals.find((a) => a.bookingId === b.id);
       const approvalStatus = approval ? (approval.status ?? 'approved') : null;
@@ -273,126 +387,155 @@ export async function getSettlementCandidates(): Promise<SettlementCandidate[]> 
     .filter((r) => r.bookingId);
 }
 
+/** 승인요청: 계약종료 후 · 아직 승인대기 큐에 올리지 않은 건 */
+export async function getSettlementRequestCandidates(): Promise<SettlementCandidate[]> {
+  const rows = await getSettlementCandidates();
+  const queue = getSettlementPendingQueueIds();
+  return rows.filter((r) => r.approvalStatus === null && !queue.has(r.bookingId));
+}
+
+/** 승인대기: 승인요청에서 큐로 넘긴 뒤 · 정산 승인 전 */
+export async function getSettlementPendingApprovalCandidates(): Promise<SettlementCandidate[]> {
+  const rows = await getSettlementCandidates();
+  const queue = getSettlementPendingQueueIds();
+  return rows.filter((r) => r.approvalStatus === null && queue.has(r.bookingId));
+}
+
 /**
  * 승인 대기 건을 보류 탭으로 이동(승인 기록 없이 held만 생성). 출금 가능 반영 없음.
  */
 export function holdPendingSettlement(candidate: SettlementCandidate, adminId: string, reason?: string): boolean {
-  const approvals = getSettlementApprovals();
-  if (approvals.some((a) => a.bookingId === candidate.bookingId)) return false;
+  const result = withSettlementBookingLock(candidate.bookingId, () => {
+    const approvals = getSettlementApprovals();
+    if (approvals.some((a) => a.bookingId === candidate.bookingId)) return false;
 
-  const approval: SettlementApproval = {
-    bookingId: candidate.bookingId,
-    ownerId: candidate.ownerId,
-    amount: candidate.amount,
-    approvedBy: adminId,
-    approvedAt: new Date().toISOString(),
-    status: 'held',
-    reason: reason || '관리자 보류(승인 전)',
-  };
-  approvals.push(approval);
-  saveSettlementApprovals(approvals);
+    const approval: SettlementApproval = {
+      bookingId: candidate.bookingId,
+      ownerId: candidate.ownerId,
+      amount: candidate.amount,
+      approvedBy: adminId,
+      approvedAt: new Date().toISOString(),
+      status: 'held',
+      reason: reason || '관리자 보류(승인 전)',
+    };
+    approvals.push(approval);
+    saveSettlementApprovals(approvals);
 
-  const ledger = getLedgerEntries();
-  ledger.push({
-    id: genId('led'),
-    ownerId: candidate.ownerId,
-    amount: 0,
-    type: 'settlement_held',
-    refId: candidate.bookingId,
-    createdBy: adminId,
-    createdAt: new Date().toISOString(),
-    note: reason || '정산 보류(승인 대기 건)',
+    const ledger = getLedgerEntries();
+    ledger.push({
+      id: genId('led'),
+      ownerId: candidate.ownerId,
+      amount: 0,
+      type: 'settlement_held',
+      refId: candidate.bookingId,
+      createdBy: adminId,
+      createdAt: new Date().toISOString(),
+      note: reason || '정산 보류(승인 대기 건)',
+    });
+    saveLedgerEntries(ledger);
+    removeBookingFromSettlementPendingQueue(candidate.bookingId);
+    return true;
   });
-  saveLedgerEntries(ledger);
-  return true;
+  return result ?? false;
 }
 
 export function approveSettlement(candidate: SettlementCandidate, adminId: string): boolean {
-  const approvals = getSettlementApprovals();
-  if (approvals.some((a) => a.bookingId === candidate.bookingId)) return false;
+  const result = withSettlementBookingLock(candidate.bookingId, () => {
+    const approvals = getSettlementApprovals();
+    if (approvals.some((a) => a.bookingId === candidate.bookingId)) return false;
 
-  const approval: SettlementApproval = {
-    bookingId: candidate.bookingId,
-    ownerId: candidate.ownerId,
-    amount: candidate.amount,
-    approvedBy: adminId,
-    approvedAt: new Date().toISOString(),
-    status: 'approved',
-  };
-  approvals.push(approval);
-  saveSettlementApprovals(approvals);
+    const approval: SettlementApproval = {
+      bookingId: candidate.bookingId,
+      ownerId: candidate.ownerId,
+      amount: candidate.amount,
+      approvedBy: adminId,
+      approvedAt: new Date().toISOString(),
+      status: 'approved',
+    };
+    approvals.push(approval);
+    saveSettlementApprovals(approvals);
 
-  const ledger = getLedgerEntries();
-  ledger.push({
-    id: genId('led'),
-    ownerId: candidate.ownerId,
-    amount: candidate.amount,
-    type: 'settlement_approved',
-    refId: candidate.bookingId,
-    createdBy: adminId,
-    createdAt: new Date().toISOString(),
-    note: 'Settlement approved by admin',
+    const ledger = getLedgerEntries();
+    ledger.push({
+      id: genId('led'),
+      ownerId: candidate.ownerId,
+      amount: candidate.amount,
+      type: 'settlement_approved',
+      refId: candidate.bookingId,
+      createdBy: adminId,
+      createdAt: new Date().toISOString(),
+      note: 'Settlement approved by admin',
+    });
+    saveLedgerEntries(ledger);
+    removeBookingFromSettlementPendingQueue(candidate.bookingId);
+    return true;
   });
-  saveLedgerEntries(ledger);
-  return true;
+  return result ?? false;
 }
 
 export function holdSettlement(bookingId: string, adminId: string, reason?: string): boolean {
-  const approvals = getSettlementApprovals();
-  const index = approvals.findIndex((a) => a.bookingId === bookingId);
-  if (index === -1) return false;
-  const currentStatus = approvals[index].status ?? 'approved';
-  if (currentStatus !== 'approved') return false; // completed 비슷한 개념 없음: approved/held만 토글
+  const result = withSettlementBookingLock(bookingId, () => {
+    const approvals = getSettlementApprovals();
+    const index = approvals.findIndex((a) => a.bookingId === bookingId);
+    if (index === -1) return false;
+    const currentStatus = approvals[index].status ?? 'approved';
+    if (currentStatus !== 'approved') return false; // completed 비슷한 개념 없음: approved/held만 토글
 
-  approvals[index] = {
-    ...approvals[index],
-    status: 'held',
-    reason: reason || '관리자 보류',
-  };
-  saveSettlementApprovals(approvals);
+    approvals[index] = {
+      ...approvals[index],
+      status: 'held',
+      reason: reason || '관리자 보류',
+    };
+    saveSettlementApprovals(approvals);
 
-  const ledger = getLedgerEntries();
-  ledger.push({
-    id: genId('led'),
-    ownerId: approvals[index].ownerId,
-    amount: 0,
-    type: 'settlement_held',
-    refId: bookingId,
-    createdBy: adminId,
-    createdAt: new Date().toISOString(),
-    note: reason || '정산 보류(승인 완료 건)',
+    const ledger = getLedgerEntries();
+    ledger.push({
+      id: genId('led'),
+      ownerId: approvals[index].ownerId,
+      amount: 0,
+      type: 'settlement_held',
+      refId: bookingId,
+      createdBy: adminId,
+      createdAt: new Date().toISOString(),
+      note: reason || '정산 보류(승인 완료 건)',
+    });
+    saveLedgerEntries(ledger);
+    return true;
   });
-  saveLedgerEntries(ledger);
-  return true;
+  return result ?? false;
 }
 
 /**
  * 보류 중인 정산 건을 승인 대기로 복구: 승인 기록을 제거하고 관리자가 다시 승인하도록 함.
  */
 export function resumeSettlement(bookingId: string, adminId: string): boolean {
-  const approvals = getSettlementApprovals();
-  const index = approvals.findIndex((a) => a.bookingId === bookingId);
-  if (index === -1) return false;
-  const currentStatus = approvals[index].status ?? 'approved';
-  if (currentStatus !== 'held') return false;
+  const result = withSettlementBookingLock(bookingId, () => {
+    const approvals = getSettlementApprovals();
+    const index = approvals.findIndex((a) => a.bookingId === bookingId);
+    if (index === -1) return false;
+    const currentStatus = approvals[index].status ?? 'approved';
+    if (currentStatus !== 'held') return false;
 
-  const row = approvals[index];
-  approvals.splice(index, 1);
-  saveSettlementApprovals(approvals);
+    const row = approvals[index];
+    approvals.splice(index, 1);
+    saveSettlementApprovals(approvals);
 
-  const ledger = getLedgerEntries();
-  ledger.push({
-    id: genId('led'),
-    ownerId: row.ownerId,
-    amount: 0,
-    type: 'settlement_reverted_pending',
-    refId: bookingId,
-    createdBy: adminId,
-    createdAt: new Date().toISOString(),
-    note: `보류 해제 → 승인 대기로 복구 (해당 건 금액 ${row.amount.toLocaleString()} ₫ 재승인 필요)`,
+    const ledger = getLedgerEntries();
+    ledger.push({
+      id: genId('led'),
+      ownerId: row.ownerId,
+      amount: 0,
+      type: 'settlement_reverted_pending',
+      refId: bookingId,
+      createdBy: adminId,
+      createdAt: new Date().toISOString(),
+      note: `보류 해제 → 승인 대기로 복구 (해당 건 금액 ${row.amount.toLocaleString()} ₫ 재승인 필요)`,
+    });
+    saveLedgerEntries(ledger);
+    moveBookingToSettlementPendingQueue(bookingId);
+    return true;
   });
-  saveLedgerEntries(ledger);
-  return true;
+  return result ?? false;
 }
 
 export function createWithdrawalRequest(

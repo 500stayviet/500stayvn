@@ -358,10 +358,10 @@ function MyPropertiesContent() {
                                 if (!property.id) return;
                                 void handleEndAd(property.id);
                               }}
-                              className="bg-white/90 p-2 rounded-full shadow-xl transition-colors hover:bg-orange-50 text-orange-600"
+                              className="my-properties-card-icon-btn bg-white/90 rounded-full shadow-xl transition-colors hover:bg-orange-50 text-orange-600"
                               aria-label="end-ad"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 />
                             </button>
                           ) : null}
 
@@ -376,7 +376,7 @@ function MyPropertiesContent() {
                                 className="bg-white/90 p-2 rounded-full shadow-xl transition-colors hover:bg-blue-50 text-blue-600"
                                 aria-label="edit-pending"
                               >
-                                <Pencil className="w-4 h-4" />
+                                <Pencil />
                               </button>
                               <button
                                 type="button"
@@ -385,10 +385,10 @@ function MyPropertiesContent() {
                                   if (!property.id) return;
                                   setShowEndAdFromPendingConfirm(property.id);
                                 }}
-                                className="bg-white/90 p-2 rounded-full shadow-xl transition-colors hover:bg-orange-50 text-orange-600"
+                                className="my-properties-card-icon-btn bg-white/90 rounded-full shadow-xl transition-colors hover:bg-orange-50 text-orange-600"
                                 aria-label="pending-to-ended"
                               >
-                                <Trash2 className="w-4 h-4" />
+                                <Trash2 />
                               </button>
                             </>
                           ) : null}
@@ -401,10 +401,10 @@ function MyPropertiesContent() {
                                   e.stopPropagation();
                                   openEditWithLiveDuplicateCheck(property, "ended");
                                 }}
-                                className="bg-white/90 p-2 rounded-full shadow-xl transition-colors hover:bg-blue-50 text-blue-600"
+                                className="my-properties-card-icon-btn bg-white/90 rounded-full shadow-xl transition-colors hover:bg-blue-50 text-blue-600"
                                 aria-label="edit-ended"
                               >
-                                <Pencil className="w-4 h-4" />
+                                <Pencil />
                               </button>
                               <button
                                 type="button"
@@ -413,10 +413,10 @@ function MyPropertiesContent() {
                                   if (!property.id) return;
                                   setShowDeleteConfirm(property.id);
                                 }}
-                                className="bg-white/90 p-2 rounded-full shadow-xl transition-colors hover:bg-red-50 text-red-500"
+                                className="my-properties-card-icon-btn bg-white/90 rounded-full shadow-xl transition-colors hover:bg-red-50 text-red-500"
                                 aria-label="permanent-delete"
                               >
-                                <Trash2 className="w-4 h-4" />
+                                <Trash2 />
                               </button>
                             </>
                           ) : null}

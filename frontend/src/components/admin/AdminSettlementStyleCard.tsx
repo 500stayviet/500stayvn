@@ -10,6 +10,8 @@ type Props = {
   ownerUid: string;
   amount: number;
   amountClassName?: string;
+  /** 카드 상단 배지 (예: 계약종료 후 유입) */
+  headerBadge?: ReactNode;
   footer?: ReactNode;
 };
 
@@ -24,10 +26,14 @@ export default function AdminSettlementStyleCard({
   ownerUid,
   amount,
   amountClassName = 'text-emerald-600',
+  headerBadge,
   footer,
 }: Props) {
   return (
     <div className="rounded-md border border-slate-200 bg-white p-3 shadow-sm">
+      {headerBadge ? (
+        <div className="mb-2 flex flex-wrap items-center gap-1">{headerBadge}</div>
+      ) : null}
       <p className="text-xl font-bold leading-snug tracking-tight text-slate-900">
         {checkInDate}
         <span className="mx-1.5 font-normal text-slate-400">~</span>

@@ -1,6 +1,9 @@
 'use client';
 
-import { getSettlementCandidates } from '@/lib/api/adminFinance';
+import {
+  getSettlementPendingApprovalCandidates,
+  getSettlementRequestCandidates,
+} from '@/lib/api/adminFinance';
 import { getUsers } from '@/lib/api/auth';
 import { isPropertyNew, isUserNew } from '@/lib/adminNewUtils';
 import { isParentPropertyRecord } from '@/lib/utils/propertyUtils';
@@ -13,6 +16,8 @@ const KEY_USER_UIDS = 'admin_ack_new_user_uids_v1';
 const KEY_PROP_IDS = 'admin_ack_new_property_ids_v1';
 /** 승인 대기 탭에서 확인한 bookingId (새 건이 생기면 다시 알림) */
 const KEY_SETTLEMENT_PENDING_BOOKINGS = 'admin_ack_settlement_pending_booking_ids_v1';
+/** 승인 요청 탭에서 확인한 bookingId */
+const KEY_SETTLEMENT_REQUEST_BOOKINGS = 'admin_ack_settlement_request_booking_ids_v1';
 
 function readPropsRaw(): PropertyData[] {
   if (typeof window === 'undefined' || typeof localStorage === 'undefined') return [];
@@ -77,21 +82,36 @@ export function acknowledgeCurrentNewProperties(): void {
   writeIdSet(KEY_PROP_IDS, ack);
 }
 
+/** 상단 배지: 아직 '승인 요청'에서 확인하지 않은 건 수 */
+export async function getUnseenSettlementRequestCount(): Promise<number> {
+  if (typeof window === 'undefined') return 0;
+  const rows = await getSettlementRequestCandidates();
+  const ack = readIdSet(KEY_SETTLEMENT_REQUEST_BOOKINGS);
+  return rows.filter((p) => !ack.has(p.bookingId)).length;
+}
+
 /** 상단 배지: 아직 '승인 대기'에서 확인하지 않은 정산 건 수 */
 export async function getUnseenSettlementPendingCount(): Promise<number> {
   if (typeof window === 'undefined') return 0;
-  const rows = await getSettlementCandidates();
-  const pending = rows.filter((i) => i.approvalStatus === null);
+  const rows = await getSettlementPendingApprovalCandidates();
   const ack = readIdSet(KEY_SETTLEMENT_PENDING_BOOKINGS);
-  return pending.filter((p) => !ack.has(p.bookingId)).length;
+  return rows.filter((p) => !ack.has(p.bookingId)).length;
+}
+
+/** 정산 · 승인 요청 탭 진입 시 확인 처리 */
+export async function acknowledgeCurrentSettlementRequest(): Promise<void> {
+  if (typeof window === 'undefined') return;
+  const rows = await getSettlementRequestCandidates();
+  const ack = readIdSet(KEY_SETTLEMENT_REQUEST_BOOKINGS);
+  rows.forEach((p) => ack.add(p.bookingId));
+  writeIdSet(KEY_SETTLEMENT_REQUEST_BOOKINGS, ack);
 }
 
 /** 정산 · 승인 대기 탭 진입 시 현재 대기 건 확인 → 알림 제거 (새 bookingId 생기면 다시 표시) */
 export async function acknowledgeCurrentSettlementPending(): Promise<void> {
   if (typeof window === 'undefined') return;
-  const rows = await getSettlementCandidates();
-  const pending = rows.filter((i) => i.approvalStatus === null);
+  const rows = await getSettlementPendingApprovalCandidates();
   const ack = readIdSet(KEY_SETTLEMENT_PENDING_BOOKINGS);
-  pending.forEach((p) => ack.add(p.bookingId));
+  rows.forEach((p) => ack.add(p.bookingId));
   writeIdSet(KEY_SETTLEMENT_PENDING_BOOKINGS, ack);
 }

@@ -17,7 +17,7 @@ type ContractTab = 'sealed' | 'inProgress' | 'completed';
 const TABS: { id: ContractTab; label: string }[] = [
   { id: 'sealed', label: '계약체결' },
   { id: 'inProgress', label: '계약시작' },
-  { id: 'completed', label: '계약완료' },
+  { id: 'completed', label: '계약종료' },
 ];
 
 export default function AdminContractsPage() {
@@ -37,7 +37,21 @@ export default function AdminContractsPage() {
     void load();
   }, [load]);
 
-  const now = useMemo(() => new Date(), [bookings]);
+  /** 예약 데이터만 바뀔 때가 아니라 시각 경과에도 탭 분류가 맞도록 주기 갱신 */
+  const [nowTick, setNowTick] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setNowTick((t) => t + 1), 60_000);
+    const onVis = () => {
+      if (document.visibilityState === 'visible') setNowTick((t) => t + 1);
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, []);
+
+  const now = useMemo(() => new Date(), [bookings, nowTick]);
 
   const sealedList = useMemo(
     () => bookings.filter((b) => isContractSealedTab(b, now)),
@@ -67,7 +81,7 @@ export default function AdminContractsPage() {
       ? '계약체결(결제·확정, 숙박 전) 예약이 없습니다.'
       : tab === 'inProgress'
         ? '계약시작(체크인~체크아웃 진행 중) 예약이 없습니다.'
-        : '계약완료(체크아웃 이후·이용완료) 예약이 없습니다.';
+        : '계약종료(체크아웃 이후·이용완료) 예약이 없습니다.';
 
   const column = (list: BookingData[], body: ReactNode) => (
     <div className="flex min-h-0 max-h-[min(75vh,920px)] flex-col overflow-y-auto rounded-lg border border-slate-200 bg-slate-50/40">
@@ -88,8 +102,8 @@ export default function AdminContractsPage() {
           <div>
             <h1 className="text-lg font-bold text-slate-900">계약</h1>
             <p className="text-sm text-slate-500">
-              체결 → 시작(숙박 중) → 완료(체크아웃 이후) · 체결 {sealedList.length} · 시작{' '}
-              {inProgressList.length} · 완료 {completedList.length}
+              체결 → 시작(숙박 중) → 종료(체크아웃 이후) · 체결 {sealedList.length} · 시작{' '}
+              {inProgressList.length} · 종료 {completedList.length}
             </p>
           </div>
           <button
@@ -138,7 +152,7 @@ export default function AdminContractsPage() {
             className="w-full max-w-md rounded-md border border-slate-200 bg-white px-3 py-2 text-sm placeholder:text-slate-400"
           />
           <p className="mt-1 text-xs text-slate-500">
-            선택한 탭(계약체결·계약시작·계약완료) 안에서만 검색됩니다.
+            선택한 탭(계약체결·계약시작·계약종료) 안에서만 검색됩니다.
           </p>
         </div>
 

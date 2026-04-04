@@ -1,25 +1,32 @@
 'use client';
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { CheckCircle2 } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { ArrowRight, CheckCircle2 } from 'lucide-react';
 import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
 import AdminSettlementStyleCard from '@/components/admin/AdminSettlementStyleCard';
-import { acknowledgeCurrentSettlementPending } from '@/lib/adminAckState';
+import {
+  acknowledgeCurrentSettlementPending,
+  acknowledgeCurrentSettlementRequest,
+} from '@/lib/adminAckState';
 import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
 import { getAdminSession } from '@/lib/api/adminAuth';
 import {
   approveSettlement,
   getSettlementCandidates,
+  getSettlementPendingQueueIds,
   holdPendingSettlement,
   SettlementCandidate,
   holdSettlement,
+  moveBookingToSettlementPendingQueue,
+  reconcileSettlementPendingQueueWithBookings,
   resumeSettlement,
 } from '@/lib/api/adminFinance';
 import { filterSettlementsBySearch, getOwnerEmailMap } from '@/lib/adminSearchHelpers';
 
-type SettlementTab = 'pending' | 'approved' | 'held';
+type SettlementTab = 'request' | 'pending' | 'approved' | 'held';
 
 const TABS: { id: SettlementTab; label: string }[] = [
+  { id: 'request', label: '승인 요청' },
   { id: 'pending', label: '승인 대기' },
   { id: 'approved', label: '승인 완료' },
   { id: 'held', label: '보류' },
@@ -27,29 +34,59 @@ const TABS: { id: SettlementTab; label: string }[] = [
 
 export default function AdminSettlementsPage() {
   const [items, setItems] = useState<SettlementCandidate[]>([]);
+  const [queueVersion, setQueueVersion] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [tab, setTab] = useState<SettlementTab>('pending');
+  const [tab, setTab] = useState<SettlementTab>('request');
   const [searchQuery, setSearchQuery] = useState('');
   const admin = getAdminSession();
+  /** 연속 클릭(동기) 방지 — state보다 먼저 막음 */
+  const actionGuardRef = useRef<Set<string>>(new Set());
 
-  const load = async () => {
+  const runBookingAction = useCallback((bookingId: string, fn: () => void) => {
+    if (actionGuardRef.current.has(bookingId)) return;
+    actionGuardRef.current.add(bookingId);
+    try {
+      fn();
+    } finally {
+      actionGuardRef.current.delete(bookingId);
+    }
+  }, []);
+
+  const load = useCallback(async () => {
     setLoading(true);
+    await reconcileSettlementPendingQueueWithBookings();
     const rows = await getSettlementCandidates();
     setItems(rows);
     setLoading(false);
     refreshAdminBadges();
-  };
+  }, []);
 
   useEffect(() => {
-    load();
-  }, []);
+    void load();
+  }, [load]);
+
+  useEffect(() => {
+    if (tab !== 'request') return;
+    void acknowledgeCurrentSettlementRequest().then(() => refreshAdminBadges());
+  }, [tab]);
 
   useEffect(() => {
     if (tab !== 'pending') return;
     void acknowledgeCurrentSettlementPending().then(() => refreshAdminBadges());
   }, [tab]);
 
-  const needApproval = useMemo(() => items.filter((i) => i.approvalStatus === null), [items]);
+  const { requestList, needApproval } = useMemo(() => {
+    const queue = getSettlementPendingQueueIds();
+    const request: SettlementCandidate[] = [];
+    const pending: SettlementCandidate[] = [];
+    for (const i of items) {
+      if (i.approvalStatus !== null) continue;
+      if (queue.has(i.bookingId)) pending.push(i);
+      else request.push(i);
+    }
+    return { requestList: request, needApproval: pending };
+  }, [items, queueVersion]);
+
   const approvedActive = useMemo(
     () => items.filter((i) => i.approvalStatus === 'approved'),
     [items]
@@ -57,10 +94,11 @@ export default function AdminSettlementsPage() {
   const heldRows = useMemo(() => items.filter((i) => i.approvalStatus === 'held'), [items]);
 
   const activeList = useMemo(() => {
+    if (tab === 'request') return requestList;
     if (tab === 'pending') return needApproval;
     if (tab === 'approved') return approvedActive;
     return heldRows;
-  }, [tab, needApproval, approvedActive, heldRows]);
+  }, [tab, requestList, needApproval, approvedActive, heldRows]);
 
   const emailMap = useMemo(() => getOwnerEmailMap(), [items]);
 
@@ -70,11 +108,15 @@ export default function AdminSettlementsPage() {
   );
 
   const emptyMsg =
-    tab === 'pending'
-      ? '승인 대기 정산 건이 없습니다.'
-      : tab === 'approved'
-        ? '승인 완료(활성) 건이 없습니다.'
-        : '보류 중인 정산 건이 없습니다.';
+    tab === 'request'
+      ? '승인 요청 정산 건이 없습니다. (체크아웃 이후·계약종료와 동일 시점에 표시됩니다.)'
+      : tab === 'pending'
+        ? '승인 대기 정산 건이 없습니다.'
+        : tab === 'approved'
+          ? '승인 완료(활성) 건이 없습니다.'
+          : '보류 중인 정산 건이 없습니다.';
+
+  const bumpQueue = () => setQueueVersion((v) => v + 1);
 
   const column = (list: SettlementCandidate[], body: ReactNode) => (
     <div className="flex min-h-0 max-h-[min(75vh,920px)] flex-col overflow-y-auto rounded-lg border border-slate-200 bg-slate-50/40">
@@ -88,7 +130,12 @@ export default function AdminSettlementsPage() {
     </div>
   );
 
-  const card = (row: SettlementCandidate, amountClass: string, actions: ReactNode) => {
+  const card = (
+    row: SettlementCandidate,
+    amountClass: string,
+    actions: ReactNode,
+    headerBadge?: ReactNode
+  ) => {
     const email = emailMap.get(row.ownerId) || '—';
     const addressLine = (row.propertyAddress || '').trim() || row.propertyTitle || '—';
     return (
@@ -101,10 +148,17 @@ export default function AdminSettlementsPage() {
         ownerUid={row.ownerId}
         amount={row.amount}
         amountClassName={amountClass}
+        headerBadge={headerBadge}
         footer={actions}
       />
     );
   };
+
+  const contractEndedBadge = (
+    <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-700">
+      계약종료 후 유입
+    </span>
+  );
 
   return (
     <AdminRouteGuard>
@@ -113,13 +167,14 @@ export default function AdminSettlementsPage() {
           <div>
             <h1 className="text-lg font-bold text-slate-900">정산 승인</h1>
             <p className="text-sm text-slate-500">
-              체크아웃+24시간 후 승인 시 출금 가능 금액에 반영됩니다. 보류 해제 시 해당 건은 승인 대기로
-              돌아갑니다. · 대기 {needApproval.length} · 완료 {approvedActive.length} · 보류 {heldRows.length}
+              승인 요청은 체크아웃 이후(계약종료)에만 생성됩니다. 확인 후 승인 대기로 넘긴 뒤 정산 승인·보류를
+              처리하세요. 체크아웃+24시간 후 승인 시 출금 가능 금액에 반영됩니다. · 요청 {requestList.length} ·
+              대기 {needApproval.length} · 완료 {approvedActive.length} · 보류 {heldRows.length}
             </p>
           </div>
           <button
             type="button"
-            onClick={load}
+            onClick={() => void load()}
             className="shrink-0 rounded-md bg-slate-100 px-4 py-2 text-sm font-medium hover:bg-slate-200"
           >
             {loading ? '불러오는 중...' : '새로고침'}
@@ -139,11 +194,13 @@ export default function AdminSettlementsPage() {
               {t.label}
               <span className="ml-1 tabular-nums opacity-80">
                 (
-                {t.id === 'pending'
-                  ? needApproval.length
-                  : t.id === 'approved'
-                    ? approvedActive.length
-                    : heldRows.length}
+                {t.id === 'request'
+                  ? requestList.length
+                  : t.id === 'pending'
+                    ? needApproval.length
+                    : t.id === 'approved'
+                      ? approvedActive.length
+                      : heldRows.length}
                 )
               </span>
             </button>
@@ -163,13 +220,49 @@ export default function AdminSettlementsPage() {
             className="w-full max-w-md rounded-md border border-slate-200 bg-white px-3 py-2 text-sm placeholder:text-slate-400"
           />
           <p className="mt-1 text-xs text-slate-500">
-            선택한 탭(승인 대기·승인 완료·보류) 안에서만 검색됩니다.
+            선택한 탭(승인 요청·승인 대기·승인 완료·보류) 안에서만 검색됩니다.
           </p>
         </div>
 
         {column(
           filteredList,
           filteredList.map((row) => {
+            if (tab === 'request') {
+              return card(
+                row,
+                'text-emerald-600',
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      runBookingAction(row.bookingId, () => {
+                        moveBookingToSettlementPendingQueue(row.bookingId);
+                        bumpQueue();
+                        refreshAdminBadges();
+                      });
+                    }}
+                    className="flex items-center justify-center gap-1.5 rounded-md bg-slate-800 py-2 text-xs font-semibold text-white hover:bg-slate-900"
+                  >
+                    <ArrowRight className="h-3.5 w-3.5" />
+                    승인 대기로
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!admin?.username) return;
+                      const ok = holdPendingSettlement(row, admin.username, '관리자 보류');
+                      if (!ok) return;
+                      bumpQueue();
+                      void load();
+                    }}
+                    className="rounded-md border border-amber-200 bg-amber-50 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+                  >
+                    보류
+                  </button>
+                </div>,
+                contractEndedBadge
+              );
+            }
             if (tab === 'pending') {
               return card(
                 row,
@@ -179,9 +272,12 @@ export default function AdminSettlementsPage() {
                     type="button"
                     onClick={() => {
                       if (!admin?.username) return;
-                      const ok = approveSettlement(row, admin.username);
-                      if (!ok) return;
-                      load();
+                      runBookingAction(row.bookingId, () => {
+                        const ok = approveSettlement(row, admin.username);
+                        if (!ok) return;
+                        bumpQueue();
+                        void load();
+                      });
                     }}
                     className="flex items-center justify-center gap-1.5 rounded-md bg-blue-600 py-2 text-xs font-semibold text-white hover:bg-blue-700"
                   >
@@ -192,15 +288,19 @@ export default function AdminSettlementsPage() {
                     type="button"
                     onClick={() => {
                       if (!admin?.username) return;
-                      const ok = holdPendingSettlement(row, admin.username, '관리자 보류');
-                      if (!ok) return;
-                      load();
+                      runBookingAction(row.bookingId, () => {
+                        const ok = holdPendingSettlement(row, admin.username, '관리자 보류');
+                        if (!ok) return;
+                        bumpQueue();
+                        void load();
+                      });
                     }}
                     className="rounded-md border border-amber-200 bg-amber-50 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-100"
                   >
                     보류
                   </button>
-                </div>
+                </div>,
+                contractEndedBadge
               );
             }
             if (tab === 'approved') {
@@ -211,8 +311,10 @@ export default function AdminSettlementsPage() {
                   type="button"
                   onClick={() => {
                     if (!admin?.username) return;
-                    holdSettlement(row.bookingId, admin.username, '관리자 보류');
-                    load();
+                    runBookingAction(row.bookingId, () => {
+                      holdSettlement(row.bookingId, admin.username, '관리자 보류');
+                      void load();
+                    });
                   }}
                   className="mt-2 w-full rounded-md bg-amber-50 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-100"
                 >
@@ -227,8 +329,11 @@ export default function AdminSettlementsPage() {
                 type="button"
                 onClick={() => {
                   if (!admin?.username) return;
-                  resumeSettlement(row.bookingId, admin.username);
-                  load();
+                  runBookingAction(row.bookingId, () => {
+                    resumeSettlement(row.bookingId, admin.username);
+                    bumpQueue();
+                    void load();
+                  });
                 }}
                 className="mt-2 w-full rounded-md bg-blue-600 py-2 text-xs font-semibold text-white hover:bg-blue-700"
               >

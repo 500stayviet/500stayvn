@@ -7,6 +7,7 @@ import {
   getUnseenNewPropertyCount,
   getUnseenNewUserCount,
   getUnseenSettlementPendingCount,
+  getUnseenSettlementRequestCount,
 } from '@/lib/adminAckState';
 
 export const ADMIN_BADGES_REFRESH_EVENT = 'admin-badges-refresh';
@@ -20,7 +21,9 @@ export function refreshAdminBadges(): void {
 export async function fetchAdminBadgeCounts() {
   const now = Date.now();
 
-  const settlementsPendingUnseen = await getUnseenSettlementPendingCount();
+  const settlementsRequestUnseen = await getUnseenSettlementRequestCount();
+  const settlementsQueueUnseen = await getUnseenSettlementPendingCount();
+  const settlementsPendingUnseen = settlementsRequestUnseen + settlementsQueueUnseen;
 
   const wr = getWithdrawalRequests();
   const withdrawalsPending = wr.filter((r) => {
