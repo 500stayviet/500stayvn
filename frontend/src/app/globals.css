@@ -167,6 +167,44 @@ button.rounded-full.p-2 svg {
   min-height: unset;
 }
 
+/* 지도 우측 줌 +/- (GrabMap): 전역 44px 최소 제거 */
+.zoom-ruler-btn {
+  min-width: 32px !important;
+  min-height: 32px !important;
+}
+
+/* 명소 팝업: MapLibre 기본 닫기 버튼이 전역 button min 44px에 늘어나는 문제 보정 */
+.maplibregl-popup.landmark-popup-card .maplibregl-popup-content {
+  padding: 10px 34px 10px 12px;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.maplibregl-popup.landmark-popup-card .maplibregl-popup-close-button {
+  min-width: 22px !important;
+  min-height: 22px !important;
+  width: 22px;
+  height: 22px;
+  top: 6px;
+  right: 6px;
+  padding: 0;
+  margin: 0;
+  font-size: 16px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.landmark-popup-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
 /* 지도 명소 마커(빨강·주황·회색 원) 크기 고정 - Landmark 81 등 */
 .landmark-marker {
   width: 8px !important;

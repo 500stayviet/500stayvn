@@ -46,17 +46,98 @@ interface Property {
   checkInDate?: string | Date;
 }
 
-// 호치민 초기 좌표 상수 (지도는 항상 이 값으로 시작, 절대 null 전달 금지)
-const HO_CHI_MINH_CENTER = {
-  lat: 10.776,
-  lng: 106.701,
+/**
+ * 기본 지도 중심: 호치민 1군 (HCMC_DISTRICTS `hcmc-d1` 와 동일).
+ * — URL 좌표 없음, 위치 미동의, 베트남 밖 GPS, 위치 오류 등
+ */
+const DEFAULT_MAP_CENTER_HCMC_D1 = {
+  lat: 10.7756,
+  lng: 106.7019,
 } as const;
+const DEFAULT_MAP_FALLBACK_ZOOM = 14;
+
+function flyToHcmcDistrict1(
+  mapInstance: maplibregl.Map | null,
+  duration = 1000,
+): void {
+  if (!mapInstance?.loaded()) return;
+  mapInstance.flyTo({
+    center: [DEFAULT_MAP_CENTER_HCMC_D1.lng, DEFAULT_MAP_CENTER_HCMC_D1.lat],
+    zoom: DEFAULT_MAP_FALLBACK_ZOOM,
+    duration,
+  });
+}
+
+/**
+ * 위치 미동의(모달 거부) 시각 저장.
+ * 재노출: 같은 달력 날짜가 아니면 다시 모달 (자정이 지난 뒤, 아래 타임존 기준).
+ * 서버와 맞추려면 `NEXT_PUBLIC_APP_TIMEZONE`(예: UTC, Asia/Seoul) 설정.
+ */
+const GEO_CONSENT_DISMISS_KEY = "mapGeoConsentDismissedAt";
+const GEO_CONSENT_CALENDAR_TZ =
+  process.env.NEXT_PUBLIC_APP_TIMEZONE ?? "Asia/Ho_Chi_Minh";
+
+function calendarYmdInZone(ms: number, timeZone: string): string {
+  return new Date(ms).toLocaleDateString("en-CA", { timeZone });
+}
+
+function readGeoConsentDismissTime(): number | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const v = window.localStorage.getItem(GEO_CONSENT_DISMISS_KEY);
+    if (v == null) return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeGeoConsentDismissTime(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(GEO_CONSENT_DISMISS_KEY, String(Date.now()));
+  } catch {
+    /* ignore */
+  }
+}
+
+function clearGeoConsentDismissTime(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(GEO_CONSENT_DISMISS_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** 미동의(거부) 사용자: 마지막 거부일과 오늘(달력)이 다르면 다시 모달 */
+function shouldShowGeoConsentModal(): boolean {
+  const t = readGeoConsentDismissTime();
+  if (t === null) return true;
+  const dismissedDay = calendarYmdInZone(t, GEO_CONSENT_CALENDAR_TZ);
+  const today = calendarYmdInZone(Date.now(), GEO_CONSENT_CALENDAR_TZ);
+  return dismissedDay !== today;
+}
 
 // 베트남 경계 확인 (대략적인 범위)
 const isInVietnam = (lat: number, lng: number): boolean => {
   // 베트남 대략적인 경계: 위도 8.5~23.5, 경도 102~110
   return lat >= 8.5 && lat <= 23.5 && lng >= 102 && lng <= 110;
 };
+
+const ZOOM_MIN = 10;
+const ZOOM_MAX = 18;
+const RULER_HEIGHT = 120;
+const THUMB_SIZE = 12;
+
+function escapeHtmlLandmarkName(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
 // 동작 정리: 카드 좌우 이동 시 selectedProperty만 변경 → 지도 크기/줌 유지, 선택된 마커만 파란색으로 갱신.
 // 지도 위 마커를 클릭했을 때만 해당 매물 좌표 기준으로 줌인(flyTo) 허용.
@@ -336,6 +417,7 @@ export default function GrabMapComponent({
   const requestLocation = useCallback(() => {
     if (!navigator.geolocation) {
       console.warn("Geolocation is not supported");
+      if (map.current?.loaded()) flyToHcmcDistrict1(map.current, 1000);
       setShowLocationConsentModal(false);
       hasRequestedLocationRef.current = true;
       return;
@@ -348,14 +430,17 @@ export default function GrabMapComponent({
 
         if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
           console.warn("Invalid coordinates from geolocation");
+          if (map.current?.loaded()) flyToHcmcDistrict1(map.current, 1000);
           setShowLocationConsentModal(false);
           hasRequestedLocationRef.current = true;
           return;
         }
 
-        // 좌표 범위 체크: 베트남 밖이면 지도를 움직이지 말고 호치민 고정
+        clearGeoConsentDismissTime();
+
         if (!isInVietnam(lat, lng)) {
-          // 호치민 고정 (지도 이동 안 함, 마커도 표시 안 함)
+          setUserLocation(null);
+          if (map.current?.loaded()) flyToHcmcDistrict1(map.current, 1000);
           setShowLocationConsentModal(false);
           hasRequestedLocationRef.current = true;
           return;
@@ -383,6 +468,11 @@ export default function GrabMapComponent({
       },
       (error) => {
         console.warn("Geolocation error:", error);
+        const code = (error as GeolocationPositionError)?.code;
+        if (code === 1) {
+          writeGeoConsentDismissTime();
+        }
+        if (map.current?.loaded()) flyToHcmcDistrict1(map.current, 1000);
         setShowLocationConsentModal(false);
         hasRequestedLocationRef.current = true;
       },
@@ -401,8 +491,12 @@ export default function GrabMapComponent({
       return;
     }
 
-    if (!navigator.geolocation) {
+    const finishPermissionCheck = () => {
       hasRequestedLocationRef.current = true;
+    };
+
+    if (!navigator.geolocation) {
+      finishPermissionCheck();
       return;
     }
 
@@ -411,23 +505,21 @@ export default function GrabMapComponent({
       navigator.permissions
         .query({ name: "geolocation" as PermissionName })
         .then((permissionStatus) => {
-          // 플래그 설정 (한 번만 실행되도록 보장)
-          hasRequestedLocationRef.current = true;
-
           if (permissionStatus.state === "granted") {
-            // 이미 동의한 경우: 팝업 없이 조용히 위치 가져와서 지도 이동
+            clearGeoConsentDismissTime();
             navigator.geolocation.getCurrentPosition(
               (position) => {
                 const lat = Number(position.coords.latitude);
                 const lng = Number(position.coords.longitude);
 
                 if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+                  if (map.current?.loaded()) flyToHcmcDistrict1(map.current, 1000);
                   return;
                 }
 
-                // 좌표 범위 체크: 베트남 밖이면 지도를 움직이지 말고 호치민 고정
                 if (!isInVietnam(lat, lng)) {
-                  // 호치민 고정 (지도 이동 안 함, 마커도 표시 안 함)
+                  setUserLocation(null);
+                  if (map.current?.loaded()) flyToHcmcDistrict1(map.current, 1000);
                   return;
                 }
 
@@ -449,29 +541,49 @@ export default function GrabMapComponent({
               },
               (error) => {
                 console.warn("Geolocation error:", error);
+                if (map.current?.loaded()) flyToHcmcDistrict1(map.current, 1000);
               },
               {
-                enableHighAccuracy: false, // WiFi/셀룰러 사용 (더 빠름)
-                timeout: 5000, // 5초로 단축
-                maximumAge: 60000, // 1분 이내 캐시된 위치 사용 가능
+                enableHighAccuracy: false,
+                timeout: 5000,
+                maximumAge: 60000,
               },
             );
-          } else if (permissionStatus.state === "prompt") {
-            // 아직 동의 안 함: 동의 모달 딱 한 번만 표시
-            setShowLocationConsentModal(true);
-          } else {
-            // denied: 다시 묻지 말고 호치민 유지
-            console.log(
-              "Location permission denied - keeping Ho Chi Minh City map",
-            );
+            finishPermissionCheck();
+            return;
           }
+
+          const canPromptModal = shouldShowGeoConsentModal();
+
+          if (permissionStatus.state === "prompt") {
+            if (canPromptModal) {
+              setShowLocationConsentModal(true);
+            }
+            finishPermissionCheck();
+            return;
+          }
+
+          // denied: 브라우저에서 거부됨 — 미동의 사용자만 하루 단위로 안내 모달 재표시
+          console.log(
+            "Location permission denied - defaulting to Ho Chi Minh District 1",
+          );
+          if (map.current?.loaded()) flyToHcmcDistrict1(map.current, 1000);
+          if (canPromptModal) {
+            setShowLocationConsentModal(true);
+          }
+          finishPermissionCheck();
         })
         .catch(() => {
-          hasRequestedLocationRef.current = true;
+          if (shouldShowGeoConsentModal()) {
+            setShowLocationConsentModal(true);
+          }
+          finishPermissionCheck();
         });
     } else {
-      // Permissions API 미지원 시 플래그만 설정
-      hasRequestedLocationRef.current = true;
+      if (shouldShowGeoConsentModal()) {
+        setShowLocationConsentModal(true);
+      }
+      finishPermissionCheck();
     }
   }, [updateUserLocationMarker]);
 
@@ -496,8 +608,15 @@ export default function GrabMapComponent({
     if (!initialLocation || !map.current?.loaded?.()) return;
     const safeLat = Number(initialLocation.lat);
     const safeLng = Number(initialLocation.lng);
-    if (isNaN(safeLat) || isNaN(safeLng) || !isInVietnam(safeLat, safeLng))
+    if (isNaN(safeLat) || isNaN(safeLng) || !isInVietnam(safeLat, safeLng)) {
+      setUserLocation(null);
+      flyToHcmcDistrict1(map.current, 1000);
+      if (marker.current) {
+        marker.current.remove();
+        marker.current = null;
+      }
       return;
+    }
     const last = lastAppliedInitialLocationRef.current;
     if (last && last.lat === safeLat && last.lng === safeLng) return;
     lastAppliedInitialLocationRef.current = { lat: safeLat, lng: safeLng };
@@ -564,19 +683,36 @@ export default function GrabMapComponent({
     console.log("Initializing map with URL:", styleUrl.replace(apiKey, "***"));
 
     try {
-      // 초기 위치 결정: ref에서 가져온 initialLocation이 있으면 사용, 없으면 호치민 중심
+      // 초기 위치: 베트남 내 URL 좌표만 그대로, 그 외(없음·밖·무효)는 호치민 1군
       const initLocation = initialLocationRef.current;
       const initDenied = locationDeniedRef.current;
-      const initialCenter = initLocation
-        ? [initLocation.lng, initLocation.lat]
-        : [HO_CHI_MINH_CENTER.lng, HO_CHI_MINH_CENTER.lat];
-      const initialZoom = initLocation ? 15 : 14; // 위치가 있으면 더 확대, 없으면 호치민 중심도 확대
+      let initialCenter: [number, number];
+      let initialZoom: number;
+      if (initLocation) {
+        const slat = Number(initLocation.lat);
+        const slng = Number(initLocation.lng);
+        if (!isNaN(slat) && !isNaN(slng) && isInVietnam(slat, slng)) {
+          initialCenter = [slng, slat];
+          initialZoom = 15;
+        } else {
+          initialCenter = [
+            DEFAULT_MAP_CENTER_HCMC_D1.lng,
+            DEFAULT_MAP_CENTER_HCMC_D1.lat,
+          ];
+          initialZoom = DEFAULT_MAP_FALLBACK_ZOOM;
+        }
+      } else {
+        initialCenter = [
+          DEFAULT_MAP_CENTER_HCMC_D1.lng,
+          DEFAULT_MAP_CENTER_HCMC_D1.lat,
+        ];
+        initialZoom = DEFAULT_MAP_FALLBACK_ZOOM;
+      }
 
-      // 호치민 초기 중심 좌표 (무조건 숫자 리터럴 직접 사용)
       map.current = new maplibregl.Map({
         container: mapContainer.current,
         style: styleUrl,
-        center: initialCenter as [number, number], // [경도, 위도] 순서
+        center: initialCenter,
         zoom: initialZoom,
         attributionControl: true as any,
       });
@@ -596,7 +732,6 @@ export default function GrabMapComponent({
 
         // 초기 위치 설정 (검색 기록 복원 없이 항상 초기화)
         if (initLocation) {
-          // initialLocation이 있으면 해당 위치로 이동하고 마커 표시
           const safeLat = Number(initLocation.lat);
           const safeLng = Number(initLocation.lng);
 
@@ -612,11 +747,16 @@ export default function GrabMapComponent({
               duration: 1000,
             });
             updateUserLocationMarker(initLocation);
-            hasRequestedLocationRef.current = true; // 위치 요청 완료로 표시
+            hasRequestedLocationRef.current = true;
+          } else {
+            // 베트남 밖·무효 URL: 호치민 1군 기준(초기 center와 동일하게 맞춤)
+            setUserLocation(null);
+            flyToHcmcDistrict1(map.current!, 1000);
+            hasRequestedLocationRef.current = true;
           }
         } else if (initDenied) {
-          // 위치 권한 거부 시 호치민 중심으로 확대
-          hasRequestedLocationRef.current = true; // 위치 요청 완료로 표시
+          flyToHcmcDistrict1(map.current!, 1000);
+          hasRequestedLocationRef.current = true;
         } else if (initLoading) {
           // If loading, don't check permission immediately, wait for URL update
           console.log(
@@ -654,7 +794,16 @@ export default function GrabMapComponent({
           el.style.cursor = "pointer";
           const m = new maplibregl.Marker({ element: el })
             .setLngLat([lm.lng, lm.lat])
-            .setPopup(new maplibregl.Popup({ offset: 15 }).setText(lm.name))
+            .setPopup(
+              new maplibregl.Popup({
+                offset: 15,
+                className: "landmark-popup-card",
+                closeButton: true,
+                maxWidth: "240px",
+              }).setHTML(
+                `<div class="landmark-popup-title">${escapeHtmlLandmarkName(lm.name)}</div>`,
+              ),
+            )
             .addTo(map.current!);
           landmarkMarkersRef.current.push(m);
         }
@@ -1743,10 +1892,6 @@ export default function GrabMapComponent({
     }
   };
 
-  const ZOOM_MIN = 10;
-  const ZOOM_MAX = 18;
-  const RULER_HEIGHT = 120;
-  const THUMB_SIZE = 12;
   const thumbTop = Math.max(
     0,
     Math.min(
@@ -1755,6 +1900,50 @@ export default function GrabMapComponent({
         (RULER_HEIGHT - THUMB_SIZE),
     ),
   );
+
+  const applyZoomDelta = useCallback((delta: number) => {
+    const m = map.current;
+    if (!m) return;
+    const z = m.getZoom();
+    m.easeTo({
+      zoom: Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z + delta)),
+      duration: 220,
+    });
+  }, []);
+
+  const handleZoomIn = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+      applyZoomDelta(1);
+    },
+    [applyZoomDelta],
+  );
+
+  const handleZoomOut = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+      applyZoomDelta(-1);
+    },
+    [applyZoomDelta],
+  );
+
+  const handleZoomTrackClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const m = map.current;
+    if (!m) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const span = RULER_HEIGHT - THUMB_SIZE;
+    const t = Math.max(0, Math.min(1, y / span));
+    const nextZoom = Math.round(ZOOM_MAX - t * (ZOOM_MAX - ZOOM_MIN));
+    m.easeTo({
+      zoom: Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, nextZoom)),
+      duration: 240,
+    });
+  }, []);
 
   return (
     <div className="relative w-full h-full" style={{ minHeight: "100%" }}>
@@ -1789,37 +1978,48 @@ export default function GrabMapComponent({
         }}
       />
 
-      {/* 우측 세로 줌 룰러: +/- 아이콘 + 현재 줌 위치(동그라미), 조작 불가 */}
+      {/* 우측 세로 줌 룰러: + / 세로 트랙(클릭 시 해당 줌) / - */}
       <div
         className="zoom-ruler-wrap absolute right-0 top-1/2 z-20 -translate-y-1/2 flex flex-col items-center pointer-events-none select-none gap-1"
         style={{ height: RULER_HEIGHT + 44 }}
-        aria-label="현재 줌 레벨"
       >
         <div
-          className="flex items-center justify-center w-8 h-8 rounded-lg bg-white text-[#E63946] shadow-md"
-          aria-hidden
+          className="pointer-events-auto flex flex-col items-center gap-1"
+          role="group"
+          aria-label="Map zoom"
         >
-          <Plus className="w-4 h-4" strokeWidth={3} />
-        </div>
-        <div
-          className="zoom-ruler-track w-1.5 rounded-full bg-gray-300/80 flex-shrink-0 relative"
-          style={{ height: RULER_HEIGHT, backgroundColor: "#E5E7EB" }}
-        >
-          {/* 동그라미 포인터: 현재 줌 위치 */}
+          <button
+            type="button"
+            onClick={handleZoomIn}
+            className="zoom-ruler-btn flex items-center justify-center w-8 h-8 rounded-lg bg-white text-[#E63946] shadow-md border-0 cursor-pointer touch-manipulation"
+            aria-label="Zoom in"
+          >
+            <Plus className="w-4 h-4 pointer-events-none" strokeWidth={3} />
+          </button>
           <div
-            className="absolute left-1/2 -translate-x-1/2 rounded-full bg-[#E63946] border-2 border-white shadow-md"
-            style={{
-              top: thumbTop,
-              width: THUMB_SIZE + 2,
-              height: THUMB_SIZE + 2,
-            }}
-          />
-        </div>
-        <div
-          className="flex items-center justify-center w-8 h-8 rounded-lg bg-white text-[#E63946] shadow-md"
-          aria-hidden
-        >
-          <Minus className="w-4 h-4" strokeWidth={3} />
+            className="zoom-ruler-track w-1.5 rounded-full bg-gray-300/80 flex-shrink-0 relative cursor-pointer touch-manipulation"
+            style={{ height: RULER_HEIGHT, backgroundColor: "#E5E7EB" }}
+            onClick={handleZoomTrackClick}
+            aria-label="Set zoom by position"
+          >
+            {/* 동그라미 포인터: 현재 줌 위치 */}
+            <div
+              className="absolute left-1/2 -translate-x-1/2 rounded-full bg-[#E63946] border-2 border-white shadow-md pointer-events-none"
+              style={{
+                top: thumbTop,
+                width: THUMB_SIZE + 2,
+                height: THUMB_SIZE + 2,
+              }}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={handleZoomOut}
+            className="zoom-ruler-btn flex items-center justify-center w-8 h-8 rounded-lg bg-white text-[#E63946] shadow-md border-0 cursor-pointer touch-manipulation"
+            aria-label="Zoom out"
+          >
+            <Minus className="w-4 h-4 pointer-events-none" strokeWidth={3} />
+          </button>
         </div>
       </div>
 
@@ -1852,9 +2052,17 @@ export default function GrabMapComponent({
 
             <div className="flex gap-3">
               <button
+                type="button"
                 onClick={() => {
+                  writeGeoConsentDismissTime();
                   setShowLocationConsentModal(false);
                   hasRequestedLocationRef.current = true;
+                  setUserLocation(null);
+                  flyToHcmcDistrict1(map.current, 1000);
+                  if (marker.current) {
+                    marker.current.remove();
+                    marker.current = null;
+                  }
                 }}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
               >
