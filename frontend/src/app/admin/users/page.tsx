@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
 import { acknowledgeCurrentNewUsers } from '@/lib/adminAckState';
 import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
@@ -98,16 +99,25 @@ export default function AdminUsersPage() {
                 <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
                   <th className="px-3 py-2">이름</th>
                   <th className="px-3 py-2">이메일</th>
+                  <th className="px-3 py-2">전화번호</th>
                   <th className="px-3 py-2">UID</th>
                   <th className="w-24 px-3 py-2">상태</th>
-                  <th className="w-40 px-3 py-2 text-right">작업</th>
+                  <th className="w-48 px-3 py-2 text-right">작업</th>
                 </tr>
               </thead>
               <tbody>
                 {pagedRows.map((u) => (
                   <tr key={u.uid} className="border-b border-slate-100 hover:bg-slate-50/80">
-                    <td className="px-3 py-2 font-medium text-slate-900">{u.displayName || '—'}</td>
+                    <td className="px-3 py-2 font-medium text-slate-900">
+                      <Link
+                        href={`/admin/users/${encodeURIComponent(u.uid)}`}
+                        className="text-blue-700 hover:underline"
+                      >
+                        {u.displayName || '—'}
+                      </Link>
+                    </td>
                     <td className="max-w-[200px] truncate px-3 py-2 text-slate-700">{u.email}</td>
+                    <td className="max-w-[120px] truncate px-3 py-2 text-slate-700">{u.phoneNumber || '—'}</td>
                     <td className="max-w-[180px] truncate font-mono text-xs text-slate-600">{u.uid}</td>
                     <td className="px-3 py-2">
                       <span
@@ -119,35 +129,43 @@ export default function AdminUsersPage() {
                       </span>
                     </td>
                     <td className="px-3 py-2 text-right">
-                      {u.blocked ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (!admin?.username) return;
-                            setUserBlocked(u.uid, false, admin.username);
-                            setTick((v) => v + 1);
-                            refreshAdminBadges();
-                          }}
-                          className="rounded-md bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-blue-700"
+                      <div className="flex flex-wrap items-center justify-end gap-1.5">
+                        <Link
+                          href={`/admin/users/${encodeURIComponent(u.uid)}`}
+                          className="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-800 hover:bg-slate-50"
                         >
-                          복구
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (!admin?.username) return;
-                            const reason =
-                              window.prompt('차단 사유를 입력하세요.', '관리자 차단') || '관리자 차단';
-                            setUserBlocked(u.uid, true, admin.username, reason);
-                            setTick((v) => v + 1);
-                            refreshAdminBadges();
-                          }}
-                          className="rounded-md bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-100"
-                        >
-                          차단
-                        </button>
-                      )}
+                          상세
+                        </Link>
+                        {u.blocked ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!admin?.username) return;
+                              setUserBlocked(u.uid, false, admin.username);
+                              setTick((v) => v + 1);
+                              refreshAdminBadges();
+                            }}
+                            className="rounded-md bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-blue-700"
+                          >
+                            복구
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!admin?.username) return;
+                              const reason =
+                                window.prompt('차단 사유를 입력하세요.', '관리자 차단') || '관리자 차단';
+                              setUserBlocked(u.uid, true, admin.username, reason);
+                              setTick((v) => v + 1);
+                              refreshAdminBadges();
+                            }}
+                            className="rounded-md bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-100"
+                          >
+                            차단
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
