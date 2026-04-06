@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
 import { getUsers } from '@/lib/api/auth';
 import type { BookingData } from '@/lib/api/bookings';
 import type { SettlementCandidate, WithdrawalRequest } from '@/lib/api/adminFinance';
@@ -11,6 +12,28 @@ export function getOwnerEmailMap(): Map<string, string> {
     if (u.uid && !u.deleted) m.set(u.uid, (u.email || '').trim());
   });
   return m;
+}
+
+/**
+ * 사용자 목록이 `saveUsers`·KYC 등으로 바뀌면(같은 탭·다른 탭) 이메일 맵을 다시 만듭니다.
+ * `listRevision`은 목록 데이터가 바뀔 때마다 넘겨 두면(예: items, bookings) 그 시점에도 재계산됩니다.
+ */
+export function useOwnerEmailMap(listRevision: unknown): Map<string, string> {
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const bump = () => setTick((n) => n + 1);
+    if (typeof window === 'undefined') return undefined;
+    window.addEventListener('stayviet-users-updated', bump);
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'users') bump();
+    };
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener('stayviet-users-updated', bump);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, []);
+  return useMemo(() => getOwnerEmailMap(), [listRevision, tick]);
 }
 
 /** UID·이메일을 먼저 매칭, 그다음 매물·예약 관련 필드 */

@@ -13,7 +13,7 @@ import {
   resumeWithdrawal,
   WithdrawalRequest,
 } from '@/lib/api/adminFinance';
-import { filterWithdrawalsBySearch, getOwnerEmailMap } from '@/lib/adminSearchHelpers';
+import { filterWithdrawalsBySearch, useOwnerEmailMap } from '@/lib/adminSearchHelpers';
 
 type WithdrawalTab = 'pending' | 'processing' | 'completed' | 'rejected' | 'held';
 
@@ -68,7 +68,7 @@ export default function AdminWithdrawalsPage() {
     return held;
   }, [tab, pending, processing, rejected, completed, held]);
 
-  const emailMap = useMemo(() => getOwnerEmailMap(), [rows]);
+  const emailMap = useOwnerEmailMap(rows);
 
   const filteredList = useMemo(
     () => filterWithdrawalsBySearch(activeList, searchQuery, emailMap),

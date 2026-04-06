@@ -11,19 +11,72 @@
 /** 24시간 = 정확히 86,400초 = 86,400,000ms (초 단위까지 대조) */
 const MS_24H = 86_400 * 1000; // 86_400_000
 
+const BOOKING_YMD_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/**
+ * 예약 날짜 문자열이 YYYY-MM-DD 형식이며 실제 달력상 유효한지 검사합니다.
+ */
+export function isValidBookingDateString(dateStr: string): boolean {
+  const m = BOOKING_YMD_RE.exec(dateStr.trim());
+  if (!m) return false;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  if (!Number.isInteger(y) || !Number.isInteger(mo) || !Number.isInteger(d)) return false;
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return false;
+  const dt = new Date(Date.UTC(y, mo - 1, d));
+  return dt.getUTCFullYear() === y && dt.getUTCMonth() === mo - 1 && dt.getUTCDate() === d;
+}
+
+/**
+ * 체크인/아웃 시각 문자열(HH 또는 HH:mm 또는 HH:mm:ss)이 유효한지 검사합니다.
+ */
+export function isValidBookingTimeString(raw: string): boolean {
+  const s = raw.trim();
+  if (!s) return false;
+  const segments = s.split(':');
+  if (segments.length > 3) return false;
+  const h = Number(segments[0]);
+  const min = segments.length >= 2 ? Number(segments[1]) : 0;
+  const sec = segments.length >= 3 ? Number(segments[2]) : 0;
+  if (!Number.isInteger(h) || h < 0 || h > 23) return false;
+  if (!Number.isInteger(min) || min < 0 || min > 59) return false;
+  if (!Number.isInteger(sec) || sec < 0 || sec > 59) return false;
+  return true;
+}
+
+/**
+ * 공백만 있거나 비어 있으면 기본 시각을 씁니다.
+ */
+export function normalizeBookingTimeForParsing(
+  raw: string | undefined,
+  defaultTime: string
+): string {
+  const t = (raw ?? '').trim();
+  return t || defaultTime;
+}
+
 /**
  * 베트남 시간대(Asia/Ho_Chi_Minh, UTC+07:00) 명시하여 시각 생성.
  * 전체 일시(년-월-일-시-분-초) ISO 8601 형식: YYYY-MM-DDTHH:mm:ss+07:00
+ * 날짜·시각이 검증에 실패하면 Invalid Date를 반환합니다.
  */
 function toVietnamMoment(dateStr: string, timeStr: string): Date {
-  const parts = timeStr.includes(':') ? timeStr.split(':') : [timeStr, '00'];
+  if (!isValidBookingDateString(dateStr)) {
+    return new Date(NaN);
+  }
+  const t = timeStr.trim();
+  if (!isValidBookingTimeString(t)) {
+    return new Date(NaN);
+  }
+  const parts = t.includes(':') ? t.split(':') : [t, '00'];
   const h = parts[0]!.padStart(2, '0');
   const m = (parts[1] ?? '00').padStart(2, '0');
   const s = (parts[2] ?? '00').padStart(2, '0');
-  const iso = `${dateStr}T${h}:${m}:${s}+07:00`;
+  const iso = `${dateStr.trim()}T${h}:${m}:${s}+07:00`;
   const d = new Date(iso);
-  if (isNaN(d.getTime())) {
-    return new Date(0);
+  if (Number.isNaN(d.getTime())) {
+    return new Date(NaN);
   }
   return d;
 }
@@ -45,7 +98,8 @@ export function getCheckOutMoment(
   checkOutDate: string,
   checkOutTime: string
 ): Date {
-  return toVietnamMoment(checkOutDate, checkOutTime || '12:00');
+  const t = normalizeBookingTimeForParsing(checkOutTime, '12:00');
+  return toVietnamMoment(checkOutDate.trim(), t);
 }
 
 /**
@@ -57,12 +111,15 @@ export function getPayableAfterMoment(
   checkOutTime: string
 ): Date {
   const checkout = getCheckOutMoment(checkOutDate, checkOutTime);
-  const payableAfter = new Date(checkout.getTime() + MS_24H);
-  const elapsedMs = payableAfter.getTime() - checkout.getTime();
-  if (elapsedMs !== MS_24H) {
-    throw new Error(`Payable-after must be exactly 86,400,000ms after checkout; got ${elapsedMs}ms`);
+  const t0 = checkout.getTime();
+  if (!Number.isFinite(t0)) {
+    return new Date(NaN);
   }
-  return payableAfter;
+  const t1 = t0 + MS_24H;
+  if (!Number.isFinite(t1)) {
+    return new Date(NaN);
+  }
+  return new Date(t1);
 }
 
 /**
@@ -85,13 +142,26 @@ export function getRentalIncomeStatus(
   const checkOut = getCheckOutMoment(checkOutDate, checkOutTime || '12:00');
   const payableAfter = getPayableAfterMoment(checkOutDate, checkOutTime || '12:00');
 
-  if (now.getTime() < checkIn.getTime()) {
+  const tNow = now.getTime();
+  const tIn = checkIn.getTime();
+  const tOut = checkOut.getTime();
+  const tPay = payableAfter.getTime();
+  if (
+    !Number.isFinite(tNow) ||
+    !Number.isFinite(tIn) ||
+    !Number.isFinite(tOut) ||
+    !Number.isFinite(tPay)
+  ) {
     return null;
   }
-  if (now.getTime() < checkOut.getTime()) {
+
+  if (tNow < tIn) {
+    return null;
+  }
+  if (tNow < tOut) {
     return 'pending';
   }
-  if (now.getTime() < payableAfter.getTime()) {
+  if (tNow < tPay) {
     return 'confirmed';
   }
   return 'payable';
@@ -159,6 +229,9 @@ export function aggregateRentalIncome(
  * 년-월-일-시-분-초가 모두 포함된 표준 형식으로 로그·검증 시 사용.
  */
 export function toISO8601ForAudit(date: Date): string {
+  if (!Number.isFinite(date.getTime())) {
+    return 'invalid-timestamp';
+  }
   return date.toISOString();
 }
 

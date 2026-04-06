@@ -22,9 +22,28 @@ import {
   resumeSettlement,
   resumeSettlementToRequest,
 } from '@/lib/api/adminFinance';
-import { filterSettlementsBySearch, getOwnerEmailMap } from '@/lib/adminSearchHelpers';
+import { filterSettlementsBySearch, useOwnerEmailMap } from '@/lib/adminSearchHelpers';
+import { getPayableAfterMoment } from '@/lib/utils/rentalIncome';
 
 type SettlementTab = 'request' | 'pending' | 'approved' | 'held';
+
+/** 체크아웃+24h(=지급 가능 시각)까지 남은 ms (음수 = 이미 경과). 날짜/시각 무효 시 NaN */
+function remainingMsUntilPayableAfter(
+  row: SettlementCandidate,
+  now: Date
+): number {
+  const payableAfter = getPayableAfterMoment(
+    row.checkOutDate,
+    (row.checkOutTime ?? '12:00').trim() || '12:00'
+  );
+  const t = payableAfter.getTime();
+  const n = now.getTime();
+  if (!Number.isFinite(t) || !Number.isFinite(n)) return Number.NaN;
+  return t - n;
+}
+
+/** 승인 요청·대기: 남은 시간 정렬 또는 24시 경과 목록(한 번에 하나만 선택) */
+type SettlementListMode = 'remaining-asc' | 'remaining-desc' | 'elapsed-24h';
 
 const TABS: { id: SettlementTab; label: string }[] = [
   { id: 'request', label: '승인 요청' },
@@ -39,6 +58,7 @@ export default function AdminSettlementsPage() {
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<SettlementTab>('request');
   const [searchQuery, setSearchQuery] = useState('');
+  const [listMode, setListMode] = useState<SettlementListMode>('remaining-asc');
   const admin = getAdminSession();
   /** 연속 클릭(동기) 방지 — state보다 먼저 막음 */
   const actionGuardRef = useRef<Set<string>>(new Set());
@@ -65,6 +85,13 @@ export default function AdminSettlementsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  /** 정렬 기준 시각 — 1분마다 갱신(장시간 화면 유지 시 남은 시간 순서가 맞게). 데이터 갱신은 `items` 변경으로 이미 반영됨 */
+  const [urgencyTick, setUrgencyTick] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setUrgencyTick((n) => n + 1), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   useEffect(() => {
     if (tab !== 'request') return;
@@ -101,12 +128,38 @@ export default function AdminSettlementsPage() {
     return heldRows;
   }, [tab, requestList, needApproval, approvedActive, heldRows]);
 
-  const emailMap = useMemo(() => getOwnerEmailMap(), [items]);
+  const emailMap = useOwnerEmailMap(items);
 
   const filteredList = useMemo(
     () => filterSettlementsBySearch(activeList, searchQuery, emailMap),
     [activeList, searchQuery, emailMap]
   );
+
+  const nowForUrgency = useMemo(() => new Date(), [items, urgencyTick]);
+
+  const displayList = useMemo(() => {
+    if (tab !== 'request' && tab !== 'pending') return filteredList;
+    const only24Plus = listMode === 'elapsed-24h';
+    const remainingSort = listMode === 'remaining-desc' ? 'desc' : 'asc';
+    const decorated = filteredList.map((row) => ({
+      row,
+      remaining: remainingMsUntilPayableAfter(row, nowForUrgency),
+    }));
+    const work = only24Plus
+      ? decorated.filter((d) => Number.isFinite(d.remaining) && d.remaining <= 0)
+      : decorated;
+    work.sort((a, b) => {
+      const af = Number.isFinite(a.remaining);
+      const bf = Number.isFinite(b.remaining);
+      if (!af && !bf) return 0;
+      if (!af) return 1;
+      if (!bf) return -1;
+      return remainingSort === 'asc'
+        ? a.remaining - b.remaining
+        : b.remaining - a.remaining;
+    });
+    return work.map((d) => d.row);
+  }, [filteredList, tab, listMode, nowForUrgency]);
 
   const emptyMsg =
     tab === 'request'
@@ -117,13 +170,20 @@ export default function AdminSettlementsPage() {
           ? '승인 완료(활성) 건이 없습니다.'
           : '보류 중인 정산 건이 없습니다.';
 
+  const listEmptyMsg =
+    displayList.length === 0 &&
+    (tab === 'request' || tab === 'pending') &&
+    filteredList.length > 0
+      ? '검색·정렬·필터 조건에 맞는 건이 없습니다.'
+      : emptyMsg;
+
   const bumpQueue = () => setQueueVersion((v) => v + 1);
 
-  const column = (list: SettlementCandidate[], body: ReactNode) => (
+  const column = (list: SettlementCandidate[], body: ReactNode, emptyOverride?: string) => (
     <div className="flex min-h-0 max-h-[min(75vh,920px)] flex-col overflow-y-auto rounded-lg border border-slate-200 bg-slate-50/40">
       <div className="space-y-2 p-2">
         {list.length === 0 ? (
-          <p className="py-10 text-center text-sm text-slate-500">{emptyMsg}</p>
+          <p className="py-10 text-center text-sm text-slate-500">{emptyOverride ?? emptyMsg}</p>
         ) : (
           body
         )}
@@ -225,9 +285,58 @@ export default function AdminSettlementsPage() {
           </p>
         </div>
 
+        {(tab === 'request' || tab === 'pending') && (
+          <div className="mb-4 flex flex-wrap items-center gap-3 rounded-md border border-slate-200 bg-slate-50/80 px-3 py-2">
+            <span
+              className="text-xs font-semibold text-slate-700"
+              title="기준 시점: 체크아웃 종료 후 24시간. 세 탭 중 하나만 선택됩니다."
+            >
+              필터
+            </span>
+            <div className="inline-flex rounded-md border border-slate-200 bg-white p-0.5">
+              <button
+                type="button"
+                title="마감이 빠른 순(남은 시간 오름차순·초과 건 우선)"
+                onClick={() => setListMode('remaining-asc')}
+                className={`rounded px-2.5 py-1 text-xs font-medium ${
+                  listMode === 'remaining-asc'
+                    ? 'bg-slate-900 text-white'
+                    : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                남은 시간 ↑
+              </button>
+              <button
+                type="button"
+                title="마감이 늦은 순(남은 시간 내림차순)"
+                onClick={() => setListMode('remaining-desc')}
+                className={`rounded px-2.5 py-1 text-xs font-medium ${
+                  listMode === 'remaining-desc'
+                    ? 'bg-slate-900 text-white'
+                    : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                남은 시간 ↓
+              </button>
+              <button
+                type="button"
+                title="체크아웃 종료+24시간이 지난 건만 보기(남은 시간 ↑·↓와 동시 선택 불가)"
+                onClick={() => setListMode('elapsed-24h')}
+                className={`rounded px-2.5 py-1 text-xs font-medium ${
+                  listMode === 'elapsed-24h'
+                    ? 'bg-slate-900 text-white'
+                    : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                24시 경과
+              </button>
+            </div>
+          </div>
+        )}
+
         {column(
-          filteredList,
-          filteredList.map((row) => {
+          displayList,
+          displayList.map((row) => {
             if (tab === 'request') {
               return card(
                 row,
@@ -358,7 +467,8 @@ export default function AdminSettlementsPage() {
                 </button>
               </div>
             );
-          })
+          }),
+          listEmptyMsg
         )}
       </div>
     </AdminRouteGuard>

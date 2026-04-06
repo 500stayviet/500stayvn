@@ -5,6 +5,9 @@ import {
   getCheckOutMoment,
   getPayableAfterMoment,
   toISO8601ForAudit,
+  isValidBookingDateString,
+  isValidBookingTimeString,
+  normalizeBookingTimeForParsing,
 } from '@/lib/utils/rentalIncome';
 import type { RentalIncomeStatus } from '@/lib/utils/rentalIncome';
 
@@ -35,18 +38,33 @@ export async function POST(request: Request) {
       );
     }
 
+    const cinTime = normalizeBookingTimeForParsing(checkInTime, '14:00');
+    const coutTime = normalizeBookingTimeForParsing(checkOutTime, '12:00');
+    if (!isValidBookingDateString(checkInDate) || !isValidBookingDateString(checkOutDate)) {
+      return NextResponse.json(
+        { error: 'Invalid date: use YYYY-MM-DD calendar-valid dates' },
+        { status: 400 }
+      );
+    }
+    if (!isValidBookingTimeString(cinTime) || !isValidBookingTimeString(coutTime)) {
+      return NextResponse.json(
+        { error: 'Invalid time: use HH, HH:mm, or HH:mm:ss (24h)' },
+        { status: 400 }
+      );
+    }
+
     const serverNow = new Date();
     const status = getRentalIncomeStatus(
       checkInDate,
       checkOutDate,
-      checkInTime,
-      checkOutTime,
+      cinTime,
+      coutTime,
       serverNow
     ) as RentalIncomeStatus | null;
 
-    const checkIn = getCheckInMoment(checkInDate, checkInTime);
-    const checkOut = getCheckOutMoment(checkOutDate, checkOutTime);
-    const payableAfter = getPayableAfterMoment(checkOutDate, checkOutTime);
+    const checkIn = getCheckInMoment(checkInDate, cinTime);
+    const checkOut = getCheckOutMoment(checkOutDate, coutTime);
+    const payableAfter = getPayableAfterMoment(checkOutDate, coutTime);
 
     return NextResponse.json({
       status,

@@ -74,6 +74,8 @@ export interface SettlementCandidate {
   propertyAddress?: string;
   checkInDate: string;
   checkOutDate: string;
+  checkInTime?: string;
+  checkOutTime?: string;
   amount: number;
   status: RentalIncomeStatus;
   approvalStatus?: 'approved' | 'held' | 'rejected' | null;
@@ -379,6 +381,8 @@ export async function getSettlementCandidates(): Promise<SettlementCandidate[]> 
         propertyAddress: b.propertyAddress,
         checkInDate: b.checkInDate,
         checkOutDate: b.checkOutDate,
+        checkInTime: b.checkInTime ?? '14:00',
+        checkOutTime: b.checkOutTime ?? '12:00',
         amount: getRentalIncomeAmount(b),
         status: status ?? 'pending',
         approvalStatus,

@@ -92,12 +92,26 @@ export function getUsers(): UserData[] {
 }
 
 /**
+ * users localStorage가 갱신되었음을 같은 탭·커스텀 리스너에 알립니다.
+ */
+export function notifyUsersStorageChanged(): void {
+  try {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("stayviet-users-updated"));
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
  * 사용자 목록 저장하기
  */
 export function saveUsers(users: UserData[]): void {
   if (typeof window === "undefined" || typeof localStorage === "undefined")
     return;
   localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+  notifyUsersStorageChanged();
 }
 
 /**

@@ -155,7 +155,9 @@ export default function SettlementPage() {
           const settlementInAdminQueue =
             !settlementHeld && !settlementApproved && adminPendingQueue.has(bid);
           const checkOutMoment = getCheckOutMoment(b.checkOutDate, b.checkOutTime ?? '12:00');
-          const afterCheckOut = now.getTime() >= checkOutMoment.getTime();
+          const cot = checkOutMoment.getTime();
+          const afterCheckOut =
+            Number.isFinite(cot) && Number.isFinite(now.getTime()) && now.getTime() >= cot;
 
           entries.push({
             bookingId: bid,

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
 import AdminSettlementStyleCard from '@/components/admin/AdminSettlementStyleCard';
-import { filterBookingsBySearch, getOwnerEmailMap } from '@/lib/adminSearchHelpers';
+import { filterBookingsBySearch, useOwnerEmailMap } from '@/lib/adminSearchHelpers';
 import {
   isContractCompletedTab,
   isContractInProgressTab,
@@ -69,7 +69,7 @@ export default function AdminContractsPage() {
   const activeList =
     tab === 'sealed' ? sealedList : tab === 'inProgress' ? inProgressList : completedList;
 
-  const emailMap = useMemo(() => getOwnerEmailMap(), [bookings]);
+  const emailMap = useOwnerEmailMap(bookings);
 
   const filteredList = useMemo(
     () => filterBookingsBySearch(activeList, searchQuery, emailMap),

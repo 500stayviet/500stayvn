@@ -63,7 +63,7 @@ async function completeKYCStep(
   
   // LocalStorage에 kyc_steps 업데이트
   try {
-    const { updateUserData } = await import('./auth');
+    const { notifyUsersStorageChanged } = await import('./auth');
     const users = JSON.parse(localStorage.getItem('users') || '[]');
     const userIndex = users.findIndex((u: any) => u.uid === userId);
     
@@ -80,6 +80,7 @@ async function completeKYCStep(
       user.updatedAt = new Date().toISOString();
       users[userIndex] = user;
       localStorage.setItem('users', JSON.stringify(users));
+      notifyUsersStorageChanged();
     }
   } catch (error) {
     console.log('LocalStorage update failed, continuing anyway:', error);
