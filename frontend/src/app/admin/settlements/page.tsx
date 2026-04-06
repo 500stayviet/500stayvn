@@ -20,6 +20,7 @@ import {
   moveBookingToSettlementPendingQueue,
   reconcileSettlementPendingQueueWithBookings,
   resumeSettlement,
+  resumeSettlementToRequest,
 } from '@/lib/api/adminFinance';
 import { filterSettlementsBySearch, getOwnerEmailMap } from '@/lib/adminSearchHelpers';
 
@@ -325,20 +326,37 @@ export default function AdminSettlementsPage() {
             return card(
               row,
               'text-amber-600',
-              <button
-                type="button"
-                onClick={() => {
-                  if (!admin?.username) return;
-                  runBookingAction(row.bookingId, () => {
-                    resumeSettlement(row.bookingId, admin.username);
-                    bumpQueue();
-                    void load();
-                  });
-                }}
-                className="mt-2 w-full rounded-md bg-blue-600 py-2 text-xs font-semibold text-white hover:bg-blue-700"
-              >
-                복구(승인 대기)
-              </button>
+              <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!admin?.username) return;
+                    runBookingAction(row.bookingId, () => {
+                      const ok = resumeSettlementToRequest(row.bookingId, admin.username);
+                      if (!ok) return;
+                      bumpQueue();
+                      void load();
+                    });
+                  }}
+                  className="rounded-md bg-blue-600 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+                >
+                  복구(승인요청)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!admin?.username) return;
+                    runBookingAction(row.bookingId, () => {
+                      resumeSettlement(row.bookingId, admin.username);
+                      bumpQueue();
+                      void load();
+                    });
+                  }}
+                  className="rounded-md bg-blue-600 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+                >
+                  복구(승인대기)
+                </button>
+              </div>
             );
           })
         )}

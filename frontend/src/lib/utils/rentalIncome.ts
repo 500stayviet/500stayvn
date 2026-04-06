@@ -4,7 +4,7 @@
  * - 모든 시간 비교: 베트남 시간(Asia/Ho_Chi_Minh, UTC+07:00) 기준, 날짜+시분 포함.
  * - Full Timestamp: check_in_date + check_in_time 을 ISO 8601 형식(YYYY-MM-DDTHH:mm:00+07:00)으로 결합 후 Date 변환.
  * - 비교 시 년-월-일-시-분-초 일치 검증을 위해 .getTime()(동등하게 ISO 8601 instant) 사용. 검증/로그용으로 toISO8601ForAudit() 제공.
- * - 24시간 계산: 체크아웃 시각 + 정확히 86,400초(24h) 후와 현재 시각 비교. 상태는 저장하지 않고 조회 시점 기준 계산.
+ * - 24시간 계산: 감사/검증용(getRentalIncomeStatus, payable). 호스트 출금가능액에는 사용하지 않음(관리자 승인만 반영).
  * - 한 건당 임대수익 = 숙박 + 애완동물 (수수료 제외). 총수익/사용가능잔액 중복 합산 방지.
  */
 
@@ -141,21 +141,17 @@ export function isEligibleForRentalIncome(booking: {
 }
 
 /**
- * 총수익 = (대기 + 확정 + 지급됨) 전체 누적 합계
- * 사용가능잔액 = 지급됨 상태 금액만 합계 (확정 금액은 포함하지 않음)
+ * 총수익 = 목록에 표시된 건의 임대수익 합(참고용).
+ * 출금가능액은 체크아웃+24h 자동이 아니라 관리자 승인·출금(getOwnerBalances)에서만 산정함.
  */
 export function aggregateRentalIncome(
-  items: { amount: number; status: RentalIncomeStatus }[]
+  items: { amount: number }[]
 ): { totalRevenue: number; availableBalance: number } {
   let totalRevenue = 0;
-  let availableBalance = 0;
   for (const item of items) {
     totalRevenue += item.amount;
-    if (item.status === 'payable') {
-      availableBalance += item.amount;
-    }
   }
-  return { totalRevenue, availableBalance };
+  return { totalRevenue, availableBalance: 0 };
 }
 
 /**

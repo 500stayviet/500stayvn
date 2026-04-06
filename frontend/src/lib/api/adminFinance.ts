@@ -28,6 +28,7 @@ export interface LedgerEntry {
     | 'settlement_held'
     | 'settlement_resumed'
     | 'settlement_reverted_pending'
+    | 'settlement_reverted_request'
     | 'withdrawal_requested'
     | 'withdrawal_processing'
     | 'withdrawal_held'
@@ -533,6 +534,39 @@ export function resumeSettlement(bookingId: string, adminId: string): boolean {
     });
     saveLedgerEntries(ledger);
     moveBookingToSettlementPendingQueue(bookingId);
+    return true;
+  });
+  return result ?? false;
+}
+
+/**
+ * 보류 중인 정산 건을 승인 요청 탭으로 복구: 승인(보류) 기록 제거 · 큐 미포함(다시 '승인 대기로' 보내기 전 단계).
+ */
+export function resumeSettlementToRequest(bookingId: string, adminId: string): boolean {
+  const result = withSettlementBookingLock(bookingId, () => {
+    const approvals = getSettlementApprovals();
+    const index = approvals.findIndex((a) => a.bookingId === bookingId);
+    if (index === -1) return false;
+    const currentStatus = approvals[index].status ?? 'approved';
+    if (currentStatus !== 'held') return false;
+
+    const row = approvals[index];
+    approvals.splice(index, 1);
+    saveSettlementApprovals(approvals);
+
+    const ledger = getLedgerEntries();
+    ledger.push({
+      id: genId('led'),
+      ownerId: row.ownerId,
+      amount: 0,
+      type: 'settlement_reverted_request',
+      refId: bookingId,
+      createdBy: adminId,
+      createdAt: new Date().toISOString(),
+      note: `보류 해제 → 승인 요청으로 복구 (해당 건 금액 ${row.amount.toLocaleString()} ₫, 확인 후 승인 대기로 이동 가능)`,
+    });
+    saveLedgerEntries(ledger);
+    removeBookingFromSettlementPendingQueue(bookingId);
     return true;
   });
   return result ?? false;

@@ -22,6 +22,7 @@ const LEDGER_LABEL: Partial<Record<LedgerEntry['type'], string>> = {
   settlement_held: '정산 보류',
   settlement_resumed: '정산 재개(승인 유지)',
   settlement_reverted_pending: '정산 복구 → 승인 대기',
+  settlement_reverted_request: '정산 복구 → 승인 요청',
   withdrawal_requested: '출금 요청',
   withdrawal_processing: '출금 승인(처리 중)',
   withdrawal_held: '출금 보류',

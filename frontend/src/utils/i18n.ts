@@ -255,6 +255,10 @@ export type UITextKey =
   | 'incomeStatusConfirmed'
   | 'incomeStatusPayable'
   | 'incomeStatusSettlementHeld'
+  | 'incomeStatusRevenueConfirmed'
+  | 'incomeStatusSettlementRequest'
+  | 'incomeStatusSettlementPending'
+  | 'incomeStatusSettlementApproved'
   | 'incomeStatusWithdrawable'
   | 'rentalPeriod'
   | 'title'
@@ -530,6 +534,10 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     incomeStatusConfirmed: '확정금액',
     incomeStatusPayable: '지급됨',
     incomeStatusSettlementHeld: '정산 보류',
+    incomeStatusRevenueConfirmed: '수익확정됨',
+    incomeStatusSettlementRequest: '승인 요청 중',
+    incomeStatusSettlementPending: '승인 대기 중',
+    incomeStatusSettlementApproved: '정산됨',
     incomeStatusWithdrawable: '출금가능',
     rentalPeriod: '임대 기간',
     title: '매물명',
@@ -801,6 +809,10 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     incomeStatusConfirmed: 'Số tiền xác nhận',
     incomeStatusPayable: 'Đã thanh toán',
     incomeStatusSettlementHeld: 'Tạm giữ quyết toán',
+    incomeStatusRevenueConfirmed: 'Đã xác nhận doanh thu',
+    incomeStatusSettlementRequest: 'Chờ duyệt yêu cầu',
+    incomeStatusSettlementPending: 'Chờ duyệt xếp hàng',
+    incomeStatusSettlementApproved: 'Đã quyết toán',
     incomeStatusWithdrawable: 'Có thể rút',
     rentalPeriod: 'Thời gian thuê',
     title: 'Tên bất động sản',
@@ -1072,6 +1084,10 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     incomeStatusConfirmed: 'Confirmed',
     incomeStatusPayable: 'Payable',
     incomeStatusSettlementHeld: 'Settlement on hold',
+    incomeStatusRevenueConfirmed: 'Revenue confirmed',
+    incomeStatusSettlementRequest: 'Awaiting admin (request)',
+    incomeStatusSettlementPending: 'Awaiting admin (queue)',
+    incomeStatusSettlementApproved: 'Settled',
     incomeStatusWithdrawable: 'Withdrawable',
     rentalPeriod: 'Rental period',
     title: 'Property name',
@@ -1343,6 +1359,10 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     incomeStatusConfirmed: '確定金額',
     incomeStatusPayable: '支払済',
     incomeStatusSettlementHeld: '精算保留',
+    incomeStatusRevenueConfirmed: '収益確定',
+    incomeStatusSettlementRequest: '承認依頼中',
+    incomeStatusSettlementPending: '承認待ち中',
+    incomeStatusSettlementApproved: '精算済み',
     incomeStatusWithdrawable: '出金可能',
     rentalPeriod: '賃貸期間',
     title: '物件名',
@@ -1614,6 +1634,10 @@ const uiTexts: Record<SupportedLanguage, Record<UITextKey, string>> = {
     incomeStatusConfirmed: '确认金额',
     incomeStatusPayable: '已支付',
     incomeStatusSettlementHeld: '结算暂缓',
+    incomeStatusRevenueConfirmed: '收益已确定',
+    incomeStatusSettlementRequest: '待提交审核',
+    incomeStatusSettlementPending: '审核排队中',
+    incomeStatusSettlementApproved: '已结算',
     incomeStatusWithdrawable: '可提现',
     rentalPeriod: '租期',
     title: '房源名称',

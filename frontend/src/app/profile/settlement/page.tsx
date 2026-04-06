@@ -1,9 +1,9 @@
 /**
  * Settlement & Wallet Page (정산 및 지갑 페이지)
  *
- * 임대수익: bookings API 기반. 체크인 시각(베트남) 경과 시 대기금액 생성,
- * 체크아웃 경과 시 확정금액, +24h 경과 시 지급됨(사용가능잔액에만 합산).
- * 총수익 = 대기+확정+지급됨 전체 합. 출금 대기/완료는 API 연동 전 플레이스홀더.
+ * 임대수익: 체크인 경과~체크아웃 전 뱃지「수익확정됨」, 체크아웃 이후「승인 요청 중」→
+ * 관리자가 대기로 보내면「승인 대기 중」→ 승인 시「정산됨」.
+ * 출금가능액은 관리자 승인·출금 요청만 반영(+24h 자동 정산 없음).
  */
 
 'use client';
@@ -39,6 +39,7 @@ import {
   getBankAccounts,
   getOwnerBalances,
   getSettlementApprovals,
+  getSettlementPendingQueueIds,
   getWithdrawalRequests,
   removeBankAccount,
   setPrimaryBankAccount,
@@ -61,6 +62,10 @@ interface RevenueEntry {
   settlementHeld: boolean;
   /** 관리자 정산 승인(approved) — 출금 가능 잔액에 반영되는 건 */
   settlementApproved: boolean;
+  /** 관리자가 승인 대기 큐로 보낸 예약(승인 전) */
+  settlementInAdminQueue: boolean;
+  /** 체크아웃 시각 경과 */
+  afterCheckOut: boolean;
 }
 
 export default function SettlementPage() {
@@ -100,6 +105,7 @@ export default function SettlementPage() {
         const serverTimeISO = toISO8601ForAudit(now);
         const serverTimeMs = now.getTime();
         const settlementApprovals = getSettlementApprovals();
+        const adminPendingQueue = getSettlementPendingQueueIds();
 
         const eligible = bookings.filter((b) =>
           isEligibleForRentalIncome({
@@ -141,13 +147,18 @@ export default function SettlementPage() {
           } catch {
             // keep propertyTitle fallback
           }
-          const sa = settlementApprovals.find((a) => a.bookingId === (b.id ?? ''));
-          const st = sa?.status ?? 'approved';
+          const bid = b.id ?? '';
+          const sa = settlementApprovals.find((a) => a.bookingId === bid);
+          const st = sa?.status;
           const settlementHeld = st === 'held';
-          const settlementApproved = !!sa && st === 'approved';
+          const settlementApproved = st === 'approved';
+          const settlementInAdminQueue =
+            !settlementHeld && !settlementApproved && adminPendingQueue.has(bid);
+          const checkOutMoment = getCheckOutMoment(b.checkOutDate, b.checkOutTime ?? '12:00');
+          const afterCheckOut = now.getTime() >= checkOutMoment.getTime();
 
           entries.push({
-            bookingId: b.id ?? '',
+            bookingId: bid,
             propertyName,
             checkInDate: b.checkInDate,
             checkOutDate: b.checkOutDate,
@@ -157,6 +168,8 @@ export default function SettlementPage() {
             status,
             settlementHeld,
             settlementApproved,
+            settlementInAdminQueue,
+            afterCheckOut,
           });
         }
         if (!cancelled) {
@@ -397,22 +410,22 @@ export default function SettlementPage() {
                               ? 'bg-slate-200 text-slate-800'
                               : entry.settlementApproved
                                 ? 'bg-emerald-100 text-emerald-800'
-                                : entry.status === 'pending'
-                                  ? 'bg-amber-100 text-amber-800'
-                                  : entry.status === 'confirmed'
-                                    ? 'bg-blue-100 text-blue-800'
-                                    : 'bg-green-100 text-green-800'
+                                : entry.afterCheckOut && entry.settlementInAdminQueue
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : entry.afterCheckOut
+                                    ? 'bg-amber-100 text-amber-800'
+                                    : 'bg-violet-100 text-violet-900'
                           }`}
                         >
                           {entry.settlementHeld
                             ? getUIText('incomeStatusSettlementHeld', currentLanguage)
                             : entry.settlementApproved
-                              ? getUIText('incomeStatusWithdrawable', currentLanguage)
-                              : entry.status === 'pending'
-                                ? getUIText('incomeStatusPending', currentLanguage)
-                                : entry.status === 'confirmed'
-                                  ? getUIText('incomeStatusConfirmed', currentLanguage)
-                                  : getUIText('incomeStatusPayable', currentLanguage)}
+                              ? getUIText('incomeStatusSettlementApproved', currentLanguage)
+                              : entry.afterCheckOut && entry.settlementInAdminQueue
+                                ? getUIText('incomeStatusSettlementPending', currentLanguage)
+                                : entry.afterCheckOut
+                                  ? getUIText('incomeStatusSettlementRequest', currentLanguage)
+                                  : getUIText('incomeStatusRevenueConfirmed', currentLanguage)}
                         </span>
                       </div>
                       <div className="text-right shrink-0 ml-2">
