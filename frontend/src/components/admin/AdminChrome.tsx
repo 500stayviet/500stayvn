@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut } from 'lucide-react';
-import { ADMIN_NAV_ITEMS } from '@/lib/adminNav';
+import { LogOut, UserCog } from 'lucide-react';
+import { ADMIN_NAV_ITEMS, type AdminNavItem } from '@/lib/adminNav';
+import { adminHasPermission } from '@/lib/adminPermissions';
+import { useAdminMe } from '@/contexts/AdminMeContext';
 import {
   ADMIN_BADGES_REFRESH_EVENT,
   badgeCountForNav,
@@ -12,7 +14,6 @@ import {
   type AdminBadgeCounts,
 } from '@/lib/adminBadgeCounts';
 import { logoutAdmin } from '@/lib/api/adminAuth';
-
 function navActive(pathname: string | null, href: string) {
   if (!pathname) return false;
   if (href === '/admin') {
@@ -26,7 +27,7 @@ function formatBadge(n: number): string {
   return n > 99 ? '99+' : String(n);
 }
 
-function NavBadge({ count }: { count: number }) {
+const NavBadge = memo(function NavBadge({ count }: { count: number }) {
   if (count <= 0) return null;
   return (
     <span
@@ -36,39 +37,24 @@ function NavBadge({ count }: { count: number }) {
       {formatBadge(count)}
     </span>
   );
-}
+});
 
-export default function AdminChrome({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const router = useRouter();
-  const [badges, setBadges] = useState<AdminBadgeCounts | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    const load = () => {
-      fetchAdminBadgeCounts().then((c) => {
-        if (!cancelled) setBadges(c);
-      });
-    };
-    load();
-    const interval = setInterval(load, 45000);
-    window.addEventListener('focus', load);
-    window.addEventListener(ADMIN_BADGES_REFRESH_EVENT, load);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-      window.removeEventListener('focus', load);
-      window.removeEventListener(ADMIN_BADGES_REFRESH_EVENT, load);
-    };
-  }, []);
-
-  const countFor = (href: string) => (badges ? badgeCountForNav(href, badges) : 0);
-
-  const renderNav = (compact: boolean) => (
+const AdminNavLinks = memo(function AdminNavLinks({
+  compact,
+  pathname,
+  badgeByHref,
+  items,
+}: {
+  compact: boolean;
+  pathname: string | null;
+  badgeByHref: Map<string, number> | null;
+  items: AdminNavItem[];
+}) {
+  return (
     <>
-      {ADMIN_NAV_ITEMS.map((item) => {
+      {items.map((item) => {
         const active = navActive(pathname, item.href);
-        const n = countFor(item.href);
+        const n = badgeByHref?.get(item.href) ?? 0;
         return (
           <Link
             key={item.href}
@@ -90,6 +76,53 @@ export default function AdminChrome({ children }: { children: React.ReactNode })
       })}
     </>
   );
+});
+
+export default function AdminChrome({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { me } = useAdminMe();
+  const [badges, setBadges] = useState<AdminBadgeCounts | null>(null);
+
+  const navItems = useMemo(() => {
+    if (!me) return [];
+    return ADMIN_NAV_ITEMS.filter((item) =>
+      adminHasPermission(me.isSuperAdmin, me.permissions, item.permissionId)
+    );
+  }, [me]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = () => {
+      fetchAdminBadgeCounts().then((c) => {
+        if (!cancelled) setBadges(c);
+      });
+    };
+    load();
+    const interval = setInterval(load, 45000);
+    window.addEventListener('focus', load);
+    window.addEventListener(ADMIN_BADGES_REFRESH_EVENT, load);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      window.removeEventListener('focus', load);
+      window.removeEventListener(ADMIN_BADGES_REFRESH_EVENT, load);
+    };
+  }, []);
+
+  const badgeByHref = useMemo(() => {
+    if (!badges) return null;
+    const m = new Map<string, number>();
+    for (const item of ADMIN_NAV_ITEMS) {
+      m.set(item.href, badgeCountForNav(item.href, badges));
+    }
+    return m;
+  }, [badges]);
+
+  const onLogout = useCallback(async () => {
+    await logoutAdmin();
+    router.replace('/admin/login');
+  }, [router]);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -105,15 +138,31 @@ export default function AdminChrome({ children }: { children: React.ReactNode })
             className="hidden min-w-0 flex-1 flex-wrap items-center gap-1 lg:flex"
             aria-label="관리자 메뉴"
           >
-            {renderNav(false)}
+            <AdminNavLinks
+              compact={false}
+              pathname={pathname}
+              badgeByHref={badgeByHref}
+              items={navItems}
+            />
+            {me?.isSuperAdmin ? (
+              <Link
+                href="/admin/admin-accounts"
+                className={`inline-flex items-center rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors ${
+                  pathname === '/admin/admin-accounts' ||
+                  pathname?.startsWith('/admin/admin-accounts/')
+                    ? 'bg-slate-900 text-white'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+              >
+                <UserCog className="mr-1 h-4 w-4" aria-hidden />
+                관리자 계정
+              </Link>
+            ) : null}
           </nav>
           <div className="ml-auto flex shrink-0 items-center gap-2">
             <button
               type="button"
-              onClick={() => {
-                logoutAdmin();
-                router.replace('/admin/login');
-              }}
+              onClick={onLogout}
               className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
               <LogOut className="h-4 w-4" aria-hidden />
@@ -126,7 +175,21 @@ export default function AdminChrome({ children }: { children: React.ReactNode })
             className="mx-auto flex max-w-[1600px] gap-1 overflow-x-auto px-4 py-2"
             aria-label="관리자 메뉴"
           >
-            {renderNav(true)}
+            <AdminNavLinks compact pathname={pathname} badgeByHref={badgeByHref} items={navItems} />
+            {me?.isSuperAdmin ? (
+              <Link
+                href="/admin/admin-accounts"
+                className={`inline-flex shrink-0 items-center whitespace-nowrap rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                  pathname === '/admin/admin-accounts' ||
+                  pathname?.startsWith('/admin/admin-accounts/')
+                    ? 'bg-slate-900 text-white'
+                    : 'text-slate-600 hover:bg-slate-200/80'
+                }`}
+              >
+                <UserCog className="mr-1 h-4 w-4" aria-hidden />
+                관리자 계정
+              </Link>
+            ) : null}
           </nav>
         </div>
       </header>

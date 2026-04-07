@@ -9,7 +9,7 @@ import {
   acknowledgeCurrentSettlementRequest,
 } from '@/lib/adminAckState';
 import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
-import { getAdminSession } from '@/lib/api/adminAuth';
+import { useAdminMe } from '@/contexts/AdminMeContext';
 import {
   approveSettlement,
   getSettlementCandidates,
@@ -23,6 +23,7 @@ import {
   resumeSettlementToRequest,
 } from '@/lib/api/adminFinance';
 import { filterSettlementsBySearch, useOwnerEmailMap } from '@/lib/adminSearchHelpers';
+import { logAdminSystemEvent } from '@/lib/adminSystemLog';
 import { getPayableAfterMoment } from '@/lib/utils/rentalIncome';
 
 type SettlementTab = 'request' | 'pending' | 'approved' | 'held';
@@ -59,7 +60,7 @@ export default function AdminSettlementsPage() {
   const [tab, setTab] = useState<SettlementTab>('request');
   const [searchQuery, setSearchQuery] = useState('');
   const [listMode, setListMode] = useState<SettlementListMode>('remaining-asc');
-  const admin = getAdminSession();
+  const { me: admin } = useAdminMe();
   /** 연속 클릭(동기) 방지 — state보다 먼저 막음 */
   const actionGuardRef = useRef<Set<string>>(new Set());
 
@@ -75,11 +76,21 @@ export default function AdminSettlementsPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    await reconcileSettlementPendingQueueWithBookings();
-    const rows = await getSettlementCandidates();
-    setItems(rows);
-    setLoading(false);
-    refreshAdminBadges();
+    try {
+      await reconcileSettlementPendingQueueWithBookings();
+      const rows = await getSettlementCandidates();
+      setItems(rows);
+    } catch (e) {
+      logAdminSystemEvent({
+        severity: 'error',
+        category: 'settlement',
+        message: e instanceof Error ? e.message : '정산 후보 목록을 불러오지 못했습니다.',
+        snapshot: { function: 'AdminSettlementsPage.load' },
+      });
+    } finally {
+      setLoading(false);
+      refreshAdminBadges();
+    }
   }, []);
 
   useEffect(() => {
@@ -360,7 +371,7 @@ export default function AdminSettlementsPage() {
                     type="button"
                     onClick={() => {
                       if (!admin?.username) return;
-                      const ok = holdPendingSettlement(row, admin.username, '관리자 보류');
+                      const ok = holdPendingSettlement(row, admin!.username, '관리자 보류');
                       if (!ok) return;
                       bumpQueue();
                       void load();
@@ -383,7 +394,7 @@ export default function AdminSettlementsPage() {
                     onClick={() => {
                       if (!admin?.username) return;
                       runBookingAction(row.bookingId, () => {
-                        const ok = approveSettlement(row, admin.username);
+                        const ok = approveSettlement(row, admin!.username);
                         if (!ok) return;
                         bumpQueue();
                         void load();
@@ -399,7 +410,7 @@ export default function AdminSettlementsPage() {
                     onClick={() => {
                       if (!admin?.username) return;
                       runBookingAction(row.bookingId, () => {
-                        const ok = holdPendingSettlement(row, admin.username, '관리자 보류');
+                        const ok = holdPendingSettlement(row, admin!.username, '관리자 보류');
                         if (!ok) return;
                         bumpQueue();
                         void load();
@@ -422,7 +433,7 @@ export default function AdminSettlementsPage() {
                   onClick={() => {
                     if (!admin?.username) return;
                     runBookingAction(row.bookingId, () => {
-                      holdSettlement(row.bookingId, admin.username, '관리자 보류');
+                      holdSettlement(row.bookingId, admin!.username, '관리자 보류');
                       void load();
                     });
                   }}
@@ -441,7 +452,7 @@ export default function AdminSettlementsPage() {
                   onClick={() => {
                     if (!admin?.username) return;
                     runBookingAction(row.bookingId, () => {
-                      const ok = resumeSettlementToRequest(row.bookingId, admin.username);
+                      const ok = resumeSettlementToRequest(row.bookingId, admin!.username);
                       if (!ok) return;
                       bumpQueue();
                       void load();
@@ -456,7 +467,7 @@ export default function AdminSettlementsPage() {
                   onClick={() => {
                     if (!admin?.username) return;
                     runBookingAction(row.bookingId, () => {
-                      resumeSettlement(row.bookingId, admin.username);
+                      resumeSettlement(row.bookingId, admin!.username);
                       bumpQueue();
                       void load();
                     });

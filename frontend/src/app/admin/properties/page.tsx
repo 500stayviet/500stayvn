@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
 import { acknowledgeCurrentNewProperties } from '@/lib/adminAckState';
 import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
-import { getAdminSession } from '@/lib/api/adminAuth';
+import { useAdminMe } from '@/contexts/AdminMeContext';
 import type { AdminInventoryFilter } from '@/lib/api/properties';
 import { loadAdminInventoryPage } from '@/lib/api/properties';
 import { setPropertyHidden } from '@/lib/api/adminModeration';
@@ -35,7 +35,7 @@ function listingStatusLabel(p: PropertyData): { text: string; className: string 
 }
 
 export default function AdminPropertiesPage() {
-  const admin = getAdminSession();
+  const { me: admin } = useAdminMe();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<AdminInventoryFilter>('all');
   const [tick, setTick] = useState(0);
@@ -177,7 +177,7 @@ export default function AdminPropertiesPage() {
                             type="button"
                             onClick={() => {
                               if (!admin?.username || !p.id) return;
-                              setPropertyHidden(p.id, false, admin.username);
+                              setPropertyHidden(p.id, false, admin!.username);
                               setTick((v) => v + 1);
                               refreshAdminBadges();
                             }}
@@ -190,7 +190,7 @@ export default function AdminPropertiesPage() {
                             type="button"
                             onClick={() => {
                               if (!admin?.username || !p.id) return;
-                              setPropertyHidden(p.id, true, admin.username, PROPERTY_HIDDEN_REASON);
+                              setPropertyHidden(p.id, true, admin!.username, PROPERTY_HIDDEN_REASON);
                               setTick((v) => v + 1);
                               refreshAdminBadges();
                             }}

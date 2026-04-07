@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
 import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
-import { getAdminSession } from '@/lib/api/adminAuth';
+import { useAdminMe } from '@/contexts/AdminMeContext';
 import {
   approveWithdrawal,
   completeWithdrawal,
@@ -30,7 +30,7 @@ export default function AdminWithdrawalsPage() {
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<WithdrawalTab>('pending');
   const [searchQuery, setSearchQuery] = useState('');
-  const admin = getAdminSession();
+  const { me: admin } = useAdminMe();
 
   const load = () => {
     setLoading(true);
@@ -192,7 +192,7 @@ export default function AdminWithdrawalsPage() {
                       type="button"
                       onClick={() => {
                         if (!admin?.username) return;
-                        run(() => approveWithdrawal(r.id, admin.username));
+                        run(() => approveWithdrawal(r.id, admin!.username));
                       }}
                       className="rounded-md bg-blue-600 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
                     >
@@ -202,7 +202,7 @@ export default function AdminWithdrawalsPage() {
                       type="button"
                       onClick={() => {
                         if (!admin?.username) return;
-                        run(() => rejectWithdrawal(r.id, admin.username, '관리자 반려'));
+                        run(() => rejectWithdrawal(r.id, admin!.username, '관리자 반려'));
                       }}
                       className="rounded-md bg-red-50 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100"
                     >
@@ -223,7 +223,7 @@ export default function AdminWithdrawalsPage() {
                       type="button"
                       onClick={() => {
                         if (!admin?.username) return;
-                        run(() => holdWithdrawal(r.id, admin.username, '관리자 보류'));
+                        run(() => holdWithdrawal(r.id, admin!.username, '관리자 보류'));
                       }}
                       className="rounded-md bg-amber-50 py-1.5 text-[10px] font-semibold text-amber-900 hover:bg-amber-100"
                     >
@@ -233,7 +233,7 @@ export default function AdminWithdrawalsPage() {
                       type="button"
                       onClick={() => {
                         if (!admin?.username) return;
-                        run(() => completeWithdrawal(r.id, admin.username));
+                        run(() => completeWithdrawal(r.id, admin!.username));
                       }}
                       className="rounded-md bg-green-600 py-1.5 text-[10px] font-semibold text-white hover:bg-green-700"
                     >
@@ -243,7 +243,7 @@ export default function AdminWithdrawalsPage() {
                       type="button"
                       onClick={() => {
                         if (!admin?.username) return;
-                        run(() => rejectWithdrawal(r.id, admin.username, '관리자 반려'));
+                        run(() => rejectWithdrawal(r.id, admin!.username, '관리자 반려'));
                       }}
                       className="rounded-md bg-red-50 py-1.5 text-[10px] font-semibold text-red-700 hover:bg-red-100"
                     >
@@ -264,7 +264,7 @@ export default function AdminWithdrawalsPage() {
                       type="button"
                       onClick={() => {
                         if (!admin?.username) return;
-                        run(() => resumeWithdrawal(r.id, admin.username));
+                        run(() => resumeWithdrawal(r.id, admin!.username));
                       }}
                       className="rounded-md bg-blue-600 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
                     >
@@ -274,7 +274,7 @@ export default function AdminWithdrawalsPage() {
                       type="button"
                       onClick={() => {
                         if (!admin?.username) return;
-                        run(() => rejectWithdrawal(r.id, admin.username, '관리자 반려'));
+                        run(() => rejectWithdrawal(r.id, admin!.username, '관리자 반려'));
                       }}
                       className="rounded-md bg-red-50 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100"
                     >

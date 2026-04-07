@@ -5,7 +5,7 @@ import Link from 'next/link';
 import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
 import { acknowledgeCurrentNewUsers } from '@/lib/adminAckState';
 import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
-import { getAdminSession } from '@/lib/api/adminAuth';
+import { useAdminMe } from '@/contexts/AdminMeContext';
 import type { AdminUserFilter } from '@/lib/api/adminModeration';
 import { getAdminUsers, setUserBlocked } from '@/lib/api/adminModeration';
 
@@ -19,7 +19,7 @@ const FILTER_TABS: { id: AdminUserFilter; label: string }[] = [
 ];
 
 export default function AdminUsersPage() {
-  const admin = getAdminSession();
+  const { me: admin } = useAdminMe();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<AdminUserFilter>('all');
   const [tick, setTick] = useState(0);
@@ -156,7 +156,7 @@ export default function AdminUsersPage() {
                               if (!admin?.username) return;
                               const reason =
                                 window.prompt('차단 사유를 입력하세요.', '관리자 차단') || '관리자 차단';
-                              setUserBlocked(u.uid, true, admin.username, reason);
+                              setUserBlocked(u.uid, true, admin!.username, reason);
                               setTick((v) => v + 1);
                               refreshAdminBadges();
                             }}

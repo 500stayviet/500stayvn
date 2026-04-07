@@ -10,7 +10,7 @@ import {
 } from '@/lib/adminBookingFilters';
 import type { BookingData } from '@/lib/api/bookings';
 import { approveRefundBooking, getAllBookings } from '@/lib/api/bookings';
-import { getAdminSession } from '@/lib/api/adminAuth';
+import { useAdminMe } from '@/contexts/AdminMeContext';
 import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
 
 type RefundTab = 'pre' | 'during';
@@ -25,7 +25,7 @@ export default function AdminRefundsPage() {
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<RefundTab>('pre');
   const [searchQuery, setSearchQuery] = useState('');
-  const admin = getAdminSession();
+  const { me: admin } = useAdminMe();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -145,7 +145,7 @@ export default function AdminRefundsPage() {
                     type="button"
                     onClick={async () => {
                       if (!admin?.username || !id) return;
-                      const ok = await approveRefundBooking(id, admin.username);
+                      const ok = await approveRefundBooking(id, admin!.username);
                       if (ok) await load();
                     }}
                     className="mt-2 w-full rounded-md bg-blue-600 py-2 text-xs font-semibold text-white hover:bg-blue-700"

@@ -13,7 +13,7 @@ import {
   saveAdminUserGuestMemo,
   saveAdminUserHostMemo,
 } from '@/lib/adminUserAccountDetail';
-import { getAdminSession } from '@/lib/api/adminAuth';
+import { useAdminMe } from '@/contexts/AdminMeContext';
 import { getOwnerBalances } from '@/lib/api/adminFinance';
 import { getAllBookings } from '@/lib/api/bookings';
 import type { UserData } from '@/lib/api/auth';
@@ -57,7 +57,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 export default function AdminUserDetailPage() {
   const params = useParams();
   const uid = typeof params?.uid === 'string' ? params.uid : '';
-  const admin = getAdminSession();
+  const { me: admin } = useAdminMe();
 
   const [user, setUser] = useState<UserData | null | undefined>(undefined);
   const [hostNote, setHostNote] = useState('');
@@ -181,7 +181,7 @@ export default function AdminUserDetailPage() {
                 type="button"
                 onClick={() => {
                   if (!admin?.username) return;
-                  setUserBlocked(user.uid, false, admin.username);
+                  setUserBlocked(user.uid, false, admin!.username);
                   refreshAdminBadges();
                   loadUserAndMemos();
                 }}
@@ -195,7 +195,7 @@ export default function AdminUserDetailPage() {
                 onClick={() => {
                   if (!admin?.username) return;
                   const reason = window.prompt('차단 사유를 입력하세요.', '관리자 차단') || '관리자 차단';
-                  setUserBlocked(user.uid, true, admin.username, reason);
+                  setUserBlocked(user.uid, true, admin!.username, reason);
                   refreshAdminBadges();
                   loadUserAndMemos();
                 }}

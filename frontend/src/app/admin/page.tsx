@@ -4,11 +4,18 @@ import Link from 'next/link';
 import { ArrowUpRight } from 'lucide-react';
 import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
 import { ADMIN_NAV_ITEMS } from '@/lib/adminNav';
-
-/** 대시보드 홈에서는 자기 자신으로 가는 카드(중복) 제외 */
-const DASHBOARD_CARDS = ADMIN_NAV_ITEMS.filter((item) => item.href !== '/admin');
+import { adminHasPermission } from '@/lib/adminPermissions';
+import { useAdminMe } from '@/contexts/AdminMeContext';
 
 export default function AdminPage() {
+  const { me } = useAdminMe();
+  const cards = ADMIN_NAV_ITEMS.filter(
+    (item) =>
+      item.href !== '/admin' &&
+      me &&
+      adminHasPermission(me.isSuperAdmin, me.permissions, item.permissionId)
+  );
+
   return (
     <AdminRouteGuard>
       <div>
@@ -18,7 +25,7 @@ export default function AdminPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {DASHBOARD_CARDS.map((item) => {
+          {cards.map((item) => {
             const Icon = item.icon;
             return (
               <Link

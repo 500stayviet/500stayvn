@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import AdminChrome from '@/components/admin/AdminChrome';
+import { AdminMeProvider } from '@/contexts/AdminMeContext';
 
 export default function AdminLayoutClient({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -11,5 +12,9 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
     return <div className="min-h-screen">{children}</div>;
   }
 
-  return <AdminChrome>{children}</AdminChrome>;
+  return (
+    <AdminMeProvider>
+      <AdminChrome>{children}</AdminChrome>
+    </AdminMeProvider>
+  );
 }
