@@ -2,20 +2,18 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Save } from 'lucide-react';
 import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
 import {
   computeGuestBookingStats,
   computeHostBookingStats,
-  getAdminUserMemos,
   getGuestRefundRelatedBookings,
-  saveAdminUserGuestMemo,
-  saveAdminUserHostMemo,
 } from '@/lib/adminUserAccountDetail';
 import { useAdminMe } from '@/contexts/AdminMeContext';
 import { getOwnerBalances } from '@/lib/api/adminFinance';
 import { getAllBookings } from '@/lib/api/bookings';
+import { addSharedMemo, deleteSharedMemo, getSharedMemos } from '@/lib/api/adminMemos';
 import type { UserData } from '@/lib/api/auth';
 import { getUsers } from '@/lib/api/auth';
 import { setUserBlocked } from '@/lib/api/adminModeration';
@@ -55,15 +53,16 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 }
 
 export default function AdminUserDetailPage() {
+  const router = useRouter();
   const params = useParams();
   const uid = typeof params?.uid === 'string' ? params.uid : '';
   const { me: admin } = useAdminMe();
 
   const [user, setUser] = useState<UserData | null | undefined>(undefined);
-  const [hostNote, setHostNote] = useState('');
-  const [guestNote, setGuestNote] = useState('');
-  const [hostNoteSaved, setHostNoteSaved] = useState(true);
-  const [guestNoteSaved, setGuestNoteSaved] = useState(true);
+  const [hostMemos, setHostMemos] = useState<Array<{ id: string; text: string; createdAt: string }>>([]);
+  const [guestMemos, setGuestMemos] = useState<Array<{ id: string; text: string; createdAt: string }>>([]);
+  const [hostMemoInput, setHostMemoInput] = useState('');
+  const [guestMemoInput, setGuestMemoInput] = useState('');
   const [data, setData] = useState<{
     host: ReturnType<typeof computeHostBookingStats>;
     guest: ReturnType<typeof computeGuestBookingStats>;
@@ -71,16 +70,17 @@ export default function AdminUserDetailPage() {
     bal: ReturnType<typeof getOwnerBalances>;
   } | null>(null);
 
-  const loadUserAndMemos = useCallback(() => {
+  const loadUserAndMemos = useCallback(async () => {
     if (!uid) return;
     const users = getUsers();
     const u = users.find((x) => x.uid === uid && !x.deleted) ?? null;
     setUser(u);
-    const memos = getAdminUserMemos(uid);
-    setHostNote(memos.hostNote);
-    setGuestNote(memos.guestNote);
-    setHostNoteSaved(true);
-    setGuestNoteSaved(true);
+    const [hostRows, guestRows] = await Promise.all([
+      getSharedMemos('user', uid, 'host'),
+      getSharedMemos('user', uid, 'guest'),
+    ]);
+    setHostMemos(hostRows.map((m) => ({ id: m.id, text: m.content, createdAt: m.createdAt })));
+    setGuestMemos(guestRows.map((m) => ({ id: m.id, text: m.content, createdAt: m.createdAt })));
   }, [uid]);
 
   useEffect(() => {
@@ -114,14 +114,35 @@ export default function AdminUserDetailPage() {
 
   const saveHost = () => {
     if (!uid) return;
-    saveAdminUserHostMemo(uid, hostNote);
-    setHostNoteSaved(true);
+    if (!hostMemoInput.trim()) return;
+    void (async () => {
+      await addSharedMemo('user', uid, 'host', hostMemoInput);
+      setHostMemoInput('');
+      const next = await getSharedMemos('user', uid, 'host');
+      setHostMemos(next.map((m) => ({ id: m.id, text: m.content, createdAt: m.createdAt })));
+    })();
   };
 
   const saveGuest = () => {
     if (!uid) return;
-    saveAdminUserGuestMemo(uid, guestNote);
-    setGuestNoteSaved(true);
+    if (!guestMemoInput.trim()) return;
+    void (async () => {
+      await addSharedMemo('user', uid, 'guest', guestMemoInput);
+      setGuestMemoInput('');
+      const next = await getSharedMemos('user', uid, 'guest');
+      setGuestMemos(next.map((m) => ({ id: m.id, text: m.content, createdAt: m.createdAt })));
+    })();
+  };
+
+  const formatMemoDate = (iso: string) => {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    const yy = String(d.getFullYear()).slice(-2);
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const hh = String(d.getHours()).padStart(2, '0');
+    const min = String(d.getMinutes()).padStart(2, '0');
+    return `${yy}.${mm}.${dd} ${hh}:${min}`;
   };
 
   if (!uid) {
@@ -154,15 +175,23 @@ export default function AdminUserDetailPage() {
   return (
     <AdminRouteGuard>
       <div>
-        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <Link
-              href="/admin/users"
+        <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-start">
+          <div className="min-w-0 lg:w-[320px]">
+            <button
+              type="button"
+              onClick={() => {
+                // “호스트 계정 보기”처럼 상세에서 넘어온 경우: 전 화면으로 복귀
+                if (typeof window !== 'undefined' && window.history.length > 1) {
+                  router.back();
+                  return;
+                }
+                router.push('/admin/users');
+              }}
               className="mb-2 inline-flex items-center gap-1 text-sm font-medium text-slate-600 hover:text-slate-900"
             >
               <ArrowLeft className="h-4 w-4" aria-hidden />
-              계정 목록
-            </Link>
+              뒤로가기
+            </button>
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-lg font-bold text-slate-900">{user.displayName || '이름 없음'}</h1>
               <span
@@ -175,7 +204,117 @@ export default function AdminUserDetailPage() {
             </div>
             <p className="mt-1 font-mono text-xs text-slate-500">{user.uid}</p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="w-full rounded-lg border border-slate-200 bg-white p-3 lg:mx-4 lg:flex-1">
+            <div className="grid gap-3 lg:grid-cols-2">
+              <div>
+                <label htmlFor="host-memo" className="text-xs font-semibold text-slate-700">
+                  호스트용 메모
+                </label>
+                <div className="mt-2 max-h-32 overflow-y-auto rounded-md border border-slate-200 bg-slate-50">
+                  {hostMemos.length === 0 ? (
+                    <p className="px-2 py-2 text-xs text-slate-500">메모 없음</p>
+                  ) : (
+                    <ul className="divide-y divide-slate-200">
+                      {hostMemos.map((m) => (
+                        <li key={m.id} className="flex items-center gap-2 px-2 py-1.5">
+                          <span className="shrink-0 font-mono text-[10px] text-slate-500">{formatMemoDate(m.createdAt)}</span>
+                          <span className="min-w-0 flex-1 truncate text-sm text-slate-800" title={m.text}>
+                            {m.text}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void (async () => {
+                                await deleteSharedMemo(m.id);
+                                const next = await getSharedMemos('user', uid, 'host');
+                                setHostMemos(next.map((x) => ({ id: x.id, text: x.content, createdAt: x.createdAt })));
+                              })();
+                            }}
+                            className="shrink-0 rounded px-1.5 py-0.5 text-[10px] text-red-600 hover:bg-red-50"
+                          >
+                            삭제
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <textarea
+                  id="host-memo"
+                  value={hostMemoInput}
+                  onChange={(e) => setHostMemoInput(e.target.value)}
+                  rows={2}
+                  placeholder="호스트 상담·처리 메모"
+                  className="mt-2 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300"
+                />
+                <div className="mt-2 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={saveHost}
+                    className="inline-flex items-center gap-1.5 rounded-md bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
+                  >
+                    <Save className="h-3.5 w-3.5" />
+                    저장
+                  </button>
+                  <span className="text-xs text-slate-500">최신 메모가 맨 앞에 표시됩니다.</span>
+                </div>
+              </div>
+              <div>
+                <label htmlFor="guest-memo" className="text-xs font-semibold text-slate-700">
+                  게스트용 메모
+                </label>
+                <div className="mt-2 max-h-32 overflow-y-auto rounded-md border border-slate-200 bg-slate-50">
+                  {guestMemos.length === 0 ? (
+                    <p className="px-2 py-2 text-xs text-slate-500">메모 없음</p>
+                  ) : (
+                    <ul className="divide-y divide-slate-200">
+                      {guestMemos.map((m) => (
+                        <li key={m.id} className="flex items-center gap-2 px-2 py-1.5">
+                          <span className="shrink-0 font-mono text-[10px] text-slate-500">{formatMemoDate(m.createdAt)}</span>
+                          <span className="min-w-0 flex-1 truncate text-sm text-slate-800" title={m.text}>
+                            {m.text}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void (async () => {
+                                await deleteSharedMemo(m.id);
+                                const next = await getSharedMemos('user', uid, 'guest');
+                                setGuestMemos(next.map((x) => ({ id: x.id, text: x.content, createdAt: x.createdAt })));
+                              })();
+                            }}
+                            className="shrink-0 rounded px-1.5 py-0.5 text-[10px] text-red-600 hover:bg-red-50"
+                          >
+                            삭제
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <textarea
+                  id="guest-memo"
+                  value={guestMemoInput}
+                  onChange={(e) => setGuestMemoInput(e.target.value)}
+                  rows={2}
+                  placeholder="게스트 상담·처리 메모"
+                  className="mt-2 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300"
+                />
+                <div className="mt-2 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={saveGuest}
+                    className="inline-flex items-center gap-1.5 rounded-md bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
+                  >
+                    <Save className="h-3.5 w-3.5" />
+                    저장
+                  </button>
+                  <span className="text-xs text-slate-500">최신 메모가 맨 앞에 표시됩니다.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 lg:flex-col lg:items-end lg:gap-2">
             {user.blocked ? (
               <button
                 type="button"
@@ -292,37 +431,6 @@ export default function AdminUserDetailPage() {
           ) : (
             <p className="text-sm text-slate-500">불러오는 중…</p>
           )}
-          <div>
-            <label htmlFor="host-memo" className="text-xs font-semibold text-slate-700">
-              관리자 메모 (호스트 · 상담 이력)
-            </label>
-            <textarea
-              id="host-memo"
-              value={hostNote}
-              onChange={(e) => {
-                setHostNote(e.target.value);
-                setHostNoteSaved(false);
-              }}
-              rows={4}
-              placeholder="호스트 관련 상담·처리 내용을 남겨 두세요."
-              className="mt-1 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300"
-            />
-            <div className="mt-2 flex items-center gap-2">
-              <button
-                type="button"
-                onClick={saveHost}
-                className="inline-flex items-center gap-1.5 rounded-md bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
-              >
-                <Save className="h-3.5 w-3.5" />
-                저장
-              </button>
-              {!hostNoteSaved ? (
-                <span className="text-xs text-amber-700">저장되지 않은 변경</span>
-              ) : (
-                <span className="text-xs text-slate-500">저장됨</span>
-              )}
-            </div>
-          </div>
         </section>
 
         {/* 게스트 */}
@@ -383,37 +491,6 @@ export default function AdminUserDetailPage() {
           ) : (
             <p className="text-sm text-slate-500">불러오는 중…</p>
           )}
-          <div>
-            <label htmlFor="guest-memo" className="text-xs font-semibold text-slate-700">
-              관리자 메모 (게스트 · 상담 이력)
-            </label>
-            <textarea
-              id="guest-memo"
-              value={guestNote}
-              onChange={(e) => {
-                setGuestNote(e.target.value);
-                setGuestNoteSaved(false);
-              }}
-              rows={4}
-              placeholder="게스트 관련 상담·처리 내용을 남겨 두세요."
-              className="mt-1 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300"
-            />
-            <div className="mt-2 flex items-center gap-2">
-              <button
-                type="button"
-                onClick={saveGuest}
-                className="inline-flex items-center gap-1.5 rounded-md bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
-              >
-                <Save className="h-3.5 w-3.5" />
-                저장
-              </button>
-              {!guestNoteSaved ? (
-                <span className="text-xs text-amber-700">저장되지 않은 변경</span>
-              ) : (
-                <span className="text-xs text-slate-500">저장됨</span>
-              )}
-            </div>
-          </div>
         </section>
       </div>
     </AdminRouteGuard>

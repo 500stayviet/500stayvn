@@ -150,9 +150,24 @@ model LessorProfile {
 model AdminAccount {
   id           String   @id @default(cuid())
   username     String   @unique
+  /// 표시용 닉네임(슈퍼만 생성·수정)
+  nickname     String   @default("")
   passwordHash String
   isSuperAdmin Boolean  @default(false)
   permissions  Json
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+/// 관리자 간 공유 메모 (대상별)
+model AdminSharedMemo {
+  id         String   @id @default(cuid())
+  targetType String
+  targetId   String
+  category   String
+  content    String
+  createdBy  String
+  createdAt  DateTime @default(now())
+
+  @@index([targetType, targetId, category, createdAt])
 }

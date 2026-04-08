@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
 import { acknowledgeCurrentNewProperties } from '@/lib/adminAckState';
 import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
@@ -12,6 +13,7 @@ import type { PropertyData } from '@/types/property';
 
 const PAGE_SIZE = 20;
 const PROPERTY_HIDDEN_REASON = '법규를 위반했으니 관리자에게 문의 하시기 바랍니다';
+const OWNER_BLOCKED_RESTORE_MESSAGE = '계정이 차단되어 있어 매물 숨김을 해제할 수 없습니다.';
 
 const FILTER_TABS: { id: AdminInventoryFilter; label: string }[] = [
   { id: 'new', label: '신규' },
@@ -35,6 +37,7 @@ function listingStatusLabel(p: PropertyData): { text: string; className: string 
 }
 
 export default function AdminPropertiesPage() {
+  const router = useRouter();
   const { me: admin } = useAdminMe();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<AdminInventoryFilter>('all');
@@ -159,7 +162,14 @@ export default function AdminPropertiesPage() {
                 {pagedRows.map((p) => {
                   const st = listingStatusLabel(p);
                   return (
-                    <tr key={p.id} className="border-b border-slate-100 hover:bg-slate-50/80">
+                    <tr
+                      key={p.id}
+                      className="cursor-pointer border-b border-slate-100 hover:bg-slate-50/80"
+                      onClick={() => {
+                        if (!p.id) return;
+                        router.push(`/admin/properties/${encodeURIComponent(p.id)}`);
+                      }}
+                    >
                       <td className="max-w-[200px] truncate px-3 py-2 font-medium text-slate-900">
                         {p.title || '—'}
                       </td>
@@ -175,9 +185,14 @@ export default function AdminPropertiesPage() {
                         {p.hidden ? (
                           <button
                             type="button"
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               if (!admin?.username || !p.id) return;
-                              setPropertyHidden(p.id, false, admin!.username);
+                              const ok = setPropertyHidden(p.id, false, admin!.username);
+                              if (!ok) {
+                                window.alert(OWNER_BLOCKED_RESTORE_MESSAGE);
+                                return;
+                              }
                               setTick((v) => v + 1);
                               refreshAdminBadges();
                             }}
@@ -188,7 +203,8 @@ export default function AdminPropertiesPage() {
                         ) : (
                           <button
                             type="button"
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               if (!admin?.username || !p.id) return;
                               setPropertyHidden(p.id, true, admin!.username, PROPERTY_HIDDEN_REASON);
                               setTick((v) => v + 1);

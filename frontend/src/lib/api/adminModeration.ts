@@ -209,6 +209,17 @@ export function setPropertyHidden(
   const index = rows.findIndex((p) => p.id === propertyId);
   if (index === -1) return false;
 
+  // 호스트가 차단 상태이면 관리자도 숨김 해제를 할 수 없도록 강제
+  if (!hidden) {
+    const ownerId = rows[index].ownerId;
+    if (ownerId) {
+      const owner = getUsers().find((u) => u.uid === ownerId && !u.deleted);
+      if (owner?.blocked) {
+        return false;
+      }
+    }
+  }
+
   const history = rows[index].history || [];
   rows[index] = {
     ...rows[index],
