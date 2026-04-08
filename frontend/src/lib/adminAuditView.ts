@@ -3,7 +3,7 @@
 import type { LedgerEntry } from '@/lib/api/adminFinance';
 import type { ModerationAuditEntry } from '@/lib/api/adminModeration';
 
-export type AuditTabId = 'all' | 'settlement' | 'withdrawal' | 'refund' | 'account' | 'property';
+export type AuditTabId = 'all' | 'new' | 'settlement' | 'withdrawal' | 'refund' | 'account' | 'property';
 
 export type UnifiedAuditRow = {
   id: string;
@@ -86,6 +86,7 @@ export function buildUnifiedAuditRows(
 }
 
 export const AUDIT_TABS: { id: AuditTabId; label: string }[] = [
+  { id: 'new', label: '신규' },
   { id: 'all', label: '전체' },
   { id: 'settlement', label: '정산' },
   { id: 'withdrawal', label: '출금' },

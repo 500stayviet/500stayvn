@@ -1,10 +1,13 @@
 'use client';
 
 import { getUsers } from '@/lib/api/auth';
-import { getLedgerEntries, getWithdrawalRequests } from '@/lib/api/adminFinance';
-import { getModerationAudits } from '@/lib/api/adminModeration';
+import { getWithdrawalRequests } from '@/lib/api/adminFinance';
 import {
+  getUnseenNewContractCount,
+  getUnseenRecentAuditCount,
+  getUnseenNewKycCount,
   getUnseenNewPropertyCount,
+  getUnseenNewRefundCount,
   getUnseenNewUserCount,
   getUnseenSettlementPendingCount,
   getUnseenSettlementRequestCount,
@@ -19,8 +22,6 @@ export function refreshAdminBadges(): void {
 
 /** 관리자 상단 알림 배지용 건수 (클라이언트 전용 데이터 기준) */
 export async function fetchAdminBadgeCounts() {
-  const now = Date.now();
-
   const settlementsRequestUnseen = await getUnseenSettlementRequestCount();
   const settlementsQueueUnseen = await getUnseenSettlementPendingCount();
   const settlementsPendingUnseen = settlementsRequestUnseen + settlementsQueueUnseen;
@@ -33,26 +34,26 @@ export async function fetchAdminBadgeCounts() {
 
   const usersNewUnseen = getUnseenNewUserCount();
   const propertiesNewUnseen = getUnseenNewPropertyCount();
+  const contractsNewUnseen = await getUnseenNewContractCount();
+  const refundsNewUnseen = await getUnseenNewRefundCount();
 
   const users = getUsers();
   const kycPending = users.filter((u) => !u.deleted && u.verification_status === 'pending').length;
   const kycVerifiedReview = users.filter((u) => !u.deleted && u.verification_status === 'verified').length;
+  const kycNewUnseen = getUnseenNewKycCount();
 
-  const dayAgo = now - 24 * 60 * 60 * 1000;
-  const finance = getLedgerEntries();
-  const mod = getModerationAudits();
-  const auditRecent = [...finance, ...mod].filter((e) => {
-    const t = new Date(e.createdAt).getTime();
-    return t >= dayAgo;
-  }).length;
+  const auditRecent = getUnseenRecentAuditCount();
 
   return {
     usersNewUnseen,
     propertiesNewUnseen,
+    contractsNewUnseen,
+    refundsNewUnseen,
     settlementsPendingUnseen,
     withdrawalsPending,
     kycPending,
     kycVerifiedReview,
+    kycNewUnseen,
     auditRecent,
   };
 }
@@ -68,6 +69,10 @@ export function badgeCountForNav(href: string, c: AdminBadgeCounts): number {
       return c.usersNewUnseen;
     case '/admin/properties':
       return c.propertiesNewUnseen;
+    case '/admin/contracts':
+      return c.contractsNewUnseen;
+    case '/admin/refunds':
+      return c.refundsNewUnseen;
     case '/admin/settlements':
       return c.settlementsPendingUnseen;
     case '/admin/withdrawals':
@@ -75,7 +80,7 @@ export function badgeCountForNav(href: string, c: AdminBadgeCounts): number {
     case '/admin/audit':
       return c.auditRecent;
     case '/admin/kyc':
-      return Math.min(99, c.kycPending + c.kycVerifiedReview);
+      return c.kycNewUnseen;
     default:
       return 0;
   }

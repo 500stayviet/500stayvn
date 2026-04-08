@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
 import AdminSettlementStyleCard from '@/components/admin/AdminSettlementStyleCard';
 import { filterBookingsBySearch, useOwnerEmailMap } from '@/lib/adminSearchHelpers';
+import { ADMIN_NEW_MS } from '@/lib/adminNewUtils';
 import {
   isRefundBeforeRental,
   isRefundDuringOrAfterRental,
@@ -12,10 +13,13 @@ import type { BookingData } from '@/lib/api/bookings';
 import { approveRefundBooking, getAllBookings } from '@/lib/api/bookings';
 import { useAdminMe } from '@/contexts/AdminMeContext';
 import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
+import { acknowledgeCurrentNewRefunds } from '@/lib/adminAckState';
 
-type RefundTab = 'pre' | 'during';
+type RefundTab = 'all' | 'new' | 'pre' | 'during';
 
 const TABS: { id: RefundTab; label: string }[] = [
+  { id: 'new', label: '신규' },
+  { id: 'all', label: '전체' },
   { id: 'pre', label: '계약전 환불' },
   { id: 'during', label: '계약진행중 환불' },
 ];
@@ -23,7 +27,7 @@ const TABS: { id: RefundTab; label: string }[] = [
 export default function AdminRefundsPage() {
   const [bookings, setBookings] = useState<BookingData[]>([]);
   const [loading, setLoading] = useState(false);
-  const [tab, setTab] = useState<RefundTab>('pre');
+  const [tab, setTab] = useState<RefundTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const { me: admin } = useAdminMe();
 
@@ -41,8 +45,16 @@ export default function AdminRefundsPage() {
 
   const preList = useMemo(() => bookings.filter(isRefundBeforeRental), [bookings]);
   const duringList = useMemo(() => bookings.filter(isRefundDuringOrAfterRental), [bookings]);
+  const allList = useMemo(() => [...preList, ...duringList], [preList, duringList]);
+  const newList = useMemo(() => {
+    const now = Date.now();
+    return allList.filter((b) => {
+      const t = new Date(b.updatedAt || b.cancelledAt || b.createdAt || 0).getTime();
+      return Number.isFinite(t) && now - t < ADMIN_NEW_MS;
+    });
+  }, [allList]);
 
-  const activeList = tab === 'pre' ? preList : duringList;
+  const activeList = tab === 'all' ? allList : tab === 'new' ? newList : tab === 'pre' ? preList : duringList;
 
   const emailMap = useOwnerEmailMap(bookings);
 
@@ -52,9 +64,29 @@ export default function AdminRefundsPage() {
   );
 
   const emptyMsg =
-    tab === 'pre'
-      ? '계약전 환불 대기 건이 없습니다.'
-      : '계약진행중 환불 대기 건이 없습니다.';
+    tab === 'all'
+      ? '환불 대기 건이 없습니다.'
+      : tab === 'new'
+      ? '신규 환불 대기 건이 없습니다.'
+      : tab === 'pre'
+        ? '계약전 환불 대기 건이 없습니다.'
+        : '계약진행중 환불 대기 건이 없습니다.';
+
+  useEffect(() => {
+    const resetToAll = () => setTab('all');
+    window.addEventListener('admin-refunds-reset-tab', resetToAll);
+    return () => {
+      window.removeEventListener('admin-refunds-reset-tab', resetToAll);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (tab !== 'new') return;
+    void (async () => {
+      await acknowledgeCurrentNewRefunds();
+      refreshAdminBadges();
+    })();
+  }, [tab]);
 
   const column = (list: BookingData[], body: ReactNode) => (
     <div className="flex min-h-0 max-h-[min(75vh,920px)] flex-col overflow-y-auto rounded-lg border border-slate-200 bg-slate-50/40">
@@ -100,7 +132,7 @@ export default function AdminRefundsPage() {
             >
               {t.label}
               <span className="ml-1 tabular-nums opacity-80">
-                ({t.id === 'pre' ? preList.length : duringList.length})
+                ({t.id === 'all' ? allList.length : t.id === 'new' ? newList.length : t.id === 'pre' ? preList.length : duringList.length})
               </span>
             </button>
           ))}

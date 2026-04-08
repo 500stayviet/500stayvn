@@ -3,9 +3,19 @@
 import {
   getSettlementPendingApprovalCandidates,
   getSettlementRequestCandidates,
+  getLedgerEntries,
 } from '@/lib/api/adminFinance';
 import { getUsers } from '@/lib/api/auth';
+import { getAllBookings } from '@/lib/api/bookings';
 import { isPropertyNew, isUserNew } from '@/lib/adminNewUtils';
+import {
+  isContractCompletedTab,
+  isContractInProgressTab,
+  isContractSealedTab,
+  isRefundBeforeRental,
+  isRefundDuringOrAfterRental,
+} from '@/lib/adminBookingFilters';
+import { getModerationAudits } from '@/lib/api/adminModeration';
 import { isParentPropertyRecord } from '@/lib/utils/propertyUtils';
 import type { PropertyData } from '@/types/property';
 
@@ -18,6 +28,14 @@ const KEY_PROP_IDS = 'admin_ack_new_property_ids_v1';
 const KEY_SETTLEMENT_PENDING_BOOKINGS = 'admin_ack_settlement_pending_booking_ids_v1';
 /** 승인 요청 탭에서 확인한 bookingId */
 const KEY_SETTLEMENT_REQUEST_BOOKINGS = 'admin_ack_settlement_request_booking_ids_v1';
+/** 감사 신규(24h) 탭에서 확인한 로그 키 */
+const KEY_AUDIT_RECENT_KEYS = 'admin_ack_audit_recent_keys_v1';
+/** KYC 신규(24h) 탭에서 확인한 사용자 uid */
+const KEY_KYC_NEW_UIDS = 'admin_ack_kyc_new_uids_v1';
+/** 계약 신규(24h) 탭에서 확인한 bookingId */
+const KEY_CONTRACT_NEW_BOOKING_IDS = 'admin_ack_contract_new_booking_ids_v1';
+/** 환불 신규(24h) 탭에서 확인한 bookingId */
+const KEY_REFUND_NEW_BOOKING_IDS = 'admin_ack_refund_new_booking_ids_v1';
 
 function readPropsRaw(): PropertyData[] {
   if (typeof window === 'undefined' || typeof localStorage === 'undefined') return [];
@@ -114,4 +132,109 @@ export async function acknowledgeCurrentSettlementPending(): Promise<void> {
   const ack = readIdSet(KEY_SETTLEMENT_PENDING_BOOKINGS);
   rows.forEach((p) => ack.add(p.bookingId));
   writeIdSet(KEY_SETTLEMENT_PENDING_BOOKINGS, ack);
+}
+
+function recentAuditKeysIn24h(): string[] {
+  const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
+  const out: string[] = [];
+  for (const e of getLedgerEntries()) {
+    const t = new Date(e.createdAt).getTime();
+    if (t >= dayAgo) out.push(`ledger:${e.id}`);
+  }
+  for (const e of getModerationAudits()) {
+    const t = new Date(e.createdAt).getTime();
+    if (t >= dayAgo) out.push(`mod:${e.id}`);
+  }
+  return out;
+}
+
+/** 상단 배지: 아직 신규(24h) 탭에서 확인하지 않은 감사 로그 건수 */
+export function getUnseenRecentAuditCount(): number {
+  if (typeof window === 'undefined') return 0;
+  const ack = readIdSet(KEY_AUDIT_RECENT_KEYS);
+  return recentAuditKeysIn24h().filter((k) => !ack.has(k)).length;
+}
+
+/** 감사 신규(24h) 탭 진입 시 현재 로그 확인 처리 */
+export function acknowledgeCurrentRecentAudit(): void {
+  if (typeof window === 'undefined') return;
+  const ack = readIdSet(KEY_AUDIT_RECENT_KEYS);
+  recentAuditKeysIn24h().forEach((k) => ack.add(k));
+  writeIdSet(KEY_AUDIT_RECENT_KEYS, ack);
+}
+
+function isKycRelevantStatus(s: unknown): boolean {
+  return s === 'pending' || s === 'verified' || s === 'rejected';
+}
+
+/** 상단 배지: 아직 KYC 신규 탭에서 확인하지 않은 신규(24h) KYC 사용자 수 */
+export function getUnseenNewKycCount(): number {
+  if (typeof window === 'undefined') return 0;
+  const ack = readIdSet(KEY_KYC_NEW_UIDS);
+  return getUsers().filter((u) => !u.deleted && isUserNew(u) && isKycRelevantStatus(u.verification_status) && !ack.has(u.uid)).length;
+}
+
+/** KYC 신규 탭 진입 시 현재 신규 KYC 사용자 확인 처리 */
+export function acknowledgeCurrentNewKyc(): void {
+  if (typeof window === 'undefined') return;
+  const ack = readIdSet(KEY_KYC_NEW_UIDS);
+  getUsers()
+    .filter((u) => !u.deleted && isUserNew(u) && isKycRelevantStatus(u.verification_status))
+    .forEach((u) => ack.add(u.uid));
+  writeIdSet(KEY_KYC_NEW_UIDS, ack);
+}
+
+function isRecent(ts: unknown): boolean {
+  const t = new Date(String(ts || '')).getTime();
+  if (!Number.isFinite(t)) return false;
+  return Date.now() - t < 24 * 60 * 60 * 1000;
+}
+
+async function getCurrentNewContractBookingIds(): Promise<string[]> {
+  const rows = await getAllBookings();
+  const now = new Date();
+  return rows
+    .filter((b) => isContractSealedTab(b, now) || isContractInProgressTab(b, now) || isContractCompletedTab(b, now))
+    .filter((b) => isRecent(b.updatedAt || b.createdAt))
+    .map((b) => b.id)
+    .filter((id): id is string => !!id);
+}
+
+async function getCurrentNewRefundBookingIds(): Promise<string[]> {
+  const rows = await getAllBookings();
+  return rows
+    .filter((b) => isRefundBeforeRental(b) || isRefundDuringOrAfterRental(b))
+    .filter((b) => isRecent(b.updatedAt || b.cancelledAt || b.createdAt))
+    .map((b) => b.id)
+    .filter((id): id is string => !!id);
+}
+
+export async function getUnseenNewContractCount(): Promise<number> {
+  if (typeof window === 'undefined') return 0;
+  const ack = readIdSet(KEY_CONTRACT_NEW_BOOKING_IDS);
+  const ids = await getCurrentNewContractBookingIds();
+  return ids.filter((id) => !ack.has(id)).length;
+}
+
+export async function acknowledgeCurrentNewContracts(): Promise<void> {
+  if (typeof window === 'undefined') return;
+  const ack = readIdSet(KEY_CONTRACT_NEW_BOOKING_IDS);
+  const ids = await getCurrentNewContractBookingIds();
+  ids.forEach((id) => ack.add(id));
+  writeIdSet(KEY_CONTRACT_NEW_BOOKING_IDS, ack);
+}
+
+export async function getUnseenNewRefundCount(): Promise<number> {
+  if (typeof window === 'undefined') return 0;
+  const ack = readIdSet(KEY_REFUND_NEW_BOOKING_IDS);
+  const ids = await getCurrentNewRefundBookingIds();
+  return ids.filter((id) => !ack.has(id)).length;
+}
+
+export async function acknowledgeCurrentNewRefunds(): Promise<void> {
+  if (typeof window === 'undefined') return;
+  const ack = readIdSet(KEY_REFUND_NEW_BOOKING_IDS);
+  const ids = await getCurrentNewRefundBookingIds();
+  ids.forEach((id) => ack.add(id));
+  writeIdSet(KEY_REFUND_NEW_BOOKING_IDS, ack);
 }

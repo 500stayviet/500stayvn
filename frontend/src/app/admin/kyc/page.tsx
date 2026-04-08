@@ -5,12 +5,16 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { Download, RefreshCw, Users } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import type { SupportedLanguage } from '@/lib/api/translation';
 import { getAllKYCUsers, downloadAllKYCData, KYCUserData } from '@/lib/api/admin';
 import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
 import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
+import { acknowledgeCurrentNewKyc } from '@/lib/adminAckState';
+import { ADMIN_NEW_MS } from '@/lib/adminNewUtils';
+import { logAdminSystemEvent } from '@/lib/adminSystemLog';
 
 const LANG_OPTIONS = [
   { code: 'ko', label: 'KO' },
@@ -20,13 +24,30 @@ const LANG_OPTIONS = [
   { code: 'zh', label: 'ZH' },
 ] as const;
 
+function kycStatusBadgeClass(status?: string): string {
+  if (status === 'verified') return 'bg-green-100 text-green-800';
+  if (status === 'pending') return 'bg-amber-100 text-amber-900';
+  if (status === 'rejected') return 'bg-red-100 text-red-800';
+  return 'bg-slate-100 text-slate-700';
+}
+
+function kycStatusLabel(status: string | undefined, language: SupportedLanguage): string {
+  const ko = language === 'ko';
+  if (status === 'verified') return ko ? '인증완료' : 'verified';
+  if (status === 'pending') return ko ? '심사중' : 'pending';
+  if (status === 'rejected') return ko ? '거부' : 'rejected';
+  return ko ? '미인증' : status ?? '—';
+}
+
 export default function AdminKYCPage() {
+  const router = useRouter();
   const { currentLanguage, setCurrentLanguage } = useLanguage();
   const [kycUsers, setKycUsers] = useState<KYCUserData[]>([]);
   const [initialLoading, setInitialLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string>('');
+  const [tab, setTab] = useState<'new' | 'all' | 'verified' | 'unverified'>('all');
 
   const t = useMemo(() => {
     const ko = currentLanguage === 'ko';
@@ -78,6 +99,12 @@ export default function AdminKYCPage() {
       setKycUsers(users);
     } catch (err: unknown) {
       console.error('Error loading KYC data:', err);
+      logAdminSystemEvent({
+        severity: 'error',
+        category: 'kyc',
+        message: err instanceof Error ? err.message : '관리자 KYC 목록 로드 실패',
+        snapshot: { function: 'AdminKYCPage.loadKYCData' },
+      });
       setError(err instanceof Error ? err.message : 'Failed to load');
     } finally {
       setInitialLoading(false);
@@ -93,6 +120,12 @@ export default function AdminKYCPage() {
       await downloadAllKYCData();
     } catch (err: unknown) {
       console.error('Error downloading CSV:', err);
+      logAdminSystemEvent({
+        severity: 'warning',
+        category: 'kyc',
+        message: err instanceof Error ? err.message : 'KYC CSV 다운로드 실패',
+        snapshot: { function: 'AdminKYCPage.handleDownloadCSV' },
+      });
       setError(err instanceof Error ? err.message : 'CSV failed');
     } finally {
       setDownloading(false);
@@ -103,13 +136,59 @@ export default function AdminKYCPage() {
     loadKYCData(false);
   }, []);
 
+  useEffect(() => {
+    if (tab !== 'new') return;
+    acknowledgeCurrentNewKyc();
+    refreshAdminBadges();
+  }, [tab]);
+
+  useEffect(() => {
+    const resetToAll = () => setTab('all');
+    window.addEventListener('admin-kyc-reset-tab', resetToAll);
+    return () => {
+      window.removeEventListener('admin-kyc-reset-tab', resetToAll);
+    };
+  }, []);
+
+  const newRows = useMemo(() => {
+    const now = Date.now();
+    return kycUsers.filter((u) => {
+      const t = new Date(u.createdAt || '').getTime();
+      return Number.isFinite(t) && now - t < ADMIN_NEW_MS;
+    });
+  }, [kycUsers]);
+
+  const verifiedRows = useMemo(
+    () => kycUsers.filter((u) => u.verificationStatus === 'verified'),
+    [kycUsers]
+  );
+  const unverifiedRows = useMemo(
+    () => kycUsers.filter((u) => u.verificationStatus !== 'verified'),
+    [kycUsers]
+  );
+
+  const shownRows = useMemo(() => {
+    if (tab === 'new') return newRows;
+    if (tab === 'verified') return verifiedRows;
+    if (tab === 'unverified') return unverifiedRows;
+    return kycUsers;
+  }, [tab, newRows, verifiedRows, unverifiedRows, kycUsers]);
+
   return (
     <AdminRouteGuard>
       <div>
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-lg font-bold text-slate-900">{t.title}</h1>
-            <p className="text-sm text-slate-500">{t.total(kycUsers.length)}</p>
+            <p className="text-sm text-slate-500">
+              {tab === 'new'
+                ? `신규 ${newRows.length}명`
+                : tab === 'verified'
+                  ? `인증 ${verifiedRows.length}명`
+                  : tab === 'unverified'
+                    ? `미인증 ${unverifiedRows.length}명`
+                    : t.total(kycUsers.length)}
+            </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <label className="sr-only">언어</label>
@@ -145,6 +224,53 @@ export default function AdminKYCPage() {
           </div>
         </div>
 
+        <div className="mb-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setTab('new')}
+            className={`rounded-md px-3 py-1.5 text-sm font-medium ${
+              tab === 'new' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            신규
+            <span className="ml-1 tabular-nums opacity-80">({newRows.length})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('all')}
+            className={`rounded-md px-3 py-1.5 text-sm font-medium ${
+              tab === 'all' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            전체
+            <span className="ml-1 tabular-nums opacity-80">({kycUsers.length})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('verified')}
+            className={`rounded-md px-3 py-1.5 text-sm font-medium ${
+              tab === 'verified' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            인증
+            <span className="ml-1 tabular-nums opacity-80">
+              ({verifiedRows.length})
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('unverified')}
+            className={`rounded-md px-3 py-1.5 text-sm font-medium ${
+              tab === 'unverified' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            미인증
+            <span className="ml-1 tabular-nums opacity-80">
+              ({unverifiedRows.length})
+            </span>
+          </button>
+        </div>
+
         {initialLoading ? (
           <div className="flex min-h-[240px] items-center justify-center text-slate-500">{t.loading}</div>
         ) : (
@@ -155,54 +281,83 @@ export default function AdminKYCPage() {
               </div>
             ) : null}
 
-            {kycUsers.length === 0 ? (
+            {shownRows.length === 0 ? (
               <div className="py-16 text-center">
                 <Users className="mx-auto mb-3 h-12 w-12 text-slate-300" />
                 <p className="text-sm text-slate-500">{t.empty}</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-                {kycUsers.map((user) => (
-                  <div
-                    key={user.uid}
-                    className="rounded-md border border-slate-200 bg-slate-50/40 p-3 text-sm"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="font-semibold text-slate-900">{user.fullName || t.noName}</p>
-                        <p className="truncate text-xs text-slate-600">{user.email}</p>
-                        <p className="text-xs text-slate-600">{user.phoneNumber || '—'}</p>
+              <>
+                <div className="hidden overflow-x-auto md:block">
+                  <table className="w-full min-w-[860px] border-collapse text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                        <th className="px-3 py-2">이름</th>
+                        <th className="px-3 py-2">이메일</th>
+                        <th className="px-3 py-2">연락처</th>
+                        <th className="px-3 py-2">인증상태</th>
+                        <th className="px-3 py-2">신분증</th>
+                        <th className="px-3 py-2">생년월일</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {shownRows.map((user) => (
+                        <tr
+                          key={user.uid}
+                          className="cursor-pointer border-b border-slate-100 hover:bg-slate-50/80"
+                          onClick={() => router.push(`/admin/users/${encodeURIComponent(user.uid)}`)}
+                        >
+                          <td className="max-w-[180px] truncate px-3 py-2 font-medium text-slate-900">
+                            {user.fullName || t.noName}
+                          </td>
+                          <td className="max-w-[220px] truncate px-3 py-2 text-slate-700">{user.email || '—'}</td>
+                          <td className="max-w-[140px] truncate px-3 py-2 text-slate-700">{user.phoneNumber || '—'}</td>
+                          <td className="px-3 py-2">
+                            <span
+                              className={`inline-flex rounded px-2 py-0.5 text-[10px] font-semibold ${kycStatusBadgeClass(user.verificationStatus)}`}
+                            >
+                              {kycStatusLabel(user.verificationStatus, currentLanguage)}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-slate-600">
+                            {user.idType === 'passport' ? 'passport' : user.idType === 'id_card' ? 'id_card' : '—'}
+                          </td>
+                          <td className="px-3 py-2 text-slate-600">{user.dateOfBirth || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="space-y-2 md:hidden">
+                  {shownRows.map((user) => (
+                    <div
+                      key={user.uid}
+                      className="cursor-pointer rounded-md border border-slate-200 bg-slate-50/40 p-3 text-sm"
+                      onClick={() => router.push(`/admin/users/${encodeURIComponent(user.uid)}`)}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-slate-900">{user.fullName || t.noName}</p>
+                          <p className="truncate text-xs text-slate-600">{user.email}</p>
+                          <p className="text-xs text-slate-600">{user.phoneNumber || '—'}</p>
+                        </div>
+                        <span
+                          className={`shrink-0 rounded px-2 py-0.5 text-[10px] font-semibold ${kycStatusBadgeClass(user.verificationStatus)}`}
+                        >
+                          {kycStatusLabel(user.verificationStatus, currentLanguage)}
+                        </span>
                       </div>
-                      <span
-                        className={`shrink-0 rounded px-2 py-0.5 text-[10px] font-semibold ${
-                          user.verificationStatus === 'verified'
-                            ? 'bg-green-100 text-green-800'
-                            : user.verificationStatus === 'pending'
-                              ? 'bg-amber-100 text-amber-900'
-                              : user.verificationStatus === 'rejected'
-                                ? 'bg-red-100 text-red-800'
-                                : 'bg-slate-100 text-slate-700'
-                        }`}
-                      >
-                        {(() => {
-                          const s = user.verificationStatus;
-                          const ko = currentLanguage === 'ko';
-                          if (s === 'verified') return ko ? '인증완료' : 'verified';
-                          if (s === 'pending') return ko ? '심사중' : 'pending';
-                          if (s === 'rejected') return ko ? '거부' : 'rejected';
-                          return ko ? '미인증' : s ?? '—';
-                        })()}
-                      </span>
+                      <div className="mt-2 border-t border-slate-200 pt-2 text-[11px] text-slate-500">
+                        <p>
+                          ID: {user.idType === 'passport' ? 'passport' : user.idType === 'id_card' ? 'id_card' : '—'} · DOB:{' '}
+                          {user.dateOfBirth || '—'}
+                        </p>
+                      </div>
                     </div>
-                    <div className="mt-2 border-t border-slate-200 pt-2 text-[11px] text-slate-500">
-                      <p>
-                        ID: {user.idType === 'passport' ? 'passport' : user.idType === 'id_card' ? 'id_card' : '—'}{' '}
-                        · DOB: {user.dateOfBirth || '—'}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              </>
             )}
           </>
         )}

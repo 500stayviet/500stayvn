@@ -1,14 +1,17 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
 import { AUDIT_TABS, buildUnifiedAuditRows, type AuditTabId } from '@/lib/adminAuditView';
 import { getLedgerEntries } from '@/lib/api/adminFinance';
 import { getModerationAudits } from '@/lib/api/adminModeration';
+import { acknowledgeCurrentRecentAudit } from '@/lib/adminAckState';
+import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
 
 export default function AdminAuditPage() {
   const [tab, setTab] = useState<AuditTabId>('all');
   const [tick, setTick] = useState(0);
+  const [nameByUsername, setNameByUsername] = useState<Record<string, string>>({});
 
   const rows = useMemo(() => {
     void tick;
@@ -18,7 +21,52 @@ export default function AdminAuditPage() {
   }, [tick]);
 
   const filtered =
-    tab === 'all' ? rows : rows.filter((r) => r.category === tab);
+    tab === 'all'
+      ? rows
+      : tab === 'new'
+        ? rows.filter((r) => Date.now() - new Date(r.createdAt).getTime() < 24 * 60 * 60 * 1000)
+        : rows.filter((r) => r.category === tab);
+
+  useEffect(() => {
+    if (tab !== 'new') return;
+    acknowledgeCurrentRecentAudit();
+    refreshAdminBadges();
+  }, [tab]);
+
+  useEffect(() => {
+    const resetToAll = () => setTab('all');
+    window.addEventListener('admin-audit-reset-tab', resetToAll);
+    return () => {
+      window.removeEventListener('admin-audit-reset-tab', resetToAll);
+    };
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    const loadDirectory = async () => {
+      const r = await fetch('/api/admin/accounts/directory', { credentials: 'include' });
+      if (!r.ok) return;
+      const j = (await r.json()) as { admins: Array<{ username: string; nickname: string }> };
+      const map: Record<string, string> = {};
+      for (const a of j.admins) {
+        const username = (a.username || '').trim();
+        if (!username) continue;
+        const nick = (a.nickname || '').trim();
+        map[username] = nick ? `${nick} (${username})` : username;
+      }
+      if (alive) setNameByUsername(map);
+    };
+    void loadDirectory();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const actorLabel = (raw: string) => {
+    const v = (raw || '').trim();
+    if (!v || v === '-') return '-';
+    return nameByUsername[v] || v;
+  };
 
   return (
     <AdminRouteGuard>
@@ -49,7 +97,12 @@ export default function AdminAuditPage() {
             >
               {t.label}
               <span className="ml-1 tabular-nums opacity-80">
-                ({t.id === 'all' ? rows.length : rows.filter((r) => r.category === t.id).length})
+                ({t.id === 'all'
+                  ? rows.length
+                  : t.id === 'new'
+                    ? rows.filter((r) => Date.now() - new Date(r.createdAt).getTime() < 24 * 60 * 60 * 1000)
+                        .length
+                    : rows.filter((r) => r.category === t.id).length})
               </span>
             </button>
           ))}
@@ -96,8 +149,8 @@ export default function AdminAuditPage() {
                       <td className="max-w-[100px] truncate px-2 py-1.5 font-mono text-xs text-slate-600">
                         {r.refId || '-'}
                       </td>
-                      <td className="max-w-[90px] truncate px-2 py-1.5 text-xs text-slate-600">
-                        {r.createdBy || '-'}
+                      <td className="max-w-[150px] truncate px-2 py-1.5 text-xs text-slate-600">
+                        {actorLabel(r.createdBy)}
                       </td>
                       <td className="max-w-[200px] truncate px-2 py-1.5 text-xs text-slate-500">
                         {r.note || '—'}
@@ -126,7 +179,7 @@ export default function AdminAuditPage() {
                   </div>
                   <p className="mt-1 text-xs text-slate-500">대상: {r.ownerId}</p>
                   <p className="text-xs text-slate-500">ref: {r.refId || '-'}</p>
-                  <p className="text-xs text-slate-500">처리: {r.createdBy || '-'}</p>
+                  <p className="text-xs text-slate-500">처리: {actorLabel(r.createdBy)}</p>
                   {r.note ? <p className="text-xs text-slate-500">비고: {r.note}</p> : null}
                   <p className="text-xs text-slate-500">{new Date(r.createdAt).toLocaleString()}</p>
                 </div>

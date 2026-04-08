@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
 import AdminSettlementStyleCard from '@/components/admin/AdminSettlementStyleCard';
 import { filterBookingsBySearch, useOwnerEmailMap } from '@/lib/adminSearchHelpers';
+import { ADMIN_NEW_MS } from '@/lib/adminNewUtils';
 import {
   isContractCompletedTab,
   isContractInProgressTab,
@@ -11,10 +12,13 @@ import {
 } from '@/lib/adminBookingFilters';
 import type { BookingData } from '@/lib/api/bookings';
 import { getAllBookings } from '@/lib/api/bookings';
+import { acknowledgeCurrentNewContracts } from '@/lib/adminAckState';
+import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
 
-type ContractTab = 'sealed' | 'inProgress' | 'completed';
+type ContractTab = 'new' | 'sealed' | 'inProgress' | 'completed';
 
 const TABS: { id: ContractTab; label: string }[] = [
+  { id: 'new', label: '신규' },
   { id: 'sealed', label: '계약체결' },
   { id: 'inProgress', label: '계약시작' },
   { id: 'completed', label: '계약종료' },
@@ -65,9 +69,26 @@ export default function AdminContractsPage() {
     () => bookings.filter((b) => isContractCompletedTab(b, now)),
     [bookings, now]
   );
+  const allContractList = useMemo(
+    () => [...sealedList, ...inProgressList, ...completedList],
+    [sealedList, inProgressList, completedList]
+  );
+  const newList = useMemo(() => {
+    const nowMs = Date.now();
+    return allContractList.filter((b) => {
+      const t = new Date(b.updatedAt || b.createdAt || 0).getTime();
+      return Number.isFinite(t) && nowMs - t < ADMIN_NEW_MS;
+    });
+  }, [allContractList]);
 
   const activeList =
-    tab === 'sealed' ? sealedList : tab === 'inProgress' ? inProgressList : completedList;
+    tab === 'new'
+      ? newList
+      : tab === 'sealed'
+        ? sealedList
+        : tab === 'inProgress'
+          ? inProgressList
+          : completedList;
 
   const emailMap = useOwnerEmailMap(bookings);
 
@@ -77,11 +98,13 @@ export default function AdminContractsPage() {
   );
 
   const emptyMsg =
-    tab === 'sealed'
-      ? '계약체결(결제·확정, 숙박 전) 예약이 없습니다.'
-      : tab === 'inProgress'
-        ? '계약시작(체크인~체크아웃 진행 중) 예약이 없습니다.'
-        : '계약종료(체크아웃 이후·이용완료) 예약이 없습니다.';
+    tab === 'new'
+      ? '신규 계약 건이 없습니다.'
+      : tab === 'sealed'
+        ? '계약체결(결제·확정, 숙박 전) 예약이 없습니다.'
+        : tab === 'inProgress'
+          ? '계약시작(체크인~체크아웃 진행 중) 예약이 없습니다.'
+          : '계약종료(체크아웃 이후·이용완료) 예약이 없습니다.';
 
   const column = (list: BookingData[], body: ReactNode) => (
     <div className="flex min-h-0 max-h-[min(75vh,920px)] flex-col overflow-y-auto rounded-lg border border-slate-200 bg-slate-50/40">
@@ -94,6 +117,14 @@ export default function AdminContractsPage() {
       </div>
     </div>
   );
+
+  useEffect(() => {
+    if (tab !== 'new') return;
+    void (async () => {
+      await acknowledgeCurrentNewContracts();
+      refreshAdminBadges();
+    })();
+  }, [tab]);
 
   return (
     <AdminRouteGuard>
@@ -128,7 +159,9 @@ export default function AdminContractsPage() {
               {t.label}
               <span className="ml-1 tabular-nums opacity-80">
                 (
-                {t.id === 'sealed'
+                {t.id === 'new'
+                  ? newList.length
+                  : t.id === 'sealed'
                   ? sealedList.length
                   : t.id === 'inProgress'
                     ? inProgressList.length
@@ -152,7 +185,7 @@ export default function AdminContractsPage() {
             className="w-full max-w-md rounded-md border border-slate-200 bg-white px-3 py-2 text-sm placeholder:text-slate-400"
           />
           <p className="mt-1 text-xs text-slate-500">
-            선택한 탭(계약체결·계약시작·계약종료) 안에서만 검색됩니다.
+            선택한 탭(신규·계약체결·계약시작·계약종료) 안에서만 검색됩니다.
           </p>
         </div>
 

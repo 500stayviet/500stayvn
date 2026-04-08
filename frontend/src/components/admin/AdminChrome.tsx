@@ -7,10 +7,12 @@ import { LogOut, UserCog } from 'lucide-react';
 import { ADMIN_NAV_ITEMS, type AdminNavItem } from '@/lib/adminNav';
 import { adminHasPermission } from '@/lib/adminPermissions';
 import { useAdminMe } from '@/contexts/AdminMeContext';
+import { acknowledgeCurrentRecentAudit } from '@/lib/adminAckState';
 import {
   ADMIN_BADGES_REFRESH_EVENT,
   badgeCountForNav,
   fetchAdminBadgeCounts,
+  refreshAdminBadges,
   type AdminBadgeCounts,
 } from '@/lib/adminBadgeCounts';
 import { logoutAdmin } from '@/lib/api/adminAuth';
@@ -44,11 +46,13 @@ const AdminNavLinks = memo(function AdminNavLinks({
   pathname,
   badgeByHref,
   items,
+  onItemClick,
 }: {
   compact: boolean;
   pathname: string | null;
   badgeByHref: Map<string, number> | null;
   items: AdminNavItem[];
+  onItemClick?: (href: string) => void;
 }) {
   return (
     <>
@@ -59,6 +63,7 @@ const AdminNavLinks = memo(function AdminNavLinks({
           <Link
             key={item.href}
             href={item.href}
+            onClick={() => onItemClick?.(item.href)}
             className={`inline-flex items-center rounded-md font-medium transition-colors ${
               compact
                 ? `shrink-0 whitespace-nowrap px-2.5 py-1.5 text-xs ${
@@ -124,6 +129,28 @@ export default function AdminChrome({ children }: { children: React.ReactNode })
     router.replace('/admin/login');
   }, [router]);
 
+  const onNavItemClick = useCallback(
+    (href: string) => {
+      if (typeof window === 'undefined') return;
+      if (href === '/admin/audit') {
+        // 즉시 UX 반영: 감사 메뉴 누르는 순간 배지 제거
+        setBadges((prev) => (prev ? { ...prev, auditRecent: 0 } : prev));
+        acknowledgeCurrentRecentAudit();
+        refreshAdminBadges();
+        window.dispatchEvent(new CustomEvent('admin-audit-reset-tab'));
+        return;
+      }
+      if (href === '/admin/kyc') {
+        window.dispatchEvent(new CustomEvent('admin-kyc-reset-tab'));
+        return;
+      }
+      if (href === '/admin/refunds') {
+        window.dispatchEvent(new CustomEvent('admin-refunds-reset-tab'));
+      }
+    },
+    [setBadges]
+  );
+
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-50 border-b border-slate-200 bg-white shadow-sm">
@@ -143,6 +170,7 @@ export default function AdminChrome({ children }: { children: React.ReactNode })
               pathname={pathname}
               badgeByHref={badgeByHref}
               items={navItems}
+              onItemClick={onNavItemClick}
             />
             {me?.isSuperAdmin ? (
               <Link
@@ -175,7 +203,13 @@ export default function AdminChrome({ children }: { children: React.ReactNode })
             className="mx-auto flex max-w-[1600px] gap-1 overflow-x-auto px-4 py-2"
             aria-label="관리자 메뉴"
           >
-            <AdminNavLinks compact pathname={pathname} badgeByHref={badgeByHref} items={navItems} />
+            <AdminNavLinks
+              compact
+              pathname={pathname}
+              badgeByHref={badgeByHref}
+              items={navItems}
+              onItemClick={onNavItemClick}
+            />
             {me?.isSuperAdmin ? (
               <Link
                 href="/admin/admin-accounts"
