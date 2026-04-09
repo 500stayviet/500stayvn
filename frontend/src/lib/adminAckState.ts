@@ -37,6 +37,30 @@ const KEY_CONTRACT_NEW_BOOKING_IDS = 'admin_ack_contract_new_booking_ids_v1';
 /** 환불 신규(24h) 탭에서 확인한 bookingId */
 const KEY_REFUND_NEW_BOOKING_IDS = 'admin_ack_refund_new_booking_ids_v1';
 
+type AckCategory =
+  | 'users.new'
+  | 'properties.new'
+  | 'settlement.pending'
+  | 'settlement.request'
+  | 'audit.recent'
+  | 'kyc.new'
+  | 'contracts.new'
+  | 'refunds.new';
+
+const KEY_TO_CATEGORY: Record<string, AckCategory> = {
+  [KEY_USER_UIDS]: 'users.new',
+  [KEY_PROP_IDS]: 'properties.new',
+  [KEY_SETTLEMENT_PENDING_BOOKINGS]: 'settlement.pending',
+  [KEY_SETTLEMENT_REQUEST_BOOKINGS]: 'settlement.request',
+  [KEY_AUDIT_RECENT_KEYS]: 'audit.recent',
+  [KEY_KYC_NEW_UIDS]: 'kyc.new',
+  [KEY_CONTRACT_NEW_BOOKING_IDS]: 'contracts.new',
+  [KEY_REFUND_NEW_BOOKING_IDS]: 'refunds.new',
+};
+
+const ackCache = new Map<string, Set<string>>();
+const ackHydrated = new Set<string>();
+
 function readPropsRaw(): PropertyData[] {
   if (typeof window === 'undefined' || typeof localStorage === 'undefined') return [];
   try {
@@ -49,10 +73,18 @@ function readPropsRaw(): PropertyData[] {
 
 function readIdSet(key: string): Set<string> {
   if (typeof window === 'undefined') return new Set();
+  const cached = ackCache.get(key);
+  if (cached) return new Set(cached);
   try {
     const raw = localStorage.getItem(key);
     const arr = raw ? (JSON.parse(raw) as string[]) : [];
-    return new Set(Array.isArray(arr) ? arr : []);
+    const set = new Set(Array.isArray(arr) ? arr : []);
+    ackCache.set(key, set);
+    if (!ackHydrated.has(key)) {
+      ackHydrated.add(key);
+      void hydrateAckSetFromServer(key);
+    }
+    return new Set(set);
   } catch {
     return new Set();
   }
@@ -60,7 +92,44 @@ function readIdSet(key: string): Set<string> {
 
 function writeIdSet(key: string, ids: Set<string>): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(key, JSON.stringify([...ids]));
+  const next = new Set(ids);
+  ackCache.set(key, next);
+  localStorage.setItem(key, JSON.stringify([...next]));
+  void pushAckSetToServer(key, [...next]);
+}
+
+async function hydrateAckSetFromServer(key: string): Promise<void> {
+  const category = KEY_TO_CATEGORY[key];
+  if (!category || typeof window === 'undefined') return;
+  try {
+    const res = await fetch(`/api/admin/ack-state?category=${encodeURIComponent(category)}`, {
+      credentials: 'include',
+      cache: 'no-store',
+    });
+    if (!res.ok) return;
+    const data = (await res.json()) as { ids?: string[] };
+    const list = Array.isArray(data.ids) ? data.ids : [];
+    const set = new Set(list.filter(Boolean));
+    ackCache.set(key, set);
+    localStorage.setItem(key, JSON.stringify([...set]));
+  } catch {
+    /* ignore */
+  }
+}
+
+async function pushAckSetToServer(key: string, ids: string[]): Promise<void> {
+  const category = KEY_TO_CATEGORY[key];
+  if (!category || typeof window === 'undefined' || ids.length === 0) return;
+  try {
+    await fetch('/api/admin/ack-state', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ category, ids }),
+    });
+  } catch {
+    /* ignore */
+  }
 }
 
 /** 상단 배지: 아직 '신규' 탭에서 확인하지 않은 신규 계정 수 */

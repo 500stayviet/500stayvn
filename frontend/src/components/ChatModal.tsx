@@ -26,6 +26,20 @@ interface ChatModalProps {
   onClose: () => void;
 }
 
+function areMessagesEquivalent(a: ChatMessageType[], b: ChatMessageType[]): boolean {
+  if (a.length !== b.length) return false;
+  if (a.length === 0) return true;
+  const aLast = a[a.length - 1];
+  const bLast = b[b.length - 1];
+  if (!aLast || !bLast) return false;
+  return (
+    aLast.id === bLast.id &&
+    aLast.isRead === bLast.isRead &&
+    aLast.content === bLast.content &&
+    aLast.createdAt === bLast.createdAt
+  );
+}
+
 export default function ChatModal({ roomId, onClose }: ChatModalProps) {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
@@ -79,8 +93,8 @@ export default function ChatModal({ roomId, onClose }: ChatModalProps) {
 
     const unsubscribe = subscribeToChatMessages(roomId, (msgs) => {
       setMessages(prev => {
-        // 메시지 내용이 완전히 같으면 업데이트하지 않아 리렌더링 및 스크롤 튕김 방지
-        if (JSON.stringify(prev) === JSON.stringify(msgs)) return prev;
+        // 무거운 deep stringify 대신 핵심 변화만 비교해 리렌더링 비용 절감
+        if (areMessagesEquivalent(prev, msgs)) return prev;
         return msgs;
       });
       // 읽음 처리

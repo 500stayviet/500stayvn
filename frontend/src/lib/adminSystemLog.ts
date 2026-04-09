@@ -39,6 +39,7 @@ const ALLOWED_SNAPSHOT_KEYS = new Set([
 ]);
 
 let ephemeralLogs: AdminSystemLogEntry[] = [];
+let persistentHydrated = false;
 
 function dispatchLogNotify(): void {
   try {
@@ -95,6 +96,67 @@ function writePersistent(entries: AdminSystemLogEntry[]): void {
   }
 }
 
+async function hydratePersistentFromServer(): Promise<void> {
+  if (typeof window === 'undefined') return;
+  if (persistentHydrated) return;
+  persistentHydrated = true;
+  try {
+    const r = await fetch('/api/admin/system-logs?limit=1000', {
+      credentials: 'include',
+      cache: 'no-store',
+    });
+    if (!r.ok) return;
+    const j = (await r.json()) as {
+      rows?: Array<{
+        id: string;
+        ts: string | number;
+        severity: AdminLogSeverity;
+        message: string;
+        category?: string | null;
+        bookingId?: string | null;
+        ownerId?: string | null;
+        snapshotJson?: Record<string, string> | null;
+      }>;
+    };
+    const rows = Array.isArray(j.rows) ? j.rows : [];
+    const mapped: AdminSystemLogEntry[] = rows.map((r0) => ({
+      id: String(r0.id),
+      ts: typeof r0.ts === 'number' ? r0.ts : new Date(r0.ts).getTime(),
+      severity: r0.severity,
+      message: String(r0.message || ''),
+      category: r0.category || undefined,
+      bookingId: r0.bookingId || undefined,
+      ownerId: r0.ownerId || undefined,
+      snapshot: r0.snapshotJson || undefined,
+    }));
+    writePersistent(mapped);
+    dispatchLogNotify();
+  } catch {
+    /* ignore */
+  }
+}
+
+async function pushPersistentToServer(entry: AdminSystemLogEntry): Promise<void> {
+  if (typeof window === 'undefined') return;
+  try {
+    await fetch('/api/admin/system-logs', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        severity: entry.severity,
+        message: entry.message,
+        category: entry.category,
+        bookingId: entry.bookingId,
+        ownerId: entry.ownerId,
+        snapshot: entry.snapshot,
+      }),
+    });
+  } catch {
+    /* ignore */
+  }
+}
+
 export type LogAdminSystemEventInput = {
   severity: AdminLogSeverity;
   message: string;
@@ -132,6 +194,7 @@ export function logAdminSystemEvent(input: LogAdminSystemEventInput): void {
     if (persist) {
       const next = [entry, ...readPersistent()].slice(0, MAX_PERSIST);
       writePersistent(next);
+      void pushPersistentToServer(entry);
     } else {
       ephemeralLogs = [entry, ...ephemeralLogs].slice(0, MAX_EPHEMERAL);
     }
@@ -147,11 +210,13 @@ export function getEphemeralAdminLogs(): AdminSystemLogEntry[] {
 }
 
 export function getPersistentAdminLogs(): AdminSystemLogEntry[] {
+  void hydratePersistentFromServer();
   return readPersistent();
 }
 
 /** 화면용: 영구 + 휘발 병합, 최신순 */
 export function getMergedAdminLogsForView(): AdminSystemLogEntry[] {
+  void hydratePersistentFromServer();
   const p = readPersistent();
   const e = [...ephemeralLogs];
   return [...p, ...e].sort((a, b) => b.ts - a.ts);
@@ -170,6 +235,12 @@ export function clearPersistentAdminLogs(): void {
   try {
     if (typeof window === 'undefined') return;
     localStorage.removeItem(ADMIN_SYSTEM_LOG_STORAGE_KEY);
+    void fetch('/api/admin/system-logs', {
+      method: 'DELETE',
+      credentials: 'include',
+    }).catch(() => {
+      /* ignore */
+    });
     dispatchLogNotify();
   } catch {
     /* ignore */

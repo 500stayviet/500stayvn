@@ -159,6 +159,46 @@ async function syncBookingsNow(snapshot: BookingData[]): Promise<void> {
   }
 }
 
+async function createPaymentMetaForBooking(booking: BookingData): Promise<void> {
+  if (typeof window === 'undefined') return;
+  try {
+    await fetch('/api/app/payments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        bookingId: booking.id,
+        userId: booking.guestId,
+        amount: booking.totalPrice,
+        currency: booking.priceUnit,
+        status: booking.paymentStatus || 'pending',
+        metaJson: {
+          propertyId: booking.propertyId,
+          ownerId: booking.ownerId,
+          nights: booking.nights,
+        },
+      }),
+    });
+  } catch (e) {
+    console.warn('[payments] create meta failed', e);
+  }
+}
+
+async function patchPaymentMetaByBooking(
+  bookingId: string,
+  patch: Record<string, unknown>
+): Promise<void> {
+  if (typeof window === 'undefined') return;
+  try {
+    await fetch(`/api/app/payments/${encodeURIComponent(bookingId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    });
+  } catch (e) {
+    console.warn('[payments] patch meta failed', e);
+  }
+}
+
 export async function refreshBookingsFromServer(): Promise<boolean> {
   if (typeof window === 'undefined') return false;
   try {
@@ -500,6 +540,7 @@ export async function createBooking(
   bookings.push(newBooking);
   writeBookingsArray(bookings);
   await syncBookingsNow(bookings);
+  await createPaymentMetaForBooking(newBooking);
 
   return newBooking;
 }
@@ -527,6 +568,10 @@ export async function completePayment(
 
   writeBookingsArray(bookings);
   await syncBookingsNow(bookings);
+  await patchPaymentMetaByBooking(bookingId, {
+    status: 'paid',
+    provider: paymentMethod || null,
+  });
   return bookings[index];
 }
 
@@ -686,6 +731,11 @@ export async function approveRefundBooking(bookingId: string, adminId: string): 
   };
   writeBookingsArray(bookings);
   await syncBookingsNow(bookings);
+  await patchPaymentMetaByBooking(bookingId, {
+    status: 'refunded',
+    refundStatus: 'approved',
+    refundAmount: b.totalPrice,
+  });
 
   const { appendRefundLedgerEntry } = await import('@/lib/api/adminFinance');
   appendRefundLedgerEntry({

@@ -37,6 +37,7 @@ model User {
   lessorProfile LessorProfile?
   properties    Property[]
   sessions      Session[]
+  paymentRecords PaymentRecord[]
 }
 
 model Account {
@@ -122,6 +123,7 @@ model Booking {
   updatedAt    DateTime @updatedAt
   guest        User     @relation(fields: [guestId], references: [id])
   property     Property @relation(fields: [propertyId], references: [id])
+  paymentRecords PaymentRecord[]
 }
 
 model ChatRoom {
@@ -139,6 +141,33 @@ model Message {
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
   room      ChatRoom @relation(fields: [roomId], references: [id])
+}
+
+model PaymentRecord {
+  id                String   @id @default(cuid())
+  bookingId         String
+  userId            String
+  amount            Float
+  currency          String   @default("vnd")
+  status            String   @default("pending")
+  provider          String?
+  externalPaymentId String?
+  idempotencyKey    String?
+  webhookEventId    String?
+  refundStatus      String?
+  refundAmount      Float?
+  metaJson          Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  booking           Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId, createdAt])
+  @@index([userId, createdAt])
+  @@index([status, updatedAt])
+  @@unique([externalPaymentId])
+  @@unique([idempotencyKey])
+  @@unique([webhookEventId])
 }
 
 model LessorProfile {
@@ -194,4 +223,44 @@ model AdminSharedMemo {
   createdAt  DateTime @default(now())
 
   @@index([targetType, targetId, category, createdAt])
+}
+
+model AdminModerationAudit {
+  id         String   @id @default(cuid())
+  action     String
+  targetType String
+  targetId   String
+  ownerId    String?
+  reason     String?
+  createdBy  String
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt, action])
+  @@index([targetType, targetId, createdAt])
+}
+
+model AdminAckState {
+  id            String   @id @default(cuid())
+  adminUsername String
+  category      String
+  targetId      String
+  acknowledgedAt DateTime @default(now())
+
+  @@unique([adminUsername, category, targetId])
+  @@index([adminUsername, category, acknowledgedAt])
+}
+
+model AdminSystemLog {
+  id          String   @id @default(cuid())
+  ts          DateTime @default(now())
+  severity    String
+  message     String
+  category    String?
+  bookingId   String?
+  ownerId     String?
+  snapshotJson Json?
+  createdBy   String?
+
+  @@index([ts, severity])
+  @@index([category, ts])
 }

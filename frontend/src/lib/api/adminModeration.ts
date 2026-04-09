@@ -6,6 +6,7 @@ import { isPropertyNew, isUserNew } from '@/lib/adminNewUtils';
 import { PropertyData } from '@/types/property';
 
 const MODERATION_AUDIT_KEY = 'admin_moderation_audit_v1';
+let moderationAuditCache: ModerationAuditEntry[] | null = null;
 
 export interface ModerationAuditEntry {
   id: string;
@@ -29,10 +30,13 @@ function genId(prefix: string): string {
 }
 
 function readModerationAudits(): ModerationAuditEntry[] {
+  if (moderationAuditCache) return moderationAuditCache;
   if (typeof window === 'undefined' || typeof localStorage === 'undefined') return [];
   try {
     const raw = localStorage.getItem(MODERATION_AUDIT_KEY);
-    return raw ? (JSON.parse(raw) as ModerationAuditEntry[]) : [];
+    const rows = raw ? (JSON.parse(raw) as ModerationAuditEntry[]) : [];
+    moderationAuditCache = rows;
+    return rows;
   } catch {
     return [];
   }
@@ -40,7 +44,22 @@ function readModerationAudits(): ModerationAuditEntry[] {
 
 function saveModerationAudits(rows: ModerationAuditEntry[]): void {
   if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
+  moderationAuditCache = rows;
   localStorage.setItem(MODERATION_AUDIT_KEY, JSON.stringify(rows));
+}
+
+async function refreshModerationAuditsFromServer(): Promise<void> {
+  if (typeof window === 'undefined') return;
+  try {
+    const r = await fetch('/api/admin/moderation-audits', { credentials: 'include', cache: 'no-store' });
+    if (!r.ok) return;
+    const j = (await r.json()) as { rows?: ModerationAuditEntry[] };
+    if (!Array.isArray(j.rows)) return;
+    const asc = [...j.rows].reverse();
+    saveModerationAudits(asc);
+  } catch {
+    /* ignore */
+  }
 }
 
 function appendModerationAudit(
@@ -52,7 +71,7 @@ function appendModerationAudit(
   ownerId?: string
 ): void {
   const rows = readModerationAudits();
-  rows.push({
+  const entry = {
     id: genId('mad'),
     action,
     targetType,
@@ -61,8 +80,23 @@ function appendModerationAudit(
     reason,
     createdBy,
     createdAt: new Date().toISOString(),
-  });
+  };
+  rows.push(entry);
   saveModerationAudits(rows);
+  void fetch('/api/admin/moderation-audits', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: entry.action,
+      targetType: entry.targetType,
+      targetId: entry.targetId,
+      ownerId: entry.ownerId,
+      reason: entry.reason,
+    }),
+  }).catch(() => {
+    /* ignore */
+  });
 }
 
 function readAllPropertiesRaw(): PropertyData[] {
@@ -76,6 +110,7 @@ function saveAllPropertiesRaw(rows: PropertyData[]): void {
 }
 
 export function getModerationAudits(): ModerationAuditEntry[] {
+  void refreshModerationAuditsFromServer();
   return readModerationAudits().slice().reverse();
 }
 
