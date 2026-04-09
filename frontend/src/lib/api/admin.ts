@@ -1,8 +1,8 @@
 /**
- * 관리자용 API — LocalStorage 기반 KYC 조회·CSV (Firebase DB 미사용)
+ * 관리자용 API — PostgreSQL 원장 기반 KYC 조회·CSV
  */
 
-import { getUsers } from './auth'; // 로컬 저장소 유저 데이터를 가져옵니다.
+import type { UserData } from './auth';
 
 /**
  * KYC 데이터 인터페이스
@@ -23,13 +23,20 @@ export interface KYCUserData {
   verificationStatus?: string;
 }
 
+async function loadUsersForKyc(): Promise<UserData[]> {
+  if (typeof window === 'undefined') return [];
+  const res = await fetch('/api/app/users', { cache: 'no-store' });
+  if (!res.ok) throw new Error(`users_api_${res.status}`);
+  const data = (await res.json()) as { users?: UserData[] };
+  return Array.isArray(data.users) ? data.users : [];
+}
+
 /**
- * 모든 KYC 사용자 데이터 가져오기 (LocalStorage 기반)
+ * 모든 KYC 사용자 데이터 가져오기 (PostgreSQL 원장 기반)
  */
 export async function getAllKYCUsers(): Promise<KYCUserData[]> {
   try {
-    // 1. 로컬 저장소에서 모든 유저 목록을 가져옵니다.
-    const users = getUsers();
+    const users = await loadUsersForKyc();
     
     // 2. 관리자 페이지 형식에 맞게 데이터를 매핑합니다.
     const kycUsers: KYCUserData[] = users.map(user => {
@@ -55,7 +62,7 @@ export async function getAllKYCUsers(): Promise<KYCUserData[]> {
     return kycUsers;
   } catch (error) {
     console.error('Error fetching KYC users:', error);
-    return []; // 에러 시 빈 배열 반환하여 빌드 중단 방지
+    return [];
   }
 }
 

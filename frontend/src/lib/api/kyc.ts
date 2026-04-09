@@ -61,35 +61,29 @@ async function completeKYCStep(
 
   const result = await response.json();
   
-  // LocalStorage에 kyc_steps 업데이트
+  // KYC 진행 상태는 User 원장에도 기록해 관리자/프로필 조회의 단일 진실로 유지
   try {
-    const { notifyUsersStorageChanged } = await import('./auth');
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const userIndex = users.findIndex((u: any) => u.uid === userId);
-    
-    if (userIndex !== -1) {
-      const user = users[userIndex];
-      const kyc_steps = user.kyc_steps || {};
-      
-      // 단계별 업데이트
-      if (step === 1) kyc_steps.step1 = true;
-      if (step === 2) kyc_steps.step2 = true;
-      if (step === 3) kyc_steps.step3 = true;
-      
-      user.kyc_steps = kyc_steps;
-      user.updatedAt = new Date().toISOString();
-      users[userIndex] = user;
-      localStorage.setItem('users', JSON.stringify(users));
-      notifyUsersStorageChanged();
-    }
+    const kycSteps: { step1?: boolean; step2?: boolean; step3?: boolean } = {};
+    if (step >= 1) kycSteps.step1 = true;
+    if (step >= 2) kycSteps.step2 = true;
+    if (step >= 3) kycSteps.step3 = true;
+
+    const userPatch: Record<string, unknown> = { kyc_steps: kycSteps };
+    if (step < 3) userPatch.verification_status = 'pending';
+    if (step === 3) userPatch.verification_status = 'verified';
+
+    await fetch(`/api/app/users/${encodeURIComponent(userId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(userPatch),
+    });
   } catch (error) {
-    console.log('LocalStorage update failed, continuing anyway:', error);
     logAdminSystemEvent({
       severity: 'warning',
       category: 'kyc',
-      message: 'KYC 단계 반영 중 로컬 users 동기화 실패',
+      message: 'KYC 단계 반영 중 users 원장 동기화 실패',
       ownerId: userId,
-      snapshot: { function: 'completeKYCStep', step: String(step) },
+      snapshot: { function: 'completeKYCStep', step: String(step), error: String(error) },
     });
   }
   
@@ -263,9 +257,12 @@ export async function getVerificationStatus(
   uid: string,
 ): Promise<string> {
   try {
-    // 테스트 모드: 항상 'none' 반환
-    // 실제 구현에서는 DB에서 verificationStatus 조회 필요
-    return 'none';
+    const response = await fetch(`/api/app/users/${encodeURIComponent(uid)}`, {
+      cache: 'no-store',
+    });
+    if (!response.ok) return 'none';
+    const user = await response.json();
+    return user?.verification_status || 'none';
   } catch (error) {
     console.error("Error getting verification status:", error);
     return 'none';

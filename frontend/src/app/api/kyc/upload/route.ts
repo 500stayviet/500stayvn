@@ -152,44 +152,41 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    // DB 업데이트 (Prisma가 있으면 실제 DB, 없으면 테스트 모드)
-    if (useS3) {
-      const prismaClient = await getPrisma();
-      if (prismaClient) {
-        try {
-          // 실제 DB 업데이트
-          const user = await prismaClient.user.findUnique({
-            where: { id: userId },
-          });
+    // 스토리지(S3/로컬)와 무관하게 KYC 메타는 항상 PostgreSQL 원장에 기록
+    const prismaClient = await getPrisma();
+    if (prismaClient) {
+      try {
+        const user = await prismaClient.user.findUnique({
+          where: { id: userId },
+        });
 
-          if (!user) {
-            return NextResponse.json(
-              { error: "User not found" },
-              { status: 404 },
-            );
-          }
-
-          let lessorProfile = await prismaClient.lessorProfile.findUnique({
-            where: { userId },
-          });
-
-          if (!lessorProfile) {
-            lessorProfile = await prismaClient.lessorProfile.create({
-              data: {
-                userId,
-                phoneNumber: user.email || "",
-              },
-            });
-          }
-
-          await prismaClient.lessorProfile.update({
-            where: { userId },
-            data: updateData,
-          });
-        } catch (dbError) {
-          console.error("Database error:", dbError);
-          // DB 오류가 있어도 파일 업로드는 성공했으므로 계속 진행
+        if (!user) {
+          return NextResponse.json(
+            { error: "User not found" },
+            { status: 404 },
+          );
         }
+
+        let lessorProfile = await prismaClient.lessorProfile.findUnique({
+          where: { userId },
+        });
+
+        if (!lessorProfile) {
+          lessorProfile = await prismaClient.lessorProfile.create({
+            data: {
+              userId,
+              phoneNumber: user.email || "",
+            },
+          });
+        }
+
+        await prismaClient.lessorProfile.update({
+          where: { userId },
+          data: updateData,
+        });
+      } catch (dbError) {
+        console.error("Database error:", dbError);
+        // DB 오류가 있어도 파일 업로드는 성공했으므로 계속 진행
       }
     }
 
@@ -262,32 +259,30 @@ export async function PUT(request: NextRequest) {
         return NextResponse.json({ error: "Invalid step" }, { status: 400 });
     }
 
-    // DB 업데이트 (Prisma가 있으면 실제 DB, 없으면 테스트 모드)
-    if (s3Client) {
-      const prismaClient = await getPrisma();
-      if (prismaClient) {
-        try {
-          let lessorProfile = await prismaClient.lessorProfile.findUnique({
-            where: { userId },
-          });
+    // 스토리지 모드와 무관하게 KYC 단계 메타는 DB에 기록
+    const prismaClient = await getPrisma();
+    if (prismaClient) {
+      try {
+        let lessorProfile = await prismaClient.lessorProfile.findUnique({
+          where: { userId },
+        });
 
-          if (!lessorProfile) {
-            lessorProfile = await prismaClient.lessorProfile.create({
-              data: {
-                userId,
-                phoneNumber: "",
-              },
-            });
-          }
-
-          await prismaClient.lessorProfile.update({
-            where: { userId },
-            data: updateData,
+        if (!lessorProfile) {
+          lessorProfile = await prismaClient.lessorProfile.create({
+            data: {
+              userId,
+              phoneNumber: "",
+            },
           });
-        } catch (dbError) {
-          console.error("Database error:", dbError);
-          // DB 오류가 있어도 KYC 단계 완료는 성공
         }
+
+        await prismaClient.lessorProfile.update({
+          where: { userId },
+          data: updateData,
+        });
+      } catch (dbError) {
+        console.error("Database error:", dbError);
+        // DB 오류가 있어도 KYC 단계 완료는 성공
       }
     }
 

@@ -1,7 +1,5 @@
 /**
- * Bookings API Service (LocalStorage 버전)
- * 
- * 예약 데이터를 관리하는 서비스
+ * Bookings API Service (PostgreSQL 원장 + 클라이언트 캐시)
  */
 
 import { toISODateString } from '../utils/dateUtils';
@@ -120,6 +118,7 @@ export function readBookingsArray(): BookingData[] {
 }
 
 let bookingsFlushTimer: ReturnType<typeof setTimeout> | null = null;
+let bookingsHydrationPromise: Promise<void> | null = null;
 
 export function writeBookingsArray(all: BookingData[]): void {
   bookingsCache = all;
@@ -145,6 +144,19 @@ export function writeBookingsArray(all: BookingData[]): void {
       body: JSON.stringify({ bookings: snapshot }),
     }).catch((e) => console.warn('[bookings] PUT sync failed', e));
   }, 500);
+}
+
+async function syncBookingsNow(snapshot: BookingData[]): Promise<void> {
+  if (typeof window === 'undefined') return;
+  try {
+    await fetch('/api/app/bookings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bookings: snapshot }),
+    });
+  } catch (e) {
+    console.warn('[bookings] immediate PUT sync failed', e);
+  }
 }
 
 export async function refreshBookingsFromServer(): Promise<boolean> {
@@ -225,6 +237,11 @@ export async function getAllBookings(): Promise<BookingData[]> {
   if (typeof window === 'undefined' || typeof localStorage === 'undefined') return [];
 
   try {
+    if (!bookingsHydrationPromise) {
+      bookingsHydrationPromise = refreshBookingsFromServer().then(() => undefined);
+    }
+    await bookingsHydrationPromise;
+
     const bookings = readBookingsArray();
     let changed = false;
     for (const b of bookings) {
@@ -482,6 +499,7 @@ export async function createBooking(
 
   bookings.push(newBooking);
   writeBookingsArray(bookings);
+  await syncBookingsNow(bookings);
 
   return newBooking;
 }
@@ -508,6 +526,7 @@ export async function completePayment(
   };
 
   writeBookingsArray(bookings);
+  await syncBookingsNow(bookings);
   return bookings[index];
 }
 
@@ -550,6 +569,7 @@ export async function confirmBooking(bookingId: string): Promise<BookingData | n
   }
 
   writeBookingsArray(bookings);
+  await syncBookingsNow(bookings);
   return bookings[index];
 }
 
@@ -614,6 +634,7 @@ export async function cancelBooking(
   }
 
   writeBookingsArray(bookings);
+  await syncBookingsNow(bookings);
   return { booking: bookings[index], relistResult };
 }
 
@@ -630,6 +651,7 @@ export async function deleteBooking(bookingId: string): Promise<void> {
     if (filtered.length === bookings.length) return;
 
     writeBookingsArray(filtered);
+    await syncBookingsNow(filtered);
 
     try {
       const { purgeSettlementStateForDeletedBooking } = await import('./adminFinance');
@@ -663,6 +685,7 @@ export async function approveRefundBooking(bookingId: string, adminId: string): 
     updatedAt: new Date().toISOString(),
   };
   writeBookingsArray(bookings);
+  await syncBookingsNow(bookings);
 
   const { appendRefundLedgerEntry } = await import('@/lib/api/adminFinance');
   appendRefundLedgerEntry({
@@ -694,5 +717,6 @@ export async function setChatRoomId(
   };
 
   writeBookingsArray(bookings);
+  await syncBookingsNow(bookings);
   return bookings[index];
 }
