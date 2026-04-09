@@ -44,6 +44,7 @@ export async function POST(request: NextRequest) {
       account = await prisma.adminAccount.create({
         data: {
           username: boot.username,
+          nickname: '',
           passwordHash: hashAdminPassword(password),
           isSuperAdmin: true,
           permissions: {},

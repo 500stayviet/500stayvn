@@ -1,5 +1,7 @@
 # Firebase 백엔드 중심 아키텍처 통합 가이드
 
+> **2025년 기준 코드 상태:** 앱 데이터는 **LocalStorage / PostgreSQL**을 쓰고, Firebase는 **전화 인증(Auth)만** 사용합니다. 아래 문서의 **Firestore·실시간 리스너** 설명은 과거 기획용으로, 현재 프론트 구현과 일치하지 않을 수 있습니다. 최신 Firebase 안내는 `FIREBASE_SETUP.md`를 참고하세요.
+
 ## 🎯 완료된 작업
 
 ### 1. Gemini 번역 API 연동 ✅

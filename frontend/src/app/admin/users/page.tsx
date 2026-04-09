@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
 import { acknowledgeCurrentNewUsers } from '@/lib/adminAckState';
 import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
@@ -19,6 +20,7 @@ const FILTER_TABS: { id: AdminUserFilter; label: string }[] = [
 ];
 
 export default function AdminUsersPage() {
+  const router = useRouter();
   const { me: admin } = useAdminMe();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<AdminUserFilter>('all');
@@ -107,15 +109,14 @@ export default function AdminUsersPage() {
               </thead>
               <tbody>
                 {pagedRows.map((u) => (
-                  <tr key={u.uid} className="border-b border-slate-100 hover:bg-slate-50/80">
-                    <td className="px-3 py-2 font-medium text-slate-900">
-                      <Link
-                        href={`/admin/users/${encodeURIComponent(u.uid)}`}
-                        className="text-blue-700 hover:underline"
-                      >
-                        {u.displayName || '—'}
-                      </Link>
-                    </td>
+                  <tr
+                    key={u.uid}
+                    className="cursor-pointer border-b border-slate-100 hover:bg-slate-50/80"
+                    onClick={() => {
+                      router.push(`/admin/users/${encodeURIComponent(u.uid)}`);
+                    }}
+                  >
+                    <td className="px-3 py-2 font-medium text-slate-900">{u.displayName || '—'}</td>
                     <td className="max-w-[200px] truncate px-3 py-2 text-slate-700">{u.email}</td>
                     <td className="max-w-[120px] truncate px-3 py-2 text-slate-700">{u.phoneNumber || '—'}</td>
                     <td className="max-w-[180px] truncate font-mono text-xs text-slate-600">{u.uid}</td>
@@ -130,20 +131,17 @@ export default function AdminUsersPage() {
                     </td>
                     <td className="px-3 py-2 text-right">
                       <div className="flex flex-wrap items-center justify-end gap-1.5">
-                        <Link
-                          href={`/admin/users/${encodeURIComponent(u.uid)}`}
-                          className="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-800 hover:bg-slate-50"
-                        >
-                          상세
-                        </Link>
                         {u.blocked ? (
                           <button
                             type="button"
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               if (!admin?.username) return;
-                              setUserBlocked(u.uid, false, admin.username);
-                              setTick((v) => v + 1);
-                              refreshAdminBadges();
+                              void (async () => {
+                                await setUserBlocked(u.uid, false, admin.username);
+                                setTick((v) => v + 1);
+                                refreshAdminBadges();
+                              })();
                             }}
                             className="rounded-md bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-blue-700"
                           >
@@ -152,13 +150,16 @@ export default function AdminUsersPage() {
                         ) : (
                           <button
                             type="button"
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               if (!admin?.username) return;
                               const reason =
                                 window.prompt('차단 사유를 입력하세요.', '관리자 차단') || '관리자 차단';
-                              setUserBlocked(u.uid, true, admin!.username, reason);
-                              setTick((v) => v + 1);
-                              refreshAdminBadges();
+                              void (async () => {
+                                await setUserBlocked(u.uid, true, admin!.username, reason);
+                                setTick((v) => v + 1);
+                                refreshAdminBadges();
+                              })();
                             }}
                             className="rounded-md bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-100"
                           >

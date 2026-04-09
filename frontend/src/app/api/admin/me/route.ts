@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     id: admin.id,
     username: admin.username,
+    nickname: admin.nickname,
     isSuperAdmin: admin.isSuperAdmin,
     permissions: normalizePermissionMap(admin.permissions),
   });

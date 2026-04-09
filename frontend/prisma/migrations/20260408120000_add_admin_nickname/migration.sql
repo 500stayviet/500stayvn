@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "AdminAccount" ADD COLUMN IF NOT EXISTS "nickname" TEXT NOT NULL DEFAULT '';

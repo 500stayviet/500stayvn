@@ -1,0 +1,44 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+
+/**
+ * 매물 영구 삭제: 관련 예약·채팅·메시지 정리 후 Property 삭제
+ */
+export async function DELETE(
+  _request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const { id } = await context.params;
+  const pid = (id || '').trim();
+  if (!pid) return NextResponse.json({ error: 'invalid_id' }, { status: 400 });
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const bookings = await tx.booking.findMany({
+        where: { propertyId: pid },
+        select: { id: true },
+      });
+      const bidList = bookings.map((b) => b.id);
+
+      if (bidList.length > 0) {
+        const rooms = await tx.chatRoom.findMany({
+          where: { bookingId: { in: bidList } },
+          select: { id: true },
+        });
+        const roomIds = rooms.map((r) => r.id);
+        if (roomIds.length > 0) {
+          await tx.message.deleteMany({ where: { roomId: { in: roomIds } } });
+        }
+        await tx.chatRoom.deleteMany({ where: { bookingId: { in: bidList } } });
+        await tx.booking.deleteMany({ where: { propertyId: pid } });
+      }
+
+      await tx.property.delete({ where: { id: pid } });
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    console.warn('DELETE /api/app/properties/[id]', pid, e);
+    return NextResponse.json({ error: 'delete_failed' }, { status: 409 });
+  }
+}

@@ -1,16 +1,12 @@
 /**
- * LocalStorage Authentication API (임시 버전)
+ * 인증·사용자 API — PostgreSQL 원장 우선, DB 불가 시 LocalStorage 폴백
  *
- * Firebase가 정지된 상태에서 UI/로직 테스트를 위한 임시 구현
- * 브라우저 LocalStorage에 사용자 데이터를 저장하고 관리
+ * KYC 1단계 전화 인증에만 Firebase **Authentication** 클라이언트 SDK를 사용합니다.
  */
 
 import { VerificationStatus, PrivateData } from "@/types/kyc.types";
 import { SupportedLanguage } from "@/lib/api/translation";
 
-/**
- * 사용자 정보 인터페이스
- */
 export interface UserData {
   uid: string;
   email: string;
@@ -30,17 +26,15 @@ export interface UserData {
   };
   createdAt?: string;
   updatedAt?: string;
-  password?: string; // LocalStorage용 (실제로는 해시되어야 하지만 테스트용)
-  deleted?: boolean; // 탈퇴 여부
-  deletedAt?: string; // 탈퇴 일시
-  blocked?: boolean; // 관리자 차단 여부 (복구 가능)
-  blockedAt?: string; // 차단 일시
-  blockedReason?: string; // 차단 사유
+  /** 폴백(로컬) 경로에서만 존재 — 서버 응답에는 포함되지 않음 */
+  password?: string;
+  deleted?: boolean;
+  deletedAt?: string;
+  blocked?: boolean;
+  blockedAt?: string;
+  blockedReason?: string;
 }
 
-/**
- * 회원가입 데이터 인터페이스
- */
 export interface SignUpData {
   email: string;
   password: string;
@@ -50,40 +44,31 @@ export interface SignUpData {
   preferredLanguage?: SupportedLanguage;
 }
 
-/**
- * 임대인 인증 데이터 인터페이스
- */
 export interface OwnerVerificationData {
   fullName: string;
   phoneNumber: string;
 }
 
-/**
- * LocalStorage 키
- */
 const USERS_STORAGE_KEY = "users";
 const CURRENT_USER_KEY = "currentUser";
+const BOOTSTRAP_KEY = "stayviet-user-bootstrap-v1";
 
-/**
- * 간단한 비밀번호 해시 (테스트용)
- */
+let usersCache: UserData[] | null = null;
+
 function simpleHash(password: string): string {
   let hash = 0;
   for (let i = 0; i < password.length; i++) {
     const char = password.charCodeAt(i);
     hash = (hash << 5) - hash + char;
-    hash = hash & hash; // Convert to 32bit integer
+    hash = hash & hash;
   }
   return hash.toString();
 }
 
-/**
- * 사용자 목록 가져오기
- */
-export function getUsers(): UserData[] {
+function readLocalStorageUsersFallback(): UserData[] {
+  if (typeof window === "undefined" || typeof localStorage === "undefined")
+    return [];
   try {
-    if (typeof window === "undefined" || typeof localStorage === "undefined")
-      return [];
     const stored = localStorage.getItem(USERS_STORAGE_KEY);
     return stored ? JSON.parse(stored) : [];
   } catch {
@@ -92,8 +77,96 @@ export function getUsers(): UserData[] {
 }
 
 /**
- * users localStorage가 갱신되었음을 같은 탭·커스텀 리스너에 알립니다.
+ * 사용자 목록 — 서버 동기화 후에는 메모리 캐시, 그 전에는 LocalStorage
  */
+export function getUsers(): UserData[] {
+  if (usersCache !== null) return usersCache;
+  return readLocalStorageUsersFallback();
+}
+
+/**
+ * 캐시 + LocalStorage 미러(레거시·폴백용)
+ */
+export function setUsersCacheAndStorage(users: UserData[]): void {
+  usersCache = users;
+  if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
+    try {
+      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+    } catch {
+      /* ignore */
+    }
+  }
+  notifyUsersStorageChanged();
+}
+
+/**
+ * 서버에서 회원 목록 갱신. 성공 시 true
+ */
+export async function refreshUsersFromServer(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  try {
+    const res = await fetch("/api/app/users", { cache: "no-store" });
+    if (!res.ok) throw new Error(String(res.status));
+    const data = (await res.json()) as { users?: UserData[] };
+    const users = Array.isArray(data.users) ? data.users : [];
+    setUsersCacheAndStorage(users);
+    return true;
+  } catch {
+    usersCache = null;
+    return false;
+  }
+}
+
+/**
+ * 최초 로드: DB가 비어 있고 로컬에만 users가 있으면 import 후 다시 동기화
+ */
+export async function bootstrapUsersFromServer(): Promise<void> {
+  if (typeof window === "undefined") return;
+
+  const ok = await refreshUsersFromServer();
+  if (!ok) return;
+
+  if (localStorage.getItem(BOOTSTRAP_KEY)) return;
+
+  if (getUsers().length > 0) {
+    localStorage.setItem(BOOTSTRAP_KEY, "1");
+    return;
+  }
+
+  const raw = localStorage.getItem(USERS_STORAGE_KEY);
+  if (!raw) {
+    localStorage.setItem(BOOTSTRAP_KEY, "1");
+    return;
+  }
+
+  let local: UserData[] = [];
+  try {
+    local = JSON.parse(raw);
+  } catch {
+    localStorage.setItem(BOOTSTRAP_KEY, "1");
+    return;
+  }
+
+  if (!Array.isArray(local) || local.length === 0) {
+    localStorage.setItem(BOOTSTRAP_KEY, "1");
+    return;
+  }
+
+  try {
+    const res = await fetch("/api/app/users/import", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ users: local }),
+    });
+    if (res.ok) {
+      localStorage.setItem(BOOTSTRAP_KEY, "1");
+      await refreshUsersFromServer();
+    }
+  } catch {
+    /* 네트워크 오류 시 BOOTSTRAP_KEY 미설정 → 이후 재시도 */
+  }
+}
+
 export function notifyUsersStorageChanged(): void {
   try {
     if (typeof window !== "undefined") {
@@ -104,177 +177,190 @@ export function notifyUsersStorageChanged(): void {
   }
 }
 
-/**
- * 사용자 목록 저장하기
- */
+/** @deprecated 서버 원장 사용 후 직접 호출 지양 — 캐시만 갱신할 때 */
 export function saveUsers(users: UserData[]): void {
-  if (typeof window === "undefined" || typeof localStorage === "undefined")
-    return;
-  localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
-  notifyUsersStorageChanged();
+  setUsersCacheAndStorage(users);
 }
 
-/**
- * 현재 로그인한 사용자 ID 가져오기
- */
 export function getCurrentUserId(): string | null {
   if (typeof window === "undefined" || typeof localStorage === "undefined")
     return null;
   return localStorage.getItem(CURRENT_USER_KEY);
 }
 
-/**
- * 현재 로그인한 사용자 정보 가져오기 (동기 버전)
- */
+function setCurrentUser(uid: string | null): void {
+  if (typeof window === "undefined" || typeof localStorage === "undefined")
+    return;
+  if (uid) localStorage.setItem(CURRENT_USER_KEY, uid);
+  else localStorage.removeItem(CURRENT_USER_KEY);
+}
+
 export function getCurrentUserData(): UserData | null;
-/**
- * 특정 사용자 정보 가져오기 (비동기 버전)
- */
 export async function getCurrentUserData(uid: string): Promise<UserData | null>;
 export function getCurrentUserData(
   uid?: string,
 ): UserData | null | Promise<UserData | null> {
   if (uid) {
-    // 비동기 버전 (uid 제공)
     const users = getUsers();
     return Promise.resolve(users.find((u) => u.uid === uid) || null);
-  } else {
-    // 동기 버전 (현재 로그인한 사용자)
-    const userId = getCurrentUserId();
-    if (!userId) return null;
-
-    const users = getUsers();
-    const current = users.find((u) => u.uid === userId) || null;
-    if (current?.blocked) {
-      setCurrentUser(null);
-      return null;
-    }
-    return current;
   }
+  const userId = getCurrentUserId();
+  if (!userId) return null;
+  const users = getUsers();
+  const current = users.find((u) => u.uid === userId) || null;
+  if (!current) {
+    setCurrentUser(null);
+    return null;
+  }
+  if (current.blocked) {
+    setCurrentUser(null);
+    return null;
+  }
+  return current;
 }
 
-/**
- * 현재 사용자 설정
- */
-function setCurrentUser(uid: string | null): void {
-  if (typeof window === "undefined" || typeof localStorage === "undefined")
-    return;
-  if (uid) {
-    localStorage.setItem(CURRENT_USER_KEY, uid);
-  } else {
-    localStorage.removeItem(CURRENT_USER_KEY);
+function signUpLocalFallback(data: SignUpData) {
+  const users = getUsers();
+  if (users.find((u) => u.email === data.email)) {
+    return {
+      error: {
+        code: "auth/email-already-in-use",
+        message: "Email already in use",
+      },
+    };
   }
+  const uid = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const now = new Date().toISOString();
+  const userData: UserData = {
+    uid,
+    email: data.email,
+    password: simpleHash(data.password),
+    ...(data.fullName && { displayName: data.fullName }),
+    ...(data.phoneNumber && { phoneNumber: data.phoneNumber }),
+    ...(data.gender && { gender: data.gender }),
+    ...(data.preferredLanguage && { preferredLanguage: data.preferredLanguage }),
+    role: "user",
+    is_owner: false,
+    verification_status: "none",
+    createdAt: now,
+    updatedAt: now,
+  };
+  users.push(userData);
+  saveUsers(users);
+  setCurrentUser(uid);
+  return {
+    user: {
+      uid,
+      email: data.email,
+      displayName: data.fullName || null,
+      updateProfile: async (profile: { displayName?: string }) => {
+        await updateUserData(uid, { displayName: profile.displayName });
+      },
+    },
+  };
 }
 
-/**
- * 이메일/비밀번호로 회원가입
- */
 export async function signUpWithEmail(data: SignUpData): Promise<any> {
   try {
-    const users = getUsers();
+    const res = await fetch("/api/app/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    const json = await res.json();
 
-    // 이메일 중복 확인
-    const existingUser = users.find((u) => u.email === data.email);
-    if (existingUser) {
-      // ⚠️ Turbopack 에러 오버레이 방지를 위해 Error 대신 객체 반환
+    if (res.status === 503) {
+      return signUpLocalFallback(data);
+    }
+
+    if (!res.ok) {
+      if (json?.error?.code) return { error: json.error };
       return {
         error: {
-          code: "auth/email-already-in-use",
-          message: "Email already in use",
+          code: "auth/unknown",
+          message: json?.error || "Signup failed",
         },
       };
     }
 
-    // 새 사용자 생성
-    const uid = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const now = new Date().toISOString();
+    const user = json as UserData;
+    await refreshUsersFromServer();
+    setCurrentUser(user.uid);
 
-    const userData: UserData = {
-      uid,
-      email: data.email,
-      password: simpleHash(data.password), // 해시된 비밀번호 저장
-      ...(data.fullName && { displayName: data.fullName }),
-      ...(data.phoneNumber && { phoneNumber: data.phoneNumber }),
-      ...(data.gender && { gender: data.gender }),
-      ...(data.preferredLanguage && {
-        preferredLanguage: data.preferredLanguage,
-      }),
-      role: "user",
-      is_owner: false,
-      verification_status: "none",
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    users.push(userData);
-    saveUsers(users);
-
-    // 자동 로그인
-    setCurrentUser(uid);
-
-    // Firebase UserCredential과 호환되는 형태로 반환
     return {
       user: {
-        uid,
-        email: data.email,
-        displayName: data.fullName || null,
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName || null,
         updateProfile: async (profile: { displayName?: string }) => {
-          const users = getUsers();
-          const userIndex = users.findIndex((u) => u.uid === uid);
-          if (userIndex !== -1) {
-            users[userIndex].displayName = profile.displayName;
-            users[userIndex].updatedAt = new Date().toISOString();
-            saveUsers(users);
-          }
+          await updateUserData(user.uid, { displayName: profile.displayName });
         },
       },
     };
   } catch (error: any) {
-    // 예기치 못한 시스템 에러만 로깅
-    console.error("Sign up unexpected system error:", error);
-    return { error: { code: "auth/internal-error", message: error.message } };
+    console.error("Sign up error:", error);
+    return signUpLocalFallback(data);
   }
 }
 
-/**
- * 이메일/비밀번호로 로그인
- */
+function signInLocalFallback(email: string, password: string) {
+  const users = getUsers();
+  const hashedPassword = simpleHash(password);
+  const userByEmail = users.find((u) => u.email === email);
+  if (!userByEmail) {
+    return { error: { code: "auth/user-not-found", message: "User not found" } };
+  }
+  if (userByEmail.blocked) {
+    return {
+      error: {
+        code: "auth/user-blocked",
+        message: "This account is blocked by admin",
+      },
+    };
+  }
+  if (userByEmail.password !== hashedPassword) {
+    return { error: { code: "auth/wrong-password", message: "Wrong password" } };
+  }
+  setCurrentUser(userByEmail.uid);
+  return {
+    user: {
+      uid: userByEmail.uid,
+      email: userByEmail.email,
+      displayName: userByEmail.displayName || null,
+    },
+  };
+}
+
 export async function signInWithEmail(
   email: string,
   password: string,
 ): Promise<any> {
   try {
-    const users = getUsers();
-    const hashedPassword = simpleHash(password);
+    const res = await fetch("/api/app/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    const json = await res.json();
 
-    // 이메일로 사용자 찾기 (비밀번호 확인 전)
-    const userByEmail = users.find((u) => u.email === email);
+    if (res.status === 503) {
+      return signInLocalFallback(email, password);
+    }
 
-    if (!userByEmail) {
-      // 이메일이 존재하지 않음
+    if (!res.ok) {
+      if (json?.error?.code) return { error: json.error };
       return {
-        error: { code: "auth/user-not-found", message: "User not found" },
+        error: {
+          code: "auth/unknown",
+          message: json?.error?.message || "Login failed",
+        },
       };
     }
 
-    if (userByEmail.blocked) {
-      return {
-        error: { code: "auth/user-blocked", message: "This account is blocked by admin" },
-      };
-    }
-
-    // 비밀번호 확인
-    if (userByEmail.password !== hashedPassword) {
-      return {
-        error: { code: "auth/wrong-password", message: "Wrong password" },
-      };
-    }
-
-    // 로그인 성공
-    const user = userByEmail;
+    const user = json.user as UserData;
+    await refreshUsersFromServer();
     setCurrentUser(user.uid);
 
-    // Firebase UserCredential과 호환되는 형태로 반환
     return {
       user: {
         uid: user.uid,
@@ -283,87 +369,66 @@ export async function signInWithEmail(
       },
     };
   } catch (error: any) {
-    // 예기치 못한 시스템 에러만 로깅
-    console.error("Sign in unexpected system error:", error);
-    return { error: { code: "auth/internal-error", message: error.message } };
+    console.error("Sign in error:", error);
+    return signInLocalFallback(email, password);
   }
 }
 
-/**
- * Google로 로그인 (임시로 비활성화)
- */
 export async function signInWithGoogle(): Promise<any> {
   throw new Error(
     "Google 로그인은 현재 사용할 수 없습니다. 이메일/비밀번호로 로그인해주세요.",
   );
 }
 
-/**
- * Facebook으로 로그인 (임시로 비활성화)
- */
 export async function signInWithFacebook(): Promise<any> {
   throw new Error(
     "Facebook 로그인은 현재 사용할 수 없습니다. 이메일/비밀번호로 로그인해주세요.",
   );
 }
 
-/**
- * 로그아웃
- */
 export async function signOut(): Promise<void> {
   setCurrentUser(null);
 }
 
-/**
- * Firestore에 사용자 정보 저장 (LocalStorage 버전)
- */
-async function saveUserToFirestore(user: any): Promise<void> {
-  const users = getUsers();
-  const existingUser = users.find((u) => u.uid === user.uid);
-
-  if (!existingUser) {
-    const now = new Date().toISOString();
-    const userData: UserData = {
-      uid: user.uid,
-      email: user.email || "",
-      displayName: user.displayName || undefined,
-      role: "user",
-      is_owner: false,
-      verification_status: "none",
-      createdAt: now,
-      updatedAt: now,
-    };
-    users.push(userData);
-    saveUsers(users);
-  }
-}
-
-/**
- * 사용자 정보 업데이트
- */
-export async function updateUserData(
+async function updateUserLocal(
   uid: string,
   updates: Partial<UserData>,
 ): Promise<void> {
   const users = getUsers();
   const userIndex = users.findIndex((u) => u.uid === uid);
-
-  if (userIndex === -1) {
-    throw new Error("User not found");
-  }
-
+  if (userIndex === -1) throw new Error("User not found");
   users[userIndex] = {
     ...users[userIndex],
     ...updates,
     updatedAt: new Date().toISOString(),
   };
-
   saveUsers(users);
 }
 
-/**
- * 사용자 이메일 업데이트
- */
+export async function updateUserData(
+  uid: string,
+  updates: Partial<UserData>,
+): Promise<void> {
+  try {
+    const res = await fetch(`/api/app/users/${encodeURIComponent(uid)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    });
+    if (res.ok) {
+      await refreshUsersFromServer();
+      return;
+    }
+    if (res.status === 503 || res.status === 404) {
+      await updateUserLocal(uid, updates);
+      return;
+    }
+    throw new Error("Update failed");
+  } catch {
+    await updateUserLocal(uid, updates);
+  }
+}
+
 export async function updateUserEmail(
   uid: string,
   newEmail: string,
@@ -371,9 +436,6 @@ export async function updateUserEmail(
   await updateUserData(uid, { email: newEmail });
 }
 
-/**
- * 사용자 전화번호 업데이트
- */
 export async function updateUserPhoneNumber(
   uid: string,
   newPhoneNumber: string,
@@ -381,9 +443,6 @@ export async function updateUserPhoneNumber(
   await updateUserData(uid, { phoneNumber: newPhoneNumber });
 }
 
-/**
- * 사용자 언어 설정 업데이트
- */
 export async function updateUserLanguage(
   uid: string,
   language: SupportedLanguage,
@@ -391,9 +450,6 @@ export async function updateUserLanguage(
   await updateUserData(uid, { preferredLanguage: language });
 }
 
-/**
- * 임대인 인증 (이름, 전화번호 인증)
- */
 export async function verifyOwner(
   uid: string,
   data: OwnerVerificationData,
@@ -405,28 +461,24 @@ export async function verifyOwner(
   });
 }
 
-/**
- * 회원 탈퇴
- * - 사용자 데이터를 완전히 삭제
- * - 재가입 시 새로운 계정으로 생성됨
- */
 export async function deleteAccount(uid: string): Promise<void> {
   try {
-    const users = getUsers();
-    const userIndex = users.findIndex((u) => u.uid === uid);
-
-    if (userIndex === -1) {
-      throw new Error("User not found");
+    const res = await fetch(`/api/app/users/${encodeURIComponent(uid)}`, {
+      method: "DELETE",
+    });
+    if (res.ok) {
+      await refreshUsersFromServer();
+      setCurrentUser(null);
+      return;
     }
-
-    // 사용자 데이터를 배열에서 완전히 제거
-    users.splice(userIndex, 1);
-    saveUsers(users);
-
-    // 로그아웃
-    setCurrentUser(null);
-  } catch (error) {
-    console.error("Error deleting account:", error);
-    throw error;
+  } catch {
+    /* fall through */
   }
+
+  const users = getUsers();
+  const userIndex = users.findIndex((u) => u.uid === uid);
+  if (userIndex === -1) throw new Error("User not found");
+  users.splice(userIndex, 1);
+  saveUsers(users);
+  setCurrentUser(null);
 }

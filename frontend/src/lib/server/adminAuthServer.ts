@@ -14,6 +14,7 @@ export { hashAdminPassword, verifyAdminPassword };
 export type AdminAccountDTO = {
   id: string;
   username: string;
+  nickname: string;
   isSuperAdmin: boolean;
   permissions: AdminPermissionMap;
 };
@@ -51,6 +52,7 @@ export async function getAdminFromRequest(request: NextRequest): Promise<AdminAc
   return {
     id: row.id,
     username: row.username,
+    nickname: row.nickname ?? '',
     isSuperAdmin: row.isSuperAdmin,
     permissions: normalizePermissionMap(row.permissions),
   };

@@ -93,6 +93,123 @@ export interface CreateBookingRequest {
  * LocalStorage 키
  */
 const BOOKINGS_STORAGE_KEY = 'bookings';
+const BOOKINGS_BOOTSTRAP_KEY = 'stayviet-bookings-bootstrap-v1';
+
+let bookingsCache: BookingData[] | null = null;
+
+function loadBookingsCacheFromLocal(): BookingData[] {
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return [];
+  try {
+    const data = localStorage.getItem(BOOKINGS_STORAGE_KEY);
+    const arr = data ? (JSON.parse(data) as BookingData[]) : [];
+    if (!Array.isArray(arr)) {
+      bookingsCache = [];
+      return [];
+    }
+    bookingsCache = arr;
+    return arr;
+  } catch {
+    bookingsCache = [];
+    return [];
+  }
+}
+
+export function readBookingsArray(): BookingData[] {
+  const base = bookingsCache !== null ? bookingsCache : loadBookingsCacheFromLocal();
+  return JSON.parse(JSON.stringify(base)) as BookingData[];
+}
+
+let bookingsFlushTimer: ReturnType<typeof setTimeout> | null = null;
+
+export function writeBookingsArray(all: BookingData[]): void {
+  bookingsCache = all;
+  if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+    try {
+      localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(all));
+    } catch {
+      /* ignore */
+    }
+  }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('bookingsUpdated'));
+  }
+  if (typeof window === 'undefined') return;
+  if (bookingsFlushTimer) clearTimeout(bookingsFlushTimer);
+  bookingsFlushTimer = setTimeout(() => {
+    bookingsFlushTimer = null;
+    const snapshot = bookingsCache;
+    if (!snapshot) return;
+    void fetch('/api/app/bookings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bookings: snapshot }),
+    }).catch((e) => console.warn('[bookings] PUT sync failed', e));
+  }, 500);
+}
+
+export async function refreshBookingsFromServer(): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
+  try {
+    const res = await fetch('/api/app/bookings', { cache: 'no-store' });
+    if (!res.ok) throw new Error(String(res.status));
+    const data = (await res.json()) as { bookings?: BookingData[] };
+    const list = Array.isArray(data.bookings) ? data.bookings : [];
+    bookingsCache = list;
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(list));
+    }
+    window.dispatchEvent(new CustomEvent('bookingsUpdated'));
+    return true;
+  } catch {
+    bookingsCache = null;
+    return false;
+  }
+}
+
+export async function bootstrapBookingsFromServer(): Promise<void> {
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
+
+  if (localStorage.getItem(BOOKINGS_BOOTSTRAP_KEY)) {
+    await refreshBookingsFromServer();
+    return;
+  }
+
+  let legacy: BookingData[] = [];
+  try {
+    const raw = localStorage.getItem(BOOKINGS_STORAGE_KEY);
+    const parsed  = raw ? JSON.parse(raw) : [];
+    legacy = Array.isArray(parsed) ? parsed : [];
+  } catch {
+    legacy = [];
+  }
+
+  const ok = await refreshBookingsFromServer();
+  if (!ok) return;
+
+  if ((bookingsCache?.length ?? 0) > 0) {
+    localStorage.setItem(BOOKINGS_BOOTSTRAP_KEY, '1');
+    return;
+  }
+
+  if (legacy.length === 0) {
+    localStorage.setItem(BOOKINGS_BOOTSTRAP_KEY, '1');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/app/bookings/import', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bookings: legacy }),
+    });
+    if (res.ok) {
+      localStorage.setItem(BOOKINGS_BOOTSTRAP_KEY, '1');
+      await refreshBookingsFromServer();
+    }
+  } catch {
+    /* 재시도는 다음 로드 */
+  }
+}
 
 /**
  * UUID 생성
@@ -106,19 +223,18 @@ function generateId(): string {
  */
 export async function getAllBookings(): Promise<BookingData[]> {
   if (typeof window === 'undefined' || typeof localStorage === 'undefined') return [];
-  
+
   try {
-    const data = localStorage.getItem(BOOKINGS_STORAGE_KEY);
-    const bookings: BookingData[] = data ? JSON.parse(data) : [];
+    const bookings = readBookingsArray();
     let changed = false;
     for (const b of bookings) {
-      if (!b.id || !(String(b.id).trim())) {
+      if (!b.id || !String(b.id).trim()) {
         b.id = generateId();
         changed = true;
       }
     }
     if (changed) {
-      localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(bookings));
+      writeBookingsArray(bookings);
     }
     return bookings;
   } catch (error) {
@@ -365,8 +481,8 @@ export async function createBooking(
   }
 
   bookings.push(newBooking);
-  localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(bookings));
-  
+  writeBookingsArray(bookings);
+
   return newBooking;
 }
 
@@ -390,8 +506,8 @@ export async function completePayment(
     paymentDate: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
-  
-  localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(bookings));
+
+  writeBookingsArray(bookings);
   return bookings[index];
 }
 
@@ -432,8 +548,8 @@ export async function confirmBooking(bookingId: string): Promise<BookingData | n
   } catch (error) {
     console.error('Reservation confirm sync failed:', error);
   }
-  
-  localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(bookings));
+
+  writeBookingsArray(bookings);
   return bookings[index];
 }
 
@@ -496,8 +612,8 @@ export async function cancelBooking(
   } catch (error) {
     console.error('Failed to mark messages as read on cancellation:', error);
   }
-  
-  localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(bookings));
+
+  writeBookingsArray(bookings);
   return { booking: bookings[index], relistResult };
 }
 
@@ -506,15 +622,14 @@ export async function cancelBooking(
  */
 export async function deleteBooking(bookingId: string): Promise<void> {
   if (typeof window === 'undefined') return;
-  
+
   try {
-    const data = localStorage.getItem(BOOKINGS_STORAGE_KEY);
-    if (!data) return;
-    
-    const bookings = JSON.parse(data) as BookingData[];
-    const filtered = bookings.filter(b => b.id !== bookingId);
-    
-    localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(filtered));
+    const bookings = await getAllBookings();
+    if (bookings.length === 0) return;
+    const filtered = bookings.filter((b) => b.id !== bookingId);
+    if (filtered.length === bookings.length) return;
+
+    writeBookingsArray(filtered);
 
     try {
       const { purgeSettlementStateForDeletedBooking } = await import('./adminFinance');
@@ -547,7 +662,7 @@ export async function approveRefundBooking(bookingId: string, adminId: string): 
     refundAdminApprovedBy: adminId,
     updatedAt: new Date().toISOString(),
   };
-  localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(bookings));
+  writeBookingsArray(bookings);
 
   const { appendRefundLedgerEntry } = await import('@/lib/api/adminFinance');
   appendRefundLedgerEntry({
@@ -577,7 +692,7 @@ export async function setChatRoomId(
     chatRoomId,
     updatedAt: new Date().toISOString(),
   };
-  
-  localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(bookings));
+
+  writeBookingsArray(bookings);
   return bookings[index];
 }

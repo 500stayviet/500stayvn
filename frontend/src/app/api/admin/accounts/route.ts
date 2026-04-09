@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
     select: {
       id: true,
       username: true,
+      nickname: true,
       isSuperAdmin: true,
       permissions: true,
       createdAt: true,
@@ -41,6 +42,7 @@ export async function POST(request: NextRequest) {
 
   let body: {
     username?: string;
+    nickname?: string;
     password?: string;
     isSuperAdmin?: boolean;
     permissions?: Record<string, boolean>;
@@ -52,6 +54,8 @@ export async function POST(request: NextRequest) {
   }
 
   const username = typeof body.username === 'string' ? body.username.trim() : '';
+  const nickname =
+    typeof body.nickname === 'string' ? body.nickname.trim().slice(0, 64) : '';
   const password = typeof body.password === 'string' ? body.password : '';
   if (!isValidUsername(username) || password.length < 8) {
     return NextResponse.json(
@@ -74,6 +78,7 @@ export async function POST(request: NextRequest) {
     const created = await prisma.adminAccount.create({
       data: {
         username,
+        nickname,
         passwordHash: hashAdminPassword(password),
         isSuperAdmin,
         permissions: isSuperAdmin ? {} : base,
@@ -81,6 +86,7 @@ export async function POST(request: NextRequest) {
       select: {
         id: true,
         username: true,
+        nickname: true,
         isSuperAdmin: true,
         permissions: true,
         createdAt: true,

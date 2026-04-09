@@ -9,7 +9,7 @@ import {
   IdDocumentData,
   FaceVerificationData,
 } from "@/types/kyc.types";
-import { useAuth } from "@/hooks/useAuth";
+import { logAdminSystemEvent } from "@/lib/adminSystemLog";
 
 /**
  * 파일 업로드 유틸리티 함수
@@ -84,6 +84,13 @@ async function completeKYCStep(
     }
   } catch (error) {
     console.log('LocalStorage update failed, continuing anyway:', error);
+    logAdminSystemEvent({
+      severity: 'warning',
+      category: 'kyc',
+      message: 'KYC 단계 반영 중 로컬 users 동기화 실패',
+      ownerId: userId,
+      snapshot: { function: 'completeKYCStep', step: String(step) },
+    });
   }
   
   return result;
@@ -101,6 +108,13 @@ export async function savePhoneVerification(
     console.log('Phone verification completed:', result.testModeMessage);
   } catch (error) {
     console.error("Error saving phone verification:", error);
+    logAdminSystemEvent({
+      severity: 'error',
+      category: 'kyc',
+      message: error instanceof Error ? error.message : '전화 인증 저장 실패',
+      ownerId: uid,
+      snapshot: { function: 'savePhoneVerification' },
+    });
     throw error;
   }
 }
@@ -137,6 +151,13 @@ export async function saveIdDocument(
     console.log('ID document verification completed:', result.testModeMessage);
   } catch (error) {
     console.error("Error saving ID document:", error);
+    logAdminSystemEvent({
+      severity: 'error',
+      category: 'kyc',
+      message: error instanceof Error ? error.message : '신분증 단계 저장 실패',
+      ownerId: uid,
+      snapshot: { function: 'saveIdDocument' },
+    });
     throw error;
   }
 }
@@ -186,6 +207,13 @@ export async function saveFaceVerification(
     console.log('Face verification completed:', result.testModeMessage);
   } catch (error) {
     console.error("Error saving face verification:", error);
+    logAdminSystemEvent({
+      severity: 'error',
+      category: 'kyc',
+      message: error instanceof Error ? error.message : '얼굴 인증 단계 저장 실패',
+      ownerId: uid,
+      snapshot: { function: 'saveFaceVerification' },
+    });
     throw error;
   }
 }
@@ -215,6 +243,13 @@ export async function completeKYCVerification(uid: string): Promise<void> {
     console.log('User role updated to "owner"');
   } catch (error) {
     console.error("Error completing KYC verification:", error);
+    logAdminSystemEvent({
+      severity: 'warning',
+      category: 'kyc',
+      message: error instanceof Error ? error.message : 'KYC 완료 후 역할 갱신 실패',
+      ownerId: uid,
+      snapshot: { function: 'completeKYCVerification' },
+    });
     // 테스트 모드: 에러가 발생해도 계속 진행
     console.log('Test mode: Continuing despite role update error');
   }

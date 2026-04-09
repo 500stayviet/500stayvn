@@ -5,6 +5,10 @@ import { ADMIN_PERMISSION_IDS, normalizePermissionMap } from '@/lib/adminPermiss
 
 export const dynamic = 'force-dynamic';
 
+function isValidUsername(s: string): boolean {
+  return /^[a-zA-Z0-9._-]{3,64}$/.test(s);
+}
+
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -19,6 +23,7 @@ export async function GET(
     select: {
       id: true,
       username: true,
+      nickname: true,
       isSuperAdmin: true,
       permissions: true,
       createdAt: true,
@@ -42,6 +47,8 @@ export async function PATCH(
   const { id } = await context.params;
 
   let body: {
+    nickname?: string;
+    username?: string;
     permissions?: Record<string, boolean>;
     isSuperAdmin?: boolean;
     newPassword?: string;
@@ -57,23 +64,50 @@ export async function PATCH(
   if (!target) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   const updates: {
+    username?: string;
+    nickname?: string;
     isSuperAdmin?: boolean;
     permissions?: object;
     passwordHash?: string;
   } = {};
 
+  if (body.nickname !== undefined) {
+    updates.nickname =
+      typeof body.nickname === 'string' ? body.nickname.trim().slice(0, 64) : '';
+  }
+
+  if (body.username !== undefined && typeof body.username === 'string') {
+    const nextUser = body.username.trim();
+    if (!isValidUsername(nextUser)) {
+      return NextResponse.json({ error: 'username 형식이 올바르지 않습니다' }, { status: 400 });
+    }
+    if (nextUser !== target.username) {
+      const taken = await prisma.adminAccount.findFirst({
+        where: { username: nextUser, id: { not: target.id } },
+      });
+      if (taken) {
+        return NextResponse.json({ error: '이미 사용 중인 아이디입니다' }, { status: 409 });
+      }
+      updates.username = nextUser;
+    }
+  }
+
   if (body.newPassword !== undefined) {
     const next = typeof body.newPassword === 'string' ? body.newPassword : '';
-    if (next.length < 8) {
+    if (next.length === 0) {
+      // 비워 두면 비밀번호 변경 없음
+    } else if (next.length < 8) {
       return NextResponse.json({ error: 'newPassword는 8자 이상' }, { status: 400 });
     }
-    if (target.id === me.id) {
+    if (next.length > 0 && target.id === me.id) {
       const cur = typeof body.currentPassword === 'string' ? body.currentPassword : '';
       if (!verifyAdminPassword(cur, target.passwordHash)) {
         return NextResponse.json({ error: 'currentPassword가 올바르지 않습니다' }, { status: 400 });
       }
     }
-    updates.passwordHash = hashAdminPassword(next);
+    if (next.length > 0) {
+      updates.passwordHash = hashAdminPassword(next);
+    }
   }
 
   if (body.isSuperAdmin !== undefined && typeof body.isSuperAdmin === 'boolean') {
@@ -115,6 +149,7 @@ export async function PATCH(
     select: {
       id: true,
       username: true,
+      nickname: true,
       isSuperAdmin: true,
       permissions: true,
       updatedAt: true,

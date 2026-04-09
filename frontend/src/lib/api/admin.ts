@@ -1,6 +1,5 @@
 /**
- * 관리자용 API (Firebase 제거 및 로컬 데이터 연동 버전)
- * * 모든 KYC 데이터를 조회하고 CSV로 변환하는 기능을 제공합니다.
+ * 관리자용 API — LocalStorage 기반 KYC 조회·CSV (Firebase DB 미사용)
  */
 
 import { getUsers } from './auth'; // 로컬 저장소 유저 데이터를 가져옵니다.

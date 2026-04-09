@@ -4,7 +4,7 @@
  * 전역 언어 상태 관리
  * - 모든 페이지에서 동일한 언어 상태 공유
  * - 사용자의 preferredLanguage 자동 로드
- * - 언어 변경 시 Firestore에 저장
+ * - 언어 변경 시 localStorage 및 로그인 시 사용자 레코드(localStorage)에 저장
  */
 
 'use client';
@@ -89,7 +89,7 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
     }
   }, [user, authLoading, loading]);
 
-  // 언어 변경 핸들러 (localStorage 및 Firestore에 저장)
+  // 언어 변경 핸들러 (localStorage + 로그인 사용자면 users 레코드 갱신)
   const setCurrentLanguage = async (lang: SupportedLanguage) => {
     setCurrentLanguageState(lang);
     
@@ -98,7 +98,7 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
       localStorage.setItem(STORAGE_KEY, lang);
     }
     
-    // 로그인된 사용자인 경우 Firestore에도 저장
+    // 로그인된 사용자인 경우 사용자 데이터에도 반영
     if (user) {
       try {
         await updateUserLanguage(user.uid, lang);

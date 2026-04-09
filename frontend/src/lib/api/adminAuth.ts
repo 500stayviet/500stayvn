@@ -9,6 +9,7 @@ export interface AdminSession {
 export type AdminMeResponse = {
   id: string;
   username: string;
+  nickname: string;
   isSuperAdmin: boolean;
   permissions: Record<string, boolean>;
 };

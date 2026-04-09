@@ -1,10 +1,10 @@
 'use client';
 
-import { getUsers, saveUsers, UserData } from '@/lib/api/auth';
+import { getUsers, refreshUsersFromServer, saveUsers, UserData } from '@/lib/api/auth';
+import { readPropertiesArray, writePropertiesArray } from '@/lib/api/properties';
 import { isPropertyNew, isUserNew } from '@/lib/adminNewUtils';
 import { PropertyData } from '@/types/property';
 
-const PROPERTIES_KEY = 'properties';
 const MODERATION_AUDIT_KEY = 'admin_moderation_audit_v1';
 
 export interface ModerationAuditEntry {
@@ -67,18 +67,12 @@ function appendModerationAudit(
 
 function readAllPropertiesRaw(): PropertyData[] {
   if (typeof window === 'undefined' || typeof localStorage === 'undefined') return [];
-  try {
-    const raw = localStorage.getItem(PROPERTIES_KEY);
-    return raw ? (JSON.parse(raw) as PropertyData[]) : [];
-  } catch {
-    return [];
-  }
+  return readPropertiesArray();
 }
 
 function saveAllPropertiesRaw(rows: PropertyData[]): void {
   if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
-  localStorage.setItem(PROPERTIES_KEY, JSON.stringify(rows));
-  window.dispatchEvent(new CustomEvent('propertiesUpdated'));
+  writePropertiesArray(rows);
 }
 
 export function getModerationAudits(): ModerationAuditEntry[] {
@@ -109,19 +103,42 @@ export function getAdminUsers(search = '', status: AdminUserFilter = 'all'): Use
     });
 }
 
-export function setUserBlocked(uid: string, blocked: boolean, adminId: string, reason?: string): boolean {
-  const users = getUsers();
-  const index = users.findIndex((u) => u.uid === uid);
-  if (index === -1) return false;
-
-  users[index] = {
-    ...users[index],
-    blocked,
-    blockedAt: blocked ? new Date().toISOString() : undefined,
-    blockedReason: blocked ? reason : undefined,
-    updatedAt: new Date().toISOString(),
-  };
-  saveUsers(users);
+export async function setUserBlocked(
+  uid: string,
+  blocked: boolean,
+  adminId: string,
+  reason?: string
+): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/app/users/${encodeURIComponent(uid)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        blocked,
+        blockedAt: blocked ? new Date().toISOString() : null,
+        blockedReason: blocked ? (reason ?? null) : null,
+      }),
+    });
+    if (res.ok) {
+      await refreshUsersFromServer();
+    } else if (res.status === 503) {
+      const users = getUsers().map((u) => ({ ...u }));
+      const index = users.findIndex((u) => u.uid === uid);
+      if (index === -1) return false;
+      users[index] = {
+        ...users[index],
+        blocked,
+        blockedAt: blocked ? new Date().toISOString() : undefined,
+        blockedReason: blocked ? reason : undefined,
+        updatedAt: new Date().toISOString(),
+      };
+      saveUsers(users);
+    } else {
+      return false;
+    }
+  } catch {
+    return false;
+  }
 
   // 계정 차단 시 해당 사용자의 매물을 자동 숨김 처리 (데이터는 유지)
   if (blocked) {

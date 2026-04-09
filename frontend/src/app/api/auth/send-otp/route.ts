@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server';
 
-// Firebase Client SDK 방식으로 변경
-// AWS SNS 로직은 완전히 제거
-
-// OTP를 임시로 저장할 인메모리 저장소 (Firebase 인증 대신 fallback으로 사용)
-// 실제 운영에서는 Firebase 인증을 사용해야 함
+// 전화 인증: 클라이언트에서 Firebase **Authentication** only (`signInWithPhoneNumber`).
+// Firestore 등 Firebase DB는 사용하지 않음.
+// 환경 변수 없을 때만 서버 fallback OTP(인메모리) 사용.
 const otpStore = new Map<string, { code: string; expires: number }>();
 
 export async function POST(request: Request) {
@@ -15,14 +13,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Phone number is required' }, { status: 400 });
     }
 
-    // Firebase 환경 변수 확인
     const hasFirebaseConfig = process.env.NEXT_PUBLIC_FIREBASE_API_KEY && 
                              process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN &&
                              process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 
     if (hasFirebaseConfig) {
-      // Firebase가 설정되어 있으면 클라이언트에서 Firebase SDK를 사용하도록 안내
-      console.log(`Firebase phone authentication available for: ${phoneNumber}`);
+      console.log(`Firebase phone auth (client SDK) available for: ${phoneNumber}`);
       
       return NextResponse.json({ 
         success: true, 
@@ -38,8 +34,7 @@ export async function POST(request: Request) {
         instructions: 'Call signInWithPhoneNumber() on client side with recaptchaVerifier'
       });
     } else {
-      // Firebase가 설정되지 않았으면 fallback OTP 시스템 사용
-      console.warn('Firebase not configured. Using fallback OTP system.');
+      console.warn('Firebase Auth env not set. Using fallback OTP.');
       
       // 6자리 랜덤 코드 생성 (fallback)
       const otpCode = Math.floor(100000 + Math.random() * 900000).toString();

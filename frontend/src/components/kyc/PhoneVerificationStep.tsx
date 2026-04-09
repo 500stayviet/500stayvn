@@ -1,8 +1,8 @@
 /**
- * KYC Step 1: 전화번호 인증 컴포넌트 (Firebase Client SDK 방식)
- * 
- * Firebase의 signInWithPhoneNumber 함수를 사용한 전화번호 인증
- * Invisible reCAPTCHA 설정 포함
+ * KYC Step 1: 전화번호 인증
+ *
+ * Firebase **Authentication** 클라이언트 SDK만 사용 (`signInWithPhoneNumber`).
+ * Firestore / Storage 등 Firebase DB는 사용하지 않음.
  */
 
 'use client';

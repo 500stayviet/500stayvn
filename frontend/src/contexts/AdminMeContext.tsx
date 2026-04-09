@@ -6,6 +6,7 @@ import type { AdminPermissionMap } from '@/lib/adminPermissions';
 export type AdminMe = {
   id: string;
   username: string;
+  nickname: string;
   isSuperAdmin: boolean;
   permissions: AdminPermissionMap;
 };

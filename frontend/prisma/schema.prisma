@@ -17,6 +17,21 @@ model User {
   emailVerified DateTime?
   image         String?
   name          String?
+  /// 이메일/비밀번호 가입용 (OAuth 전용 계정은 null)
+  passwordHash  String?
+  phoneNumber   String?
+  preferredLanguage String?
+  gender        String?
+  isOwner       Boolean        @default(false)
+  blocked       Boolean        @default(false)
+  blockedAt     DateTime?
+  blockedReason String?
+  deleted       Boolean        @default(false)
+  deletedAt     DateTime?
+  /// none | pending | verified | rejected (앱·관리자 목록용)
+  verificationStatus String    @default("none")
+  /// private_data, kyc_steps 등 앱 전용 확장 JSON
+  profileJson   Json?
   accounts      Account[]
   bookings      Booking[]
   lessorProfile LessorProfile?
@@ -80,6 +95,13 @@ model Property {
   ownerId                String
   checkInDate            DateTime?
   checkOutDate           DateTime?
+  checkInTime            String?
+  checkOutTime           String?
+  hidden                 Boolean   @default(false)
+  deleted                Boolean   @default(false)
+  deletedAt              DateTime?
+  /// history, iCal, pet, city/district 등 PropertyData 확장
+  extraJson              Json?
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
   bookings               Booking[]
@@ -94,6 +116,8 @@ model Booking {
   checkOutDate DateTime
   totalPrice   Float
   status       String   @default("pending")
+  /// 앱 BookingData 전량(JSON) — 컬럼과 병합해 사용
+  detailJson   Json?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   guest        User     @relation(fields: [guestId], references: [id])

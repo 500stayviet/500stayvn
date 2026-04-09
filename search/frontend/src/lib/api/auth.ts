@@ -1,8 +1,8 @@
 /**
- * LocalStorage Authentication API (임시 버전)
+ * 인증·사용자 API — 브라우저 LocalStorage + 서버 Postgres(별도 경로) 기준
  *
- * Firebase가 정지된 상태에서 UI/로직 테스트를 위한 임시 구현
- * 브라우저 LocalStorage에 사용자 데이터를 저장하고 관리
+ * KYC 1단계 전화 인증에만 Firebase **Authentication** 클라이언트 SDK를 사용합니다.
+ * Firestore / Realtime Database 등 Firebase **DB**는 사용하지 않습니다.
  */
 
 import { VerificationStatus, PrivateData } from "@/types/kyc.types";
@@ -190,7 +190,7 @@ export async function signUpWithEmail(data: SignUpData): Promise<any> {
     // 자동 로그인
     setCurrentUser(uid);
 
-    // Firebase UserCredential과 호환되는 형태로 반환
+    // 클라이언트 인증 SDK와 유사한 `user` 형태로 반환
     return {
       user: {
         uid,
@@ -246,7 +246,6 @@ export async function signInWithEmail(
     const user = userByEmail;
     setCurrentUser(user.uid);
 
-    // Firebase UserCredential과 호환되는 형태로 반환
     return {
       user: {
         uid: user.uid,
@@ -284,30 +283,6 @@ export async function signInWithFacebook(): Promise<any> {
  */
 export async function signOut(): Promise<void> {
   setCurrentUser(null);
-}
-
-/**
- * Firestore에 사용자 정보 저장 (LocalStorage 버전)
- */
-async function saveUserToFirestore(user: any): Promise<void> {
-  const users = getUsers();
-  const existingUser = users.find((u) => u.uid === user.uid);
-
-  if (!existingUser) {
-    const now = new Date().toISOString();
-    const userData: UserData = {
-      uid: user.uid,
-      email: user.email || "",
-      displayName: user.displayName || undefined,
-      role: "user",
-      is_owner: false,
-      verification_status: "none",
-      createdAt: now,
-      updatedAt: now,
-    };
-    users.push(userData);
-    saveUsers(users);
-  }
 }
 
 /**

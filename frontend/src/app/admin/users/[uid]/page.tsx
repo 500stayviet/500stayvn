@@ -320,9 +320,11 @@ export default function AdminUserDetailPage() {
                 type="button"
                 onClick={() => {
                   if (!admin?.username) return;
-                  setUserBlocked(user.uid, false, admin!.username);
-                  refreshAdminBadges();
-                  loadUserAndMemos();
+                  void (async () => {
+                    await setUserBlocked(user.uid, false, admin!.username);
+                    refreshAdminBadges();
+                    loadUserAndMemos();
+                  })();
                 }}
                 className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-blue-700"
               >
@@ -334,9 +336,11 @@ export default function AdminUserDetailPage() {
                 onClick={() => {
                   if (!admin?.username) return;
                   const reason = window.prompt('차단 사유를 입력하세요.', '관리자 차단') || '관리자 차단';
-                  setUserBlocked(user.uid, true, admin!.username, reason);
-                  refreshAdminBadges();
-                  loadUserAndMemos();
+                  void (async () => {
+                    await setUserBlocked(user.uid, true, admin!.username, reason);
+                    refreshAdminBadges();
+                    loadUserAndMemos();
+                  })();
                 }}
                 className="rounded-md bg-red-50 px-3 py-1.5 text-sm font-semibold text-red-700 hover:bg-red-100"
               >

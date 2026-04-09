@@ -1,7 +1,7 @@
 /**
  * useProperties Hook
  * 
- * Firestore에서 매물 데이터를 실시간으로 가져오는 커스텀 Hook
+ * LocalStorage 기반 매물 구독(`subscribeToProperties`) 훅
  * 
  * React Hooks 패턴:
  * - use로 시작하는 함수는 커스텀 Hook

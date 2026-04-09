@@ -2,7 +2,7 @@
  * Properties API Service (LocalStorage 버전)
  * 
  * 브라우저 LocalStorage에 매물 데이터를 저장하고 관리하는 서비스
- * Firebase가 정지된 상태에서 UI/로직 테스트를 위한 임시 구현
+ * (Firebase DB 미사용 — Postgres·로컬 저장소 우선)
  */
 
 import { PropertyData } from '@/types/property';
@@ -98,6 +98,122 @@ export function buildBookedRangesForParentListing(
 const STORAGE_KEY = 'properties';
 const DELETED_PROPERTIES_LOG_KEY = 'deleted_properties_log';
 const CANCELLED_PROPERTIES_LOG_KEY = 'cancelled_properties_log';
+const PROPS_BOOTSTRAP_KEY = 'stayviet-properties-bootstrap-v1';
+
+let propertiesCache: PropertyData[] | null = null;
+
+function loadPropertyCacheFromLocal(): PropertyData[] {
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return [];
+  try {
+    const s = localStorage.getItem(STORAGE_KEY);
+    const arr = s ? (JSON.parse(s) as PropertyData[]) : [];
+    if (!Array.isArray(arr)) {
+      propertiesCache = [];
+      return [];
+    }
+    propertiesCache = arr;
+    return arr;
+  } catch {
+    propertiesCache = [];
+    return [];
+  }
+}
+
+/** @public — 관리자 모더레이션 등 외부에서 동일 스냅샷 필요 시 */
+export function readPropertiesArray(): PropertyData[] {
+  const base = propertiesCache !== null ? propertiesCache : loadPropertyCacheFromLocal();
+  return JSON.parse(JSON.stringify(base)) as PropertyData[];
+}
+
+let serverFlushTimer: ReturnType<typeof setTimeout> | null = null;
+
+export function writePropertiesArray(all: PropertyData[]): void {
+  propertiesCache = all;
+  if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+    } catch {
+      /* ignore */
+    }
+    window.dispatchEvent(new CustomEvent('propertiesUpdated'));
+  }
+  if (typeof window === 'undefined') return;
+  if (serverFlushTimer) clearTimeout(serverFlushTimer);
+  serverFlushTimer = setTimeout(() => {
+    serverFlushTimer = null;
+    const snapshot = propertiesCache;
+    if (!snapshot) return;
+    void fetch('/api/app/properties', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ properties: snapshot }),
+    }).catch((e) => console.warn('[properties] PUT sync failed', e));
+  }, 500);
+}
+
+export async function refreshPropertiesFromServer(): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
+  try {
+    const res = await fetch('/api/app/properties', { cache: 'no-store' });
+    if (!res.ok) throw new Error(String(res.status));
+    const data = (await res.json()) as { properties?: PropertyData[] };
+    const list = Array.isArray(data.properties) ? data.properties : [];
+    propertiesCache = list;
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+    }
+    window.dispatchEvent(new CustomEvent('propertiesUpdated'));
+    return true;
+  } catch {
+    propertiesCache = null;
+    return false;
+  }
+}
+
+export async function bootstrapPropertiesFromServer(): Promise<void> {
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
+
+  if (localStorage.getItem(PROPS_BOOTSTRAP_KEY)) {
+    await refreshPropertiesFromServer();
+    return;
+  }
+
+  let legacyParsed: PropertyData[] = [];
+  const legacyRaw = localStorage.getItem(STORAGE_KEY);
+  try {
+    const parsed = legacyRaw ? JSON.parse(legacyRaw) : [];
+    legacyParsed = Array.isArray(parsed) ? parsed : [];
+  } catch {
+    legacyParsed = [];
+  }
+
+  const ok = await refreshPropertiesFromServer();
+  if (!ok) return;
+
+  if ((propertiesCache?.length ?? 0) > 0) {
+    localStorage.setItem(PROPS_BOOTSTRAP_KEY, '1');
+    return;
+  }
+
+  if (legacyParsed.length === 0) {
+    localStorage.setItem(PROPS_BOOTSTRAP_KEY, '1');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/app/properties/import', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ properties: legacyParsed }),
+    });
+    if (res.ok) {
+      localStorage.setItem(PROPS_BOOTSTRAP_KEY, '1');
+      await refreshPropertiesFromServer();
+    }
+  } catch {
+    /* 다음 로드에 재시도 */
+  }
+}
 
 export interface CancelledPropertyLog {
   id: string;
@@ -168,8 +284,7 @@ export async function handleCancellationRelist(propertyId: string, ownerId: stri
   const property = await getProperty(propertyId);
   if (!property) throw new Error('PropertyNotFound');
 
-  const stored = localStorage.getItem(STORAGE_KEY);
-  let allProperties: PropertyData[] = stored ? JSON.parse(stored) : [];
+  let allProperties = readPropertiesArray();
 
   // [Gaps Logic] 자식 매물(rented) 취소 시: 자식 레코드만 삭제하면 부모의 Gap이 자동으로 회복됨
   if (propertyId.includes('_child_')) {
@@ -253,8 +368,7 @@ export async function handleCancellationRelist(propertyId: string, ownerId: stri
       };
 
       const finalProperties = allProperties.filter((p) => p.id !== propertyId);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(finalProperties));
-      window.dispatchEvent(new CustomEvent('propertiesUpdated'));
+      writePropertiesArray(finalProperties);
       return {
         type: resultType,
         targetId: parent.id,
@@ -293,8 +407,7 @@ export async function handleCancellationRelist(propertyId: string, ownerId: stri
       .filter((p) => p.id !== propertyId)
       .concat(newParent);
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(finalProperties));
-    window.dispatchEvent(new CustomEvent('propertiesUpdated'));
+    writePropertiesArray(finalProperties);
 
     return { type: resultType, targetId: newParentId };
   }
@@ -347,8 +460,7 @@ export async function handleCancellationRelist(propertyId: string, ownerId: stri
         ];
 
         const finalProperties = allProperties.filter(p => p.id !== propertyId);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(finalProperties));
-        window.dispatchEvent(new CustomEvent('propertiesUpdated'));
+        writePropertiesArray(finalProperties);
         return { type: 'short_term', targetId: target.id };
       }
     }
@@ -451,10 +563,9 @@ export async function recalculateAndSplitProperty(propertyId: string, bookingId?
     }]
   };
 
-  const stored = localStorage.getItem(STORAGE_KEY);
-  const allProps: PropertyData[] = stored ? JSON.parse(stored) : [];
+  const allProps = readPropertiesArray();
   allProps.push(childProp);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(allProps));
+  writePropertiesArray(allProps);
 
   // 참조 업데이트
   const bookingsStored = localStorage.getItem('bookings');
@@ -491,8 +602,6 @@ export async function recalculateAndSplitProperty(propertyId: string, bookingId?
       }
     ]
   });
-
-  window.dispatchEvent(new CustomEvent('propertiesUpdated'));
 }
 
 /**
@@ -561,13 +670,8 @@ export async function getAllProperties(): Promise<PropertyData[]> {
     if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
       return [];
     }
-    
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) {
-      return [];
-    }
-    
-    const properties = JSON.parse(stored) as PropertyData[];
+
+    const properties = readPropertiesArray();
     
     // 삭제/숨김 매물 제외
     const activeProperties = properties.filter((p) => !p.deleted && !p.hidden);
@@ -593,8 +697,7 @@ export async function getAllProperties(): Promise<PropertyData[]> {
 export async function getAvailableProperties(): Promise<PropertyData[]> {
   try {
     if (typeof window === 'undefined' || typeof localStorage === 'undefined') return [];
-    const allStored = localStorage.getItem(STORAGE_KEY);
-    const allProps: PropertyData[] = allStored ? JSON.parse(allStored) : [];
+    const allProps = readPropertiesArray();
     const availableProperties: PropertyData[] = [];
     const allReservations = readAllReservationsSync();
     const byOwner = groupReservationsByOwner(allReservations);
@@ -703,8 +806,7 @@ export async function loadAdminInventoryPage(
   if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
     return { rows: [], nAll: 0, nNew: 0, nListed: 0, nPaused: 0, nHidden: 0 };
   }
-  const raw = localStorage.getItem(STORAGE_KEY);
-  const rows: PropertyData[] = raw ? JSON.parse(raw) : [];
+  const rows = readPropertiesArray();
   const { isPropertyNew } = await import('@/lib/adminNewUtils');
   const keyword = search.trim().toLowerCase();
 
@@ -798,8 +900,8 @@ export async function getBookedRangesForProperty(
   if (!property || !property.ownerId) return [];
 
   const allReservations = await getReservationsByOwner(property.ownerId, 'all');
-  const allStored = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
-  const allProps: PropertyData[] = allStored ? JSON.parse(allStored) : [];
+  const allProps =
+    typeof localStorage !== 'undefined' ? readPropertiesArray() : [];
   const normalize = (s: string | undefined) => (s || '').trim().replace(/\s+/g, ' ').toLowerCase();
   const targetAddress = normalize(property.address);
   const targetTitle = normalize(property.title);
@@ -851,10 +953,7 @@ export async function getParentPropertyId(propertyId: string): Promise<string> {
 export async function getProperty(id: string): Promise<PropertyData | null> {
   try {
     if (typeof window === 'undefined' || typeof localStorage === 'undefined') return null;
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return null;
-    
-    const properties = JSON.parse(stored) as PropertyData[];
+    const properties = readPropertiesArray();
     const property = properties.find((p) => p.id === id);
     
     if (!property) return null;
@@ -918,24 +1017,8 @@ export async function getPropertiesByOwner(ownerId: string, includeDeleted: bool
       return { properties: [], bookedDateRanges: new Map() };
     }
     
-    // LocalStorage에서 직접 조회 (삭제된 매물 포함)
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) {
-      return { properties: [], bookedDateRanges: new Map() };
-    }
-    
-    let allProperties: PropertyData[] = [];
-    try {
-      allProperties = JSON.parse(stored) as PropertyData[];
-      if (!Array.isArray(allProperties)) {
-        console.error('Invalid properties data format in localStorage');
-        return { properties: [], bookedDateRanges: new Map() };
-      }
-    } catch (parseError) {
-      console.error('Error parsing properties from localStorage:', parseError);
-      return { properties: [], bookedDateRanges: new Map() };
-    }
-    
+    const allProperties = readPropertiesArray();
+
     // 필터링: ownerId 일치 + deleted 상태에 따라
     let filtered = allProperties.filter((p) => {
       // ownerId가 일치하지 않으면 제외
@@ -1037,22 +1120,8 @@ export async function addProperty(
       throw new Error('coordinates are required');
     }
     
-    // LocalStorage에서 직접 가져오기 (삭제된 것 포함)
-    const stored = localStorage.getItem(STORAGE_KEY);
-    let properties: PropertyData[] = [];
-    
-    if (stored) {
-      try {
-        properties = JSON.parse(stored) as PropertyData[];
-        if (!Array.isArray(properties)) {
-          properties = [];
-        }
-      } catch (parseError) {
-        console.error('Error parsing stored properties:', parseError);
-        properties = [];
-      }
-    }
-    
+    let properties = readPropertiesArray();
+
     // 동일 매물 확인 (임대인 ID, 주소, 호수 일치 여부)
     // 요구사항: "동일 주소 + 호수" 기준 중복 등록 방지
     const normalize = (s?: string) => (s || '').trim().replace(/\s+/g, ' ').toLowerCase();
@@ -1117,8 +1186,7 @@ export async function addProperty(
       };
       
       properties[existingIndex] = updatedProp;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(properties));
-      window.dispatchEvent(new CustomEvent('propertiesUpdated'));
+      writePropertiesArray(properties);
       return existingProp.id!;
     }
 
@@ -1143,13 +1211,9 @@ export async function addProperty(
     console.log('[addProperty] New property object before saving:', newProperty);
 
     properties.push(newProperty);
-    
-    // LocalStorage에 저장
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(properties));
-    
-    // 커스텀 이벤트 발생시켜 즉시 반영
-    window.dispatchEvent(new CustomEvent('propertiesUpdated'));
-    
+
+    writePropertiesArray(properties);
+
     return id;
   } catch (error) {
     console.error('Error adding property:', error);
@@ -1169,13 +1233,7 @@ export async function updateProperty(
 ): Promise<void> {
   try {
     if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
-    // LocalStorage에서 직접 조회 (삭제된 매물 포함)
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) {
-      throw new Error(`Property with id ${id} not found`);
-    }
-    
-    const properties = JSON.parse(stored) as PropertyData[];
+    const properties = readPropertiesArray();
     const index = properties.findIndex((p) => p.id === id);
     
     if (index === -1) {
@@ -1216,12 +1274,9 @@ export async function updateProperty(
     };
     
     properties[index] = updatedProperty;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(properties));
-    
+    writePropertiesArray(properties);
+
     console.log('[updateProperty] Property updated:', id, 'status:', updatedProperty.status);
-    
-    // 커스텀 이벤트 발생시켜 즉시 반영
-    window.dispatchEvent(new CustomEvent('propertiesUpdated'));
   } catch (error) {
     console.error('Error updating property:', error);
     throw error;
@@ -1236,10 +1291,7 @@ export async function updateProperty(
 async function autoExpireProperty(id: string): Promise<void> {
   try {
     if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return;
-    
-    const properties = JSON.parse(stored) as PropertyData[];
+    const properties = readPropertiesArray();
     const index = properties.findIndex((p) => p.id === id);
     
     if (index === -1) return;
@@ -1254,12 +1306,9 @@ async function autoExpireProperty(id: string): Promise<void> {
       deletedAt: serializeDate(now),
       status: 'inactive',
     };
-    
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(properties));
+
+    writePropertiesArray(properties);
     console.log('[autoExpireProperty] Property auto-expired:', id);
-    
-    // 커스텀 이벤트 발생
-    window.dispatchEvent(new CustomEvent('propertiesUpdated'));
   } catch (error) {
     console.error('Error auto-expiring property:', error);
   }
@@ -1273,13 +1322,7 @@ async function autoExpireProperty(id: string): Promise<void> {
 export async function deleteProperty(id: string): Promise<void> {
   try {
     if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
-    // LocalStorage에서 직접 조회 (삭제된 매물 포함)
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) {
-      throw new Error(`Property with id ${id} not found`);
-    }
-    
-    const properties = JSON.parse(stored) as PropertyData[];
+    const properties = readPropertiesArray();
     const index = properties.findIndex((p) => p.id === id);
     
     if (index === -1) {
@@ -1293,8 +1336,8 @@ export async function deleteProperty(id: string): Promise<void> {
       deletedAt: serializeDate(now),
       status: 'inactive',
     };
-    
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(properties));
+
+    writePropertiesArray(properties);
   } catch (error) {
     console.error('Error deleting property:', error);
     throw error;
@@ -1384,13 +1427,7 @@ export async function hostDeletePropertySoft(
 export async function restoreProperty(id: string): Promise<void> {
   try {
     if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
-    // LocalStorage에서 직접 조회 (삭제된 매물 포함)
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) {
-      throw new Error(`Property with id ${id} not found`);
-    }
-    
-    const properties = JSON.parse(stored) as PropertyData[];
+    const properties = readPropertiesArray();
     const index = properties.findIndex((p) => p.id === id);
     
     if (index === -1) {
@@ -1403,8 +1440,8 @@ export async function restoreProperty(id: string): Promise<void> {
       deletedAt: undefined,
       status: 'active',
     };
-    
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(properties));
+
+    writePropertiesArray(properties);
   } catch (error) {
     console.error('Error restoring property:', error);
     throw error;
@@ -1430,13 +1467,7 @@ export interface DeletedPropertyLog {
 export async function permanentlyDeleteProperty(id: string, deletedBy?: string): Promise<void> {
   try {
     if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
-    // LocalStorage에서 직접 조회 (삭제된 매물 포함)
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) {
-      throw new Error(`Property with id ${id} not found`);
-    }
-    
-    const properties = JSON.parse(stored) as PropertyData[];
+    const properties = readPropertiesArray();
     const propertyIndex = properties.findIndex((p) => p.id === id);
     
     if (propertyIndex === -1) {
@@ -1462,7 +1493,10 @@ export async function permanentlyDeleteProperty(id: string, deletedBy?: string):
     
     // 매물 목록에서 제거
     const filtered = properties.filter((p) => p.id !== id);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+    writePropertiesArray(filtered);
+    void fetch(`/api/app/properties/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(
+      () => {}
+    );
   } catch (error) {
     console.error('Error permanently deleting property:', error);
     throw error;
