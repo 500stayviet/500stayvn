@@ -6,6 +6,7 @@ import { TranslationProvider } from "@/contexts/TranslationProvider";
 import NextAuthProvider from "@/components/providers/NextAuthProvider";
 import ConditionalRootShell from "@/components/ConditionalRootShell";
 import AppUserSync from "@/components/AppUserSync";
+import ApiSyncErrorBanner from "@/components/ApiSyncErrorBanner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -106,6 +107,7 @@ export default function RootLayout({
           <LanguageProvider>
             <TranslationProvider>
               <AppUserSync />
+              <ApiSyncErrorBanner />
               <ConditionalRootShell>{children}</ConditionalRootShell>
             </TranslationProvider>
           </LanguageProvider>

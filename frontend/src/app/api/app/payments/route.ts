@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { rejectAppWriteUnlessActorAllowed } from '@/lib/server/appSyncWriteGuard';
 
 export async function GET(request: NextRequest) {
   const bookingId = request.nextUrl.searchParams.get('bookingId')?.trim();
@@ -56,6 +57,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'invalid_fields' }, { status: 400 });
   }
   try {
+    const ownerRows = (await prisma.$queryRawUnsafe(
+      `
+      SELECT b."guestId" AS "guestId", p."ownerId" AS "ownerId"
+      FROM "Booking" b
+      JOIN "Property" p ON p."id" = b."propertyId"
+      WHERE b."id" = $1
+      LIMIT 1
+      `,
+      bookingId
+    )) as Array<{ guestId: string; ownerId: string }>;
+    if (!ownerRows[0]) return NextResponse.json({ error: 'booking_not_found' }, { status: 404 });
+    if (userId !== ownerRows[0].guestId && userId !== ownerRows[0].ownerId) {
+      return NextResponse.json({ error: 'invalid_payment_actor' }, { status: 403 });
+    }
+    const denied = rejectAppWriteUnlessActorAllowed(request, [ownerRows[0].guestId, ownerRows[0].ownerId]);
+    if (denied) return denied;
+
     const idempotencyKey = (body.idempotencyKey || '').trim();
     if (idempotencyKey) {
       const existing = (await prisma.$queryRawUnsafe(

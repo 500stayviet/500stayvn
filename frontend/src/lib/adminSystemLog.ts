@@ -1,3 +1,5 @@
+import { canReadLocalFallback, canWriteLocalFallback } from '@/lib/runtime/localFallbackPolicy';
+
 /**
  * 관리자 시스템 로그 (클라이언트 전용)
  * - info: 기본적으로 메모리만(새로고침 시 소실)
@@ -68,7 +70,7 @@ export function sanitizeAdminLogSnapshot(
 }
 
 function readPersistent(): AdminSystemLogEntry[] {
-  if (typeof window === 'undefined') return [];
+  if (typeof window === 'undefined' || !canReadLocalFallback()) return [];
   try {
     const raw = localStorage.getItem(ADMIN_SYSTEM_LOG_STORAGE_KEY);
     if (!raw) return [];
@@ -88,7 +90,7 @@ function readPersistent(): AdminSystemLogEntry[] {
 }
 
 function writePersistent(entries: AdminSystemLogEntry[]): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || !canWriteLocalFallback()) return;
   try {
     localStorage.setItem(ADMIN_SYSTEM_LOG_STORAGE_KEY, JSON.stringify(entries));
   } catch {
@@ -234,7 +236,9 @@ export function clearEphemeralAdminLogs(): void {
 export function clearPersistentAdminLogs(): void {
   try {
     if (typeof window === 'undefined') return;
-    localStorage.removeItem(ADMIN_SYSTEM_LOG_STORAGE_KEY);
+    if (canWriteLocalFallback()) {
+      localStorage.removeItem(ADMIN_SYSTEM_LOG_STORAGE_KEY);
+    }
     void fetch('/api/admin/system-logs', {
       method: 'DELETE',
       credentials: 'include',

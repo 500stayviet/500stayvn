@@ -10,6 +10,8 @@ import { getReservationsByOwner, ReservationData } from './reservations';
 import { parseDate, toISODateString } from '@/lib/utils/dateUtils';
 import { isDateRangeBooked, getAllBookings, BookingData } from './bookings';
 import { hasAvailableBookingPeriod, isParentPropertyRecord } from '@/lib/utils/propertyUtils';
+import { canReadLocalFallback, canWriteLocalFallback } from '@/lib/runtime/localFallbackPolicy';
+import { emitUserFacingSyncError, fetchWithRetry } from '@/lib/runtime/networkResilience';
 
 /**
  * 날짜 중복 체크 (엄격한 ISO 날짜 기준)
@@ -36,7 +38,11 @@ export type PropertiesByOwnerResult = {
 const RESERVATIONS_STORAGE_KEY = 'reservations';
 
 function readAllReservationsSync(): ReservationData[] {
-  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return [];
+  if (
+    typeof window === 'undefined' ||
+    typeof localStorage === 'undefined' ||
+    !canReadLocalFallback()
+  ) return [];
   try {
     const stored = localStorage.getItem(RESERVATIONS_STORAGE_KEY);
     return stored ? (JSON.parse(stored) as ReservationData[]) : [];
@@ -103,7 +109,11 @@ const PROPS_BOOTSTRAP_KEY = 'stayviet-properties-bootstrap-v1';
 let propertiesCache: PropertyData[] | null = null;
 
 function loadPropertyCacheFromLocal(): PropertyData[] {
-  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return [];
+  if (
+    typeof window === 'undefined' ||
+    typeof localStorage === 'undefined' ||
+    !canReadLocalFallback()
+  ) return [];
   try {
     const s = localStorage.getItem(STORAGE_KEY);
     const arr = s ? (JSON.parse(s) as PropertyData[]) : [];
@@ -129,7 +139,11 @@ let serverFlushTimer: ReturnType<typeof setTimeout> | null = null;
 
 export function writePropertiesArray(all: PropertyData[]): void {
   propertiesCache = all;
-  if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+  if (
+    typeof window !== 'undefined' &&
+    typeof localStorage !== 'undefined' &&
+    canWriteLocalFallback()
+  ) {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
     } catch {
@@ -143,35 +157,59 @@ export function writePropertiesArray(all: PropertyData[]): void {
     serverFlushTimer = null;
     const snapshot = propertiesCache;
     if (!snapshot) return;
-    void fetch('/api/app/properties', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ properties: snapshot }),
-    }).catch((e) => console.warn('[properties] PUT sync failed', e));
+    void fetchWithRetry(
+      '/api/app/properties',
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ properties: snapshot }),
+      },
+      { retries: 2, baseDelayMs: 300 }
+    ).catch((e) => {
+      console.warn('[properties] PUT sync failed', e);
+      emitUserFacingSyncError({
+        area: 'properties',
+        action: 'sync',
+        message: '매물 데이터 동기화가 지연되고 있습니다. 잠시 후 다시 확인해주세요.',
+      });
+    });
   }, 500);
 }
 
 export async function refreshPropertiesFromServer(): Promise<boolean> {
   if (typeof window === 'undefined') return false;
   try {
-    const res = await fetch('/api/app/properties', { cache: 'no-store' });
+    const res = await fetchWithRetry(
+      '/api/app/properties',
+      { cache: 'no-store' },
+      { retries: 2, baseDelayMs: 300 }
+    );
     if (!res.ok) throw new Error(String(res.status));
     const data = (await res.json()) as { properties?: PropertyData[] };
     const list = Array.isArray(data.properties) ? data.properties : [];
     propertiesCache = list;
-    if (typeof localStorage !== 'undefined') {
+    if (typeof localStorage !== 'undefined' && canWriteLocalFallback()) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
     }
     window.dispatchEvent(new CustomEvent('propertiesUpdated'));
     return true;
   } catch {
     propertiesCache = null;
+    emitUserFacingSyncError({
+      area: 'properties',
+      action: 'refresh',
+      message: '매물 목록을 불러오지 못했습니다. 네트워크를 확인해주세요.',
+    });
     return false;
   }
 }
 
 export async function bootstrapPropertiesFromServer(): Promise<void> {
   if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
+  if (!canReadLocalFallback()) {
+    await refreshPropertiesFromServer();
+    return;
+  }
 
   if (localStorage.getItem(PROPS_BOOTSTRAP_KEY)) {
     await refreshPropertiesFromServer();
@@ -201,17 +239,26 @@ export async function bootstrapPropertiesFromServer(): Promise<void> {
   }
 
   try {
-    const res = await fetch('/api/app/properties/import', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ properties: legacyParsed }),
-    });
+    const res = await fetchWithRetry(
+      '/api/app/properties/import',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ properties: legacyParsed }),
+      },
+      { retries: 2, baseDelayMs: 300 }
+    );
     if (res.ok) {
       localStorage.setItem(PROPS_BOOTSTRAP_KEY, '1');
       await refreshPropertiesFromServer();
     }
   } catch {
     /* 다음 로드에 재시도 */
+    emitUserFacingSyncError({
+      area: 'properties',
+      action: 'bootstrap',
+      message: '매물 초기 동기화에 실패했습니다. 잠시 후 다시 시도해주세요.',
+    });
   }
 }
 

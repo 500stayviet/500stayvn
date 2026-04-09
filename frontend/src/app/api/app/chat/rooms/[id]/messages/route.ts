@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { rejectAppWriteUnlessActorAllowed } from '@/lib/server/appSyncWriteGuard';
 
 export async function GET(
   request: NextRequest,
@@ -57,7 +58,24 @@ export async function POST(
   const senderId = (body.senderId || '').trim();
   const content = (body.content || '').trim();
   if (!senderId || !content) return NextResponse.json({ error: 'invalid_fields' }, { status: 400 });
+  const denied = rejectAppWriteUnlessActorAllowed(request, [senderId]);
+  if (denied) return denied;
   try {
+    const room = await prisma.chatRoom.findUnique({
+      where: { id: roomId },
+      select: { bookingId: true },
+    });
+    const bookingId = room?.bookingId || null;
+    if (!bookingId) return NextResponse.json({ error: 'room_not_found' }, { status: 404 });
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { property: { select: { ownerId: true } } },
+    });
+    if (!booking) return NextResponse.json({ error: 'booking_not_found' }, { status: 404 });
+    if (senderId !== booking.guestId && senderId !== booking.property.ownerId) {
+      return NextResponse.json({ error: 'forbidden_sender' }, { status: 403 });
+    }
+
     const msg = await prisma.message.create({
       data: {
         roomId,

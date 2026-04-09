@@ -18,6 +18,7 @@ import {
 import { getModerationAudits } from '@/lib/api/adminModeration';
 import { isParentPropertyRecord } from '@/lib/utils/propertyUtils';
 import type { PropertyData } from '@/types/property';
+import { canReadLocalFallback, canWriteLocalFallback } from '@/lib/runtime/localFallbackPolicy';
 
 /** adminModeration.ts 와 동일 키 (순환 참조 방지 위해 직접 읽기) */
 const PROPERTIES_STORAGE_KEY = 'properties';
@@ -62,7 +63,11 @@ const ackCache = new Map<string, Set<string>>();
 const ackHydrated = new Set<string>();
 
 function readPropsRaw(): PropertyData[] {
-  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return [];
+  if (
+    typeof window === 'undefined' ||
+    typeof localStorage === 'undefined' ||
+    !canReadLocalFallback()
+  ) return [];
   try {
     const raw = localStorage.getItem(PROPERTIES_STORAGE_KEY);
     return raw ? (JSON.parse(raw) as PropertyData[]) : [];
@@ -73,6 +78,7 @@ function readPropsRaw(): PropertyData[] {
 
 function readIdSet(key: string): Set<string> {
   if (typeof window === 'undefined') return new Set();
+  if (!canReadLocalFallback()) return new Set();
   const cached = ackCache.get(key);
   if (cached) return new Set(cached);
   try {
@@ -94,7 +100,9 @@ function writeIdSet(key: string, ids: Set<string>): void {
   if (typeof window === 'undefined') return;
   const next = new Set(ids);
   ackCache.set(key, next);
-  localStorage.setItem(key, JSON.stringify([...next]));
+  if (canWriteLocalFallback()) {
+    localStorage.setItem(key, JSON.stringify([...next]));
+  }
   void pushAckSetToServer(key, [...next]);
 }
 

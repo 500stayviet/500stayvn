@@ -4,6 +4,7 @@ import {
   localStorageUserToPrismaUncheckedCreate,
   prismaUserToUserData,
 } from '@/lib/server/appUserMapper';
+import { rejectAppWriteUnlessSyncSecret } from '@/lib/server/appSyncWriteGuard';
 import type { UserData } from '@/lib/api/auth';
 
 const MAX_IMPORT = 2000;
@@ -12,6 +13,9 @@ const MAX_IMPORT = 2000;
  * 로컬 스토리지에만 있던 회원을 최초 1회 DB로 승격 (DB가 비어 있을 때만)
  */
 export async function POST(request: NextRequest) {
+  const denied = rejectAppWriteUnlessSyncSecret(request);
+  if (denied) return denied;
+
   let body: { users?: UserData[] };
   try {
     body = await request.json();

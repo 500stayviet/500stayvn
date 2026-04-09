@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { rejectAppWriteUnlessActorAllowed } from '@/lib/server/appSyncWriteGuard';
 
 type RoomDto = {
   id: string;
@@ -110,6 +111,13 @@ export async function POST(request: NextRequest) {
   const bookingId = (body.bookingId || '').trim();
   if (!bookingId) return NextResponse.json({ error: 'missing_booking_id' }, { status: 400 });
   try {
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { property: true },
+    });
+    if (!booking) return NextResponse.json({ error: 'booking_not_found' }, { status: 404 });
+    const denied = rejectAppWriteUnlessActorAllowed(request, [booking.guestId, booking.property.ownerId]);
+    if (denied) return denied;
     const existing = await prisma.chatRoom.findFirst({ where: { bookingId } });
     if (existing) return NextResponse.json(existing);
     const created = await prisma.chatRoom.create({

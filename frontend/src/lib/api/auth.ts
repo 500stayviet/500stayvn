@@ -6,6 +6,8 @@
 
 import { VerificationStatus, PrivateData } from "@/types/kyc.types";
 import { SupportedLanguage } from "@/lib/api/translation";
+import { canReadLocalFallback, canWriteLocalFallback } from "@/lib/runtime/localFallbackPolicy";
+import { emitUserFacingSyncError, fetchWithRetry } from "@/lib/runtime/networkResilience";
 
 export interface UserData {
   uid: string;
@@ -66,7 +68,11 @@ function simpleHash(password: string): string {
 }
 
 function readLocalStorageUsersFallback(): UserData[] {
-  if (typeof window === "undefined" || typeof localStorage === "undefined")
+  if (
+    typeof window === "undefined" ||
+    typeof localStorage === "undefined" ||
+    !canReadLocalFallback()
+  )
     return [];
   try {
     const stored = localStorage.getItem(USERS_STORAGE_KEY);
@@ -89,7 +95,11 @@ export function getUsers(): UserData[] {
  */
 export function setUsersCacheAndStorage(users: UserData[]): void {
   usersCache = users;
-  if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
+  if (
+    typeof window !== "undefined" &&
+    typeof localStorage !== "undefined" &&
+    canWriteLocalFallback()
+  ) {
     try {
       localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
     } catch {
@@ -105,7 +115,11 @@ export function setUsersCacheAndStorage(users: UserData[]): void {
 export async function refreshUsersFromServer(): Promise<boolean> {
   if (typeof window === "undefined") return false;
   try {
-    const res = await fetch("/api/app/users", { cache: "no-store" });
+    const res = await fetchWithRetry(
+      "/api/app/users",
+      { cache: "no-store" },
+      { retries: 2, baseDelayMs: 300 },
+    );
     if (!res.ok) throw new Error(String(res.status));
     const data = (await res.json()) as { users?: UserData[] };
     const users = Array.isArray(data.users) ? data.users : [];
@@ -113,6 +127,11 @@ export async function refreshUsersFromServer(): Promise<boolean> {
     return true;
   } catch {
     usersCache = null;
+    emitUserFacingSyncError({
+      area: "users",
+      action: "refresh",
+      message: "사용자 데이터를 서버에서 가져오지 못했습니다. 잠시 후 다시 시도해주세요.",
+    });
     return false;
   }
 }
@@ -153,17 +172,26 @@ export async function bootstrapUsersFromServer(): Promise<void> {
   }
 
   try {
-    const res = await fetch("/api/app/users/import", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ users: local }),
-    });
+    const res = await fetchWithRetry(
+      "/api/app/users/import",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ users: local }),
+      },
+      { retries: 2, baseDelayMs: 300 },
+    );
     if (res.ok) {
       localStorage.setItem(BOOTSTRAP_KEY, "1");
       await refreshUsersFromServer();
     }
   } catch {
     /* 네트워크 오류 시 BOOTSTRAP_KEY 미설정 → 이후 재시도 */
+    emitUserFacingSyncError({
+      area: "users",
+      action: "bootstrap",
+      message: "사용자 초기 동기화에 실패했습니다. 네트워크를 확인 후 다시 시도해주세요.",
+    });
   }
 }
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { rejectAppWriteUnlessActorAllowed } from '@/lib/server/appSyncWriteGuard';
 
 type Body = {
   userId?: string;
@@ -20,12 +21,29 @@ export async function PATCH(
     return NextResponse.json({ error: 'invalid_body' }, { status: 400 });
   }
   const userId = (body.userId || '').trim();
+  if (!body.all && !userId) {
+    return NextResponse.json({ error: 'invalid_user_id' }, { status: 400 });
+  }
   try {
+    const room = await prisma.chatRoom.findUnique({
+      where: { id: roomId },
+      select: { bookingId: true },
+    });
+    const bookingId = room?.bookingId || null;
+    if (!bookingId) return NextResponse.json({ error: 'room_not_found' }, { status: 404 });
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { property: { select: { ownerId: true } } },
+    });
+    if (!booking) return NextResponse.json({ error: 'booking_not_found' }, { status: 404 });
+    const denied = rejectAppWriteUnlessActorAllowed(request, [booking.guestId, booking.property.ownerId]);
+    if (denied) return denied;
+
     const result = await prisma.message.updateMany({
       where: {
         roomId,
         isRead: false,
-        ...(body.all ? {} : { senderId: { not: userId } }),
+        ...(body.all ? {} : { senderId: { not: userId || booking.guestId } }),
       },
       data: { isRead: true },
     });

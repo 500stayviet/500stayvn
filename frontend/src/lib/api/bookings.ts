@@ -3,6 +3,8 @@
  */
 
 import { toISODateString } from '../utils/dateUtils';
+import { canReadLocalFallback, canWriteLocalFallback } from '@/lib/runtime/localFallbackPolicy';
+import { emitUserFacingSyncError, fetchWithRetry } from '@/lib/runtime/networkResilience';
 
 export { toISODateString };
 
@@ -96,7 +98,11 @@ const BOOKINGS_BOOTSTRAP_KEY = 'stayviet-bookings-bootstrap-v1';
 let bookingsCache: BookingData[] | null = null;
 
 function loadBookingsCacheFromLocal(): BookingData[] {
-  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return [];
+  if (
+    typeof window === 'undefined' ||
+    typeof localStorage === 'undefined' ||
+    !canReadLocalFallback()
+  ) return [];
   try {
     const data = localStorage.getItem(BOOKINGS_STORAGE_KEY);
     const arr = data ? (JSON.parse(data) as BookingData[]) : [];
@@ -122,7 +128,11 @@ let bookingsHydrationPromise: Promise<void> | null = null;
 
 export function writeBookingsArray(all: BookingData[]): void {
   bookingsCache = all;
-  if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+  if (
+    typeof window !== 'undefined' &&
+    typeof localStorage !== 'undefined' &&
+    canWriteLocalFallback()
+  ) {
     try {
       localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(all));
     } catch {
@@ -138,24 +148,44 @@ export function writeBookingsArray(all: BookingData[]): void {
     bookingsFlushTimer = null;
     const snapshot = bookingsCache;
     if (!snapshot) return;
-    void fetch('/api/app/bookings', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ bookings: snapshot }),
-    }).catch((e) => console.warn('[bookings] PUT sync failed', e));
+    void fetchWithRetry(
+      '/api/app/bookings',
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookings: snapshot }),
+      },
+      { retries: 2, baseDelayMs: 300 }
+    ).catch((e) => {
+      console.warn('[bookings] PUT sync failed', e);
+      emitUserFacingSyncError({
+        area: 'bookings',
+        action: 'sync',
+        message: '예약 데이터 동기화가 지연되고 있습니다. 네트워크 상태를 확인해주세요.',
+      });
+    });
   }, 500);
 }
 
 async function syncBookingsNow(snapshot: BookingData[]): Promise<void> {
   if (typeof window === 'undefined') return;
   try {
-    await fetch('/api/app/bookings', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ bookings: snapshot }),
-    });
+    await fetchWithRetry(
+      '/api/app/bookings',
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookings: snapshot }),
+      },
+      { retries: 2, baseDelayMs: 300 }
+    );
   } catch (e) {
     console.warn('[bookings] immediate PUT sync failed', e);
+    emitUserFacingSyncError({
+      area: 'bookings',
+      action: 'sync',
+      message: '예약 저장에 실패했습니다. 잠시 후 다시 시도해주세요.',
+    });
   }
 }
 
@@ -202,24 +232,37 @@ async function patchPaymentMetaByBooking(
 export async function refreshBookingsFromServer(): Promise<boolean> {
   if (typeof window === 'undefined') return false;
   try {
-    const res = await fetch('/api/app/bookings', { cache: 'no-store' });
+    const res = await fetchWithRetry(
+      '/api/app/bookings',
+      { cache: 'no-store' },
+      { retries: 2, baseDelayMs: 300 }
+    );
     if (!res.ok) throw new Error(String(res.status));
     const data = (await res.json()) as { bookings?: BookingData[] };
     const list = Array.isArray(data.bookings) ? data.bookings : [];
     bookingsCache = list;
-    if (typeof localStorage !== 'undefined') {
+    if (typeof localStorage !== 'undefined' && canWriteLocalFallback()) {
       localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(list));
     }
     window.dispatchEvent(new CustomEvent('bookingsUpdated'));
     return true;
   } catch {
     bookingsCache = null;
+    emitUserFacingSyncError({
+      area: 'bookings',
+      action: 'refresh',
+      message: '예약 목록을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.',
+    });
     return false;
   }
 }
 
 export async function bootstrapBookingsFromServer(): Promise<void> {
   if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
+  if (!canReadLocalFallback()) {
+    await refreshBookingsFromServer();
+    return;
+  }
 
   if (localStorage.getItem(BOOKINGS_BOOTSTRAP_KEY)) {
     await refreshBookingsFromServer();
@@ -249,17 +292,26 @@ export async function bootstrapBookingsFromServer(): Promise<void> {
   }
 
   try {
-    const res = await fetch('/api/app/bookings/import', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ bookings: legacy }),
-    });
+    const res = await fetchWithRetry(
+      '/api/app/bookings/import',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookings: legacy }),
+      },
+      { retries: 2, baseDelayMs: 300 }
+    );
     if (res.ok) {
       localStorage.setItem(BOOKINGS_BOOTSTRAP_KEY, '1');
       await refreshBookingsFromServer();
     }
   } catch {
     /* 재시도는 다음 로드 */
+    emitUserFacingSyncError({
+      area: 'bookings',
+      action: 'bootstrap',
+      message: '예약 초기 동기화에 실패했습니다. 네트워크를 확인해주세요.',
+    });
   }
 }
 

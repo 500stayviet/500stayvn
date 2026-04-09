@@ -4,6 +4,7 @@ import { getUsers, refreshUsersFromServer, saveUsers, UserData } from '@/lib/api
 import { readPropertiesArray, writePropertiesArray } from '@/lib/api/properties';
 import { isPropertyNew, isUserNew } from '@/lib/adminNewUtils';
 import { PropertyData } from '@/types/property';
+import { canReadLocalFallback, canWriteLocalFallback } from '@/lib/runtime/localFallbackPolicy';
 
 const MODERATION_AUDIT_KEY = 'admin_moderation_audit_v1';
 let moderationAuditCache: ModerationAuditEntry[] | null = null;
@@ -31,7 +32,11 @@ function genId(prefix: string): string {
 
 function readModerationAudits(): ModerationAuditEntry[] {
   if (moderationAuditCache) return moderationAuditCache;
-  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return [];
+  if (
+    typeof window === 'undefined' ||
+    typeof localStorage === 'undefined' ||
+    !canReadLocalFallback()
+  ) return [];
   try {
     const raw = localStorage.getItem(MODERATION_AUDIT_KEY);
     const rows = raw ? (JSON.parse(raw) as ModerationAuditEntry[]) : [];
@@ -43,7 +48,11 @@ function readModerationAudits(): ModerationAuditEntry[] {
 }
 
 function saveModerationAudits(rows: ModerationAuditEntry[]): void {
-  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
+  if (
+    typeof window === 'undefined' ||
+    typeof localStorage === 'undefined' ||
+    !canWriteLocalFallback()
+  ) return;
   moderationAuditCache = rows;
   localStorage.setItem(MODERATION_AUDIT_KEY, JSON.stringify(rows));
 }

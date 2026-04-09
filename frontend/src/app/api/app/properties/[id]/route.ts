@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { rejectAppWriteUnlessActorAllowed } from '@/lib/server/appSyncWriteGuard';
 
 /**
  * 매물 영구 삭제: 관련 예약·채팅·메시지 정리 후 Property 삭제
  */
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   const { id } = await context.params;
@@ -13,6 +14,14 @@ export async function DELETE(
   if (!pid) return NextResponse.json({ error: 'invalid_id' }, { status: 400 });
 
   try {
+    const row = await prisma.property.findUnique({
+      where: { id: pid },
+      select: { ownerId: true },
+    });
+    if (!row) return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    const denied = rejectAppWriteUnlessActorAllowed(request, [row.ownerId]);
+    if (denied) return denied;
+
     await prisma.$transaction(async (tx) => {
       const bookings = await tx.booking.findMany({
         where: { propertyId: pid },

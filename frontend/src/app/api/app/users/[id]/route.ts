@@ -5,6 +5,7 @@ import {
   prismaUserToUserData,
   userDataPatchToPrisma,
 } from '@/lib/server/appUserMapper';
+import { rejectAppWriteUnlessActorAllowed } from '@/lib/server/appSyncWriteGuard';
 import type { Prisma } from '@prisma/client';
 import type { UserData } from '@/lib/api/auth';
 
@@ -43,6 +44,9 @@ export async function PATCH(
     return NextResponse.json({ error: 'invalid_body' }, { status: 400 });
   }
 
+  const denied = rejectAppWriteUnlessActorAllowed(request, [uid]);
+  if (denied) return denied;
+
   try {
     const row = await prisma.user.findUnique({ where: { id: uid } });
     if (!row || row.deleted) {
@@ -69,12 +73,15 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   const { id } = await context.params;
   const uid = (id || '').trim();
   if (!uid) return NextResponse.json({ error: 'invalid_id' }, { status: 400 });
+
+  const denied = rejectAppWriteUnlessActorAllowed(request, [uid]);
+  if (denied) return denied;
 
   try {
     const row = await prisma.user.findUnique({ where: { id: uid } });

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { rejectAppWriteUnlessActorAllowed } from '@/lib/server/appSyncWriteGuard';
 
 type PatchBody = {
   status?: string;
@@ -26,6 +27,20 @@ export async function PATCH(
     return NextResponse.json({ error: 'invalid_body' }, { status: 400 });
   }
   try {
+    const ownerRows = (await prisma.$queryRawUnsafe(
+      `
+      SELECT b."guestId" AS "guestId", p."ownerId" AS "ownerId"
+      FROM "Booking" b
+      JOIN "Property" p ON p."id" = b."propertyId"
+      WHERE b."id" = $1
+      LIMIT 1
+      `,
+      bid
+    )) as Array<{ guestId: string; ownerId: string }>;
+    if (!ownerRows[0]) return NextResponse.json({ error: 'booking_not_found' }, { status: 404 });
+    const denied = rejectAppWriteUnlessActorAllowed(request, [ownerRows[0].guestId, ownerRows[0].ownerId]);
+    if (denied) return denied;
+
     const latest = (await prisma.$queryRawUnsafe(
       `
       SELECT "id"
