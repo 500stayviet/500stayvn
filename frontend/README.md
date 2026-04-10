@@ -128,6 +128,11 @@ frontend/
 4. 환경 변수 설정
 5. 배포 완료!
 
+### 운영 런북
+
+- 배포/DB 백업/복구/마이그레이션 실패 대응: `OPERATIONS_RUNBOOK.md`
+- Sentry 알림 규칙/대시보드 템플릿: `SENTRY_ALERTS_PLAYBOOK.md`
+
 ### 수동 빌드
 
 ```bash

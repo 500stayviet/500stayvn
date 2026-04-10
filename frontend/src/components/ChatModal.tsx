@@ -4,16 +4,20 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { 
-  getChatRoom, 
-  sendMessage, 
+import {
+  getChatRoom,
+  getChatMessages,
+  sendMessage,
   markMessagesAsRead,
   subscribeToChatMessages,
-  ChatRoom, 
-  ChatMessage as ChatMessageType 
+  mergeChatMessageWindow,
+  CHAT_MESSAGE_PAGE_SIZE,
+  CHAT_POLL_WINDOW_SIZE,
+  ChatRoom,
+  ChatMessage as ChatMessageType,
 } from '@/lib/api/chat';
 import { ChatMessage } from '@/components/ChatMessage';
 import { detectMessageLanguage } from '@/lib/utils/languageDetection';
@@ -51,10 +55,20 @@ export default function ChatModal({ roomId, onClose }: ChatModalProps) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
-  
+  const [loadingMoreOlder, setLoadingMoreOlder] = useState(false);
+  const [hasMoreOlder, setHasMoreOlder] = useState(true);
+  const didSetHasMoreRef = useRef(false);
+
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setMessages([]);
+    setIsInitialLoad(true);
+    didSetHasMoreRef.current = false;
+    setHasMoreOlder(true);
+  }, [roomId]);
 
   // 채팅방 정보 로드
   useEffect(() => {
@@ -91,18 +105,55 @@ export default function ChatModal({ roomId, onClose }: ChatModalProps) {
   useEffect(() => {
     if (!user || !roomId) return;
 
-    const unsubscribe = subscribeToChatMessages(roomId, (msgs) => {
-      setMessages(prev => {
-        // 무거운 deep stringify 대신 핵심 변화만 비교해 리렌더링 비용 절감
-        if (areMessagesEquivalent(prev, msgs)) return prev;
-        return msgs;
+    const unsubscribe = subscribeToChatMessages(roomId, (slice) => {
+      setMessages((prev) => {
+        const next = mergeChatMessageWindow(prev, slice);
+        if (areMessagesEquivalent(prev, next)) return prev;
+        return next;
       });
-      // 읽음 처리
+      if (!didSetHasMoreRef.current) {
+        didSetHasMoreRef.current = true;
+        setHasMoreOlder(slice.length >= CHAT_POLL_WINDOW_SIZE);
+      }
       markMessagesAsRead(roomId, user.uid);
     });
 
     return () => unsubscribe();
   }, [user, roomId]);
+
+  const loadOlderMessages = useCallback(async () => {
+    if (!user || !roomId || loadingMoreOlder || !hasMoreOlder) return;
+    const container = scrollContainerRef.current;
+    const first = messages[0];
+    if (!first) return;
+    setLoadingMoreOlder(true);
+    const prevH = container?.scrollHeight ?? 0;
+    const prevTop = container?.scrollTop ?? 0;
+    try {
+      const older = await getChatMessages(roomId, {
+        limit: CHAT_MESSAGE_PAGE_SIZE,
+        before: first.createdAt,
+      });
+      if (older.length === 0) {
+        setHasMoreOlder(false);
+        return;
+      }
+      setMessages((prev) => mergeChatMessageWindow(prev, older));
+      if (older.length < CHAT_MESSAGE_PAGE_SIZE) setHasMoreOlder(false);
+      requestAnimationFrame(() => {
+        const el = scrollContainerRef.current;
+        if (el) el.scrollTop = el.scrollHeight - prevH + prevTop;
+      });
+    } finally {
+      setLoadingMoreOlder(false);
+    }
+  }, [user, roomId, loadingMoreOlder, hasMoreOlder, messages]);
+
+  const onMessagesScroll = () => {
+    const el = scrollContainerRef.current;
+    if (!el || loadingMoreOlder || !hasMoreOlder) return;
+    if (el.scrollTop < 72) void loadOlderMessages();
+  };
 
   // 메시지가 업데이트되면 스크롤 처리
   useEffect(() => {
@@ -288,10 +339,25 @@ export default function ChatModal({ roomId, onClose }: ChatModalProps) {
         </div>
 
         {/* 메시지 영역 */}
-        <div 
+        <div
           ref={scrollContainerRef}
+          onScroll={onMessagesScroll}
           className="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-[#F8F9FA]"
         >
+          {loadingMoreOlder ? (
+            <div className="flex justify-center py-2">
+              <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+            </div>
+          ) : null}
+          {!loadingMoreOlder && hasMoreOlder && messages.length > 0 ? (
+            <p className="text-center text-[10px] text-gray-400">
+              {currentLanguage === 'ko'
+                ? '위로 스크롤하면 이전 메시지'
+                : currentLanguage === 'vi'
+                  ? 'Cuộn lên để xem tin cũ hơn'
+                  : 'Scroll up for older messages'}
+            </p>
+          ) : null}
           {/* 예약 확정 시스템 안내 (첫 머리에 표시) */}
           <div className="flex justify-center mb-6">
             <div className="bg-white/80 backdrop-blur-sm border border-blue-100 rounded-2xl px-4 py-3 shadow-sm max-w-[90%]">

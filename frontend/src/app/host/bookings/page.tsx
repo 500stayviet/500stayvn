@@ -14,7 +14,10 @@ import {
   cancelBooking,
   deleteBooking,
 } from "@/lib/api/bookings";
-import { getUnreadCountByRoom, getUnreadCountsByRole } from "@/lib/api/chat";
+import {
+  refreshChatUnreadSnapshot,
+  subscribeChatUnreadUpdates,
+} from "@/lib/api/chat";
 import {
   Calendar,
   Clock,
@@ -172,29 +175,22 @@ function BookingsContent() {
 
   useEffect(() => {
     if (!user || bookings.length === 0) return;
+    const roomIds = bookings.map((b) => b.chatRoomId || "").filter(Boolean);
     const loadUnreadCounts = async () => {
-      if (!user) return;
-      const roleCounts = await getUnreadCountsByRole(user.uid);
-      setTotalUnreadChatCount(roleCounts.asOwner);
-      const counts: Record<string, number> = {};
-      for (const booking of bookings) {
-        if (booking.chatRoomId) {
-          counts[booking.chatRoomId] = await getUnreadCountByRoom(
-            booking.chatRoomId,
-            user.uid,
-          );
-        }
-      }
-      setUnreadCounts(counts);
+      const snap = await refreshChatUnreadSnapshot(user.uid, roomIds);
+      setTotalUnreadChatCount(snap.asOwner);
+      setUnreadCounts(snap.byRoom);
     };
     loadUnreadCounts();
-    const handleMessageUpdate = () => loadUnreadCounts();
-    window.addEventListener("chatMessagesUpdated", handleMessageUpdate);
-    window.addEventListener("chatRoomsUpdated", handleMessageUpdate);
-    return () => {
-      window.removeEventListener("chatMessagesUpdated", handleMessageUpdate);
-      window.removeEventListener("chatRoomsUpdated", handleMessageUpdate);
-    };
+    const unsub = subscribeChatUnreadUpdates(user.uid, (snapshot) => {
+      if (snapshot) {
+        setTotalUnreadChatCount(snapshot.asOwner);
+        setUnreadCounts(snapshot.byRoom);
+        return;
+      }
+      void loadUnreadCounts();
+    });
+    return () => unsub();
   }, [user, bookings]);
 
   // 활성 예약: pending + confirmed 상태

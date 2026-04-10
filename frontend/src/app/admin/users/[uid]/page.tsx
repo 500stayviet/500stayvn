@@ -15,7 +15,6 @@ import { getOwnerBalances } from '@/lib/api/adminFinance';
 import { getAllBookings } from '@/lib/api/bookings';
 import { addSharedMemo, deleteSharedMemo, getSharedMemos } from '@/lib/api/adminMemos';
 import type { UserData } from '@/lib/api/auth';
-import { getUsers } from '@/lib/api/auth';
 import { setUserBlocked } from '@/lib/api/adminModeration';
 import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
 
@@ -72,9 +71,20 @@ export default function AdminUserDetailPage() {
 
   const loadUserAndMemos = useCallback(async () => {
     if (!uid) return;
-    const users = getUsers();
-    const u = users.find((x) => x.uid === uid && !x.deleted) ?? null;
-    setUser(u);
+    try {
+      const res = await fetch(`/api/app/users/${encodeURIComponent(uid)}`, {
+        cache: 'no-store',
+        credentials: 'same-origin',
+      });
+      if (res.ok) {
+        const u = (await res.json()) as UserData;
+        setUser(u.deleted ? null : u);
+      } else {
+        setUser(null);
+      }
+    } catch {
+      setUser(null);
+    }
     const [hostRows, guestRows] = await Promise.all([
       getSharedMemos('user', uid, 'host'),
       getSharedMemos('user', uid, 'guest'),

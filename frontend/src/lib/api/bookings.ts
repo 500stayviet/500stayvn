@@ -244,14 +244,26 @@ async function patchPaymentMetaByBooking(
 export async function refreshBookingsFromServer(): Promise<boolean> {
   if (typeof window === 'undefined') return false;
   try {
-    const res = await fetchWithRetry(
-      '/api/app/bookings',
-      withAppActor({ cache: 'no-store' }),
-      { retries: 2, baseDelayMs: 300 }
-    );
-    if (!res.ok) throw new Error(String(res.status));
-    const data = (await res.json()) as { bookings?: BookingData[] };
-    const list = Array.isArray(data.bookings) ? data.bookings : [];
+    const list: BookingData[] = [];
+    let offset = 0;
+    const limit = 200;
+    for (let i = 0; i < 200; i += 1) {
+      const res = await fetchWithRetry(
+        `/api/app/bookings?limit=${limit}&offset=${offset}`,
+        withAppActor({ cache: 'no-store' }),
+        { retries: 2, baseDelayMs: 300 }
+      );
+      if (!res.ok) throw new Error(String(res.status));
+      const data = (await res.json()) as {
+        bookings?: BookingData[];
+        page?: { hasMore?: boolean; nextOffset?: number };
+      };
+      const chunk = Array.isArray(data.bookings) ? data.bookings : [];
+      list.push(...chunk);
+      const hasMore = Boolean(data.page?.hasMore);
+      if (!hasMore || chunk.length === 0) break;
+      offset = Number(data.page?.nextOffset ?? offset + chunk.length);
+    }
     bookingsCache = list;
     if (typeof localStorage !== 'undefined' && canWriteLocalFallback()) {
       localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(list));

@@ -25,10 +25,25 @@ export interface KYCUserData {
 
 async function loadUsersForKyc(): Promise<UserData[]> {
   if (typeof window === 'undefined') return [];
-  const res = await fetch('/api/app/users', { cache: 'no-store' });
-  if (!res.ok) throw new Error(`users_api_${res.status}`);
-  const data = (await res.json()) as { users?: UserData[] };
-  return Array.isArray(data.users) ? data.users : [];
+  const users: UserData[] = [];
+  let offset = 0;
+  const limit = 200;
+  for (let i = 0; i < 200; i += 1) {
+    const res = await fetch(`/api/app/users?limit=${limit}&offset=${offset}`, {
+      cache: 'no-store',
+      credentials: 'same-origin',
+    });
+    if (!res.ok) throw new Error(`users_api_${res.status}`);
+    const data = (await res.json()) as {
+      users?: UserData[];
+      page?: { hasMore?: boolean; nextOffset?: number };
+    };
+    const chunk = Array.isArray(data.users) ? data.users : [];
+    users.push(...chunk);
+    if (!data.page?.hasMore || chunk.length === 0) break;
+    offset = Number(data.page?.nextOffset ?? offset + chunk.length);
+  }
+  return users;
 }
 
 /**

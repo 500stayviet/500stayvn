@@ -5,23 +5,78 @@ import {
   bookingDataToUncheckedUpdate,
   prismaBookingToBookingData,
 } from '@/lib/server/appBookingMapper';
-import { rejectAppWriteUnlessSyncSecret } from '@/lib/server/appSyncWriteGuard';
+import {
+  rejectAppWriteUnlessSyncSecret,
+  getAppActorId,
+} from '@/lib/server/appSyncWriteGuard';
+import { getAdminFromRequest } from '@/lib/server/adminAuthServer';
+import { appApiError } from '@/lib/server/appApiErrors';
 import type { BookingData } from '@/lib/api/bookings';
+import { reportApiException, reportApiSuccess } from '@/lib/server/apiMonitoring';
 
 const MAX_BATCH = 5000;
 
-export async function GET() {
+function parsePageParams(request: NextRequest): { limit: number; offset: number } {
+  const limitRaw = Number(request.nextUrl.searchParams.get('limit') || '200');
+  const offsetRaw = Number(request.nextUrl.searchParams.get('offset') || '0');
+  const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(500, Math.floor(limitRaw))) : 200;
+  const offset = Number.isFinite(offsetRaw) ? Math.max(0, Math.min(20000, Math.floor(offsetRaw))) : 0;
+  return { limit, offset };
+}
+
+/**
+ * 예약 목록
+ * - 관리자 또는 sync secret: 전체
+ * - 앱 액터: 게스트이거나 해당 매물 소유자인 예약만
+ */
+export async function GET(request: NextRequest) {
+  const startedAt = Date.now();
   try {
-    const rows = await prisma.booking.findMany({ orderBy: { updatedAt: 'desc' } });
-    const bookings = rows.map(prismaBookingToBookingData);
-    return NextResponse.json({ bookings });
+    const { limit, offset } = parsePageParams(request);
+    const admin = await getAdminFromRequest(request);
+    const enforce = process.env.APP_SYNC_ENFORCE_WRITE === 'true';
+    const secret = process.env.APP_SYNC_SECRET?.trim();
+    const hdr = request.headers.get('x-app-sync-secret');
+    const syncOk = Boolean(enforce && secret && hdr === secret);
+
+    if (admin || syncOk) {
+      const rows = await prisma.booking.findMany({
+        orderBy: { updatedAt: 'desc' },
+        take: limit,
+        skip: offset,
+      });
+      reportApiSuccess('GET /api/app/bookings', 200, startedAt);
+      return NextResponse.json({
+        bookings: rows.map(prismaBookingToBookingData),
+        page: { limit, offset, hasMore: rows.length === limit, nextOffset: offset + rows.length },
+      });
+    }
+
+    const actor = getAppActorId(request);
+    if (!actor) return appApiError('actor_required', 401);
+
+    const rows = await prisma.booking.findMany({
+      where: {
+        OR: [{ guestId: actor }, { property: { ownerId: actor } }],
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: limit,
+      skip: offset,
+    });
+    reportApiSuccess('GET /api/app/bookings', 200, startedAt);
+    return NextResponse.json({
+      bookings: rows.map(prismaBookingToBookingData),
+      page: { limit, offset, hasMore: rows.length === limit, nextOffset: offset + rows.length },
+    });
   } catch (e) {
+    reportApiException('GET /api/app/bookings', e, startedAt);
     console.error('GET /api/app/bookings', e);
     return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
   }
 }
 
 export async function PUT(request: NextRequest) {
+  const startedAt = Date.now();
   const denied = rejectAppWriteUnlessSyncSecret(request);
   if (denied) return denied;
 
@@ -59,8 +114,10 @@ export async function PUT(request: NextRequest) {
       }
     });
 
+    reportApiSuccess('PUT /api/app/bookings', 200, startedAt);
     return NextResponse.json({ ok: true });
   } catch (e) {
+    reportApiException('PUT /api/app/bookings', e, startedAt);
     console.error('PUT /api/app/bookings', e);
     return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
   }

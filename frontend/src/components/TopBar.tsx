@@ -15,7 +15,13 @@ import { SupportedLanguage } from '@/lib/api/translation';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getGuestBookings, getOwnerBookings, BookingData } from '@/lib/api/bookings';
-import { getUnreadCountsByRole, markAllChatAsReadByRole, markAllMessagesInRoomAsRead } from '@/lib/api/chat';
+import {
+  getUnreadCountsByRole,
+  markAllChatAsReadByRole,
+  markAllMessagesInRoomAsRead,
+  subscribeChatUnreadUpdates,
+  refreshChatUnreadSnapshot,
+} from '@/lib/api/chat';
 import { getUIText } from '@/utils/i18n';
 
 interface TopBarProps {
@@ -102,10 +108,9 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
       
       try {
         // 임차인 예약과 임대인 예약, 읽지 않은 채팅 모두 가져오기
-        const [guestBookings, ownerBookings, chatUnreads] = await Promise.all([
+        const [guestBookings, ownerBookings] = await Promise.all([
           getGuestBookings(user.uid),
           getOwnerBookings(user.uid),
-          getUnreadCountsByRole(user.uid)
         ]);
         
         // 최근 예약만 표시 (최근 10개씩)
@@ -129,7 +134,7 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
         const unreadGuestCount = recentGuestBookings.filter(b => b.id && !readIds.has(b.id)).length;
         const unreadOwnerCount = recentOwnerBookings.filter(b => b.id && !readIds.has(b.id)).length;
         
-        // 채팅 알림도 포함
+        const chatUnreads = await getUnreadCountsByRole(user.uid);
         setUnreadChatCounts(chatUnreads);
         setUnreadCount(unreadGuestCount + unreadOwnerCount + chatUnreads.asGuest + chatUnreads.asOwner);
       } catch (error) {
@@ -143,6 +148,26 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
     const interval = setInterval(loadNotifications, 5000);
     return () => clearInterval(interval);
   }, [user]);
+
+  // unread 공통 이벤트 축: 채팅 화면/읽음 처리에서 발생한 변경을 즉시 반영
+  useEffect(() => {
+    if (!user) return;
+    const reload = () => {
+      const roomIds = [
+        ...notifications.asGuest.map((b) => b.chatRoomId || ''),
+        ...notifications.asOwner.map((b) => b.chatRoomId || ''),
+      ].filter(Boolean);
+      void refreshChatUnreadSnapshot(user.uid, roomIds).then((snap) => {
+        setUnreadChatCounts({ asGuest: snap.asGuest, asOwner: snap.asOwner });
+        const bookingUnread = [...notifications.asGuest, ...notifications.asOwner].filter(
+          (b) => b.id && !readNotificationIds.has(b.id)
+        ).length;
+        setUnreadCount(bookingUnread + snap.asGuest + snap.asOwner);
+      });
+    };
+    const unsub = subscribeChatUnreadUpdates(user.uid, () => reload());
+    return () => unsub();
+  }, [user, notifications, readNotificationIds]);
   
   // 알림 읽음 처리
   const markAsRead = (bookingId: string) => {

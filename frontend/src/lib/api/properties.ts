@@ -181,14 +181,26 @@ export function writePropertiesArray(all: PropertyData[]): void {
 export async function refreshPropertiesFromServer(): Promise<boolean> {
   if (typeof window === 'undefined') return false;
   try {
-    const res = await fetchWithRetry(
-      '/api/app/properties',
-      withAppActor({ cache: 'no-store' }),
-      { retries: 2, baseDelayMs: 300 }
-    );
-    if (!res.ok) throw new Error(String(res.status));
-    const data = (await res.json()) as { properties?: PropertyData[] };
-    const list = Array.isArray(data.properties) ? data.properties : [];
+    const list: PropertyData[] = [];
+    let offset = 0;
+    const limit = 200;
+    for (let i = 0; i < 200; i += 1) {
+      const res = await fetchWithRetry(
+        `/api/app/properties?limit=${limit}&offset=${offset}`,
+        withAppActor({ cache: 'no-store' }),
+        { retries: 2, baseDelayMs: 300 }
+      );
+      if (!res.ok) throw new Error(String(res.status));
+      const data = (await res.json()) as {
+        properties?: PropertyData[];
+        page?: { hasMore?: boolean; nextOffset?: number };
+      };
+      const chunk = Array.isArray(data.properties) ? data.properties : [];
+      list.push(...chunk);
+      const hasMore = Boolean(data.page?.hasMore);
+      if (!hasMore || chunk.length === 0) break;
+      offset = Number(data.page?.nextOffset ?? offset + chunk.length);
+    }
     propertiesCache = list;
     if (typeof localStorage !== 'undefined' && canWriteLocalFallback()) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(list));

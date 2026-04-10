@@ -1,6 +1,6 @@
 'use client';
 
-import { getUsers, refreshUsersFromServer, saveUsers, UserData } from '@/lib/api/auth';
+import { getUsers, refreshUsersCacheForAdmin, refreshUsersFromServer, saveUsers, UserData } from '@/lib/api/auth';
 import { readPropertiesArray, writePropertiesArray } from '@/lib/api/properties';
 import { isPropertyNew, isUserNew } from '@/lib/adminNewUtils';
 import { PropertyData } from '@/types/property';
@@ -164,7 +164,8 @@ export async function setUserBlocked(
       }),
     });
     if (res.ok) {
-      await refreshUsersFromServer();
+      const ok = await refreshUsersCacheForAdmin();
+      if (!ok) await refreshUsersFromServer();
     } else if (res.status === 503) {
       const users = getUsers().map((u) => ({ ...u }));
       const index = users.findIndex((u) => u.uid === uid);

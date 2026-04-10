@@ -23,12 +23,16 @@ const ADMIN_APP_USER_PATCH_KEYS = new Set([
 ]);
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   const { id } = await context.params;
   const uid = (id || '').trim();
   if (!uid) return appApiError('invalid_id', 400);
+
+  const admin = await getAdminFromRequest(request);
+  const actor = getAppActorId(request);
+  if (!admin && actor !== uid) return appApiError('forbidden_actor', 403);
 
   try {
     const row = await prisma.user.findFirst({

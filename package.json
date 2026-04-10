@@ -7,7 +7,6 @@
     "install:frontend": "npm install --prefix frontend"
   },
   "dependencies": {
-    "@prisma/client": "^7.3.0",
     "firebase": "^12.9.0",
     "firebase-admin": "^13.6.1",
     "next-pwa": "^5.6.0"

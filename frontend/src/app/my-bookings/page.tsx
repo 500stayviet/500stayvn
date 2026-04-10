@@ -14,7 +14,10 @@ import {
   cancelBooking,
   deleteBooking,
 } from "@/lib/api/bookings";
-import { getUnreadCountByRoom, getUnreadCountsByRole } from "@/lib/api/chat";
+import {
+  refreshChatUnreadSnapshot,
+  subscribeChatUnreadUpdates,
+} from "@/lib/api/chat";
 import {
   Calendar,
   Clock,
@@ -150,20 +153,22 @@ function BookingListContent() {
 
   useEffect(() => {
     if (!user || bookings.length === 0) return;
+    const roomIds = bookings.map((b) => b.chatRoomId || "").filter(Boolean);
     const loadUnreadCounts = async () => {
-      const roleCounts = await getUnreadCountsByRole(user.uid);
-      setTotalUnreadChatCount(roleCounts.asGuest);
-      const counts: Record<string, number> = {};
-      for (const booking of bookings) {
-        if (booking.chatRoomId)
-          counts[booking.chatRoomId] = await getUnreadCountByRoom(
-            booking.chatRoomId,
-            user.uid,
-          );
-      }
-      setUnreadCounts(counts);
+      const snap = await refreshChatUnreadSnapshot(user.uid, roomIds);
+      setTotalUnreadChatCount(snap.asGuest);
+      setUnreadCounts(snap.byRoom);
     };
     loadUnreadCounts();
+    const unsub = subscribeChatUnreadUpdates(user.uid, (snapshot) => {
+      if (snapshot) {
+        setTotalUnreadChatCount(snapshot.asGuest);
+        setUnreadCounts(snapshot.byRoom);
+        return;
+      }
+      void loadUnreadCounts();
+    });
+    return () => unsub();
   }, [user, bookings]);
 
   const formatDateTime = (dateStr: string) => {

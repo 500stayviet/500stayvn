@@ -16,6 +16,7 @@ import {
   type AdminBadgeCounts,
 } from '@/lib/adminBadgeCounts';
 import { logoutAdmin } from '@/lib/api/adminAuth';
+import { refreshUsersCacheForAdmin } from '@/lib/api/auth';
 function navActive(pathname: string | null, href: string) {
   if (!pathname) return false;
   if (href === '/admin') {
@@ -114,6 +115,11 @@ export default function AdminChrome({ children }: { children: React.ReactNode })
       window.removeEventListener(ADMIN_BADGES_REFRESH_EVENT, load);
     };
   }, []);
+
+  useEffect(() => {
+    if (!me) return;
+    void refreshUsersCacheForAdmin();
+  }, [me]);
 
   const badgeByHref = useMemo(() => {
     if (!badges) return null;

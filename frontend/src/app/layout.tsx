@@ -1,5 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Be_Vietnam_Pro, Noto_Sans_KR, Noto_Sans_JP } from "next/font/google";
+import {
+  Geist,
+  Geist_Mono,
+  Be_Vietnam_Pro,
+  Noto_Sans,
+  Noto_Sans_KR,
+  Noto_Sans_JP,
+} from "next/font/google";
 import "./globals.css";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { TranslationProvider } from "@/contexts/TranslationProvider";
@@ -22,18 +29,28 @@ const beVietnamPro = Be_Vietnam_Pro({
   variable: "--font-be-vietnam",
   subsets: ["latin", "vietnamese"],
   weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
+  display: "swap",
+});
+
+const notoSans = Noto_Sans({
+  variable: "--font-noto-sans",
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
+  display: "swap",
 });
 
 const notoSansKR = Noto_Sans_KR({
   variable: "--font-noto-kr",
   subsets: ["latin"],
   weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
+  display: "swap",
 });
 
 const notoSansJP = Noto_Sans_JP({
   variable: "--font-noto-jp",
   subsets: ["latin"],
   weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -86,7 +103,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${beVietnamPro.variable} ${notoSansKR.variable} ${notoSansJP.variable}`}
+      className={`${beVietnamPro.variable} ${notoSans.variable} ${notoSansKR.variable} ${notoSansJP.variable}`}
     >
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -99,6 +116,12 @@ export default function RootLayout({
         <meta name="application-name" content="500 STAY VN" />
         <link rel="icon" href="/favicon.ico" />
         <link rel="manifest" href="/manifest.json" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap"
+          rel="stylesheet"
+        />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}

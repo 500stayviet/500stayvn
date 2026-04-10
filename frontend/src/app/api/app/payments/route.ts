@@ -6,8 +6,10 @@ import {
   rejectAppReadUnlessActorIsUser,
   rejectAppReadUnlessBookingParticipant,
 } from '@/lib/server/appApiReadGuard';
+import { reportApiException, reportApiSuccess } from '@/lib/server/apiMonitoring';
 
 export async function GET(request: NextRequest) {
+  const startedAt = Date.now();
   const bookingId = request.nextUrl.searchParams.get('bookingId')?.trim();
   const userId = request.nextUrl.searchParams.get('userId')?.trim();
   if (!bookingId && !userId) {
@@ -34,8 +36,10 @@ export async function GET(request: NextRequest) {
       bookingId || null,
       userId || null
     );
+    reportApiSuccess('GET /api/app/payments', 200, startedAt);
     return NextResponse.json({ payments: rows });
   } catch (e) {
+    reportApiException('GET /api/app/payments', e, startedAt);
     console.error('GET /api/app/payments', e);
     return appApiError('database_unavailable', 503);
   }
@@ -61,6 +65,7 @@ function generatePaymentId(): string {
 }
 
 export async function POST(request: NextRequest) {
+  const startedAt = Date.now();
   let body: CreatePaymentBody;
   try {
     body = await request.json();
@@ -127,8 +132,10 @@ export async function POST(request: NextRequest) {
       typeof body.refundAmount === 'number' ? body.refundAmount : null,
       body.metaJson ? JSON.stringify(body.metaJson) : null
     );
+    reportApiSuccess('POST /api/app/payments', 201, startedAt);
     return NextResponse.json((rows as unknown[])[0] || null, { status: 201 });
   } catch (e) {
+    reportApiException('POST /api/app/payments', e, startedAt);
     console.error('POST /api/app/payments', e);
     return appApiError('database_unavailable', 503);
   }

@@ -47,3 +47,22 @@ echo NEXT_PUBLIC_FIREBASE_FUNCTIONS_BASE_URL=https://us-central1-stayviet-26ae4.
 - `.env.local` 파일은 Git에 커밋되지 않습니다 (이미 .gitignore에 포함됨)
 - 환경 변수 변경 후에는 개발 서버를 재시작해야 합니다
 - `NEXT_PUBLIC_` 접두사가 붙은 변수만 클라이언트에서 사용 가능합니다
+
+## 모니터링(Sentry) 환경 변수
+
+```env
+# Server/Edge 공통 (권장)
+SENTRY_DSN=https://<key>@o0.ingest.sentry.io/<project-id>
+
+# Browser SDK
+NEXT_PUBLIC_SENTRY_DSN=https://<key>@o0.ingest.sentry.io/<project-id>
+
+# 선택값
+SENTRY_TRACES_SAMPLE_RATE=0.1
+NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=0.05
+SENTRY_ENVIRONMENT=production
+NEXT_PUBLIC_SENTRY_ENVIRONMENT=production
+
+# API 지연 임계(ms) - 기본 1200
+API_SLOW_MS=1200
+```

@@ -2,15 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { rejectAppWriteUnlessActorAllowed } from '@/lib/server/appSyncWriteGuard';
 import { appApiError } from '@/lib/server/appApiErrors';
-import { rejectAppReadUnlessRoomParticipant } from '@/lib/server/appApiReadGuard';
+import { rejectAppReadUnlessRoomParticipant } from '@/lib/server/appApiReadGuard'; 
+import { reportApiException, reportApiSuccess } from '@/lib/server/apiMonitoring';
 
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const startedAt = Date.now();
   const { id } = await context.params;
   const roomId = (id || '').trim();
   if (!roomId) return NextResponse.json({ error: 'invalid_room_id' }, { status: 400 });
+  const deniedRead = await rejectAppReadUnlessRoomParticipant(request, roomId);
+  if (deniedRead) return deniedRead;
   const limitRaw = Number(request.nextUrl.searchParams.get('limit') || '200');
   const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(500, Math.floor(limitRaw))) : 200;
   const before = (request.nextUrl.searchParams.get('before') || '').trim();
@@ -32,8 +36,10 @@ export async function GET(
       createdAt: m.createdAt.toISOString(),
       isRead: m.isRead,
     }));
+    reportApiSuccess('GET /api/app/chat/rooms/[id]/messages', 200, startedAt);
     return NextResponse.json({ messages });
   } catch (e) {
+    reportApiException('GET /api/app/chat/rooms/[id]/messages', e, startedAt);
     console.error('GET /api/app/chat/rooms/[id]/messages', e);
     return appApiError('database_unavailable', 503);
   }
@@ -48,6 +54,7 @@ export async function POST(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const startedAt = Date.now();
   const { id } = await context.params;
   const roomId = (id || '').trim();
   if (!roomId) return appApiError('invalid_room_id', 400);
@@ -98,6 +105,7 @@ export async function POST(
       { status: 201 }
     );
   } catch (e) {
+    reportApiException('POST /api/app/chat/rooms/[id]/messages', e, startedAt);
     console.error('POST /api/app/chat/rooms/[id]/messages', e);
     return appApiError('database_unavailable', 503);
   }

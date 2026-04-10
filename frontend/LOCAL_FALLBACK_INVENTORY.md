@@ -2,6 +2,18 @@
 
 This file tracks where browser `localStorage` fallback is used and how to retire it safely.
 
+## Status (core “2번” work)
+
+**Considered done for app ledger / policy:**
+
+- Auth, properties, bookings, reservations: `canReadLocalFallback` / `canWriteLocalFallback`, bootstrap markers, cross-ledger writes via shared helpers where needed.
+- Admin finance ledger keys: `readLS` / `writeLS` respect policy.
+- Sync UX: `networkResilience` + `stayviet-api-sync-error` + `ApiSyncErrorBanner` queue.
+
+**Optional follow-ups (non-ledger or UI prefs — not blocking “2”):**
+
+- `adminModeration`, `adminAckState`, `adminSystemLog`, `settlementAuditLog`, language/notifications (`LanguageContext`, `TopBar`, etc.): still use `localStorage` for admin UX or preferences; can add the same policy helpers later if these must honor `readonly`/`off`.
+
 ## Current fallback-heavy modules
 
 ### Core ledger / cache (policy-aware)

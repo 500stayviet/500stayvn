@@ -120,15 +120,28 @@ export function setUsersCacheAndStorage(users: UserData[]): void {
  */
 export async function refreshUsersFromServer(): Promise<boolean> {
   if (typeof window === "undefined") return false;
+  if (!getCurrentUserId()) return false;
   try {
-    const res = await fetchWithRetry(
-      "/api/app/users",
-      { cache: "no-store" },
-      { retries: 2, baseDelayMs: 300 },
-    );
-    if (!res.ok) throw new Error(String(res.status));
-    const data = (await res.json()) as { users?: UserData[] };
-    const users = Array.isArray(data.users) ? data.users : [];
+    const users: UserData[] = [];
+    let offset = 0;
+    const limit = 200;
+    for (let i = 0; i < 100; i += 1) {
+      const res = await fetchWithRetry(
+        `/api/app/users?limit=${limit}&offset=${offset}`,
+        withAppActor({ cache: "no-store" }),
+        { retries: 2, baseDelayMs: 300 },
+      );
+      if (!res.ok) throw new Error(String(res.status));
+      const data = (await res.json()) as {
+        users?: UserData[];
+        page?: { hasMore?: boolean; nextOffset?: number };
+      };
+      const chunk = Array.isArray(data.users) ? data.users : [];
+      users.push(...chunk);
+      const hasMore = Boolean(data.page?.hasMore);
+      if (!hasMore || chunk.length === 0) break;
+      offset = Number(data.page?.nextOffset ?? offset + chunk.length);
+    }
     setUsersCacheAndStorage(users);
     return true;
   } catch {
@@ -138,6 +151,39 @@ export async function refreshUsersFromServer(): Promise<boolean> {
       action: "refresh",
       message: "사용자 데이터를 서버에서 가져오지 못했습니다. 잠시 후 다시 시도해주세요.",
     });
+    return false;
+  }
+}
+
+/**
+ * 관리자 세션으로 전체 회원 목록을 캐시에 올림 (`getUsers()`·배지 등)
+ */
+export async function refreshUsersCacheForAdmin(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  try {
+    const users: UserData[] = [];
+    let offset = 0;
+    const limit = 200;
+    for (let i = 0; i < 200; i += 1) {
+      const res = await fetchWithRetry(
+        `/api/app/users?limit=${limit}&offset=${offset}`,
+        { cache: "no-store", credentials: "same-origin" },
+        { retries: 1, baseDelayMs: 300 },
+      );
+      if (!res.ok) return false;
+      const data = (await res.json()) as {
+        users?: UserData[];
+        page?: { hasMore?: boolean; nextOffset?: number };
+      };
+      const chunk = Array.isArray(data.users) ? data.users : [];
+      users.push(...chunk);
+      const hasMore = Boolean(data.page?.hasMore);
+      if (!hasMore || chunk.length === 0) break;
+      offset = Number(data.page?.nextOffset ?? offset + chunk.length);
+    }
+    setUsersCacheAndStorage(users);
+    return true;
+  } catch {
     return false;
   }
 }
@@ -318,8 +364,8 @@ export async function signUpWithEmail(data: SignUpData): Promise<any> {
     }
 
     const user = json as UserData;
-    await refreshUsersFromServer();
     setCurrentUser(user.uid);
+    await refreshUsersFromServer();
 
     return {
       user: {
@@ -392,8 +438,8 @@ export async function signInWithEmail(
     }
 
     const user = json.user as UserData;
-    await refreshUsersFromServer();
     setCurrentUser(user.uid);
+    await refreshUsersFromServer();
 
     return {
       user: {

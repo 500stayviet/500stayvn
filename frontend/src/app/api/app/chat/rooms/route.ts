@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { rejectAppWriteUnlessActorAllowed } from '@/lib/server/appSyncWriteGuard';
 import { appApiError } from '@/lib/server/appApiErrors';
@@ -6,6 +7,23 @@ import {
   rejectAppReadUnlessActorIsUser,
   rejectAppReadUnlessBookingParticipant,
 } from '@/lib/server/appApiReadGuard';
+import { reportApiException, reportApiSuccess } from '@/lib/server/apiMonitoring';
+
+type BookingWithRoomRelations = Prisma.BookingGetPayload<{
+  include: { property: true; guest: true };
+}>;
+
+/**
+ * Prisma 페이로드에 `detailJson`이 있어도 일부 TS 언어 서비스가 scalar를 누락할 수 있어
+ * 읽기만 교차 타입으로 통일한다.
+ */
+function getBookingDetailRecord(b: BookingWithRoomRelations): Record<string, unknown> {
+  const raw = (b as BookingWithRoomRelations & { detailJson?: Prisma.JsonValue | null })
+    .detailJson;
+  if (raw == null) return {};
+  if (typeof raw === 'object' && !Array.isArray(raw)) return raw as Record<string, unknown>;
+  return {};
+}
 
 type RoomDto = {
   id: string;
@@ -35,6 +53,7 @@ function mapRoom(room: { id: string; bookingId: string | null; createdAt: Date }
 }
 
 export async function GET(request: NextRequest) {
+  const startedAt = Date.now();
   const userId = request.nextUrl.searchParams.get('userId')?.trim();
   const bookingId = request.nextUrl.searchParams.get('bookingId')?.trim();
   if (!userId && !bookingId) {
@@ -65,28 +84,38 @@ export async function GET(request: NextRequest) {
       rooms = rooms.filter((r) => (r.bookingId ? allowed.has(r.bookingId) : false));
     }
     const bookingIds = rooms.map((r) => r.bookingId).filter((v): v is string => !!v);
-    const bookings = bookingIds.length
+    const bookings: BookingWithRoomRelations[] = bookingIds.length
       ? await prisma.booking.findMany({
           where: { id: { in: bookingIds } },
           include: { property: true, guest: true },
         })
       : [];
-    const bookingMap = new Map(bookings.map((b) => [b.id, b]));
-    const messages = rooms.length
-      ? await prisma.message.findMany({
-          where: { roomId: { in: rooms.map((r) => r.id) } },
-          orderBy: { createdAt: 'desc' },
-        })
-      : [];
-    const latestMsg = new Map<string, (typeof messages)[number]>();
-    for (const m of messages) {
-      if (!latestMsg.has(m.roomId)) latestMsg.set(m.roomId, m);
-    }
+    const bookingMap = new Map<string, BookingWithRoomRelations>(
+      bookings.map((b) => [b.id, b])
+    );
+    const roomIds = rooms.map((r) => r.id);
+    type LatestRow = {
+      id: string;
+      roomId: string;
+      senderId: string;
+      content: string;
+      createdAt: Date;
+    };
+    const latestRows: LatestRow[] =
+      roomIds.length > 0
+        ? await prisma.$queryRaw<LatestRow[]>`
+            SELECT DISTINCT ON ("roomId") "id", "roomId", "senderId", "content", "createdAt"
+            FROM "Message"
+            WHERE "roomId" IN (${Prisma.join(roomIds)})
+            ORDER BY "roomId", "createdAt" DESC
+          `
+        : [];
+    const latestMsg = new Map<string, LatestRow>(latestRows.map((m) => [m.roomId, m]));
     const result: RoomDto[] = rooms.map((r) => {
       const dto = mapRoom(r);
       const b = r.bookingId ? bookingMap.get(r.bookingId) : null;
       if (b) {
-        const detail = (b.detailJson || {}) as Record<string, unknown>;
+        const detail = getBookingDetailRecord(b);
         dto.propertyId = b.propertyId;
         dto.propertyTitle = String(detail.propertyTitle || b.property.title || '');
         dto.propertyImage = String(detail.propertyImage || '');
@@ -103,8 +132,10 @@ export async function GET(request: NextRequest) {
       }
       return dto;
     });
+    reportApiSuccess('GET /api/app/chat/rooms', 200, startedAt);
     return NextResponse.json({ rooms: result });
   } catch (e) {
+    reportApiException('GET /api/app/chat/rooms', e, startedAt);
     console.error('GET /api/app/chat/rooms', e);
     return appApiError('database_unavailable', 503);
   }
@@ -118,6 +149,7 @@ type CreateBody = {
 };
 
 export async function POST(request: NextRequest) {
+  const startedAt = Date.now();
   let body: CreateBody;
   try {
     body = await request.json();
@@ -139,8 +171,10 @@ export async function POST(request: NextRequest) {
     const created = await prisma.chatRoom.create({
       data: { bookingId },
     });
+    reportApiSuccess('POST /api/app/chat/rooms', 201, startedAt);
     return NextResponse.json(created, { status: 201 });
   } catch (e) {
+    reportApiException('POST /api/app/chat/rooms', e, startedAt);
     console.error('POST /api/app/chat/rooms', e);
     return appApiError('database_unavailable', 503);
   }

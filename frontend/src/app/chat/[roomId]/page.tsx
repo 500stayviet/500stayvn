@@ -4,17 +4,21 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { 
-  getChatRoom, 
-  sendMessage, 
+import {
+  getChatRoom,
+  getChatMessages,
+  sendMessage,
   markMessagesAsRead,
   subscribeToChatMessages,
-  ChatRoom, 
-  ChatMessage as ChatMessageType 
+  mergeChatMessageWindow,
+  CHAT_MESSAGE_PAGE_SIZE,
+  CHAT_POLL_WINDOW_SIZE,
+  ChatRoom,
+  ChatMessage as ChatMessageType,
 } from '@/lib/api/chat';
 import { ChatMessage } from '@/components/ChatMessage';
 import { detectMessageLanguage } from '@/lib/utils/languageDetection';
@@ -34,14 +38,32 @@ export default function ChatRoomPage() {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
-  
+  const [isInitialMessagesLoad, setIsInitialMessagesLoad] = useState(true);
+  const [loadingMoreOlder, setLoadingMoreOlder] = useState(false);
+  const [hasMoreOlder, setHasMoreOlder] = useState(true);
+  const didSetHasMoreRef = useRef(false);
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // 스크롤을 맨 아래로
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+    messagesEndRef.current?.scrollIntoView({ behavior });
   };
+
+  const isAtBottom = () => {
+    const container = scrollContainerRef.current;
+    if (!container) return false;
+    const threshold = 100;
+    return container.scrollHeight - container.scrollTop <= container.clientHeight + threshold;
+  };
+
+  useEffect(() => {
+    setMessages([]);
+    setIsInitialMessagesLoad(true);
+    didSetHasMoreRef.current = false;
+    setHasMoreOlder(true);
+  }, [roomId]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -85,19 +107,61 @@ export default function ChatRoomPage() {
   useEffect(() => {
     if (!user || !roomId) return;
 
-    const unsubscribe = subscribeToChatMessages(roomId, (msgs) => {
-      setMessages(msgs);
-      // 읽음 처리
+    const unsubscribe = subscribeToChatMessages(roomId, (slice) => {
+      setMessages((prev) => mergeChatMessageWindow(prev, slice));
+      if (!didSetHasMoreRef.current) {
+        didSetHasMoreRef.current = true;
+        setHasMoreOlder(slice.length >= CHAT_POLL_WINDOW_SIZE);
+      }
       markMessagesAsRead(roomId, user.uid);
     });
 
     return () => unsubscribe();
   }, [user, roomId]);
 
-  // 메시지가 업데이트되면 스크롤
+  const loadOlderMessages = useCallback(async () => {
+    if (!user || !roomId || loadingMoreOlder || !hasMoreOlder) return;
+    const container = scrollContainerRef.current;
+    const first = messages[0];
+    if (!first) return;
+    setLoadingMoreOlder(true);
+    const prevH = container?.scrollHeight ?? 0;
+    const prevTop = container?.scrollTop ?? 0;
+    try {
+      const older = await getChatMessages(roomId, {
+        limit: CHAT_MESSAGE_PAGE_SIZE,
+        before: first.createdAt,
+      });
+      if (older.length === 0) {
+        setHasMoreOlder(false);
+        return;
+      }
+      setMessages((prev) => mergeChatMessageWindow(prev, older));
+      if (older.length < CHAT_MESSAGE_PAGE_SIZE) setHasMoreOlder(false);
+      requestAnimationFrame(() => {
+        const el = scrollContainerRef.current;
+        if (el) el.scrollTop = el.scrollHeight - prevH + prevTop;
+      });
+    } finally {
+      setLoadingMoreOlder(false);
+    }
+  }, [user, roomId, loadingMoreOlder, hasMoreOlder, messages]);
+
+  const onMessagesScroll = () => {
+    const el = scrollContainerRef.current;
+    if (!el || loadingMoreOlder || !hasMoreOlder) return;
+    if (el.scrollTop < 72) void loadOlderMessages();
+  };
+
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    if (messages.length === 0) return;
+    if (isInitialMessagesLoad) {
+      scrollToBottom('auto');
+      setIsInitialMessagesLoad(false);
+    } else if (isAtBottom()) {
+      scrollToBottom('smooth');
+    }
+  }, [messages, isInitialMessagesLoad]);
 
   // 메시지 전송
   const handleSend = async () => {
@@ -248,7 +312,25 @@ export default function ChatRoomPage() {
         </div>
 
         {/* 메시지 영역 */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+        <div
+          ref={scrollContainerRef}
+          onScroll={onMessagesScroll}
+          className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-3"
+        >
+          {loadingMoreOlder ? (
+            <div className="flex justify-center py-2">
+              <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+            </div>
+          ) : null}
+          {!loadingMoreOlder && hasMoreOlder && messages.length > 0 ? (
+            <p className="text-center text-[10px] text-gray-400">
+              {currentLanguage === 'ko'
+                ? '위로 스크롤하면 이전 메시지'
+                : currentLanguage === 'vi'
+                  ? 'Cuộn lên để xem tin cũ hơn'
+                  : 'Scroll up for older messages'}
+            </p>
+          ) : null}
           {messages.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-gray-400 text-sm">

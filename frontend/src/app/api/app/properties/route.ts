@@ -5,18 +5,94 @@ import {
   propertyDataToUncheckedCreate,
   propertyDataToUncheckedUpdate,
 } from '@/lib/server/appPropertyMapper';
-import { rejectAppWriteUnlessSyncSecret } from '@/lib/server/appSyncWriteGuard';
+import {
+  rejectAppWriteUnlessSyncSecret,
+  getAppActorId,
+} from '@/lib/server/appSyncWriteGuard';
+import { getAdminFromRequest } from '@/lib/server/adminAuthServer';
+import { appApiError } from '@/lib/server/appApiErrors';
 import type { PropertyData } from '@/types/property';
+import { reportApiException, reportApiSuccess } from '@/lib/server/apiMonitoring';
 
 const MAX_BATCH = 5000;
 
-/** 전체 매물 (소프트 삭제 포함 — 앱 필터링은 클라이언트) */
-export async function GET() {
+function parsePageParams(request: NextRequest): { limit: number; offset: number } {
+  const limitRaw = Number(request.nextUrl.searchParams.get('limit') || '200');
+  const offsetRaw = Number(request.nextUrl.searchParams.get('offset') || '0');
+  const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(500, Math.floor(limitRaw))) : 200;
+  const offset = Number.isFinite(offsetRaw) ? Math.max(0, Math.min(20000, Math.floor(offsetRaw))) : 0;
+  return { limit, offset };
+}
+
+/**
+ * 매물 목록
+ * - 관리자 또는 x-app-sync-secret: 전체
+ * - 앱 액터: 본인 소유 + 예약한 매물 + 공개(active·미삭제·미숨김) 카탈로그
+ */
+export async function GET(request: NextRequest) {
+  const startedAt = Date.now();
   try {
-    const rows = await prisma.property.findMany({ orderBy: { updatedAt: 'desc' } });
+    const { limit, offset } = parsePageParams(request);
+    const admin = await getAdminFromRequest(request);
+    const enforce = process.env.APP_SYNC_ENFORCE_WRITE === 'true';
+    const secret = process.env.APP_SYNC_SECRET?.trim();
+    const hdr = request.headers.get('x-app-sync-secret');
+    const syncOk = Boolean(enforce && secret && hdr === secret);
+
+    if (admin) {
+      const rows = await prisma.property.findMany({
+        orderBy: { updatedAt: 'desc' },
+        take: limit,
+        skip: offset,
+      });
+      reportApiSuccess('GET /api/app/properties', 200, startedAt);
+      return NextResponse.json({
+        properties: rows.map(prismaPropertyToPropertyData),
+        page: { limit, offset, hasMore: rows.length === limit, nextOffset: offset + rows.length },
+      });
+    }
+    if (syncOk) {
+      const rows = await prisma.property.findMany({
+        orderBy: { updatedAt: 'desc' },
+        take: limit,
+        skip: offset,
+      });
+      reportApiSuccess('GET /api/app/properties', 200, startedAt);
+      return NextResponse.json({
+        properties: rows.map(prismaPropertyToPropertyData),
+        page: { limit, offset, hasMore: rows.length === limit, nextOffset: offset + rows.length },
+      });
+    }
+
+    const actor = getAppActorId(request);
+    if (!actor) return appApiError('actor_required', 401);
+
+    const booked = await prisma.booking.findMany({
+      where: { guestId: actor },
+      select: { propertyId: true },
+    });
+    const bookedIds = [...new Set(booked.map((b) => b.propertyId))];
+
+    const rows = await prisma.property.findMany({
+      where: {
+        OR: [
+          { ownerId: actor },
+          ...(bookedIds.length > 0 ? [{ id: { in: bookedIds } }] : []),
+          { deleted: false, hidden: false, status: 'active' },
+        ],
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: limit,
+      skip: offset,
+    });
     const properties = rows.map(prismaPropertyToPropertyData);
-    return NextResponse.json({ properties });
+    reportApiSuccess('GET /api/app/properties', 200, startedAt);
+    return NextResponse.json({
+      properties,
+      page: { limit, offset, hasMore: rows.length === limit, nextOffset: offset + rows.length },
+    });
   } catch (e) {
+    reportApiException('GET /api/app/properties', e, startedAt);
     console.error('GET /api/app/properties', e);
     return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
   }
@@ -24,6 +100,7 @@ export async function GET() {
 
 /** 전량 동기화(upsert) — 클라이언트 LocalStorage 대체용 */
 export async function PUT(request: NextRequest) {
+  const startedAt = Date.now();
   const denied = rejectAppWriteUnlessSyncSecret(request);
   if (denied) return denied;
 
@@ -58,8 +135,10 @@ export async function PUT(request: NextRequest) {
       }
     });
 
+    reportApiSuccess('PUT /api/app/properties', 200, startedAt);
     return NextResponse.json({ ok: true });
   } catch (e) {
+    reportApiException('PUT /api/app/properties', e, startedAt);
     console.error('PUT /api/app/properties', e);
     return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
   }
