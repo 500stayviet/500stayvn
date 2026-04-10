@@ -10,7 +10,7 @@ import { useAdminMe } from '@/contexts/AdminMeContext';
 import { getUsers } from '@/lib/api/auth';
 import { addSharedMemo, deleteSharedMemo, getSharedMemos } from '@/lib/api/adminMemos';
 import { setPropertyHidden } from '@/lib/api/adminModeration';
-import { getAvailableProperties, getProperty } from '@/lib/api/properties';
+import { getPropertyForAdmin } from '@/lib/api/properties';
 import type { PropertyData } from '@/types/property';
 
 const PROPERTY_HIDDEN_REASON = '법규를 위반했으니 관리자에게 문의 하시기 바랍니다';
@@ -58,8 +58,7 @@ export default function AdminPropertyDetailPage() {
 
   const reload = useCallback(async () => {
     if (!id) return;
-    await getAvailableProperties();
-    const p = await getProperty(id);
+    const p = await getPropertyForAdmin(id);
     setProperty(p);
   }, [id]);
 
@@ -71,9 +70,7 @@ export default function AdminPropertyDetailPage() {
         return;
       }
       setProperty(undefined);
-      await getAvailableProperties();
-      if (cancelled) return;
-      const p = await getProperty(id);
+      const p = await getPropertyForAdmin(id);
       if (!cancelled) {
         setProperty(p);
         const rows = await getSharedMemos('property', id, 'property');

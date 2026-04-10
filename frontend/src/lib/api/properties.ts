@@ -218,6 +218,62 @@ export async function refreshPropertiesFromServer(): Promise<boolean> {
   }
 }
 
+async function fetchAllPropertiesByEndpoint(
+  endpoint: string,
+  init: RequestInit
+): Promise<PropertyData[]> {
+  const list: PropertyData[] = [];
+  let offset = 0;
+  const limit = 200;
+  for (let i = 0; i < 200; i += 1) {
+    const sep = endpoint.includes('?') ? '&' : '?';
+    const res = await fetchWithRetry(
+      `${endpoint}${sep}limit=${limit}&offset=${offset}`,
+      init,
+      { retries: 2, baseDelayMs: 300 }
+    );
+    if (!res.ok) throw new Error(String(res.status));
+    const data = (await res.json()) as {
+      properties?: PropertyData[];
+      page?: { hasMore?: boolean; nextOffset?: number };
+    };
+    const chunk = Array.isArray(data.properties) ? data.properties : [];
+    list.push(...chunk);
+    if (!data.page?.hasMore || chunk.length === 0) break;
+    offset = Number(data.page?.nextOffset ?? offset + chunk.length);
+  }
+  return list;
+}
+
+/** 관리자 세션에서 전체 매물 목록 조회 (`/api/admin/properties`) */
+export async function getAllPropertiesForAdmin(): Promise<PropertyData[]> {
+  if (typeof window === 'undefined') return [];
+  try {
+    return await fetchAllPropertiesByEndpoint('/api/admin/properties', {
+      cache: 'no-store',
+      credentials: 'same-origin',
+    });
+  } catch (error) {
+    console.error('admin properties load failed:', error);
+    return [];
+  }
+}
+
+/** 관리자 세션에서 단건 매물 조회 (`/api/admin/properties/[id]`) */
+export async function getPropertyForAdmin(id: string): Promise<PropertyData | null> {
+  if (typeof window === 'undefined' || !id) return null;
+  try {
+    const res = await fetch(`/api/admin/properties/${encodeURIComponent(id)}`, {
+      cache: 'no-store',
+      credentials: 'same-origin',
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as PropertyData;
+  } catch {
+    return null;
+  }
+}
+
 export async function bootstrapPropertiesFromServer(): Promise<void> {
   if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
   if (!canReadLocalFallback()) {
@@ -858,11 +914,10 @@ export async function loadAdminInventoryPage(
   nPaused: number;
   nHidden: number;
 }> {
-  await getAvailableProperties();
-  if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+  if (typeof window === 'undefined') {
     return { rows: [], nAll: 0, nNew: 0, nListed: 0, nPaused: 0, nHidden: 0 };
   }
-  const rows = readPropertiesArray();
+  const rows = await getAllPropertiesForAdmin();
   const { isPropertyNew } = await import('@/lib/adminNewUtils');
   const keyword = search.trim().toLowerCase();
 
