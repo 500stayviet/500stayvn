@@ -2,6 +2,9 @@
  * Chat API (PostgreSQL 원장 + 폴링 구독)
  */
 
+import { withAppActor } from '@/lib/api/withAppActor';
+import { getCurrentUserId } from '@/lib/api/auth';
+
 // 채팅방 인터페이스
 export interface ChatRoom {
   id: string;
@@ -39,16 +42,9 @@ type GetMessagesOptions = {
  * 모든 채팅방 가져오기
  */
 export async function getAllChatRooms(): Promise<ChatRoom[]> {
-  if (typeof window === 'undefined') return [];
-  try {
-    const res = await fetch('/api/app/chat/rooms', { cache: 'no-store' });
-    if (!res.ok) throw new Error(String(res.status));
-    const data = (await res.json()) as { rooms?: ChatRoom[] };
-    return Array.isArray(data.rooms) ? data.rooms : [];
-  } catch (error) {
-    console.error('Error getting chat rooms:', error);
-    return [];
-  }
+  const uid = typeof window !== 'undefined' ? getCurrentUserId() : null;
+  if (!uid) return [];
+  return getUserChatRooms(uid);
 }
 
 /**
@@ -58,9 +54,10 @@ export async function getUserChatRooms(userId: string): Promise<ChatRoom[]> {
   if (!userId) return [];
   let rooms: ChatRoom[] = [];
   try {
-    const res = await fetch(`/api/app/chat/rooms?userId=${encodeURIComponent(userId)}`, {
-      cache: 'no-store',
-    });
+    const res = await fetch(
+      `/api/app/chat/rooms?userId=${encodeURIComponent(userId)}`,
+      withAppActor({ cache: 'no-store' })
+    );
     if (!res.ok) throw new Error(String(res.status));
     const data = (await res.json()) as { rooms?: ChatRoom[] };
     rooms = Array.isArray(data.rooms) ? data.rooms : [];
@@ -81,9 +78,10 @@ export async function getUserChatRooms(userId: string): Promise<ChatRoom[]> {
  */
 export async function getChatRoomByBookingId(bookingId: string): Promise<ChatRoom | null> {
   try {
-    const res = await fetch(`/api/app/chat/rooms?bookingId=${encodeURIComponent(bookingId)}`, {
-      cache: 'no-store',
-    });
+    const res = await fetch(
+      `/api/app/chat/rooms?bookingId=${encodeURIComponent(bookingId)}`,
+      withAppActor({ cache: 'no-store' })
+    );
     if (!res.ok) return null;
     const data = (await res.json()) as { rooms?: ChatRoom[] };
     const list = Array.isArray(data.rooms) ? data.rooms : [];
@@ -96,9 +94,16 @@ export async function getChatRoomByBookingId(bookingId: string): Promise<ChatRoo
 /**
  * 채팅방 ID로 채팅방 찾기
  */
-export async function getChatRoom(roomId: string): Promise<ChatRoom | null> {
-  const rooms = await getAllChatRooms();
-  return rooms.find(room => room.id === roomId) || null;
+export async function getChatRoom(
+  roomId: string,
+  actorUserId?: string | null
+): Promise<ChatRoom | null> {
+  const uid =
+    (actorUserId && String(actorUserId).trim()) ||
+    (typeof window !== 'undefined' ? getCurrentUserId() : null);
+  if (!uid) return null;
+  const rooms = await getUserChatRooms(uid);
+  return rooms.find((room) => room.id === roomId) || null;
 }
 
 /**
@@ -128,11 +133,14 @@ export async function createChatRoom(data: {
 }): Promise<ChatRoom> {
   const existingRoom = await getChatRoomByBookingId(data.bookingId);
   if (existingRoom) return existingRoom;
-  const res = await fetch('/api/app/chat/rooms', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
+  const res = await fetch(
+    '/api/app/chat/rooms',
+    withAppActor({
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+  );
   if (!res.ok) throw new Error(`create_chat_room_failed_${res.status}`);
   const created = (await res.json()) as { id: string; bookingId: string; createdAt: string };
   const room = await getChatRoomByBookingId(created.bookingId);
@@ -189,11 +197,14 @@ export async function sendMessage(data: {
   if (typeof window === 'undefined') {
     throw new Error('Cannot send message on server side');
   }
-  const res = await fetch(`/api/app/chat/rooms/${encodeURIComponent(data.chatRoomId)}/messages`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ senderId: data.senderId, content: data.content }),
-  });
+  const res = await fetch(
+    `/api/app/chat/rooms/${encodeURIComponent(data.chatRoomId)}/messages`,
+    withAppActor({
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ senderId: data.senderId, content: data.content }),
+    })
+  );
   if (!res.ok) throw new Error(`send_message_failed_${res.status}`);
   const msg = (await res.json()) as ChatMessage;
   return { ...msg, senderName: data.senderName };
@@ -204,11 +215,14 @@ export async function sendMessage(data: {
  */
 export async function markMessagesAsRead(chatRoomId: string, userId: string): Promise<void> {
   if (typeof window === 'undefined') return;
-  await fetch(`/api/app/chat/rooms/${encodeURIComponent(chatRoomId)}/read`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId }),
-  });
+  await fetch(
+    `/api/app/chat/rooms/${encodeURIComponent(chatRoomId)}/read`,
+    withAppActor({
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId }),
+    })
+  );
 }
 
 /**
@@ -216,11 +230,14 @@ export async function markMessagesAsRead(chatRoomId: string, userId: string): Pr
  */
 export async function markAllMessagesInRoomAsRead(chatRoomId: string): Promise<void> {
   if (typeof window === 'undefined') return;
-  await fetch(`/api/app/chat/rooms/${encodeURIComponent(chatRoomId)}/read`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ all: true }),
-  });
+  await fetch(
+    `/api/app/chat/rooms/${encodeURIComponent(chatRoomId)}/read`,
+    withAppActor({
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ all: true }),
+    })
+  );
 }
 
 /**
@@ -245,9 +262,10 @@ export async function getUnreadCountsByRole(userId: string): Promise<{ asGuest: 
   if (typeof window === 'undefined') return { asGuest: 0, asOwner: 0 };
   
   try {
-    const res = await fetch(`/api/app/chat/unread-counts?userId=${encodeURIComponent(userId)}`, {
-      cache: 'no-store',
-    });
+    const res = await fetch(
+      `/api/app/chat/unread-counts?userId=${encodeURIComponent(userId)}`,
+      withAppActor({ cache: 'no-store' })
+    );
     if (!res.ok) throw new Error(String(res.status));
     const data = (await res.json()) as { asGuest?: number; asOwner?: number };
     return {

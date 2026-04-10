@@ -1,10 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { rejectAppWriteUnlessActorAllowed } from '@/lib/server/appSyncWriteGuard';
+import { appApiError } from '@/lib/server/appApiErrors';
+import {
+  rejectAppReadUnlessActorIsUser,
+  rejectAppReadUnlessBookingParticipant,
+} from '@/lib/server/appApiReadGuard';
 
 export async function GET(request: NextRequest) {
   const bookingId = request.nextUrl.searchParams.get('bookingId')?.trim();
   const userId = request.nextUrl.searchParams.get('userId')?.trim();
+  if (!bookingId && !userId) {
+    return appApiError('missing_scope', 400);
+  }
+  if (userId) {
+    const deniedU = rejectAppReadUnlessActorIsUser(request, userId);
+    if (deniedU) return deniedU;
+  }
+  if (bookingId) {
+    const deniedB = await rejectAppReadUnlessBookingParticipant(request, bookingId);
+    if (deniedB) return deniedB;
+  }
   try {
     const rows = await prisma.$queryRawUnsafe(
       `
@@ -21,7 +37,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ payments: rows });
   } catch (e) {
     console.error('GET /api/app/payments', e);
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
+    return appApiError('database_unavailable', 503);
   }
 }
 
@@ -49,12 +65,12 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: 'invalid_body' }, { status: 400 });
+    return appApiError('invalid_body', 400);
   }
   const bookingId = (body.bookingId || '').trim();
   const userId = (body.userId || '').trim();
   if (!bookingId || !userId || typeof body.amount !== 'number' || Number.isNaN(body.amount)) {
-    return NextResponse.json({ error: 'invalid_fields' }, { status: 400 });
+    return appApiError('invalid_fields', 400);
   }
   try {
     const ownerRows = (await prisma.$queryRawUnsafe(
@@ -67,9 +83,9 @@ export async function POST(request: NextRequest) {
       `,
       bookingId
     )) as Array<{ guestId: string; ownerId: string }>;
-    if (!ownerRows[0]) return NextResponse.json({ error: 'booking_not_found' }, { status: 404 });
+    if (!ownerRows[0]) return appApiError('booking_not_found', 404);
     if (userId !== ownerRows[0].guestId && userId !== ownerRows[0].ownerId) {
-      return NextResponse.json({ error: 'invalid_payment_actor' }, { status: 403 });
+      return appApiError('invalid_payment_actor', 403, 'userId must be the booking guest or property owner.');
     }
     const denied = rejectAppWriteUnlessActorAllowed(request, [ownerRows[0].guestId, ownerRows[0].ownerId]);
     if (denied) return denied;
@@ -114,6 +130,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json((rows as unknown[])[0] || null, { status: 201 });
   } catch (e) {
     console.error('POST /api/app/payments', e);
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
+    return appApiError('database_unavailable', 503);
   }
 }

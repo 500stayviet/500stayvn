@@ -7,7 +7,12 @@
 import { VerificationStatus, PrivateData } from "@/types/kyc.types";
 import { SupportedLanguage } from "@/lib/api/translation";
 import { canReadLocalFallback, canWriteLocalFallback } from "@/lib/runtime/localFallbackPolicy";
+import {
+  isLedgerBootstrapDone,
+  markLedgerBootstrapDone,
+} from "@/lib/runtime/localBootstrapMarkers";
 import { emitUserFacingSyncError, fetchWithRetry } from "@/lib/runtime/networkResilience";
+import { withAppActor } from "@/lib/api/withAppActor";
 
 export interface UserData {
   uid: string;
@@ -54,6 +59,7 @@ export interface OwnerVerificationData {
 const USERS_STORAGE_KEY = "users";
 const CURRENT_USER_KEY = "currentUser";
 const BOOTSTRAP_KEY = "stayviet-user-bootstrap-v1";
+const BOOTSTRAP_SESSION_KEY = "stayviet-user-bootstrap-session-v1";
 
 let usersCache: UserData[] | null = null;
 
@@ -145,16 +151,16 @@ export async function bootstrapUsersFromServer(): Promise<void> {
   const ok = await refreshUsersFromServer();
   if (!ok) return;
 
-  if (localStorage.getItem(BOOTSTRAP_KEY)) return;
+  if (isLedgerBootstrapDone(BOOTSTRAP_KEY, BOOTSTRAP_SESSION_KEY)) return;
 
   if (getUsers().length > 0) {
-    localStorage.setItem(BOOTSTRAP_KEY, "1");
+    markLedgerBootstrapDone(BOOTSTRAP_KEY, BOOTSTRAP_SESSION_KEY);
     return;
   }
 
   const raw = localStorage.getItem(USERS_STORAGE_KEY);
   if (!raw) {
-    localStorage.setItem(BOOTSTRAP_KEY, "1");
+    markLedgerBootstrapDone(BOOTSTRAP_KEY, BOOTSTRAP_SESSION_KEY);
     return;
   }
 
@@ -162,12 +168,12 @@ export async function bootstrapUsersFromServer(): Promise<void> {
   try {
     local = JSON.parse(raw);
   } catch {
-    localStorage.setItem(BOOTSTRAP_KEY, "1");
+    markLedgerBootstrapDone(BOOTSTRAP_KEY, BOOTSTRAP_SESSION_KEY);
     return;
   }
 
   if (!Array.isArray(local) || local.length === 0) {
-    localStorage.setItem(BOOTSTRAP_KEY, "1");
+    markLedgerBootstrapDone(BOOTSTRAP_KEY, BOOTSTRAP_SESSION_KEY);
     return;
   }
 
@@ -182,7 +188,7 @@ export async function bootstrapUsersFromServer(): Promise<void> {
       { retries: 2, baseDelayMs: 300 },
     );
     if (res.ok) {
-      localStorage.setItem(BOOTSTRAP_KEY, "1");
+      markLedgerBootstrapDone(BOOTSTRAP_KEY, BOOTSTRAP_SESSION_KEY);
       await refreshUsersFromServer();
     }
   } catch {
@@ -438,11 +444,14 @@ export async function updateUserData(
   updates: Partial<UserData>,
 ): Promise<void> {
   try {
-    const res = await fetch(`/api/app/users/${encodeURIComponent(uid)}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updates),
-    });
+    const res = await fetch(
+      `/api/app/users/${encodeURIComponent(uid)}`,
+      withAppActor({
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      }),
+    );
     if (res.ok) {
       await refreshUsersFromServer();
       return;
@@ -491,9 +500,10 @@ export async function verifyOwner(
 
 export async function deleteAccount(uid: string): Promise<void> {
   try {
-    const res = await fetch(`/api/app/users/${encodeURIComponent(uid)}`, {
-      method: "DELETE",
-    });
+    const res = await fetch(
+      `/api/app/users/${encodeURIComponent(uid)}`,
+      withAppActor({ method: "DELETE" }),
+    );
     if (res.ok) {
       await refreshUsersFromServer();
       setCurrentUser(null);

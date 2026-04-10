@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { rejectAppWriteUnlessActorAllowed } from '@/lib/server/appSyncWriteGuard';
+import { appApiError } from '@/lib/server/appApiErrors';
 
 type Body = {
   userId?: string;
@@ -13,16 +14,16 @@ export async function PATCH(
 ) {
   const { id } = await context.params;
   const roomId = (id || '').trim();
-  if (!roomId) return NextResponse.json({ error: 'invalid_room_id' }, { status: 400 });
+  if (!roomId) return appApiError('invalid_room_id', 400);
   let body: Body;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: 'invalid_body' }, { status: 400 });
+    return appApiError('invalid_body', 400);
   }
   const userId = (body.userId || '').trim();
   if (!body.all && !userId) {
-    return NextResponse.json({ error: 'invalid_user_id' }, { status: 400 });
+    return appApiError('invalid_user_id', 400);
   }
   try {
     const room = await prisma.chatRoom.findUnique({
@@ -50,6 +51,6 @@ export async function PATCH(
     return NextResponse.json({ updated: result.count });
   } catch (e) {
     console.error('PATCH /api/app/chat/rooms/[id]/read', e);
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
+    return appApiError('database_unavailable', 503);
   }
 }

@@ -55,7 +55,7 @@ export default function ChatRoomPage() {
       if (!user || !roomId) return;
 
       try {
-        const room = await getChatRoom(roomId);
+        const room = await getChatRoom(roomId, user.uid);
         if (!room) {
           router.push('/chat');
           return;

@@ -4,7 +4,12 @@
 
 import { toISODateString } from '../utils/dateUtils';
 import { canReadLocalFallback, canWriteLocalFallback } from '@/lib/runtime/localFallbackPolicy';
+import {
+  isLedgerBootstrapDone,
+  markLedgerBootstrapDone,
+} from '@/lib/runtime/localBootstrapMarkers';
 import { emitUserFacingSyncError, fetchWithRetry } from '@/lib/runtime/networkResilience';
+import { withAppActor } from '@/lib/api/withAppActor';
 
 export { toISODateString };
 
@@ -94,6 +99,7 @@ export interface CreateBookingRequest {
  */
 const BOOKINGS_STORAGE_KEY = 'bookings';
 const BOOKINGS_BOOTSTRAP_KEY = 'stayviet-bookings-bootstrap-v1';
+const BOOKINGS_BOOTSTRAP_SESSION_KEY = 'stayviet-bookings-bootstrap-session-v1';
 
 let bookingsCache: BookingData[] | null = null;
 
@@ -172,11 +178,11 @@ async function syncBookingsNow(snapshot: BookingData[]): Promise<void> {
   try {
     await fetchWithRetry(
       '/api/app/bookings',
-      {
+      withAppActor({
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bookings: snapshot }),
-      },
+      }),
       { retries: 2, baseDelayMs: 300 }
     );
   } catch (e) {
@@ -192,22 +198,25 @@ async function syncBookingsNow(snapshot: BookingData[]): Promise<void> {
 async function createPaymentMetaForBooking(booking: BookingData): Promise<void> {
   if (typeof window === 'undefined') return;
   try {
-    await fetch('/api/app/payments', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        bookingId: booking.id,
-        userId: booking.guestId,
-        amount: booking.totalPrice,
-        currency: booking.priceUnit,
-        status: booking.paymentStatus || 'pending',
-        metaJson: {
-          propertyId: booking.propertyId,
-          ownerId: booking.ownerId,
-          nights: booking.nights,
-        },
+    await fetch(
+      '/api/app/payments',
+      withAppActor({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingId: booking.id,
+          userId: booking.guestId,
+          amount: booking.totalPrice,
+          currency: booking.priceUnit,
+          status: booking.paymentStatus || 'pending',
+          metaJson: {
+            propertyId: booking.propertyId,
+            ownerId: booking.ownerId,
+            nights: booking.nights,
+          },
+        }),
       }),
-    });
+    );
   } catch (e) {
     console.warn('[payments] create meta failed', e);
   }
@@ -219,11 +228,14 @@ async function patchPaymentMetaByBooking(
 ): Promise<void> {
   if (typeof window === 'undefined') return;
   try {
-    await fetch(`/api/app/payments/${encodeURIComponent(bookingId)}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(patch),
-    });
+    await fetch(
+      `/api/app/payments/${encodeURIComponent(bookingId)}`,
+      withAppActor({
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      }),
+    );
   } catch (e) {
     console.warn('[payments] patch meta failed', e);
   }
@@ -234,7 +246,7 @@ export async function refreshBookingsFromServer(): Promise<boolean> {
   try {
     const res = await fetchWithRetry(
       '/api/app/bookings',
-      { cache: 'no-store' },
+      withAppActor({ cache: 'no-store' }),
       { retries: 2, baseDelayMs: 300 }
     );
     if (!res.ok) throw new Error(String(res.status));
@@ -264,7 +276,7 @@ export async function bootstrapBookingsFromServer(): Promise<void> {
     return;
   }
 
-  if (localStorage.getItem(BOOKINGS_BOOTSTRAP_KEY)) {
+  if (isLedgerBootstrapDone(BOOKINGS_BOOTSTRAP_KEY, BOOKINGS_BOOTSTRAP_SESSION_KEY)) {
     await refreshBookingsFromServer();
     return;
   }
@@ -282,27 +294,27 @@ export async function bootstrapBookingsFromServer(): Promise<void> {
   if (!ok) return;
 
   if ((bookingsCache?.length ?? 0) > 0) {
-    localStorage.setItem(BOOKINGS_BOOTSTRAP_KEY, '1');
+    markLedgerBootstrapDone(BOOKINGS_BOOTSTRAP_KEY, BOOKINGS_BOOTSTRAP_SESSION_KEY);
     return;
   }
 
   if (legacy.length === 0) {
-    localStorage.setItem(BOOKINGS_BOOTSTRAP_KEY, '1');
+    markLedgerBootstrapDone(BOOKINGS_BOOTSTRAP_KEY, BOOKINGS_BOOTSTRAP_SESSION_KEY);
     return;
   }
 
   try {
     const res = await fetchWithRetry(
       '/api/app/bookings/import',
-      {
+      withAppActor({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bookings: legacy }),
-      },
+      }),
       { retries: 2, baseDelayMs: 300 }
     );
     if (res.ok) {
-      localStorage.setItem(BOOKINGS_BOOTSTRAP_KEY, '1');
+      markLedgerBootstrapDone(BOOKINGS_BOOTSTRAP_KEY, BOOKINGS_BOOTSTRAP_SESSION_KEY);
       await refreshBookingsFromServer();
     }
   } catch {

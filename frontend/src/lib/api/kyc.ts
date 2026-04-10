@@ -10,6 +10,7 @@ import {
   FaceVerificationData,
 } from "@/types/kyc.types";
 import { logAdminSystemEvent } from "@/lib/adminSystemLog";
+import { withAppActor } from "@/lib/api/withAppActor";
 
 /**
  * 파일 업로드 유틸리티 함수
@@ -72,11 +73,14 @@ async function completeKYCStep(
     if (step < 3) userPatch.verification_status = 'pending';
     if (step === 3) userPatch.verification_status = 'verified';
 
-    await fetch(`/api/app/users/${encodeURIComponent(userId)}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(userPatch),
-    });
+    await fetch(
+      `/api/app/users/${encodeURIComponent(userId)}`,
+      withAppActor({
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userPatch),
+      }),
+    );
   } catch (error) {
     logAdminSystemEvent({
       severity: 'warning',

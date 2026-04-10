@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { rejectAppWriteUnlessActorAllowed } from '@/lib/server/appSyncWriteGuard';
+import { appApiError } from '@/lib/server/appApiErrors';
+import {
+  rejectAppReadUnlessActorIsUser,
+  rejectAppReadUnlessBookingParticipant,
+} from '@/lib/server/appApiReadGuard';
 
 type RoomDto = {
   id: string;
@@ -32,6 +37,17 @@ function mapRoom(room: { id: string; bookingId: string | null; createdAt: Date }
 export async function GET(request: NextRequest) {
   const userId = request.nextUrl.searchParams.get('userId')?.trim();
   const bookingId = request.nextUrl.searchParams.get('bookingId')?.trim();
+  if (!userId && !bookingId) {
+    return appApiError('missing_scope', 400);
+  }
+  if (userId) {
+    const deniedUser = rejectAppReadUnlessActorIsUser(request, userId);
+    if (deniedUser) return deniedUser;
+  }
+  if (bookingId) {
+    const deniedBooking = await rejectAppReadUnlessBookingParticipant(request, bookingId);
+    if (deniedBooking) return deniedBooking;
+  }
   try {
     let rooms = await prisma.chatRoom.findMany({
       where: bookingId ? { bookingId } : {},
@@ -90,7 +106,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ rooms: result });
   } catch (e) {
     console.error('GET /api/app/chat/rooms', e);
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
+    return appApiError('database_unavailable', 503);
   }
 }
 
@@ -106,16 +122,16 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: 'invalid_body' }, { status: 400 });
+    return appApiError('invalid_body', 400);
   }
   const bookingId = (body.bookingId || '').trim();
-  if (!bookingId) return NextResponse.json({ error: 'missing_booking_id' }, { status: 400 });
+  if (!bookingId) return appApiError('missing_booking_id', 400);
   try {
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
       include: { property: true },
     });
-    if (!booking) return NextResponse.json({ error: 'booking_not_found' }, { status: 404 });
+    if (!booking) return appApiError('booking_not_found', 404);
     const denied = rejectAppWriteUnlessActorAllowed(request, [booking.guestId, booking.property.ownerId]);
     if (denied) return denied;
     const existing = await prisma.chatRoom.findFirst({ where: { bookingId } });
@@ -126,6 +142,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(created, { status: 201 });
   } catch (e) {
     console.error('POST /api/app/chat/rooms', e);
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
+    return appApiError('database_unavailable', 503);
   }
 }

@@ -62,7 +62,7 @@ export default function ChatModal({ roomId, onClose }: ChatModalProps) {
       if (!roomId) return;
       setLoading(true);
       try {
-        const room = await getChatRoom(roomId);
+        const room = await getChatRoom(roomId, user?.uid);
         setChatRoom(room);
       } catch (error) {
         console.error('채팅방 로드 실패:', error);
@@ -72,7 +72,7 @@ export default function ChatModal({ roomId, onClose }: ChatModalProps) {
     };
 
     loadChatRoom();
-  }, [roomId]);
+  }, [roomId, user?.uid]);
 
   // 스크롤이 맨 아래에 있는지 확인
   const isAtBottom = () => {

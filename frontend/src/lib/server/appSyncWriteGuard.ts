@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { appApiError } from '@/lib/server/appApiErrors';
 
 /**
  * 서버 간·BFF 전용. 브라우저 SPA는 비밀을 숨길 수 없으므로
@@ -13,7 +14,7 @@ export function rejectAppWriteUnlessSyncSecret(
   if (!secret) return null;
   const hdr = request.headers.get('x-app-sync-secret');
   if (!hdr || hdr !== secret) {
-    return NextResponse.json({ error: 'sync_secret_required' }, { status: 401 });
+    return appApiError('sync_secret_required', 401);
   }
   return null;
 }
@@ -21,7 +22,9 @@ export function rejectAppWriteUnlessSyncSecret(
 /**
  * 앱 쓰기 요청의 행위자(사용자) 헤더:
  * - x-app-actor-id
- * 운영에서 `APP_API_ENFORCE_ACTOR=true`일 때만 강제합니다.
+ *
+ * 리소스 소유·참가자 검증이 필요한 `/api/app/*` 쓰기·민감 읽기에서는 **항상** 이 헤더를 요구합니다.
+ * (`APP_API_ENFORCE_ACTOR` 로 끄지 않습니다 — 운영 안전 기본값.)
  */
 export function getAppActorId(request: NextRequest): string {
   return (request.headers.get('x-app-actor-id') || '').trim();
@@ -31,10 +34,9 @@ export function rejectAppWriteUnlessActorAllowed(
   request: NextRequest,
   allowedActorIds: string[]
 ): NextResponse | null {
-  if (process.env.APP_API_ENFORCE_ACTOR !== 'true') return null;
   const actor = getAppActorId(request);
   if (!actor) {
-    return NextResponse.json({ error: 'actor_required' }, { status: 401 });
+    return appApiError('actor_required', 401);
   }
   const allow = new Set(
     allowedActorIds
@@ -42,7 +44,7 @@ export function rejectAppWriteUnlessActorAllowed(
       .filter(Boolean)
   );
   if (!allow.has(actor)) {
-    return NextResponse.json({ error: 'forbidden_actor' }, { status: 403 });
+    return appApiError('forbidden_actor', 403);
   }
   return null;
 }

@@ -5,9 +5,22 @@ import {
   prismaUserToUserData,
   userDataPatchToPrisma,
 } from '@/lib/server/appUserMapper';
-import { rejectAppWriteUnlessActorAllowed } from '@/lib/server/appSyncWriteGuard';
+import { getAppActorId } from '@/lib/server/appSyncWriteGuard';
+import { getAdminFromRequest } from '@/lib/server/adminAuthServer';
+import { appApiError } from '@/lib/server/appApiErrors';
 import type { Prisma } from '@prisma/client';
 import type { UserData } from '@/lib/api/auth';
+
+/** 관리자 세션으로만 변경 가능한 앱 사용자 필드 (`/api/admin/*` UI) */
+const ADMIN_APP_USER_PATCH_KEYS = new Set([
+  'blocked',
+  'blockedAt',
+  'blockedReason',
+  'verification_status',
+  'role',
+  'deleted',
+  'deletedAt',
+]);
 
 export async function GET(
   _request: NextRequest,
@@ -15,17 +28,17 @@ export async function GET(
 ) {
   const { id } = await context.params;
   const uid = (id || '').trim();
-  if (!uid) return NextResponse.json({ error: 'invalid_id' }, { status: 400 });
+  if (!uid) return appApiError('invalid_id', 400);
 
   try {
     const row = await prisma.user.findFirst({
       where: { id: uid, deleted: false },
     });
-    if (!row) return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    if (!row) return appApiError('not_found', 404);
     return NextResponse.json(prismaUserToUserData(row));
   } catch (e) {
     console.error('GET /api/app/users/[id]', e);
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
+    return appApiError('database_unavailable', 503);
   }
 }
 
@@ -35,22 +48,41 @@ export async function PATCH(
 ) {
   const { id } = await context.params;
   const uid = (id || '').trim();
-  if (!uid) return NextResponse.json({ error: 'invalid_id' }, { status: 400 });
+  if (!uid) return appApiError('invalid_id', 400);
 
   let body: Partial<UserData>;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: 'invalid_body' }, { status: 400 });
+    return appApiError('invalid_body', 400);
   }
 
-  const denied = rejectAppWriteUnlessActorAllowed(request, [uid]);
-  if (denied) return denied;
+  const actor = getAppActorId(request);
+  const isSelf = !!actor && actor === uid;
+  const admin = !isSelf ? await getAdminFromRequest(request) : null;
+
+  if (!isSelf && !admin) {
+    if (!actor) return appApiError('actor_required', 401);
+    return appApiError('forbidden_actor', 403);
+  }
+
+  if (admin && !isSelf) {
+    const filtered: Partial<UserData> = {};
+    for (const key of Object.keys(body) as Array<keyof UserData>) {
+      if (ADMIN_APP_USER_PATCH_KEYS.has(String(key))) {
+        (filtered as Record<string, unknown>)[key as string] = body[key];
+      }
+    }
+    if (Object.keys(filtered).length === 0) {
+      return appApiError('admin_patch_empty', 400);
+    }
+    body = filtered;
+  }
 
   try {
     const row = await prisma.user.findUnique({ where: { id: uid } });
     if (!row || row.deleted) {
-      return NextResponse.json({ error: 'not_found' }, { status: 404 });
+      return appApiError('not_found', 404);
     }
 
     const flat = userDataPatchToPrisma(body) as Prisma.UserUpdateInput;
@@ -68,7 +100,7 @@ export async function PATCH(
     return NextResponse.json(prismaUserToUserData(updated));
   } catch (e) {
     console.error('PATCH /api/app/users/[id]', e);
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
+    return appApiError('database_unavailable', 503);
   }
 }
 
@@ -78,15 +110,18 @@ export async function DELETE(
 ) {
   const { id } = await context.params;
   const uid = (id || '').trim();
-  if (!uid) return NextResponse.json({ error: 'invalid_id' }, { status: 400 });
+  if (!uid) return appApiError('invalid_id', 400);
 
-  const denied = rejectAppWriteUnlessActorAllowed(request, [uid]);
-  if (denied) return denied;
+  const actor = getAppActorId(request);
+  if (!actor || actor !== uid) {
+    if (!actor) return appApiError('actor_required', 401);
+    return appApiError('forbidden_actor', 403);
+  }
 
   try {
     const row = await prisma.user.findUnique({ where: { id: uid } });
     if (!row || row.deleted) {
-      return NextResponse.json({ error: 'not_found' }, { status: 404 });
+      return appApiError('not_found', 404);
     }
 
     const updated = await prisma.user.update({
@@ -100,6 +135,6 @@ export async function DELETE(
     return NextResponse.json(prismaUserToUserData(updated));
   } catch (e) {
     console.error('DELETE /api/app/users/[id]', e);
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
+    return appApiError('database_unavailable', 503);
   }
 }

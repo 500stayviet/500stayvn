@@ -1,5 +1,6 @@
 'use client';
 
+import { canReadLocalFallback, canWriteLocalFallback } from '@/lib/runtime/localFallbackPolicy';
 import { isContractCompletedTab } from '@/lib/adminBookingFilters';
 import { getAllBookings } from '@/lib/api/bookings';
 import type { BookingData } from '@/lib/api/bookings';
@@ -90,7 +91,12 @@ const BANK_ACCOUNTS_KEY = 'bank_accounts_v1';
 const WITHDRAWALS_KEY = 'withdrawal_requests_v1';
 
 function readLS<T>(key: string): T[] {
-  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return [];
+  if (
+    typeof window === 'undefined' ||
+    typeof localStorage === 'undefined' ||
+    !canReadLocalFallback()
+  )
+    return [];
   try {
     const raw = localStorage.getItem(key);
     return raw ? (JSON.parse(raw) as T[]) : [];
@@ -100,7 +106,12 @@ function readLS<T>(key: string): T[] {
 }
 
 function writeLS<T>(key: string, value: T[]) {
-  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
+  if (
+    typeof window === 'undefined' ||
+    typeof localStorage === 'undefined' ||
+    !canWriteLocalFallback()
+  )
+    return;
   localStorage.setItem(key, JSON.stringify(value));
 }
 

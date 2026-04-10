@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { rejectAppWriteUnlessActorAllowed } from '@/lib/server/appSyncWriteGuard';
+import { appApiError } from '@/lib/server/appApiErrors';
+import { rejectAppReadUnlessRoomParticipant } from '@/lib/server/appApiReadGuard';
 
 export async function GET(
   request: NextRequest,
@@ -33,7 +35,7 @@ export async function GET(
     return NextResponse.json({ messages });
   } catch (e) {
     console.error('GET /api/app/chat/rooms/[id]/messages', e);
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
+    return appApiError('database_unavailable', 503);
   }
 }
 
@@ -48,16 +50,16 @@ export async function POST(
 ) {
   const { id } = await context.params;
   const roomId = (id || '').trim();
-  if (!roomId) return NextResponse.json({ error: 'invalid_room_id' }, { status: 400 });
+  if (!roomId) return appApiError('invalid_room_id', 400);
   let body: PostBody;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: 'invalid_body' }, { status: 400 });
+    return appApiError('invalid_body', 400);
   }
   const senderId = (body.senderId || '').trim();
   const content = (body.content || '').trim();
-  if (!senderId || !content) return NextResponse.json({ error: 'invalid_fields' }, { status: 400 });
+  if (!senderId || !content) return appApiError('invalid_fields', 400);
   const denied = rejectAppWriteUnlessActorAllowed(request, [senderId]);
   if (denied) return denied;
   try {
@@ -97,6 +99,6 @@ export async function POST(
     );
   } catch (e) {
     console.error('POST /api/app/chat/rooms/[id]/messages', e);
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
+    return appApiError('database_unavailable', 503);
   }
 }

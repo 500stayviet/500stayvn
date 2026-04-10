@@ -6,12 +6,29 @@
  */
 
 import { PropertyData } from '@/types/property';
-import { getReservationsByOwner, ReservationData } from './reservations';
+import {
+  getReservationsByOwner,
+  ReservationData,
+  getAllReservations,
+  saveReservationsSnapshot,
+  readReservationsArray,
+} from './reservations';
 import { parseDate, toISODateString } from '@/lib/utils/dateUtils';
-import { isDateRangeBooked, getAllBookings, BookingData } from './bookings';
+import {
+  isDateRangeBooked,
+  getAllBookings,
+  BookingData,
+  readBookingsArray,
+  writeBookingsArray,
+} from './bookings';
 import { hasAvailableBookingPeriod, isParentPropertyRecord } from '@/lib/utils/propertyUtils';
 import { canReadLocalFallback, canWriteLocalFallback } from '@/lib/runtime/localFallbackPolicy';
+import {
+  isLedgerBootstrapDone,
+  markLedgerBootstrapDone,
+} from '@/lib/runtime/localBootstrapMarkers';
 import { emitUserFacingSyncError, fetchWithRetry } from '@/lib/runtime/networkResilience';
+import { withAppActor } from '@/lib/api/withAppActor';
 
 /**
  * 날짜 중복 체크 (엄격한 ISO 날짜 기준)
@@ -34,22 +51,6 @@ export type PropertiesByOwnerResult = {
   properties: PropertyData[];
   bookedDateRanges: Map<string, PropertyDateRange[]>;
 };
-
-const RESERVATIONS_STORAGE_KEY = 'reservations';
-
-function readAllReservationsSync(): ReservationData[] {
-  if (
-    typeof window === 'undefined' ||
-    typeof localStorage === 'undefined' ||
-    !canReadLocalFallback()
-  ) return [];
-  try {
-    const stored = localStorage.getItem(RESERVATIONS_STORAGE_KEY);
-    return stored ? (JSON.parse(stored) as ReservationData[]) : [];
-  } catch {
-    return [];
-  }
-}
 
 function groupReservationsByOwner(reservations: ReservationData[]): Map<string, ReservationData[]> {
   const map = new Map<string, ReservationData[]>();
@@ -105,6 +106,7 @@ const STORAGE_KEY = 'properties';
 const DELETED_PROPERTIES_LOG_KEY = 'deleted_properties_log';
 const CANCELLED_PROPERTIES_LOG_KEY = 'cancelled_properties_log';
 const PROPS_BOOTSTRAP_KEY = 'stayviet-properties-bootstrap-v1';
+const PROPS_BOOTSTRAP_SESSION_KEY = 'stayviet-properties-bootstrap-session-v1';
 
 let propertiesCache: PropertyData[] | null = null;
 
@@ -159,11 +161,11 @@ export function writePropertiesArray(all: PropertyData[]): void {
     if (!snapshot) return;
     void fetchWithRetry(
       '/api/app/properties',
-      {
+      withAppActor({
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ properties: snapshot }),
-      },
+      }),
       { retries: 2, baseDelayMs: 300 }
     ).catch((e) => {
       console.warn('[properties] PUT sync failed', e);
@@ -181,7 +183,7 @@ export async function refreshPropertiesFromServer(): Promise<boolean> {
   try {
     const res = await fetchWithRetry(
       '/api/app/properties',
-      { cache: 'no-store' },
+      withAppActor({ cache: 'no-store' }),
       { retries: 2, baseDelayMs: 300 }
     );
     if (!res.ok) throw new Error(String(res.status));
@@ -211,7 +213,7 @@ export async function bootstrapPropertiesFromServer(): Promise<void> {
     return;
   }
 
-  if (localStorage.getItem(PROPS_BOOTSTRAP_KEY)) {
+  if (isLedgerBootstrapDone(PROPS_BOOTSTRAP_KEY, PROPS_BOOTSTRAP_SESSION_KEY)) {
     await refreshPropertiesFromServer();
     return;
   }
@@ -229,27 +231,27 @@ export async function bootstrapPropertiesFromServer(): Promise<void> {
   if (!ok) return;
 
   if ((propertiesCache?.length ?? 0) > 0) {
-    localStorage.setItem(PROPS_BOOTSTRAP_KEY, '1');
+    markLedgerBootstrapDone(PROPS_BOOTSTRAP_KEY, PROPS_BOOTSTRAP_SESSION_KEY);
     return;
   }
 
   if (legacyParsed.length === 0) {
-    localStorage.setItem(PROPS_BOOTSTRAP_KEY, '1');
+    markLedgerBootstrapDone(PROPS_BOOTSTRAP_KEY, PROPS_BOOTSTRAP_SESSION_KEY);
     return;
   }
 
   try {
     const res = await fetchWithRetry(
       '/api/app/properties/import',
-      {
+      withAppActor({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ properties: legacyParsed }),
-      },
+      }),
       { retries: 2, baseDelayMs: 300 }
     );
     if (res.ok) {
-      localStorage.setItem(PROPS_BOOTSTRAP_KEY, '1');
+      markLedgerBootstrapDone(PROPS_BOOTSTRAP_KEY, PROPS_BOOTSTRAP_SESSION_KEY);
       await refreshPropertiesFromServer();
     }
   } catch {
@@ -614,29 +616,24 @@ export async function recalculateAndSplitProperty(propertyId: string, bookingId?
   allProps.push(childProp);
   writePropertiesArray(allProps);
 
-  // 참조 업데이트
-  const bookingsStored = localStorage.getItem('bookings');
-  if (bookingsStored) {
-    const bookings = JSON.parse(bookingsStored);
-    const bIndex = bookings.findIndex((b: any) => b.id === booking.id);
-    if (bIndex !== -1) {
-      bookings[bIndex].propertyId = childId;
-      localStorage.setItem('bookings', JSON.stringify(bookings));
-    }
+  // 참조 업데이트 (bookings / reservations 캐시·정책과 동일 경로)
+  const bookings = readBookingsArray();
+  const bIndex = bookings.findIndex((b) => b.id === booking.id);
+  if (bIndex !== -1) {
+    bookings[bIndex] = { ...bookings[bIndex], propertyId: childId };
+    writeBookingsArray(bookings);
   }
 
-  const resStored = localStorage.getItem('reservations');
-  if (resStored) {
-    const reservations = JSON.parse(resStored);
-    const rIndex = reservations.findIndex((r: any) => 
-      r.propertyId === propertyId && 
-      toISODateString(r.checkInDate) === bookedStart && 
+  const reservations = await getAllReservations();
+  const rIndex = reservations.findIndex(
+    (r) =>
+      r.propertyId === propertyId &&
+      toISODateString(r.checkInDate) === bookedStart &&
       toISODateString(r.checkOutDate) === bookedEnd
-    );
-    if (rIndex !== -1) {
-      reservations[rIndex].propertyId = childId;
-      localStorage.setItem('reservations', JSON.stringify(reservations));
-    }
+  );
+  if (rIndex !== -1) {
+    reservations[rIndex] = { ...reservations[rIndex], propertyId: childId };
+    saveReservationsSnapshot(reservations);
   }
 
   await updateProperty(propertyId, {
@@ -746,7 +743,7 @@ export async function getAvailableProperties(): Promise<PropertyData[]> {
     if (typeof window === 'undefined' || typeof localStorage === 'undefined') return [];
     const allProps = readPropertiesArray();
     const availableProperties: PropertyData[] = [];
-    const allReservations = readAllReservationsSync();
+    const allReservations = readReservationsArray();
     const byOwner = groupReservationsByOwner(allReservations);
 
     // 자동 승격(active 복귀)을 100% 차단하기 위해,
@@ -1541,9 +1538,10 @@ export async function permanentlyDeleteProperty(id: string, deletedBy?: string):
     // 매물 목록에서 제거
     const filtered = properties.filter((p) => p.id !== id);
     writePropertiesArray(filtered);
-    void fetch(`/api/app/properties/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(
-      () => {}
-    );
+    void fetch(
+      `/api/app/properties/${encodeURIComponent(id)}`,
+      withAppActor({ method: 'DELETE' })
+    ).catch(() => {});
   } catch (error) {
     console.error('Error permanently deleting property:', error);
     throw error;

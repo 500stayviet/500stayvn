@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { rejectAppWriteUnlessActorAllowed } from '@/lib/server/appSyncWriteGuard';
+import { appApiError } from '@/lib/server/appApiErrors';
 
 type PatchBody = {
   status?: string;
@@ -37,7 +38,7 @@ export async function PATCH(
       `,
       bid
     )) as Array<{ guestId: string; ownerId: string }>;
-    if (!ownerRows[0]) return NextResponse.json({ error: 'booking_not_found' }, { status: 404 });
+    if (!ownerRows[0]) return appApiError('booking_not_found', 404);
     const denied = rejectAppWriteUnlessActorAllowed(request, [ownerRows[0].guestId, ownerRows[0].ownerId]);
     if (denied) return denied;
 
@@ -51,7 +52,7 @@ export async function PATCH(
       `,
       bid
     )) as Array<{ id: string }>;
-    if (!latest[0]?.id) return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    if (!latest[0]?.id) return appApiError('not_found', 404);
     const rows = await prisma.$queryRawUnsafe(
       `
       UPDATE "PaymentRecord"
@@ -81,6 +82,6 @@ export async function PATCH(
     return NextResponse.json((rows as unknown[])[0] || null);
   } catch (e) {
     console.error('PATCH /api/app/payments/[bookingId]', e);
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
+    return appApiError('database_unavailable', 503);
   }
 }

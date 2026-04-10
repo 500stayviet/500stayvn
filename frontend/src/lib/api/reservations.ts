@@ -1,8 +1,10 @@
 /**
  * Reservations API Service (LocalStorage 버전)
- * 
+ *
  * 브라우저 LocalStorage에 예약 데이터를 저장하고 관리하는 서비스
  */
+
+import { canReadLocalFallback, canWriteLocalFallback } from '@/lib/runtime/localFallbackPolicy';
 
 /**
  * 예약 데이터 구조
@@ -30,6 +32,56 @@ export interface ReservationData {
  */
 const STORAGE_KEY = 'reservations';
 
+let reservationsCache: ReservationData[] | null = null;
+
+function loadReservationsCacheFromLocal(): ReservationData[] {
+  if (
+    typeof window === 'undefined' ||
+    typeof localStorage === 'undefined' ||
+    !canReadLocalFallback()
+  ) {
+    return [];
+  }
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    const arr = stored ? (JSON.parse(stored) as ReservationData[]) : [];
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * bookings.readBookingsArray 와 같이 동기로 스냅샷 복사 (같은 탭 내 캐시·정책 일치)
+ */
+export function readReservationsArray(): ReservationData[] {
+  if (reservationsCache === null) {
+    reservationsCache = loadReservationsCacheFromLocal();
+  }
+  return JSON.parse(JSON.stringify(reservationsCache)) as ReservationData[];
+}
+
+/**
+ * 로컬 원장 스냅샷 저장: 메모리 캐시는 항상 갱신, localStorage 는 readwrite 에서만 기록
+ */
+export function saveReservationsSnapshot(all: ReservationData[]): void {
+  reservationsCache = all;
+  if (
+    typeof window !== 'undefined' &&
+    typeof localStorage !== 'undefined' &&
+    canWriteLocalFallback()
+  ) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+    } catch {
+      /* ignore */
+    }
+  }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('reservationsUpdated'));
+  }
+}
+
 /**
  * 모든 예약 조회
  */
@@ -38,11 +90,10 @@ export async function getAllReservations(): Promise<ReservationData[]> {
     if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
       return [];
     }
-    
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return [];
-    
-    return JSON.parse(stored) as ReservationData[];
+    if (reservationsCache === null) {
+      reservationsCache = loadReservationsCacheFromLocal();
+    }
+    return JSON.parse(JSON.stringify(reservationsCache)) as ReservationData[];
   } catch (error) {
     console.error('Error getting reservations:', error);
     return [];
@@ -112,8 +163,8 @@ export async function createReservation(
     };
     
     allReservations.push(newReservation);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(allReservations));
-    
+    saveReservationsSnapshot(allReservations);
+
     return newReservation;
   } catch (error) {
     console.error('Error creating reservation:', error);
@@ -156,8 +207,8 @@ export async function updateReservationStatus(
     }
     
     allReservations[index] = updatedReservation;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(allReservations));
-    
+    saveReservationsSnapshot(allReservations);
+
     return updatedReservation;
   } catch (error) {
     console.error('Error updating reservation status:', error);
@@ -176,8 +227,8 @@ export async function deleteReservation(reservationId: string): Promise<void> {
     
     const allReservations = await getAllReservations();
     const filtered = allReservations.filter((r) => r.id !== reservationId);
-    
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+
+    saveReservationsSnapshot(filtered);
   } catch (error) {
     console.error('Error deleting reservation:', error);
     throw error;

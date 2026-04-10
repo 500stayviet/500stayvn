@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { appApiError } from '@/lib/server/appApiErrors';
+import { rejectAppReadUnlessActorIsUser } from '@/lib/server/appApiReadGuard';
 
 export async function GET(request: NextRequest) {
   const userId = (request.nextUrl.searchParams.get('userId') || '').trim();
-  if (!userId) return NextResponse.json({ error: 'invalid_user_id' }, { status: 400 });
+  if (!userId) return appApiError('invalid_user_id', 400);
+  const denied = rejectAppReadUnlessActorIsUser(request, userId);
+  if (denied) return denied;
   try {
     const rows = (await prisma.$queryRawUnsafe(
       `
@@ -35,6 +39,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ asGuest, asOwner });
   } catch (e) {
     console.error('GET /api/app/chat/unread-counts', e);
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
+    return appApiError('database_unavailable', 503);
   }
 }
