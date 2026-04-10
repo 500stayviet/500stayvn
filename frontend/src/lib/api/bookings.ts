@@ -281,6 +281,47 @@ export async function refreshBookingsFromServer(): Promise<boolean> {
   }
 }
 
+async function fetchAllBookingsByEndpoint(
+  endpoint: string,
+  init: RequestInit
+): Promise<BookingData[]> {
+  const list: BookingData[] = [];
+  let offset = 0;
+  const limit = 200;
+  for (let i = 0; i < 200; i += 1) {
+    const sep = endpoint.includes('?') ? '&' : '?';
+    const res = await fetchWithRetry(
+      `${endpoint}${sep}limit=${limit}&offset=${offset}`,
+      init,
+      { retries: 2, baseDelayMs: 300 }
+    );
+    if (!res.ok) throw new Error(String(res.status));
+    const data = (await res.json()) as {
+      bookings?: BookingData[];
+      page?: { hasMore?: boolean; nextOffset?: number };
+    };
+    const chunk = Array.isArray(data.bookings) ? data.bookings : [];
+    list.push(...chunk);
+    if (!data.page?.hasMore || chunk.length === 0) break;
+    offset = Number(data.page?.nextOffset ?? offset + chunk.length);
+  }
+  return list;
+}
+
+/** 관리자 세션에서 전체 예약 목록 조회 (`/api/admin/bookings`) */
+export async function getAllBookingsForAdmin(): Promise<BookingData[]> {
+  if (typeof window === 'undefined') return [];
+  try {
+    return await fetchAllBookingsByEndpoint('/api/admin/bookings', {
+      cache: 'no-store',
+      credentials: 'same-origin',
+    });
+  } catch (error) {
+    console.error('admin bookings load failed:', error);
+    return [];
+  }
+}
+
 export async function bootstrapBookingsFromServer(): Promise<void> {
   if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
   if (!canReadLocalFallback()) {

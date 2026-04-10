@@ -19,9 +19,29 @@ const MAX_BATCH = 5000;
 function parsePageParams(request: NextRequest): { limit: number; offset: number } {
   const limitRaw = Number(request.nextUrl.searchParams.get('limit') || '200');
   const offsetRaw = Number(request.nextUrl.searchParams.get('offset') || '0');
-  const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(500, Math.floor(limitRaw))) : 200;
+  const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(200, Math.floor(limitRaw))) : 200;
   const offset = Number.isFinite(offsetRaw) ? Math.max(0, Math.min(20000, Math.floor(offsetRaw))) : 0;
   return { limit, offset };
+}
+
+type BookingsCursor = { updatedAt: string; id: string };
+
+function parseBookingsCursor(request: NextRequest): BookingsCursor | null {
+  const raw = (request.nextUrl.searchParams.get('cursor') || '').trim();
+  if (!raw) return null;
+  try {
+    const decoded = JSON.parse(Buffer.from(raw, 'base64url').toString('utf8')) as BookingsCursor;
+    if (!decoded?.updatedAt || !decoded?.id) return null;
+    return decoded;
+  } catch {
+    return null;
+  }
+}
+
+function makeBookingsCursor(next: { updatedAt?: Date | null; id: string } | null): string | null {
+  if (!next?.updatedAt) return null;
+  const payload: BookingsCursor = { updatedAt: next.updatedAt.toISOString(), id: next.id };
+  return Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
 }
 
 /**
@@ -33,6 +53,7 @@ export async function GET(request: NextRequest) {
   const startedAt = Date.now();
   try {
     const { limit, offset } = parsePageParams(request);
+    const cursor = parseBookingsCursor(request);
     const admin = await getAdminFromRequest(request);
     const enforce = process.env.APP_SYNC_ENFORCE_WRITE === 'true';
     const secret = process.env.APP_SYNC_SECRET?.trim();
@@ -41,14 +62,29 @@ export async function GET(request: NextRequest) {
 
     if (admin || syncOk) {
       const rows = await prisma.booking.findMany({
-        orderBy: { updatedAt: 'desc' },
+        where: cursor
+          ? {
+              OR: [
+                { updatedAt: { lt: new Date(cursor.updatedAt) } },
+                { updatedAt: new Date(cursor.updatedAt), id: { lt: cursor.id } },
+              ],
+            }
+          : undefined,
+        orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
         take: limit,
-        skip: offset,
+        ...(cursor ? {} : { skip: offset }),
       });
+      const nextCursor = makeBookingsCursor(rows[rows.length - 1] || null);
       reportApiSuccess('GET /api/app/bookings', 200, startedAt);
       return NextResponse.json({
         bookings: rows.map(prismaBookingToBookingData),
-        page: { limit, offset, hasMore: rows.length === limit, nextOffset: offset + rows.length },
+        page: {
+          limit,
+          offset,
+          hasMore: rows.length === limit,
+          nextOffset: offset + rows.length,
+          nextCursor,
+        },
       });
     }
 
@@ -57,16 +93,35 @@ export async function GET(request: NextRequest) {
 
     const rows = await prisma.booking.findMany({
       where: {
-        OR: [{ guestId: actor }, { property: { ownerId: actor } }],
+        AND: [
+          { OR: [{ guestId: actor }, { property: { ownerId: actor } }] },
+          ...(cursor
+            ? [
+                {
+                  OR: [
+                    { updatedAt: { lt: new Date(cursor.updatedAt) } },
+                    { updatedAt: new Date(cursor.updatedAt), id: { lt: cursor.id } },
+                  ],
+                },
+              ]
+            : []),
+        ],
       },
-      orderBy: { updatedAt: 'desc' },
+      orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
       take: limit,
-      skip: offset,
+      ...(cursor ? {} : { skip: offset }),
     });
+    const nextCursor = makeBookingsCursor(rows[rows.length - 1] || null);
     reportApiSuccess('GET /api/app/bookings', 200, startedAt);
     return NextResponse.json({
       bookings: rows.map(prismaBookingToBookingData),
-      page: { limit, offset, hasMore: rows.length === limit, nextOffset: offset + rows.length },
+      page: {
+        limit,
+        offset,
+        hasMore: rows.length === limit,
+        nextOffset: offset + rows.length,
+        nextCursor,
+      },
     });
   } catch (e) {
     reportApiException('GET /api/app/bookings', e, startedAt);

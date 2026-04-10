@@ -11,7 +11,7 @@ import {
   isContractSealedTab,
 } from '@/lib/adminBookingFilters';
 import type { BookingData } from '@/lib/api/bookings';
-import { getAllBookings } from '@/lib/api/bookings';
+import { getAllBookingsForAdmin } from '@/lib/api/bookings';
 import { acknowledgeCurrentNewContracts } from '@/lib/adminAckState';
 import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
 
@@ -32,7 +32,7 @@ export default function AdminContractsPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const rows = await getAllBookings();
+    const rows = await getAllBookingsForAdmin();
     setBookings(rows);
     setLoading(false);
   }, []);

@@ -6,7 +6,7 @@ import {
   getLedgerEntries,
 } from '@/lib/api/adminFinance';
 import { getUsers } from '@/lib/api/auth';
-import { getAllBookings } from '@/lib/api/bookings';
+import { getAllBookingsForAdmin } from '@/lib/api/bookings';
 import { isPropertyNew, isUserNew } from '@/lib/adminNewUtils';
 import {
   isContractCompletedTab,
@@ -268,7 +268,7 @@ function isRecent(ts: unknown): boolean {
 }
 
 async function getCurrentNewContractBookingIds(): Promise<string[]> {
-  const rows = await getAllBookings();
+  const rows = await getAllBookingsForAdmin();
   const now = new Date();
   return rows
     .filter((b) => isContractSealedTab(b, now) || isContractInProgressTab(b, now) || isContractCompletedTab(b, now))
@@ -278,7 +278,7 @@ async function getCurrentNewContractBookingIds(): Promise<string[]> {
 }
 
 async function getCurrentNewRefundBookingIds(): Promise<string[]> {
-  const rows = await getAllBookings();
+  const rows = await getAllBookingsForAdmin();
   return rows
     .filter((b) => isRefundBeforeRental(b) || isRefundDuringOrAfterRental(b))
     .filter((b) => isRecent(b.updatedAt || b.cancelledAt || b.createdAt))

@@ -166,7 +166,7 @@ export async function refreshUsersCacheForAdmin(): Promise<boolean> {
     const limit = 200;
     for (let i = 0; i < 200; i += 1) {
       const res = await fetchWithRetry(
-        `/api/app/users?limit=${limit}&offset=${offset}`,
+        `/api/admin/users?limit=${limit}&offset=${offset}`,
         { cache: "no-store", credentials: "same-origin" },
         { retries: 1, baseDelayMs: 300 },
       );

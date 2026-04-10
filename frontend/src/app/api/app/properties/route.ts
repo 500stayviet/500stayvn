@@ -19,9 +19,29 @@ const MAX_BATCH = 5000;
 function parsePageParams(request: NextRequest): { limit: number; offset: number } {
   const limitRaw = Number(request.nextUrl.searchParams.get('limit') || '200');
   const offsetRaw = Number(request.nextUrl.searchParams.get('offset') || '0');
-  const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(500, Math.floor(limitRaw))) : 200;
+  const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(200, Math.floor(limitRaw))) : 200;
   const offset = Number.isFinite(offsetRaw) ? Math.max(0, Math.min(20000, Math.floor(offsetRaw))) : 0;
   return { limit, offset };
+}
+
+type PropertiesCursor = { updatedAt: string; id: string };
+
+function parsePropertiesCursor(request: NextRequest): PropertiesCursor | null {
+  const raw = (request.nextUrl.searchParams.get('cursor') || '').trim();
+  if (!raw) return null;
+  try {
+    const decoded = JSON.parse(Buffer.from(raw, 'base64url').toString('utf8')) as PropertiesCursor;
+    if (!decoded?.updatedAt || !decoded?.id) return null;
+    return decoded;
+  } catch {
+    return null;
+  }
+}
+
+function makePropertiesCursor(next: { updatedAt?: Date | null; id: string } | null): string | null {
+  if (!next?.updatedAt) return null;
+  const payload: PropertiesCursor = { updatedAt: next.updatedAt.toISOString(), id: next.id };
+  return Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
 }
 
 /**
@@ -33,6 +53,7 @@ export async function GET(request: NextRequest) {
   const startedAt = Date.now();
   try {
     const { limit, offset } = parsePageParams(request);
+    const cursor = parsePropertiesCursor(request);
     const admin = await getAdminFromRequest(request);
     const enforce = process.env.APP_SYNC_ENFORCE_WRITE === 'true';
     const secret = process.env.APP_SYNC_SECRET?.trim();
@@ -41,26 +62,56 @@ export async function GET(request: NextRequest) {
 
     if (admin) {
       const rows = await prisma.property.findMany({
-        orderBy: { updatedAt: 'desc' },
+        where: cursor
+          ? {
+              OR: [
+                { updatedAt: { lt: new Date(cursor.updatedAt) } },
+                { updatedAt: new Date(cursor.updatedAt), id: { lt: cursor.id } },
+              ],
+            }
+          : undefined,
+        orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
         take: limit,
-        skip: offset,
+        ...(cursor ? {} : { skip: offset }),
       });
+      const nextCursor = makePropertiesCursor(rows[rows.length - 1] || null);
       reportApiSuccess('GET /api/app/properties', 200, startedAt);
       return NextResponse.json({
         properties: rows.map(prismaPropertyToPropertyData),
-        page: { limit, offset, hasMore: rows.length === limit, nextOffset: offset + rows.length },
+        page: {
+          limit,
+          offset,
+          hasMore: rows.length === limit,
+          nextOffset: offset + rows.length,
+          nextCursor,
+        },
       });
     }
     if (syncOk) {
       const rows = await prisma.property.findMany({
-        orderBy: { updatedAt: 'desc' },
+        where: cursor
+          ? {
+              OR: [
+                { updatedAt: { lt: new Date(cursor.updatedAt) } },
+                { updatedAt: new Date(cursor.updatedAt), id: { lt: cursor.id } },
+              ],
+            }
+          : undefined,
+        orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
         take: limit,
-        skip: offset,
+        ...(cursor ? {} : { skip: offset }),
       });
+      const nextCursor = makePropertiesCursor(rows[rows.length - 1] || null);
       reportApiSuccess('GET /api/app/properties', 200, startedAt);
       return NextResponse.json({
         properties: rows.map(prismaPropertyToPropertyData),
-        page: { limit, offset, hasMore: rows.length === limit, nextOffset: offset + rows.length },
+        page: {
+          limit,
+          offset,
+          hasMore: rows.length === limit,
+          nextOffset: offset + rows.length,
+          nextCursor,
+        },
       });
     }
 
@@ -75,21 +126,42 @@ export async function GET(request: NextRequest) {
 
     const rows = await prisma.property.findMany({
       where: {
-        OR: [
-          { ownerId: actor },
-          ...(bookedIds.length > 0 ? [{ id: { in: bookedIds } }] : []),
-          { deleted: false, hidden: false, status: 'active' },
+        AND: [
+          {
+            OR: [
+              { ownerId: actor },
+              ...(bookedIds.length > 0 ? [{ id: { in: bookedIds } }] : []),
+              { deleted: false, hidden: false, status: 'active' },
+            ],
+          },
+          ...(cursor
+            ? [
+                {
+                  OR: [
+                    { updatedAt: { lt: new Date(cursor.updatedAt) } },
+                    { updatedAt: new Date(cursor.updatedAt), id: { lt: cursor.id } },
+                  ],
+                },
+              ]
+            : []),
         ],
       },
-      orderBy: { updatedAt: 'desc' },
+      orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
       take: limit,
-      skip: offset,
+      ...(cursor ? {} : { skip: offset }),
     });
     const properties = rows.map(prismaPropertyToPropertyData);
+    const nextCursor = makePropertiesCursor(rows[rows.length - 1] || null);
     reportApiSuccess('GET /api/app/properties', 200, startedAt);
     return NextResponse.json({
       properties,
-      page: { limit, offset, hasMore: rows.length === limit, nextOffset: offset + rows.length },
+      page: {
+        limit,
+        offset,
+        hasMore: rows.length === limit,
+        nextOffset: offset + rows.length,
+        nextCursor,
+      },
     });
   } catch (e) {
     reportApiException('GET /api/app/properties', e, startedAt);

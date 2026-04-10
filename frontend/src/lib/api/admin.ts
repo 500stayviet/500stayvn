@@ -29,7 +29,7 @@ async function loadUsersForKyc(): Promise<UserData[]> {
   let offset = 0;
   const limit = 200;
   for (let i = 0; i < 200; i += 1) {
-    const res = await fetch(`/api/app/users?limit=${limit}&offset=${offset}`, {
+    const res = await fetch(`/api/admin/users?limit=${limit}&offset=${offset}`, {
       cache: 'no-store',
       credentials: 'same-origin',
     });

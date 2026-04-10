@@ -10,7 +10,7 @@ import {
   isRefundDuringOrAfterRental,
 } from '@/lib/adminBookingFilters';
 import type { BookingData } from '@/lib/api/bookings';
-import { approveRefundBooking, getAllBookings } from '@/lib/api/bookings';
+import { approveRefundBooking, getAllBookingsForAdmin } from '@/lib/api/bookings';
 import { useAdminMe } from '@/contexts/AdminMeContext';
 import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
 import { acknowledgeCurrentNewRefunds } from '@/lib/adminAckState';
@@ -33,7 +33,7 @@ export default function AdminRefundsPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const rows = await getAllBookings();
+    const rows = await getAllBookingsForAdmin();
     setBookings(rows);
     setLoading(false);
     refreshAdminBadges();

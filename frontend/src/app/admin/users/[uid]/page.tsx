@@ -12,7 +12,7 @@ import {
 } from '@/lib/adminUserAccountDetail';
 import { useAdminMe } from '@/contexts/AdminMeContext';
 import { getOwnerBalances } from '@/lib/api/adminFinance';
-import { getAllBookings } from '@/lib/api/bookings';
+import { getAllBookingsForAdmin } from '@/lib/api/bookings';
 import { addSharedMemo, deleteSharedMemo, getSharedMemos } from '@/lib/api/adminMemos';
 import type { UserData } from '@/lib/api/auth';
 import { setUserBlocked } from '@/lib/api/adminModeration';
@@ -105,7 +105,7 @@ export default function AdminUserDetailPage() {
     let cancelled = false;
     setData(null);
     (async () => {
-      const bookings = await getAllBookings();
+      const bookings = await getAllBookingsForAdmin();
       const now = new Date();
       const host = computeHostBookingStats(bookings, uid, now);
       const guest = computeGuestBookingStats(bookings, uid, now);

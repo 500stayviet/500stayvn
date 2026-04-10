@@ -2,7 +2,7 @@
 
 import { canReadLocalFallback, canWriteLocalFallback } from '@/lib/runtime/localFallbackPolicy';
 import { isContractCompletedTab } from '@/lib/adminBookingFilters';
-import { getAllBookings } from '@/lib/api/bookings';
+import { getAllBookingsForAdmin } from '@/lib/api/bookings';
 import type { BookingData } from '@/lib/api/bookings';
 import {
   getRentalIncomeAmount,
@@ -195,7 +195,7 @@ function removeBookingFromSettlementPendingQueue(bookingId: string): void {
  * 예약이 없거나 취소된 ID는 승인 대기 큐에서 제거 (목록과 큐 불일치 방지).
  */
 export async function reconcileSettlementPendingQueueWithBookings(): Promise<void> {
-  const bookings = await getAllBookings();
+  const bookings = await getAllBookingsForAdmin();
   const byId = new Map(bookings.map((b) => [b.id ?? '', b] as const));
   const queue = getSettlementPendingQueueIds();
   let changed = false;
@@ -369,7 +369,7 @@ export function getOwnerBalances(ownerId: string): {
 }
 
 export async function getSettlementCandidates(): Promise<SettlementCandidate[]> {
-  const bookings = await getAllBookings();
+  const bookings = await getAllBookingsForAdmin();
   const approvals = getSettlementApprovals();
   const now = new Date();
 
