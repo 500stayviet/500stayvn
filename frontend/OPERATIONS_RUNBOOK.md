@@ -84,6 +84,21 @@ npx prisma migrate deploy --schema prisma/schema.prisma
 - [ ] `NEXT_PUBLIC_LOCAL_FALLBACK_MODE` 의도값 확인 (`readwrite|readonly|off`)
 - [ ] 새 환경변수/시크릿 누락 없음
 
+## API 경계/페이지네이션 고정 규칙 (2차 고도화)
+
+- 경계 원칙
+  - `/api/app/*`: 앱 사용자(BFF) 전용 경로
+  - `/api/admin/*`: 관리자 운영 전용 경로 (admin session cookie 필수)
+- 목록 API 표준 응답 (`users/properties/bookings` 공통)
+  - `page.limit`
+  - `page.offset`
+  - `page.hasMore`
+  - `page.nextOffset`
+  - `page.nextCursor` (cursor 기반 다음 페이지 토큰, 없으면 `null`)
+- 운영 점검 포인트
+  - 관리자 화면(users/properties/contracts/refunds)에서 `/api/admin/*` 사용 여부 확인
+  - 사용자 화면에서는 관리자 전용 엔드포인트를 직접 호출하지 않는지 확인
+
 ## 배포 절차
 
 1. 백업 생성

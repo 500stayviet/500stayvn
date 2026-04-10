@@ -74,9 +74,14 @@ When `APP_SYNC_ENFORCE_WRITE=true` and `APP_SYNC_SECRET` is set, these endpoints
 
 All `/api/admin/*` routes use **admin session cookie** (`getAdminFromRequest`). They are **not** covered by `x-app-actor-id`.
 
-## Public listing (known limitation)
+## Listing boundary (updated)
 
-`GET /api/app/users`, `GET /api/app/properties`, `GET /api/app/bookings` return broad lists for the current app shell. Tightening these (pagination, actor, or admin-only) is a follow-up hardening step.
+- `/api/app/users`, `/api/app/properties`, `/api/app/bookings`
+  - 사용자 컨텍스트 기준으로 동작하며 `limit/offset/cursor` 페이지네이션을 지원합니다.
+  - 일반 앱 actor는 자기 스코프 데이터로 제한됩니다.
+- `/api/admin/users`, `/api/admin/properties`, `/api/admin/bookings`
+  - 관리자 목록 조회 전용입니다.
+  - admin session cookie 기반으로만 접근 가능합니다.
 
 ## Rollout notes
 
