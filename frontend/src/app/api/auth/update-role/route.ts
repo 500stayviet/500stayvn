@@ -18,7 +18,10 @@ export async function PUT(request: NextRequest) {
         // User 테이블 업데이트
         const updatedUser = await prisma.user.update({
           where: { id: userId },
-          data: { role },
+          data: {
+            role,
+            ...(role === 'owner' ? { isOwner: true } : {}),
+          },
         });
 
         console.log(`User role updated: ${userId} -> ${role}`);

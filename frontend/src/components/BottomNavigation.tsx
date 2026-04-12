@@ -64,10 +64,10 @@ export default function BottomNavigation({ hideOnPaths = [] }: BottomNavigationP
         
         const allStepsCompleted = step1Completed && step2Completed && step3Completed;
         
-        // KYC 완료 또는 owner 권한이 있으면 임대인 모드
-        // 안전한 boolean 검증 사용
-        const isOwner = Boolean(userData.is_owner);
-        
+        // KYC 완료 또는 owner 권한 (원장은 role 문자열 또는 isOwner 플래그)
+        const isOwner =
+          userData.role === 'owner' || Boolean(userData.is_owner);
+
         if (allStepsCompleted || isOwner) {
           setIsOwnerMode(true);
         } else {
@@ -90,6 +90,14 @@ export default function BottomNavigation({ hideOnPaths = [] }: BottomNavigationP
       setIsOwnerMode(false);
       setCheckingOwnerStatus(false);
     }
+
+    const onUsersCacheUpdated = () => {
+      if (user) void checkOwnerStatus();
+    };
+    window.addEventListener('stayviet-users-updated', onUsersCacheUpdated);
+    return () => {
+      window.removeEventListener('stayviet-users-updated', onUsersCacheUpdated);
+    };
   }, [user]);
 
   // 현재 경로에 따라 활성 탭 설정

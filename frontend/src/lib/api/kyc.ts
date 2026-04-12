@@ -11,6 +11,10 @@ import {
 } from "@/types/kyc.types";
 import { logAdminSystemEvent } from "@/lib/adminSystemLog";
 import { withAppActor } from "@/lib/api/withAppActor";
+import {
+  mergeAuthenticatedUserIntoCache,
+  type UserData,
+} from "@/lib/api/auth";
 
 /**
  * 파일 업로드 유틸리티 함수
@@ -71,9 +75,13 @@ async function completeKYCStep(
 
     const userPatch: Record<string, unknown> = { kyc_steps: kycSteps };
     if (step < 3) userPatch.verification_status = 'pending';
-    if (step === 3) userPatch.verification_status = 'verified';
+    if (step === 3) {
+      userPatch.verification_status = 'verified';
+      /** 앱 원장 규칙: PATCH 시 `role: owner` → DB에 isOwner + 세션과 동일한 UserData */
+      userPatch.role = 'owner';
+    }
 
-    await fetch(
+    const patchRes = await fetch(
       `/api/app/users/${encodeURIComponent(userId)}`,
       withAppActor({
         method: 'PATCH',
@@ -81,6 +89,10 @@ async function completeKYCStep(
         body: JSON.stringify(userPatch),
       }),
     );
+    if (patchRes.ok) {
+      const updated = (await patchRes.json()) as import('@/lib/api/auth').UserData;
+      mergeAuthenticatedUserIntoCache(updated);
+    }
   } catch (error) {
     logAdminSystemEvent({
       severity: 'warning',
@@ -218,29 +230,26 @@ export async function saveFaceVerification(
 
 /**
  * KYC 인증 프로세스 최종 완료 처리
- * - User 테이블의 role을 'owner'로 업데이트
- * - 임대인 권한 부여
+ * - 임대인 권한은 `completeKYCStep(3)`의 PATCH(`role: owner`) + 캐시 병합으로 이미 반영됨
+ * - 레거시·호환용으로 남김 (중복 PATCH 방지)
  */
 export async function completeKYCVerification(uid: string): Promise<void> {
   try {
-    // User 테이블의 role을 'owner'로 업데이트
-    const response = await fetch('/api/auth/update-role', {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ userId: uid, role: 'owner' }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to update user role');
+    const res = await fetch(
+      `/api/app/users/${encodeURIComponent(uid)}`,
+      withAppActor({
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'owner' }),
+      }),
+    );
+    if (res.ok) {
+      const updated = (await res.json()) as UserData;
+      mergeAuthenticatedUserIntoCache(updated);
+      return;
     }
-
-    console.log('KYC verification process completed for user:', uid);
-    console.log('User role updated to "owner"');
   } catch (error) {
-    console.error("Error completing KYC verification:", error);
+    console.error('Error completing KYC verification:', error);
     logAdminSystemEvent({
       severity: 'warning',
       category: 'kyc',
@@ -248,8 +257,6 @@ export async function completeKYCVerification(uid: string): Promise<void> {
       ownerId: uid,
       snapshot: { function: 'completeKYCVerification' },
     });
-    // 테스트 모드: 에러가 발생해도 계속 진행
-    console.log('Test mode: Continuing despite role update error');
   }
 }
 

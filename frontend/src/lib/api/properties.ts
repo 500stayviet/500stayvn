@@ -27,8 +27,14 @@ import {
   isLedgerBootstrapDone,
   markLedgerBootstrapDone,
 } from '@/lib/runtime/localBootstrapMarkers';
-import { emitUserFacingSyncError, fetchWithRetry } from '@/lib/runtime/networkResilience';
+import {
+  emitUserFacingSyncError,
+  fetchWithRetry,
+  isClientAuthErrorStatus,
+  USER_FACING_CLIENT_AUTH_ERROR_MESSAGE,
+} from '@/lib/runtime/networkResilience';
 import { withAppActor } from '@/lib/api/withAppActor';
+import { getCurrentUserId } from '@/lib/api/auth';
 
 /**
  * 날짜 중복 체크 (엄격한 ISO 날짜 기준)
@@ -180,6 +186,7 @@ export function writePropertiesArray(all: PropertyData[]): void {
 
 export async function refreshPropertiesFromServer(): Promise<boolean> {
   if (typeof window === 'undefined') return false;
+  if (!getCurrentUserId()) return false;
   try {
     const list: PropertyData[] = [];
     let offset = 0;
@@ -190,7 +197,17 @@ export async function refreshPropertiesFromServer(): Promise<boolean> {
         withAppActor({ cache: 'no-store' }),
         { retries: 2, baseDelayMs: 300 }
       );
-      if (!res.ok) throw new Error(String(res.status));
+      if (!res.ok) {
+        if (isClientAuthErrorStatus(res.status)) {
+          emitUserFacingSyncError({
+            area: 'properties',
+            action: 'refresh',
+            message: USER_FACING_CLIENT_AUTH_ERROR_MESSAGE,
+          });
+          return false;
+        }
+        throw new Error(String(res.status));
+      }
       const data = (await res.json()) as {
         properties?: PropertyData[];
         page?: { hasMore?: boolean; nextOffset?: number };
@@ -207,12 +224,22 @@ export async function refreshPropertiesFromServer(): Promise<boolean> {
     }
     window.dispatchEvent(new CustomEvent('propertiesUpdated'));
     return true;
-  } catch {
+  } catch (e) {
     propertiesCache = null;
+    const code = e instanceof Error ? Number(e.message) : NaN;
+    if (Number.isFinite(code) && isClientAuthErrorStatus(code)) {
+      emitUserFacingSyncError({
+        area: 'properties',
+        action: 'refresh',
+        message: USER_FACING_CLIENT_AUTH_ERROR_MESSAGE,
+      });
+      return false;
+    }
+    console.warn('[properties] refreshPropertiesFromServer failed', e);
     emitUserFacingSyncError({
       area: 'properties',
       action: 'refresh',
-      message: '매물 목록을 불러오지 못했습니다. 네트워크를 확인해주세요.',
+      message: '오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
     });
     return false;
   }
@@ -276,6 +303,7 @@ export async function getPropertyForAdmin(id: string): Promise<PropertyData | nu
 
 export async function bootstrapPropertiesFromServer(): Promise<void> {
   if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
+  if (!getCurrentUserId()) return;
   if (!canReadLocalFallback()) {
     await refreshPropertiesFromServer();
     return;
@@ -322,8 +350,9 @@ export async function bootstrapPropertiesFromServer(): Promise<void> {
       markLedgerBootstrapDone(PROPS_BOOTSTRAP_KEY, PROPS_BOOTSTRAP_SESSION_KEY);
       await refreshPropertiesFromServer();
     }
-  } catch {
+  } catch (e) {
     /* 다음 로드에 재시도 */
+    console.warn('[properties] bootstrap import failed', e);
     emitUserFacingSyncError({
       area: 'properties',
       action: 'bootstrap',

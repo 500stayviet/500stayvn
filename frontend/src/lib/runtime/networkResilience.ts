@@ -57,3 +57,12 @@ export function emitUserFacingSyncError(error: UserFacingSyncError): void {
     /* ignore event errors */
   }
 }
+
+/** 로그인 만료·권한·액터 헤더 문제(401/403) */
+export function isClientAuthErrorStatus(status: number): boolean {
+  return status === 401 || status === 403;
+}
+
+/** 동기화 배너용 — 인증·권한 관련 실패 */
+export const USER_FACING_CLIENT_AUTH_ERROR_MESSAGE =
+  "오류가 발생했습니다. 잠시 후 다시 시도하거나 로그인을 확인해 주세요.";

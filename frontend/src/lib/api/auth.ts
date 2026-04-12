@@ -11,7 +11,12 @@ import {
   isLedgerBootstrapDone,
   markLedgerBootstrapDone,
 } from "@/lib/runtime/localBootstrapMarkers";
-import { emitUserFacingSyncError, fetchWithRetry } from "@/lib/runtime/networkResilience";
+import {
+  emitUserFacingSyncError,
+  fetchWithRetry,
+  isClientAuthErrorStatus,
+  USER_FACING_CLIENT_AUTH_ERROR_MESSAGE,
+} from "@/lib/runtime/networkResilience";
 import { withAppActor } from "@/lib/api/withAppActor";
 
 export interface UserData {
@@ -115,6 +120,15 @@ export function setUsersCacheAndStorage(users: UserData[]): void {
   notifyUsersStorageChanged();
 }
 
+/** 서버에서 받은 `UserData`로 로컬 users 캐시 한 건을 갱신 (KYC·프로필 PATCH 직후 즉시 UI 반영용) */
+export function mergeAuthenticatedUserIntoCache(user: UserData): void {
+  const list = getUsers();
+  const idx = list.findIndex((u) => u.uid === user.uid);
+  const next =
+    idx === -1 ? [...list, user] : list.map((u, i) => (i === idx ? user : u));
+  setUsersCacheAndStorage(next);
+}
+
 /**
  * 서버에서 회원 목록 갱신. 성공 시 true
  */
@@ -131,7 +145,12 @@ export async function refreshUsersFromServer(): Promise<boolean> {
         withAppActor({ cache: "no-store" }),
         { retries: 2, baseDelayMs: 300 },
       );
-      if (!res.ok) throw new Error(String(res.status));
+      if (!res.ok) {
+        if (isClientAuthErrorStatus(res.status)) {
+          return false;
+        }
+        throw new Error(String(res.status));
+      }
       const data = (await res.json()) as {
         users?: UserData[];
         page?: { hasMore?: boolean; nextOffset?: number };
@@ -144,12 +163,22 @@ export async function refreshUsersFromServer(): Promise<boolean> {
     }
     setUsersCacheAndStorage(users);
     return true;
-  } catch {
+  } catch (e) {
     usersCache = null;
+    const code = e instanceof Error ? Number(e.message) : NaN;
+    if (Number.isFinite(code) && isClientAuthErrorStatus(code)) {
+      emitUserFacingSyncError({
+        area: "users",
+        action: "refresh",
+        message: USER_FACING_CLIENT_AUTH_ERROR_MESSAGE,
+      });
+      return false;
+    }
+    console.warn("[users] refreshUsersFromServer failed", e);
     emitUserFacingSyncError({
       area: "users",
       action: "refresh",
-      message: "사용자 데이터를 서버에서 가져오지 못했습니다. 잠시 후 다시 시도해주세요.",
+      message: "오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
     });
     return false;
   }
@@ -237,8 +266,9 @@ export async function bootstrapUsersFromServer(): Promise<void> {
       markLedgerBootstrapDone(BOOTSTRAP_KEY, BOOTSTRAP_SESSION_KEY);
       await refreshUsersFromServer();
     }
-  } catch {
+  } catch (e) {
     /* 네트워크 오류 시 BOOTSTRAP_KEY 미설정 → 이후 재시도 */
+    console.warn("[users] bootstrap import failed", e);
     emitUserFacingSyncError({
       area: "users",
       action: "bootstrap",
@@ -289,7 +319,7 @@ export function getCurrentUserData(
   const users = getUsers();
   const current = users.find((u) => u.uid === userId) || null;
   if (!current) {
-    setCurrentUser(null);
+    // 목록 동기화 직전·실패 등으로 캐시에 아직 없을 수 있음 — 여기서 세션을 지우면 가입 직후 홈에서 로그아웃처럼 보임
     return null;
   }
   if (current.blocked) {
@@ -365,6 +395,7 @@ export async function signUpWithEmail(data: SignUpData): Promise<any> {
 
     const user = json as UserData;
     setCurrentUser(user.uid);
+    mergeAuthenticatedUserIntoCache(user);
     await refreshUsersFromServer();
 
     return {
@@ -439,6 +470,7 @@ export async function signInWithEmail(
 
     const user = json.user as UserData;
     setCurrentUser(user.uid);
+    mergeAuthenticatedUserIntoCache(user);
     await refreshUsersFromServer();
 
     return {

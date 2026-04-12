@@ -8,8 +8,14 @@ import {
   isLedgerBootstrapDone,
   markLedgerBootstrapDone,
 } from '@/lib/runtime/localBootstrapMarkers';
-import { emitUserFacingSyncError, fetchWithRetry } from '@/lib/runtime/networkResilience';
+import {
+  emitUserFacingSyncError,
+  fetchWithRetry,
+  isClientAuthErrorStatus,
+  USER_FACING_CLIENT_AUTH_ERROR_MESSAGE,
+} from '@/lib/runtime/networkResilience';
 import { withAppActor } from '@/lib/api/withAppActor';
+import { getCurrentUserId } from '@/lib/api/auth';
 
 export { toISODateString };
 
@@ -243,6 +249,7 @@ async function patchPaymentMetaByBooking(
 
 export async function refreshBookingsFromServer(): Promise<boolean> {
   if (typeof window === 'undefined') return false;
+  if (!getCurrentUserId()) return false;
   try {
     const list: BookingData[] = [];
     let offset = 0;
@@ -253,7 +260,17 @@ export async function refreshBookingsFromServer(): Promise<boolean> {
         withAppActor({ cache: 'no-store' }),
         { retries: 2, baseDelayMs: 300 }
       );
-      if (!res.ok) throw new Error(String(res.status));
+      if (!res.ok) {
+        if (isClientAuthErrorStatus(res.status)) {
+          emitUserFacingSyncError({
+            area: 'bookings',
+            action: 'refresh',
+            message: USER_FACING_CLIENT_AUTH_ERROR_MESSAGE,
+          });
+          return false;
+        }
+        throw new Error(String(res.status));
+      }
       const data = (await res.json()) as {
         bookings?: BookingData[];
         page?: { hasMore?: boolean; nextOffset?: number };
@@ -270,12 +287,22 @@ export async function refreshBookingsFromServer(): Promise<boolean> {
     }
     window.dispatchEvent(new CustomEvent('bookingsUpdated'));
     return true;
-  } catch {
+  } catch (e) {
     bookingsCache = null;
+    const code = e instanceof Error ? Number(e.message) : NaN;
+    if (Number.isFinite(code) && isClientAuthErrorStatus(code)) {
+      emitUserFacingSyncError({
+        area: 'bookings',
+        action: 'refresh',
+        message: USER_FACING_CLIENT_AUTH_ERROR_MESSAGE,
+      });
+      return false;
+    }
+    console.warn('[bookings] refreshBookingsFromServer failed', e);
     emitUserFacingSyncError({
       area: 'bookings',
       action: 'refresh',
-      message: '예약 목록을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.',
+      message: '오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
     });
     return false;
   }
@@ -324,6 +351,7 @@ export async function getAllBookingsForAdmin(): Promise<BookingData[]> {
 
 export async function bootstrapBookingsFromServer(): Promise<void> {
   if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
+  if (!getCurrentUserId()) return;
   if (!canReadLocalFallback()) {
     await refreshBookingsFromServer();
     return;
@@ -370,8 +398,9 @@ export async function bootstrapBookingsFromServer(): Promise<void> {
       markLedgerBootstrapDone(BOOKINGS_BOOTSTRAP_KEY, BOOKINGS_BOOTSTRAP_SESSION_KEY);
       await refreshBookingsFromServer();
     }
-  } catch {
+  } catch (e) {
     /* 재시도는 다음 로드 */
+    console.warn('[bookings] bootstrap import failed', e);
     emitUserFacingSyncError({
       area: 'bookings',
       action: 'bootstrap',

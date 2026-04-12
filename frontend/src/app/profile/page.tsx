@@ -87,8 +87,6 @@ export default function ProfilePage() {
     process.env.NEXT_PUBLIC_REQUIRE_PHONE_VERIFICATION === "true";
 
   // 모달 표시 여부 추적 (컴포넌트 내부에서만 사용)
-  const popupShownRef = useRef(false);
-
   // kyc_steps 기본값 설정 함수
   const getKycSteps = () => {
     const steps = userData?.kyc_steps || {};
@@ -118,24 +116,24 @@ export default function ProfilePage() {
           const data = await getCurrentUserData(user.uid);
           setUserData(data);
           const kycSteps = data?.kyc_steps || {};
-          const completed =
-            (kycSteps.step1 && kycSteps.step2 && kycSteps.step3) || false;
+          const completed = Boolean(
+            kycSteps.step1 && kycSteps.step2 && kycSteps.step3,
+          );
           const status = await getVerificationStatus(user.uid);
           setVerificationStatus(status as VerificationStatus);
 
-          // KYC 완료 및 임대인 권한 부여 시 성공 팝업 표시
+          // KYC 완료 + 임대인: 축하 팝업 1회만 (방금 fetch한 data 기준 — 이전 userData 참조 금지)
+          const ownerNow =
+            data?.role === "owner" || Boolean(data?.is_owner);
+          const popupKey = `kyc_success_modal_${user.uid}`;
           if (
             completed &&
-            userData?.role === "owner" &&
-            !popupShownRef.current
+            ownerNow &&
+            typeof window !== "undefined" &&
+            !localStorage.getItem(popupKey)
           ) {
-            const popupKey = `kyc_success_modal_${user.uid}`;
-            const hasShown = localStorage.getItem(popupKey);
-            if (!hasShown) {
-              popupShownRef.current = true;
-              setShowSuccessPopup(true);
-              localStorage.setItem(popupKey, "true");
-            }
+            localStorage.setItem(popupKey, "true");
+            setShowSuccessPopup(true);
           }
 
           if (data) {
@@ -769,7 +767,6 @@ export default function ProfilePage() {
             <button
               onClick={() => {
                 setShowSuccessPopup(false);
-                popupShownRef.current = false;
               }}
               className="w-full py-3 px-6 bg-green-600 text-white rounded-xl font-semibold"
             >
