@@ -10,6 +10,7 @@ import {
   type AdminPermissionMap,
 } from '@/lib/adminPermissions';
 import { useAdminMe } from '@/contexts/AdminMeContext';
+import { useAdminDomainRefresh } from '@/lib/adminDomainEventsClient';
 
 type AccountRow = {
   id: string;
@@ -60,6 +61,10 @@ export default function AdminAccountsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useAdminDomainRefresh(['admin_account'], () => {
+    void load();
+  });
 
   const selected = useMemo(
     () => (selectedId ? list.find((a) => a.id === selectedId) ?? null : null),

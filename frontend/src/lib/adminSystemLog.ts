@@ -138,6 +138,14 @@ async function hydratePersistentFromServer(): Promise<void> {
   }
 }
 
+/** 서버에 새 로그가 생긴 뒤 목록을 다시 맞출 때 (SSE 도메인 이벤트 등) */
+export async function forceReloadAdminSystemLogsFromServer(): Promise<void> {
+  if (typeof window === "undefined") return;
+  persistentHydrated = false;
+  await hydratePersistentFromServer();
+  dispatchLogNotify();
+}
+
 async function pushPersistentToServer(entry: AdminSystemLogEntry): Promise<void> {
   if (typeof window === 'undefined') return;
   try {

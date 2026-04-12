@@ -7,6 +7,7 @@ import { getLedgerEntries } from '@/lib/api/adminFinance';
 import { getModerationAudits } from '@/lib/api/adminModeration';
 import { acknowledgeCurrentRecentAudit } from '@/lib/adminAckState';
 import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
+import { useAdminDomainRefresh } from '@/lib/adminDomainEventsClient';
 
 export default function AdminAuditPage() {
   const [tab, setTab] = useState<AuditTabId>('all');
@@ -32,6 +33,11 @@ export default function AdminAuditPage() {
     acknowledgeCurrentRecentAudit();
     refreshAdminBadges();
   }, [tab]);
+
+  useAdminDomainRefresh(
+    ['audit', 'booking', 'payment', 'user', 'property'],
+    () => setTick((t) => t + 1),
+  );
 
   useEffect(() => {
     const resetToAll = () => setTab('all');

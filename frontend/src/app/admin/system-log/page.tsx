@@ -11,9 +11,11 @@ import {
   clearPersistentAdminLogs,
   exportAdminLogsAsCsv,
   getMergedAdminLogsForView,
+  forceReloadAdminSystemLogsFromServer,
   type AdminLogSeverity,
   type AdminSystemLogEntry,
 } from '@/lib/adminSystemLog';
+import { useAdminDomainRefresh } from '@/lib/adminDomainEventsClient';
 
 type LogFilter = 'all' | AdminLogSeverity;
 
@@ -50,6 +52,10 @@ export default function AdminSystemLogPage() {
   const [page, setPage] = useState(0);
 
   const bump = useCallback(() => setTick((t) => t + 1), []);
+
+  useAdminDomainRefresh(['system_log'], () => {
+    void forceReloadAdminSystemLogsFromServer().then(() => bump());
+  });
 
   useEffect(() => {
     const onEvt = () => bump();

@@ -14,6 +14,7 @@ import {
   WithdrawalRequest,
 } from '@/lib/api/adminFinance';
 import { filterWithdrawalsBySearch, useOwnerEmailMap } from '@/lib/adminSearchHelpers';
+import { useAdminDomainRefresh } from '@/lib/adminDomainEventsClient';
 
 type WithdrawalTab = 'pending' | 'processing' | 'completed' | 'rejected' | 'held';
 
@@ -42,6 +43,10 @@ export default function AdminWithdrawalsPage() {
   useEffect(() => {
     load();
   }, []);
+
+  useAdminDomainRefresh(['booking', 'payment'], () => {
+    load();
+  });
 
   const normalizeStatus = (s: WithdrawalRequest['status']) => (s === 'approved' ? 'processing' : s);
 

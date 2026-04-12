@@ -14,6 +14,7 @@ import type { BookingData } from '@/lib/api/bookings';
 import { getAllBookingsForAdmin } from '@/lib/api/bookings';
 import { acknowledgeCurrentNewContracts } from '@/lib/adminAckState';
 import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
+import { useAdminDomainRefresh } from '@/lib/adminDomainEventsClient';
 
 type ContractTab = 'new' | 'sealed' | 'inProgress' | 'completed';
 
@@ -40,6 +41,10 @@ export default function AdminContractsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useAdminDomainRefresh(['booking', 'payment'], () => {
+    void load();
+  });
 
   /** 예약 데이터만 바뀔 때가 아니라 시각 경과에도 탭 분류가 맞도록 주기 갱신 */
   const [nowTick, setNowTick] = useState(0);

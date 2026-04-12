@@ -8,6 +8,8 @@ import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
 import { useAdminMe } from '@/contexts/AdminMeContext';
 import type { AdminInventoryFilter } from '@/lib/api/properties';
 import { loadAdminInventoryPage } from '@/lib/api/properties';
+import { refreshUsersCacheForAdmin } from '@/lib/api/auth';
+import { useAdminDomainRefresh } from '@/lib/adminDomainEventsClient';
 import { setPropertyHidden } from '@/lib/api/adminModeration';
 import type { PropertyData } from '@/types/property';
 
@@ -93,6 +95,10 @@ export default function AdminPropertiesPage() {
   useEffect(() => {
     setPage(1);
   }, [query, filter]);
+
+  useAdminDomainRefresh(['property', 'user'], () => {
+    void refreshUsersCacheForAdmin().then(() => setTick((t) => t + 1));
+  });
 
   useEffect(() => {
     if (filter !== 'new') return;

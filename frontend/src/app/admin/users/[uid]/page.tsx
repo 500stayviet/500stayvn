@@ -17,6 +17,7 @@ import { addSharedMemo, deleteSharedMemo, getSharedMemos } from '@/lib/api/admin
 import type { UserData } from '@/lib/api/auth';
 import { setUserBlocked } from '@/lib/api/adminModeration';
 import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
+import { useAdminDomainRefresh } from '@/lib/adminDomainEventsClient';
 
 function verificationLabel(v: UserData['verification_status']): { text: string; className: string } {
   switch (v) {
@@ -68,6 +69,7 @@ export default function AdminUserDetailPage() {
     refunds: ReturnType<typeof getGuestRefundRelatedBookings>;
     bal: ReturnType<typeof getOwnerBalances>;
   } | null>(null);
+  const [dataTick, setDataTick] = useState(0);
 
   const loadUserAndMemos = useCallback(async () => {
     if (!uid) return;
@@ -97,6 +99,11 @@ export default function AdminUserDetailPage() {
     loadUserAndMemos();
   }, [loadUserAndMemos]);
 
+  useAdminDomainRefresh(['user', 'booking', 'payment', 'admin_memo'], () => {
+    void loadUserAndMemos();
+    setDataTick((t) => t + 1);
+  });
+
   useEffect(() => {
     if (!uid) {
       setData(null);
@@ -118,7 +125,7 @@ export default function AdminUserDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [uid]);
+  }, [uid, dataTick]);
 
   const vLabel = user ? verificationLabel(user.verification_status) : null;
 

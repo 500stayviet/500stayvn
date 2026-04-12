@@ -14,6 +14,7 @@ import { approveRefundBooking, getAllBookingsForAdmin } from '@/lib/api/bookings
 import { useAdminMe } from '@/contexts/AdminMeContext';
 import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
 import { acknowledgeCurrentNewRefunds } from '@/lib/adminAckState';
+import { useAdminDomainRefresh } from '@/lib/adminDomainEventsClient';
 
 type RefundTab = 'all' | 'new' | 'pre' | 'during';
 
@@ -42,6 +43,10 @@ export default function AdminRefundsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useAdminDomainRefresh(['booking', 'payment'], () => {
+    void load();
+  });
 
   const preList = useMemo(() => bookings.filter(isRefundBeforeRental), [bookings]);
   const duringList = useMemo(() => bookings.filter(isRefundDuringOrAfterRental), [bookings]);

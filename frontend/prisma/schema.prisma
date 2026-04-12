@@ -264,3 +264,15 @@ model AdminSystemLog {
   @@index([ts, severity])
   @@index([category, ts])
 }
+
+/// 관리자 UI 실시간 갱신용 — Prisma 미들웨어가 쓰기 후 기록, SSE로 구독
+model AdminDomainEvent {
+  id         Int      @id @default(autoincrement())
+  resource   String
+  action     String
+  resourceId String?
+  payload    Json?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+}

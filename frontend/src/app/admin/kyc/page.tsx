@@ -4,7 +4,7 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Download, RefreshCw, Users } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -15,6 +15,7 @@ import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
 import { acknowledgeCurrentNewKyc } from '@/lib/adminAckState';
 import { ADMIN_NEW_MS } from '@/lib/adminNewUtils';
 import { logAdminSystemEvent } from '@/lib/adminSystemLog';
+import { useAdminDomainRefresh } from '@/lib/adminDomainEventsClient';
 
 const LANG_OPTIONS = [
   { code: 'ko', label: 'KO' },
@@ -90,28 +91,35 @@ export default function AdminKYCPage() {
     };
   }, [currentLanguage]);
 
-  const loadKYCData = async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    else setInitialLoading(true);
+  /** silent: 도메인 이벤트(SSE)로 갱신할 때 스피너 없이 목록만 교체 */
+  const loadKYCData = useCallback(async (isRefresh = false, silent = false) => {
+    if (!silent) {
+      if (isRefresh) setRefreshing(true);
+      else setInitialLoading(true);
+    }
     setError('');
     try {
       const users = await getAllKYCUsers();
       setKycUsers(users);
     } catch (err: unknown) {
       console.error('Error loading KYC data:', err);
-      logAdminSystemEvent({
-        severity: 'error',
-        category: 'kyc',
-        message: err instanceof Error ? err.message : '관리자 KYC 목록 로드 실패',
-        snapshot: { function: 'AdminKYCPage.loadKYCData' },
-      });
-      setError(err instanceof Error ? err.message : 'Failed to load');
+      if (!silent) {
+        logAdminSystemEvent({
+          severity: 'error',
+          category: 'kyc',
+          message: err instanceof Error ? err.message : '관리자 KYC 목록 로드 실패',
+          snapshot: { function: 'AdminKYCPage.loadKYCData' },
+        });
+        setError(err instanceof Error ? err.message : 'Failed to load');
+      }
     } finally {
-      setInitialLoading(false);
-      setRefreshing(false);
+      if (!silent) {
+        setInitialLoading(false);
+        setRefreshing(false);
+      }
       refreshAdminBadges();
     }
-  };
+  }, []);
 
   const handleDownloadCSV = async () => {
     setDownloading(true);
@@ -133,8 +141,12 @@ export default function AdminKYCPage() {
   };
 
   useEffect(() => {
-    loadKYCData(false);
-  }, []);
+    void loadKYCData(false);
+  }, [loadKYCData]);
+
+  useAdminDomainRefresh(['user', 'lessor_profile'], () => {
+    void loadKYCData(true, true);
+  });
 
   useEffect(() => {
     if (tab !== 'new') return;

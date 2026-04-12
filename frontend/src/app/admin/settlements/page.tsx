@@ -24,6 +24,7 @@ import {
 } from '@/lib/api/adminFinance';
 import { filterSettlementsBySearch, useOwnerEmailMap } from '@/lib/adminSearchHelpers';
 import { logAdminSystemEvent } from '@/lib/adminSystemLog';
+import { useAdminDomainRefresh } from '@/lib/adminDomainEventsClient';
 import { getPayableAfterMoment } from '@/lib/utils/rentalIncome';
 
 type SettlementTab = 'request' | 'pending' | 'approved' | 'held';
@@ -96,6 +97,10 @@ export default function AdminSettlementsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useAdminDomainRefresh(['booking', 'payment'], () => {
+    void load();
+  });
 
   /** 정렬 기준 시각 — 1분마다 갱신(장시간 화면 유지 시 남은 시간 순서가 맞게). 데이터 갱신은 `items` 변경으로 이미 반영됨 */
   const [urgencyTick, setUrgencyTick] = useState(0);

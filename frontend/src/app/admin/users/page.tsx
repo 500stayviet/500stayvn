@@ -9,6 +9,8 @@ import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
 import { useAdminMe } from '@/contexts/AdminMeContext';
 import type { AdminUserFilter } from '@/lib/api/adminModeration';
 import { getAdminUsers, setUserBlocked } from '@/lib/api/adminModeration';
+import { refreshUsersCacheForAdmin } from '@/lib/api/auth';
+import { useAdminDomainRefresh } from '@/lib/adminDomainEventsClient';
 
 const PAGE_SIZE = 20;
 
@@ -45,6 +47,10 @@ export default function AdminUsersPage() {
   useEffect(() => {
     setPage(1);
   }, [query, filter]);
+
+  useAdminDomainRefresh(['user', 'lessor_profile'], () => {
+    void refreshUsersCacheForAdmin().then(() => setTick((t) => t + 1));
+  });
 
   useEffect(() => {
     if (filter !== 'new') return;

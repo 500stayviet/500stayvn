@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import AdminChrome from '@/components/admin/AdminChrome';
+import AdminDomainEventBridge from '@/components/admin/AdminDomainEventBridge';
 import { AdminMeProvider } from '@/contexts/AdminMeContext';
 
 export default function AdminLayoutClient({ children }: { children: React.ReactNode }) {
@@ -14,6 +15,7 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
 
   return (
     <AdminMeProvider>
+      <AdminDomainEventBridge />
       <AdminChrome>{children}</AdminChrome>
     </AdminMeProvider>
   );
