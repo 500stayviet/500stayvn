@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
-import { acknowledgeCurrentNewUsers } from '@/lib/adminAckState';
+import { acknowledgeCurrentNewUsers, getUnseenNewUserCount } from '@/lib/adminAckState';
 import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
 import { useAdminMe } from '@/contexts/AdminMeContext';
 import type { AdminUserFilter } from '@/lib/api/adminModeration';
@@ -43,6 +43,7 @@ export default function AdminUsersPage() {
 
   const tabCount = (id: AdminUserFilter) =>
     id === 'all' ? nAll : id === 'new' ? nNew : id === 'active' ? nActive : nBlocked;
+  const unseenNew = useMemo(() => getUnseenNewUserCount(), [tick, filter]);
 
   useEffect(() => {
     setPage(1);
@@ -56,6 +57,7 @@ export default function AdminUsersPage() {
     if (filter !== 'new') return;
     acknowledgeCurrentNewUsers();
     refreshAdminBadges();
+    setTick((t) => t + 1);
   }, [filter]);
 
   return (
@@ -82,6 +84,11 @@ export default function AdminUsersPage() {
             >
               {t.label}
               <span className="ml-1 tabular-nums opacity-80">({tabCount(t.id)})</span>
+              {t.id === 'new' && unseenNew > 0 ? (
+                <span className="ml-1 inline-flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white tabular-nums">
+                  {unseenNew > 99 ? '99+' : unseenNew}
+                </span>
+              ) : null}
             </button>
           ))}
         </div>

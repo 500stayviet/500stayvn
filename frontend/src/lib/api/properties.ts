@@ -69,6 +69,29 @@ function groupReservationsByOwner(reservations: ReservationData[]): Map<string, 
   return map;
 }
 
+async function syncPropertiesNow(snapshot: PropertyData[]): Promise<void> {
+  if (typeof window === 'undefined') return;
+  try {
+    await fetchWithRetry(
+      '/api/app/properties',
+      withAppActor({
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ properties: snapshot }),
+      }),
+      { retries: 2, baseDelayMs: 300 }
+    );
+  } catch (e) {
+    console.warn('[properties] immediate PUT sync failed', e);
+    emitUserFacingSyncError({
+      area: 'properties',
+      action: 'sync',
+      message: '매물 저장에 실패했습니다. 잠시 후 다시 시도해주세요.',
+    });
+    throw e;
+  }
+}
+
 /** 부모 매물 + 동일 주소·호실 예약 구간 (pending/confirmed) — getAvailableProperties / 호스트·관리자 동기 기준 */
 export function buildBookedRangesForParentListing(
   property: PropertyData,
@@ -1327,6 +1350,7 @@ export async function addProperty(
       
       properties[existingIndex] = updatedProp;
       writePropertiesArray(properties);
+      await syncPropertiesNow(properties);
       return existingProp.id!;
     }
 
@@ -1353,6 +1377,7 @@ export async function addProperty(
     properties.push(newProperty);
 
     writePropertiesArray(properties);
+    await syncPropertiesNow(properties);
 
     return id;
   } catch (error) {
@@ -1415,6 +1440,7 @@ export async function updateProperty(
     
     properties[index] = updatedProperty;
     writePropertiesArray(properties);
+    await syncPropertiesNow(properties);
 
     console.log('[updateProperty] Property updated:', id, 'status:', updatedProperty.status);
   } catch (error) {
@@ -1448,6 +1474,7 @@ async function autoExpireProperty(id: string): Promise<void> {
     };
 
     writePropertiesArray(properties);
+    await syncPropertiesNow(properties);
     console.log('[autoExpireProperty] Property auto-expired:', id);
   } catch (error) {
     console.error('Error auto-expiring property:', error);

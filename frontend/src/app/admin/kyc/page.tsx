@@ -12,7 +12,7 @@ import type { SupportedLanguage } from '@/lib/api/translation';
 import { getAllKYCUsers, downloadAllKYCData, KYCUserData } from '@/lib/api/admin';
 import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
 import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
-import { acknowledgeCurrentNewKyc } from '@/lib/adminAckState';
+import { acknowledgeCurrentNewKyc, getUnseenNewKycCount } from '@/lib/adminAckState';
 import { ADMIN_NEW_MS } from '@/lib/adminNewUtils';
 import { logAdminSystemEvent } from '@/lib/adminSystemLog';
 import { useAdminDomainRefresh } from '@/lib/adminDomainEventsClient';
@@ -49,6 +49,7 @@ export default function AdminKYCPage() {
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string>('');
   const [tab, setTab] = useState<'new' | 'all' | 'verified' | 'unverified'>('all');
+  const [unseenNew, setUnseenNew] = useState(0);
 
   const t = useMemo(() => {
     const ko = currentLanguage === 'ko';
@@ -101,6 +102,7 @@ export default function AdminKYCPage() {
     try {
       const users = await getAllKYCUsers();
       setKycUsers(users);
+      setUnseenNew(getUnseenNewKycCount());
     } catch (err: unknown) {
       console.error('Error loading KYC data:', err);
       if (!silent) {
@@ -152,6 +154,7 @@ export default function AdminKYCPage() {
     if (tab !== 'new') return;
     acknowledgeCurrentNewKyc();
     refreshAdminBadges();
+    setUnseenNew(0);
   }, [tab]);
 
   useEffect(() => {
@@ -246,6 +249,11 @@ export default function AdminKYCPage() {
           >
             신규
             <span className="ml-1 tabular-nums opacity-80">({newRows.length})</span>
+            {unseenNew > 0 ? (
+              <span className="ml-1 inline-flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white tabular-nums">
+                {unseenNew > 99 ? '99+' : unseenNew}
+              </span>
+            ) : null}
           </button>
           <button
             type="button"

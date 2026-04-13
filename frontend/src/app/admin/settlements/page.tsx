@@ -7,6 +7,8 @@ import AdminSettlementStyleCard from '@/components/admin/AdminSettlementStyleCar
 import {
   acknowledgeCurrentSettlementPending,
   acknowledgeCurrentSettlementRequest,
+  getUnseenSettlementPendingCount,
+  getUnseenSettlementRequestCount,
 } from '@/lib/adminAckState';
 import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
 import { useAdminMe } from '@/contexts/AdminMeContext';
@@ -61,6 +63,8 @@ export default function AdminSettlementsPage() {
   const [tab, setTab] = useState<SettlementTab>('request');
   const [searchQuery, setSearchQuery] = useState('');
   const [listMode, setListMode] = useState<SettlementListMode>('remaining-asc');
+  const [unseenRequest, setUnseenRequest] = useState(0);
+  const [unseenPending, setUnseenPending] = useState(0);
   const { me: admin } = useAdminMe();
   /** 연속 클릭(동기) 방지 — state보다 먼저 막음 */
   const actionGuardRef = useRef<Set<string>>(new Set());
@@ -81,6 +85,8 @@ export default function AdminSettlementsPage() {
       await reconcileSettlementPendingQueueWithBookings();
       const rows = await getSettlementCandidates();
       setItems(rows);
+      setUnseenRequest(await getUnseenSettlementRequestCount());
+      setUnseenPending(await getUnseenSettlementPendingCount());
     } catch (e) {
       logAdminSystemEvent({
         severity: 'error',
@@ -111,12 +117,18 @@ export default function AdminSettlementsPage() {
 
   useEffect(() => {
     if (tab !== 'request') return;
-    void acknowledgeCurrentSettlementRequest().then(() => refreshAdminBadges());
+    void acknowledgeCurrentSettlementRequest().then(() => {
+      setUnseenRequest(0);
+      refreshAdminBadges();
+    });
   }, [tab]);
 
   useEffect(() => {
     if (tab !== 'pending') return;
-    void acknowledgeCurrentSettlementPending().then(() => refreshAdminBadges());
+    void acknowledgeCurrentSettlementPending().then(() => {
+      setUnseenPending(0);
+      refreshAdminBadges();
+    });
   }, [tab]);
 
   const { requestList, needApproval } = useMemo(() => {
@@ -280,6 +292,16 @@ export default function AdminSettlementsPage() {
                       : heldRows.length}
                 )
               </span>
+              {t.id === 'request' && unseenRequest > 0 ? (
+                <span className="ml-1 inline-flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white tabular-nums">
+                  {unseenRequest > 99 ? '99+' : unseenRequest}
+                </span>
+              ) : null}
+              {t.id === 'pending' && unseenPending > 0 ? (
+                <span className="ml-1 inline-flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white tabular-nums">
+                  {unseenPending > 99 ? '99+' : unseenPending}
+                </span>
+              ) : null}
             </button>
           ))}
         </div>

@@ -5,7 +5,7 @@ import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
 import { AUDIT_TABS, buildUnifiedAuditRows, type AuditTabId } from '@/lib/adminAuditView';
 import { getLedgerEntries } from '@/lib/api/adminFinance';
 import { getModerationAudits } from '@/lib/api/adminModeration';
-import { acknowledgeCurrentRecentAudit } from '@/lib/adminAckState';
+import { acknowledgeCurrentRecentAudit, getUnseenRecentAuditCount } from '@/lib/adminAckState';
 import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
 import { useAdminDomainRefresh } from '@/lib/adminDomainEventsClient';
 
@@ -13,6 +13,7 @@ export default function AdminAuditPage() {
   const [tab, setTab] = useState<AuditTabId>('all');
   const [tick, setTick] = useState(0);
   const [nameByUsername, setNameByUsername] = useState<Record<string, string>>({});
+  const [unseenNew, setUnseenNew] = useState(0);
 
   const rows = useMemo(() => {
     void tick;
@@ -32,7 +33,12 @@ export default function AdminAuditPage() {
     if (tab !== 'new') return;
     acknowledgeCurrentRecentAudit();
     refreshAdminBadges();
+    setUnseenNew(0);
   }, [tab]);
+
+  useEffect(() => {
+    setUnseenNew(getUnseenRecentAuditCount());
+  }, [tick]);
 
   useAdminDomainRefresh(
     ['audit', 'booking', 'payment', 'user', 'property'],
@@ -110,6 +116,11 @@ export default function AdminAuditPage() {
                         .length
                     : rows.filter((r) => r.category === t.id).length})
               </span>
+              {t.id === 'new' && unseenNew > 0 ? (
+                <span className="ml-1 inline-flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white tabular-nums">
+                  {unseenNew > 99 ? '99+' : unseenNew}
+                </span>
+              ) : null}
             </button>
           ))}
         </div>

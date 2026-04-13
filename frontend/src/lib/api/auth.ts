@@ -6,7 +6,11 @@
 
 import { VerificationStatus, PrivateData } from "@/types/kyc.types";
 import { SupportedLanguage } from "@/lib/api/translation";
-import { canReadLocalFallback, canWriteLocalFallback } from "@/lib/runtime/localFallbackPolicy";
+import {
+  canReadLocalFallback,
+  canWriteLocalFallback,
+  getLocalFallbackMode,
+} from "@/lib/runtime/localFallbackPolicy";
 import {
   isLedgerBootstrapDone,
   markLedgerBootstrapDone,
@@ -67,6 +71,10 @@ const BOOTSTRAP_KEY = "stayviet-user-bootstrap-v1";
 const BOOTSTRAP_SESSION_KEY = "stayviet-user-bootstrap-session-v1";
 
 let usersCache: UserData[] | null = null;
+
+function isLocalFallbackDisabled(): boolean {
+  return getLocalFallbackMode() === "off";
+}
 
 function simpleHash(password: string): string {
   let hash = 0;
@@ -380,6 +388,14 @@ export async function signUpWithEmail(data: SignUpData): Promise<any> {
     const json = await res.json();
 
     if (res.status === 503) {
+      if (isLocalFallbackDisabled()) {
+        return {
+          error: {
+            code: "server/unavailable",
+            message: "서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+          },
+        };
+      }
       return signUpLocalFallback(data);
     }
 
@@ -410,6 +426,14 @@ export async function signUpWithEmail(data: SignUpData): Promise<any> {
     };
   } catch (error: any) {
     console.error("Sign up error:", error);
+    if (isLocalFallbackDisabled()) {
+      return {
+        error: {
+          code: "network/error",
+          message: "네트워크 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+        },
+      };
+    }
     return signUpLocalFallback(data);
   }
 }
@@ -455,6 +479,14 @@ export async function signInWithEmail(
     const json = await res.json();
 
     if (res.status === 503) {
+      if (isLocalFallbackDisabled()) {
+        return {
+          error: {
+            code: "server/unavailable",
+            message: "서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+          },
+        };
+      }
       return signInLocalFallback(email, password);
     }
 
@@ -482,6 +514,14 @@ export async function signInWithEmail(
     };
   } catch (error: any) {
     console.error("Sign in error:", error);
+    if (isLocalFallbackDisabled()) {
+      return {
+        error: {
+          code: "network/error",
+          message: "네트워크 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+        },
+      };
+    }
     return signInLocalFallback(email, password);
   }
 }
@@ -535,11 +575,17 @@ export async function updateUserData(
       return;
     }
     if (res.status === 503 || res.status === 404) {
+      if (isLocalFallbackDisabled()) {
+        throw new Error("server_unavailable");
+      }
       await updateUserLocal(uid, updates);
       return;
     }
     throw new Error("Update failed");
   } catch {
+    if (isLocalFallbackDisabled()) {
+      throw new Error("server_unavailable");
+    }
     await updateUserLocal(uid, updates);
   }
 }
@@ -587,7 +633,13 @@ export async function deleteAccount(uid: string): Promise<void> {
       setCurrentUser(null);
       return;
     }
+    if (isLocalFallbackDisabled()) {
+      throw new Error("server_unavailable");
+    }
   } catch {
+    if (isLocalFallbackDisabled()) {
+      throw new Error("server_unavailable");
+    }
     /* fall through */
   }
 

@@ -22,6 +22,19 @@ const withPWA = (nextConfig: NextConfig) => {
 const nextConfig: NextConfig = {
   reactStrictMode: true,
 
+  /** Sentry·Prisma 트레이싱이 OpenTelemetry 동적 require를 쓰므로 webpack 무해 경고 무시 */
+  webpack: (config) => {
+    const existing = config.ignoreWarnings;
+    const list = Array.isArray(existing) ? [...existing] : existing ? [existing] : [];
+    // Critical dependency 경고: @opentelemetry / @prisma instrumentation 동적 로드
+    list.push(
+      { module: /node_modules[\\/]@opentelemetry[\\/]instrumentation/ },
+      { module: /node_modules[\\/]@prisma[\\/]instrumentation/ },
+    );
+    config.ignoreWarnings = list;
+    return config;
+  },
+
   images: {
     unoptimized: true,
     remotePatterns: [

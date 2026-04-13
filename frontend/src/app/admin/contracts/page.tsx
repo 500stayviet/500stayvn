@@ -12,7 +12,7 @@ import {
 } from '@/lib/adminBookingFilters';
 import type { BookingData } from '@/lib/api/bookings';
 import { getAllBookingsForAdmin } from '@/lib/api/bookings';
-import { acknowledgeCurrentNewContracts } from '@/lib/adminAckState';
+import { acknowledgeCurrentNewContracts, getUnseenNewContractCount } from '@/lib/adminAckState';
 import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
 import { useAdminDomainRefresh } from '@/lib/adminDomainEventsClient';
 
@@ -30,11 +30,13 @@ export default function AdminContractsPage() {
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<ContractTab>('sealed');
   const [searchQuery, setSearchQuery] = useState('');
+  const [unseenNew, setUnseenNew] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
     const rows = await getAllBookingsForAdmin();
     setBookings(rows);
+    setUnseenNew(await getUnseenNewContractCount());
     setLoading(false);
   }, []);
 
@@ -128,6 +130,7 @@ export default function AdminContractsPage() {
     void (async () => {
       await acknowledgeCurrentNewContracts();
       refreshAdminBadges();
+      setUnseenNew(0);
     })();
   }, [tab]);
 
@@ -173,6 +176,11 @@ export default function AdminContractsPage() {
                     : completedList.length}
                 )
               </span>
+              {t.id === 'new' && unseenNew > 0 ? (
+                <span className="ml-1 inline-flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white tabular-nums">
+                  {unseenNew > 99 ? '99+' : unseenNew}
+                </span>
+              ) : null}
             </button>
           ))}
         </div>

@@ -119,10 +119,10 @@ export default function AdminSystemLogPage() {
       <div className="space-y-4">
         <div>
           <h1 className="text-lg font-bold text-slate-900">시스템 로그</h1>
-          <p className="mt-1 max-w-3xl text-sm text-slate-600">
-            브라우저에 기록되는 <strong className="font-medium">클라이언트</strong> 오류·경고입니다.{' '}
-            <strong className="font-medium">정보</strong>는 새로고침 시 사라질 수 있습니다. 실제 서버 장애
-            모니터링을 대체하지 않습니다.
+          <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-600">
+            <strong className="font-medium">5분 점검 체크리스트:</strong> ① 최근 5xx/권한 오류(401/403) 급증 확인
+            ② 결제·예약 쓰기 실패 여부 확인 ③ KYC 실패 로그(전화/신분증/얼굴/역할 갱신) 확인 ④ 같은 메시지 반복
+            발생 여부 확인 ⑤ 필요 시 bookingId/ownerId로 상세 화면 추적.
           </p>
         </div>
 

@@ -46,7 +46,8 @@ const handler = NextAuth({
   pages: {
     signIn: '/login',
   },
-  debug: true,
+  /** debug_enabled 경고 방지. 디버그가 필요하면 .env에 NEXTAUTH_DEBUG=true */
+  debug: process.env.NEXTAUTH_DEBUG === "true",
 });
 
 export { handler as GET, handler as POST };

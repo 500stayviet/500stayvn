@@ -13,7 +13,7 @@ import type { BookingData } from '@/lib/api/bookings';
 import { approveRefundBooking, getAllBookingsForAdmin } from '@/lib/api/bookings';
 import { useAdminMe } from '@/contexts/AdminMeContext';
 import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
-import { acknowledgeCurrentNewRefunds } from '@/lib/adminAckState';
+import { acknowledgeCurrentNewRefunds, getUnseenNewRefundCount } from '@/lib/adminAckState';
 import { useAdminDomainRefresh } from '@/lib/adminDomainEventsClient';
 
 type RefundTab = 'all' | 'new' | 'pre' | 'during';
@@ -30,12 +30,14 @@ export default function AdminRefundsPage() {
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<RefundTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [unseenNew, setUnseenNew] = useState(0);
   const { me: admin } = useAdminMe();
 
   const load = useCallback(async () => {
     setLoading(true);
     const rows = await getAllBookingsForAdmin();
     setBookings(rows);
+    setUnseenNew(await getUnseenNewRefundCount());
     setLoading(false);
     refreshAdminBadges();
   }, []);
@@ -90,6 +92,7 @@ export default function AdminRefundsPage() {
     void (async () => {
       await acknowledgeCurrentNewRefunds();
       refreshAdminBadges();
+      setUnseenNew(0);
     })();
   }, [tab]);
 
@@ -139,6 +142,11 @@ export default function AdminRefundsPage() {
               <span className="ml-1 tabular-nums opacity-80">
                 ({t.id === 'all' ? allList.length : t.id === 'new' ? newList.length : t.id === 'pre' ? preList.length : duringList.length})
               </span>
+              {t.id === 'new' && unseenNew > 0 ? (
+                <span className="ml-1 inline-flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white tabular-nums">
+                  {unseenNew > 99 ? '99+' : unseenNew}
+                </span>
+              ) : null}
             </button>
           ))}
         </div>
