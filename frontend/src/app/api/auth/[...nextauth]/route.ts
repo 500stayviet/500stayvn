@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import GoogleProvider from "next-auth/providers/google";
 import FacebookProvider from "next-auth/providers/facebook";
+import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 
 // NextAuth 타입 확장
@@ -36,6 +37,17 @@ if (process.env.FACEBOOK_CLIENT_ID && process.env.FACEBOOK_CLIENT_SECRET) {
     })
   );
 }
+// 운영 환경에서 OAuth 키가 비어 있으면 providers=[]가 되어 /api/auth/session 이 500으로 실패할 수 있다.
+// 안전 fallback provider를 항상 하나 추가해 NextAuth 초기화 실패를 방지한다.
+providers.push(
+  CredentialsProvider({
+    name: "Credentials",
+    credentials: {},
+    async authorize() {
+      return null;
+    },
+  })
+);
 
 const handler = NextAuth({
   adapter: PrismaAdapter(prisma),
