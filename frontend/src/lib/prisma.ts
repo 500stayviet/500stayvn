@@ -1,5 +1,13 @@
 import { PrismaClient } from "@prisma/client";
 
+function normalizeDatabaseUrlEnv() {
+  const raw = process.env.DATABASE_URL;
+  if (!raw) return;
+  // Amplify/console copy-paste can accidentally include quotes, trailing commas, or spaces.
+  const normalized = raw.trim().replace(/^['"]+|['"]+$/g, "").replace(/,+$/g, "");
+  process.env.DATABASE_URL = normalized;
+}
+
 const globalForPrisma = globalThis as unknown as {
   prisma: ReturnType<typeof createPrismaClient> | undefined;
 };
@@ -14,6 +22,7 @@ const READ_OPS = new Set([
 ]);
 
 function createPrismaClient() {
+  normalizeDatabaseUrlEnv();
   const base = new PrismaClient();
   return base.$extends({
     query: {
