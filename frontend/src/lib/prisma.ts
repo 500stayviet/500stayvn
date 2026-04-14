@@ -1,11 +1,11 @@
 import { PrismaClient } from "@prisma/client";
 
-function getNormalizedDatabaseUrl(): string | null {
+function normalizeDatabaseUrlEnv() {
   const raw = process.env.DATABASE_URL || process.env.DIRECT_URL;
-  if (!raw) return null;
+  if (!raw) return;
   // Amplify/console copy-paste can accidentally include quotes, trailing commas, or spaces.
   const normalized = raw.trim().replace(/^['"]+|['"]+$/g, "").replace(/,+$/g, "");
-  return normalized || null;
+  process.env.DATABASE_URL = normalized;
 }
 
 const globalForPrisma = globalThis as unknown as {
@@ -22,13 +22,8 @@ const READ_OPS = new Set([
 ]);
 
 function createPrismaClient() {
-  const normalizedUrl = getNormalizedDatabaseUrl();
-  if (normalizedUrl) {
-    process.env.DATABASE_URL = normalizedUrl;
-  }
-  const base = normalizedUrl
-    ? new PrismaClient({ datasources: { db: { url: normalizedUrl } } })
-    : new PrismaClient();
+  normalizeDatabaseUrlEnv();
+  const base = new PrismaClient();
   return base.$extends({
     query: {
       $allModels: {
