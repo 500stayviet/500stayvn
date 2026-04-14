@@ -4,6 +4,7 @@ import GoogleProvider from "next-auth/providers/google";
 import FacebookProvider from "next-auth/providers/facebook";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
+import { createHash } from "crypto";
 
 // NextAuth 타입 확장
 declare module "next-auth" {
@@ -49,6 +50,18 @@ providers.push(
   })
 );
 
+function resolveNextAuthSecret(): string {
+  const explicit = process.env.NEXTAUTH_SECRET?.trim();
+  if (explicit) return explicit;
+  const adminSecret = process.env.ADMIN_SESSION_SECRET?.trim();
+  if (adminSecret) return adminSecret;
+  const fromDb = process.env.DATABASE_URL?.trim();
+  if (fromDb) {
+    return createHash("sha256").update(fromDb).digest("hex");
+  }
+  return "500stayviet-fallback-auth-secret";
+}
+
 const handler = NextAuth({
   adapter: PrismaAdapter(prisma),
   providers,
@@ -63,7 +76,7 @@ const handler = NextAuth({
       return session;
     },
   },
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: resolveNextAuthSecret(),
   pages: {
     signIn: '/login',
   },
