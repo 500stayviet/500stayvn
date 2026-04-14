@@ -24,6 +24,8 @@ function getBootstrapCredentials(): { username: string; password: string } {
 
 export async function POST(request: NextRequest) {
   try {
+    // Fast DB connectivity probe to surface infra issues explicitly.
+    await prisma.$queryRawUnsafe('SELECT 1');
     let body: { username?: string; password?: string };
     try {
       body = await request.json();
@@ -67,7 +69,12 @@ export async function POST(request: NextRequest) {
     res.cookies.set(ADMIN_SESSION_COOKIE_NAME, token, adminSessionCookieOptions(60 * 60 * 24 * 7));
     return res;
   } catch (error) {
-    console.error('admin login failed', error);
-    return NextResponse.json({ error: 'Login service unavailable' }, { status: 503 });
+    const e = error as { code?: string; message?: string; name?: string };
+    const errorCode = e?.code || e?.name || 'UNKNOWN';
+    console.error('admin login failed', { errorCode, message: e?.message });
+    return NextResponse.json(
+      { error: 'Login service unavailable', code: errorCode },
+      { status: 503 }
+    );
   }
 }
