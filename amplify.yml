@@ -12,6 +12,7 @@ applications:
             - npm install --no-audit --prefer-offline
         build:
           commands:
+            - PGCONNECT_TIMEOUT=10 npx prisma migrate deploy
             - npx prisma generate
             - npm run build
           env:
