@@ -12,7 +12,7 @@ applications:
             - npm install --no-audit --prefer-offline
         build:
           commands:
-            - npx prisma generate
+            - npx prisma generate --schema=./prisma/schema.prisma
             - npm run build
           env:
             NODE_ENV: production
@@ -26,6 +26,7 @@ applications:
             GOOGLE_CLIENT_ID: $GOOGLE_CLIENT_ID
             GOOGLE_CLIENT_SECRET: $GOOGLE_CLIENT_SECRET
             DATABASE_URL: $DATABASE_URL
+            DIRECT_URL: $DIRECT_URL
       artifacts:
         baseDirectory: .next
         files:
