@@ -1,7 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 
 function normalizeDatabaseUrlEnv() {
-  const raw = process.env.DATABASE_URL;
+  const raw = process.env.DATABASE_URL || process.env.DIRECT_URL;
   if (!raw) return;
   // Amplify/console copy-paste can accidentally include quotes, trailing commas, or spaces.
   const normalized = raw.trim().replace(/^['"]+|['"]+$/g, "").replace(/,+$/g, "");
