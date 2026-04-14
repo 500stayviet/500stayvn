@@ -34,9 +34,14 @@ async function ensureAdminAccountSchemaCompatibility() {
   await prisma.$executeRawUnsafe(
     'ALTER TABLE "AdminAccount" ADD COLUMN IF NOT EXISTS "permissions" JSONB DEFAULT \'{}\'::jsonb'
   );
-  await prisma.$executeRawUnsafe(
-    'UPDATE "AdminAccount" SET "passwordHash" = "password" WHERE "passwordHash" IS NULL AND "password" IS NOT NULL'
-  );
+  const passwordColumnRows = (await prisma.$queryRawUnsafe(
+    "SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'AdminAccount' AND column_name = 'password' LIMIT 1"
+  )) as Array<{ '?column?': number }>;
+  if (Array.isArray(passwordColumnRows) && passwordColumnRows.length > 0) {
+    await prisma.$executeRawUnsafe(
+      'UPDATE "AdminAccount" SET "passwordHash" = "password" WHERE "passwordHash" IS NULL AND "password" IS NOT NULL'
+    );
+  }
 }
 
 export async function POST(request: NextRequest) {
