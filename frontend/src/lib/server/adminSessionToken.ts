@@ -44,10 +44,13 @@ export function decodeAdminSessionToken(token: string, secret: string): Payload 
 }
 
 export function getAdminSessionSecret(): string {
-  const s = process.env.ADMIN_SESSION_SECRET;
-  if (s && s.length >= 16) return s;
+  const adminSecret = process.env.ADMIN_SESSION_SECRET;
+  if (adminSecret && adminSecret.length >= 16) return adminSecret;
+  // 운영에서 ADMIN_SESSION_SECRET 누락 시 관리자 로그인 전부 500이 되지 않도록 NEXTAUTH_SECRET로 폴백
+  const nextAuthSecret = process.env.NEXTAUTH_SECRET;
+  if (nextAuthSecret && nextAuthSecret.length >= 16) return nextAuthSecret;
   if (process.env.NODE_ENV === 'production') {
-    throw new Error('ADMIN_SESSION_SECRET must be set (min 16 chars) in production');
+    throw new Error('ADMIN_SESSION_SECRET or NEXTAUTH_SECRET must be set (min 16 chars) in production');
   }
   return 'dev-admin-session-secret-change-me';
 }
