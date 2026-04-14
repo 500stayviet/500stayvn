@@ -12,12 +12,16 @@ applications:
             - npm install --no-audit --prefer-offline
         build:
           commands:
+            - npx prisma migrate deploy
             - npx prisma generate
             - npm run build
           env:
             NODE_ENV: production
             NEXTAUTH_URL: $NEXTAUTH_URL
             NEXTAUTH_SECRET: $NEXTAUTH_SECRET
+            ADMIN_SESSION_SECRET: $ADMIN_SESSION_SECRET
+            ADMIN_BOOTSTRAP_USERNAME: $ADMIN_BOOTSTRAP_USERNAME
+            ADMIN_BOOTSTRAP_PASSWORD: $ADMIN_BOOTSTRAP_PASSWORD
             FACEBOOK_CLIENT_ID: $FACEBOOK_CLIENT_ID
             FACEBOOK_CLIENT_SECRET: $FACEBOOK_CLIENT_SECRET
             GOOGLE_CLIENT_ID: $GOOGLE_CLIENT_ID
