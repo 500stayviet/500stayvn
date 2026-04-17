@@ -11,21 +11,15 @@ import { ADMIN_SESSION_COOKIE_NAME } from '@/lib/server/adminSessionToken';
 export const dynamic = 'force-dynamic';
 
 function getBootstrapCredentials(): { username: string; password: string } {
-  const username =
-    process.env.ADMIN_BOOTSTRAP_USERNAME?.trim() ||
-    process.env.NEXT_PUBLIC_ADMIN_USERNAME?.trim() ||
-    'admin';
-  const password =
-    process.env.ADMIN_BOOTSTRAP_PASSWORD ||
-    process.env.NEXT_PUBLIC_ADMIN_PASSWORD ||
-    'admin1234';
+  const username = process.env.ADMIN_BOOTSTRAP_USERNAME?.trim() || 'admin';
+  const password = process.env.ADMIN_BOOTSTRAP_PASSWORD || 'admin1234';
   return { username, password };
 }
 
 export async function POST(request: NextRequest) {
   try {
     // Fast DB connectivity probe to surface infra issues explicitly.
-    await prisma.$queryRawUnsafe('SELECT 1');
+    await prisma.$queryRaw`SELECT 1`;
     let body: { username?: string; password?: string };
     try {
       body = await request.json();

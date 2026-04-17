@@ -7,11 +7,23 @@ applications:
           commands:
             - nvm install 20
             - nvm use 20
-            - npm cache clean --force
-            - rm -rf node_modules
-            - npm install --no-audit --prefer-offline
+            - npm ci
         build:
           commands:
+            - |
+              cat > .env <<EOF
+              DATABASE_URL=$DATABASE_URL
+              DIRECT_URL=$DIRECT_URL
+              NEXTAUTH_URL=$NEXTAUTH_URL
+              NEXTAUTH_SECRET=$NEXTAUTH_SECRET
+              ADMIN_SESSION_SECRET=$ADMIN_SESSION_SECRET
+              ADMIN_BOOTSTRAP_USERNAME=$ADMIN_BOOTSTRAP_USERNAME
+              ADMIN_BOOTSTRAP_PASSWORD=$ADMIN_BOOTSTRAP_PASSWORD
+              FACEBOOK_CLIENT_ID=$FACEBOOK_CLIENT_ID
+              FACEBOOK_CLIENT_SECRET=$FACEBOOK_CLIENT_SECRET
+              GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID
+              GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET
+              EOF
             - npx prisma generate --schema=./prisma/schema.prisma
             - npm run build
           env:
@@ -35,5 +47,3 @@ applications:
         paths:
           - node_modules/**/*
           - .next/cache/**/*
-          - public/sw.js
-          - public/workbox-*.js
