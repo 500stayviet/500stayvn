@@ -99,17 +99,20 @@ export default function AdminChrome({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     let cancelled = false;
+    let initialTimer: ReturnType<typeof setTimeout> | null = null;
     const load = () => {
       fetchAdminBadgeCounts().then((c) => {
         if (!cancelled) setBadges(c);
       });
     };
-    load();
+    // Defer first badge fetch slightly to improve first admin paint.
+    initialTimer = setTimeout(load, 900);
     const interval = setInterval(load, 45000);
     window.addEventListener('focus', load);
     window.addEventListener(ADMIN_BADGES_REFRESH_EVENT, load);
     return () => {
       cancelled = true;
+      if (initialTimer) clearTimeout(initialTimer);
       clearInterval(interval);
       window.removeEventListener('focus', load);
       window.removeEventListener(ADMIN_BADGES_REFRESH_EVENT, load);
@@ -118,7 +121,14 @@ export default function AdminChrome({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     if (!me) return;
-    void refreshUsersCacheForAdmin();
+    const run = () => void refreshUsersCacheForAdmin();
+    // Keep first paint responsive by warming caches on idle.
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      const id = window.requestIdleCallback(run, { timeout: 2000 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const timer = setTimeout(run, 1200);
+    return () => clearTimeout(timer);
   }, [me]);
 
   const badgeByHref = useMemo(() => {
