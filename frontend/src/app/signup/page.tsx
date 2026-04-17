@@ -367,7 +367,7 @@ function SignupContent() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-3 text-gray-400"
+                  className="absolute inset-y-0 right-3 flex items-center text-gray-400"
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -393,7 +393,7 @@ function SignupContent() {
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-3 text-gray-400"
+                  className="absolute inset-y-0 right-3 flex items-center text-gray-400"
                 >
                   {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
