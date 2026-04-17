@@ -11,6 +11,8 @@ import {
 } from '@/lib/adminPermissions';
 import { useAdminMe } from '@/contexts/AdminMeContext';
 import { useAdminDomainRefresh } from '@/lib/adminDomainEventsClient';
+import { acknowledgeCurrentNewUsers } from '@/lib/adminAckState';
+import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
 
 type AccountRow = {
   id: string;
@@ -61,6 +63,11 @@ export default function AdminAccountsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    acknowledgeCurrentNewUsers();
+    refreshAdminBadges();
+  }, []);
 
   useAdminDomainRefresh(['admin_account'], () => {
     void load();

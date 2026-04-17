@@ -8,6 +8,7 @@ import {
   getUnseenNewKycCount,
   getUnseenNewPropertyCount,
   getUnseenNewRefundCount,
+  getUnseenNewSystemLogCount,
   getUnseenNewUserCount,
   getUnseenSettlementPendingCount,
   getUnseenSettlementRequestCount,
@@ -21,10 +22,21 @@ export function refreshAdminBadges(): void {
 }
 
 /** 관리자 상단 알림 배지용 건수 (클라이언트 전용 데이터 기준) */
-export async function fetchAdminBadgeCounts() {
-  const settlementsRequestUnseen = await getUnseenSettlementRequestCount();
-  const settlementsQueueUnseen = await getUnseenSettlementPendingCount();
-  const settlementsPendingUnseen = settlementsRequestUnseen + settlementsQueueUnseen;
+export async function fetchAdminBadgeCounts(
+  options?: { includeExpensiveClientCounts?: boolean }
+) {
+  const includeExpensive = options?.includeExpensiveClientCounts ?? true;
+  let settlementsPendingUnseen = 0;
+  let contractsNewUnseen = 0;
+  let refundsNewUnseen = 0;
+
+  if (includeExpensive) {
+    const settlementsRequestUnseen = await getUnseenSettlementRequestCount();
+    const settlementsQueueUnseen = await getUnseenSettlementPendingCount();
+    settlementsPendingUnseen = settlementsRequestUnseen + settlementsQueueUnseen;
+    contractsNewUnseen = await getUnseenNewContractCount();
+    refundsNewUnseen = await getUnseenNewRefundCount();
+  }
 
   const wr = getWithdrawalRequests();
   const withdrawalsPending = wr.filter((r) => {
@@ -34,8 +46,6 @@ export async function fetchAdminBadgeCounts() {
 
   const usersNewUnseen = getUnseenNewUserCount();
   const propertiesNewUnseen = getUnseenNewPropertyCount();
-  const contractsNewUnseen = await getUnseenNewContractCount();
-  const refundsNewUnseen = await getUnseenNewRefundCount();
 
   const users = getUsers();
   const kycPending = users.filter((u) => !u.deleted && u.verification_status === 'pending').length;
@@ -43,6 +53,7 @@ export async function fetchAdminBadgeCounts() {
   const kycNewUnseen = getUnseenNewKycCount();
 
   const auditRecent = getUnseenRecentAuditCount();
+  const systemLogNewUnseen = getUnseenNewSystemLogCount();
 
   return {
     usersNewUnseen,
@@ -55,7 +66,22 @@ export async function fetchAdminBadgeCounts() {
     kycVerifiedReview,
     kycNewUnseen,
     auditRecent,
+    systemLogNewUnseen,
   };
+}
+
+export async function fetchAdminBadgeCountsFromServer(): Promise<Partial<AdminBadgeCounts> | null> {
+  if (typeof window === 'undefined') return null;
+  try {
+    const res = await fetch('/api/admin/badge-counts', {
+      credentials: 'include',
+      cache: 'no-store',
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as Partial<AdminBadgeCounts>;
+  } catch {
+    return null;
+  }
 }
 
 export type AdminBadgeCounts = Awaited<ReturnType<typeof fetchAdminBadgeCounts>>;
@@ -81,6 +107,8 @@ export function badgeCountForNav(href: string, c: AdminBadgeCounts): number {
       return c.auditRecent;
     case '/admin/kyc':
       return c.kycNewUnseen;
+    case '/admin/system-log':
+      return c.systemLogNewUnseen;
     default:
       return 0;
   }

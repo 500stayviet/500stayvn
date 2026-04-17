@@ -131,6 +131,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (dup && dup.deleted) {
+      const revived = await prisma.user.update({
+        where: { id: dup.id },
+        data: {
+          passwordHash: appSimpleHash(password),
+          displayName: body.fullName || null,
+          name: body.fullName || null,
+          phoneNumber: body.phoneNumber || null,
+          gender: body.gender || null,
+          preferredLanguage: body.preferredLanguage || null,
+          role: 'user',
+          verificationStatus: 'none',
+          isOwner: false,
+          blocked: false,
+          blockedAt: null,
+          blockedReason: null,
+          deleted: false,
+          deletedAt: null,
+          profileJson: null,
+        },
+      });
+      reportApiSuccess('POST /api/app/users', 200, startedAt);
+      return NextResponse.json(prismaUserToUserData(revived), { status: 200 });
+    }
+
     const id = `user_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
     const created = await prisma.user.create({
       data: {

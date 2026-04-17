@@ -276,3 +276,51 @@ model AdminDomainEvent {
 
   @@index([createdAt])
 }
+
+/// 임대인 출금 계좌(서버 단일 원장)
+model AdminBankAccount {
+  id            String   @id @default(cuid())
+  ownerId       String
+  bankName      String
+  accountNumber String
+  accountHolder String
+  isPrimary     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([ownerId, createdAt])
+}
+
+/// 임대인 출금 요청(서버 단일 원장)
+model AdminWithdrawalRequest {
+  id           String   @id @default(cuid())
+  ownerId      String
+  amount       Float
+  bankAccountId String
+  bankLabel    String
+  status       String   @default("pending")
+  requestedAt  DateTime @default(now())
+  reviewedAt   DateTime?
+  reviewedBy   String?
+  rejectReason String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([ownerId, requestedAt])
+  @@index([status, requestedAt])
+}
+
+/// 출금/정산/환불 감사용 금융 원장(서버 단일 원장)
+model AdminFinanceLedger {
+  id        String   @id @default(cuid())
+  ownerId   String
+  amount    Float
+  type      String
+  refId     String?
+  note      String?
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  @@index([ownerId, createdAt])
+  @@index([type, createdAt])
+}

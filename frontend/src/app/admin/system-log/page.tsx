@@ -5,6 +5,13 @@ import Link from 'next/link';
 import { AlertTriangle, ClipboardCopy, Download, Info, Trash2 } from 'lucide-react';
 import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
 import {
+  acknowledgeCurrentNewSystemLogs,
+  getUnseenNewSystemLogCount,
+} from '@/lib/adminAckState';
+import {
+  refreshAdminBadges,
+} from '@/lib/adminBadgeCounts';
+import {
   ADMIN_SYSTEM_LOG_EVENT,
   ADMIN_SYSTEM_LOG_STORAGE_KEY,
   clearEphemeralAdminLogs,
@@ -17,7 +24,7 @@ import {
 } from '@/lib/adminSystemLog';
 import { useAdminDomainRefresh } from '@/lib/adminDomainEventsClient';
 
-type LogFilter = 'all' | AdminLogSeverity;
+type LogFilter = 'new' | 'all' | AdminLogSeverity;
 
 const PAGE_SIZE = 50;
 
@@ -71,11 +78,22 @@ export default function AdminSystemLogPage() {
   }, [bump]);
 
   const merged = useMemo(() => getMergedAdminLogsForView(), [tick]);
+  const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
+  const newRows = useMemo(() => merged.filter((e) => Number.isFinite(e.ts) && e.ts >= dayAgo), [merged, dayAgo]);
+  const unseenNew = useMemo(() => getUnseenNewSystemLogCount(), [tick, filter]);
 
   const filtered = useMemo(() => {
+    if (filter === 'new') return newRows;
     if (filter === 'all') return merged;
     return merged.filter((e) => e.severity === filter);
-  }, [merged, filter]);
+  }, [merged, newRows, filter]);
+
+  useEffect(() => {
+    if (filter !== 'new') return;
+    acknowledgeCurrentNewSystemLogs();
+    refreshAdminBadges();
+    setTick((t) => t + 1);
+  }, [filter]);
 
   useEffect(() => {
     setPage(0);
@@ -127,7 +145,7 @@ export default function AdminSystemLogPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {(['all', 'error', 'warning', 'info'] as const).map((f) => (
+          {(['new', 'all', 'error', 'warning', 'info'] as const).map((f) => (
             <button
               key={f}
               type="button"
@@ -136,7 +154,12 @@ export default function AdminSystemLogPage() {
                 filter === f ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
-              {f === 'all' ? '전체' : f === 'error' ? '오류' : f === 'warning' ? '경고' : '정보'}
+              {f === 'new' ? '신규' : f === 'all' ? '전체' : f === 'error' ? '오류' : f === 'warning' ? '경고' : '정보'}
+              {f === 'new' && unseenNew > 0 ? (
+                <span className="ml-1 inline-flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white tabular-nums">
+                  {unseenNew > 99 ? '99+' : unseenNew}
+                </span>
+              ) : null}
             </button>
           ))}
           <span className="ml-auto flex flex-wrap gap-2">

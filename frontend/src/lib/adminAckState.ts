@@ -16,9 +16,10 @@ import {
   isRefundDuringOrAfterRental,
 } from '@/lib/adminBookingFilters';
 import { getModerationAudits } from '@/lib/api/adminModeration';
+import { getMergedAdminLogsForView } from '@/lib/adminSystemLog';
 import { isParentPropertyRecord } from '@/lib/utils/propertyUtils';
 import type { PropertyData } from '@/types/property';
-import { canReadLocalFallback, canWriteLocalFallback } from '@/lib/runtime/localFallbackPolicy';
+import { canReadLocalFallback } from '@/lib/runtime/localFallbackPolicy';
 
 /** adminModeration.ts 와 동일 키 (순환 참조 방지 위해 직접 읽기) */
 const PROPERTIES_STORAGE_KEY = 'properties';
@@ -37,6 +38,8 @@ const KEY_KYC_NEW_UIDS = 'admin_ack_kyc_new_uids_v1';
 const KEY_CONTRACT_NEW_BOOKING_IDS = 'admin_ack_contract_new_booking_ids_v1';
 /** 환불 신규(24h) 탭에서 확인한 bookingId */
 const KEY_REFUND_NEW_BOOKING_IDS = 'admin_ack_refund_new_booking_ids_v1';
+/** 시스템 로그 신규(24h) 탭에서 확인한 로그 id */
+const KEY_SYSTEM_LOG_NEW_IDS = 'admin_ack_system_log_new_ids_v1';
 
 type AckCategory =
   | 'users.new'
@@ -46,7 +49,8 @@ type AckCategory =
   | 'audit.recent'
   | 'kyc.new'
   | 'contracts.new'
-  | 'refunds.new';
+  | 'refunds.new'
+  | 'system-log.new';
 
 const KEY_TO_CATEGORY: Record<string, AckCategory> = {
   [KEY_USER_UIDS]: 'users.new',
@@ -57,6 +61,7 @@ const KEY_TO_CATEGORY: Record<string, AckCategory> = {
   [KEY_KYC_NEW_UIDS]: 'kyc.new',
   [KEY_CONTRACT_NEW_BOOKING_IDS]: 'contracts.new',
   [KEY_REFUND_NEW_BOOKING_IDS]: 'refunds.new',
+  [KEY_SYSTEM_LOG_NEW_IDS]: 'system-log.new',
 };
 
 const ackCache = new Map<string, Set<string>>();
@@ -78,7 +83,6 @@ function readPropsRaw(): PropertyData[] {
 
 function readIdSet(key: string): Set<string> {
   if (typeof window === 'undefined') return new Set();
-  if (!canReadLocalFallback()) return new Set();
   const cached = ackCache.get(key);
   if (cached) return new Set(cached);
   try {
@@ -100,9 +104,7 @@ function writeIdSet(key: string, ids: Set<string>): void {
   if (typeof window === 'undefined') return;
   const next = new Set(ids);
   ackCache.set(key, next);
-  if (canWriteLocalFallback()) {
-    localStorage.setItem(key, JSON.stringify([...next]));
-  }
+  localStorage.setItem(key, JSON.stringify([...next]));
   void pushAckSetToServer(key, [...next]);
 }
 
@@ -314,4 +316,25 @@ export async function acknowledgeCurrentNewRefunds(): Promise<void> {
   const ids = await getCurrentNewRefundBookingIds();
   ids.forEach((id) => ack.add(id));
   writeIdSet(KEY_REFUND_NEW_BOOKING_IDS, ack);
+}
+
+function getCurrentNewSystemLogIds(): string[] {
+  const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
+  return getMergedAdminLogsForView()
+    .filter((e) => Number.isFinite(e.ts) && e.ts >= dayAgo)
+    .map((e) => e.id)
+    .filter(Boolean);
+}
+
+export function getUnseenNewSystemLogCount(): number {
+  if (typeof window === 'undefined') return 0;
+  const ack = readIdSet(KEY_SYSTEM_LOG_NEW_IDS);
+  return getCurrentNewSystemLogIds().filter((id) => !ack.has(id)).length;
+}
+
+export function acknowledgeCurrentNewSystemLogs(): void {
+  if (typeof window === 'undefined') return;
+  const ack = readIdSet(KEY_SYSTEM_LOG_NEW_IDS);
+  getCurrentNewSystemLogIds().forEach((id) => ack.add(id));
+  writeIdSet(KEY_SYSTEM_LOG_NEW_IDS, ack);
 }

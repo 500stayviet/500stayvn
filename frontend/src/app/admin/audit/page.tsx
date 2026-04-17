@@ -3,23 +3,48 @@
 import { useEffect, useMemo, useState } from 'react';
 import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
 import { AUDIT_TABS, buildUnifiedAuditRows, type AuditTabId } from '@/lib/adminAuditView';
-import { getLedgerEntries } from '@/lib/api/adminFinance';
+import type { LedgerEntry } from '@/lib/api/adminFinance';
 import { getModerationAudits } from '@/lib/api/adminModeration';
 import { acknowledgeCurrentRecentAudit, getUnseenRecentAuditCount } from '@/lib/adminAckState';
 import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
 import { useAdminDomainRefresh } from '@/lib/adminDomainEventsClient';
+import { getAdminFinanceLedgerEntries } from '@/lib/api/financeServer';
 
 export default function AdminAuditPage() {
   const [tab, setTab] = useState<AuditTabId>('all');
   const [tick, setTick] = useState(0);
+  const [ledgerRows, setLedgerRows] = useState<LedgerEntry[]>([]);
   const [nameByUsername, setNameByUsername] = useState<Record<string, string>>({});
   const [unseenNew, setUnseenNew] = useState(0);
 
   const rows = useMemo(() => {
     void tick;
-    const ledger = getLedgerEntries();
     const moderation = getModerationAudits();
-    return buildUnifiedAuditRows(ledger, moderation);
+    return buildUnifiedAuditRows(ledgerRows, moderation);
+  }, [tick, ledgerRows]);
+
+  useEffect(() => {
+    let alive = true;
+    const loadLedger = async () => {
+      const serverRows = await getAdminFinanceLedgerEntries();
+      if (!alive) return;
+      setLedgerRows(
+        serverRows.map((r) => ({
+          id: r.id,
+          ownerId: r.ownerId,
+          amount: r.amount,
+          type: r.type as LedgerEntry['type'],
+          refId: r.refId,
+          note: r.note,
+          createdBy: r.createdBy,
+          createdAt: r.createdAt,
+        }))
+      );
+    };
+    void loadLedger();
+    return () => {
+      alive = false;
+    };
   }, [tick]);
 
   const filtered =
@@ -41,7 +66,7 @@ export default function AdminAuditPage() {
   }, [tick]);
 
   useAdminDomainRefresh(
-    ['audit', 'booking', 'payment', 'user', 'property'],
+    ['audit', 'booking', 'payment', 'user', 'property', 'adminFinanceLedger', 'adminWithdrawalRequest'],
     () => setTick((t) => t + 1),
   );
 

@@ -33,18 +33,20 @@ import {
 } from '@/lib/utils/rentalIncome';
 import { formatDate } from '@/lib/utils/dateUtils';
 import {
-  addBankAccount,
-  BankAccount,
-  createWithdrawalRequest,
-  getBankAccounts,
-  getOwnerBalances,
   getSettlementApprovals,
   getSettlementPendingQueueIds,
-  getWithdrawalRequests,
-  removeBankAccount,
-  setPrimaryBankAccount,
-  WithdrawalRequest,
 } from '@/lib/api/adminFinance';
+import { getOwnerBalances } from '@/lib/api/adminFinance';
+import {
+  addAppBankAccount,
+  createAppWithdrawalRequest,
+  getAppBankAccounts,
+  getAppWithdrawalRequests,
+  removeAppBankAccount,
+  setAppPrimaryBankAccount,
+  type ServerBankAccount as BankAccount,
+  type ServerWithdrawalRequest as WithdrawalRequest,
+} from '@/lib/api/financeServer';
 
 type TabType = 'revenue' | 'withdrawal' | 'bank';
 
@@ -198,17 +200,30 @@ export default function SettlementPage() {
     return aggregateRentalIncome(revenueEntries);
   }, [revenueEntries]);
   const ownerBalances = useMemo(() => {
-    return user?.uid
-      ? getOwnerBalances(user.uid)
-      : { totalApprovedRevenue: 0, pendingWithdrawal: 0, availableBalance: 0 };
-  }, [user?.uid, withdrawalHistory, bankAccounts, revenueEntries]);
+    if (!user?.uid) return { totalApprovedRevenue: 0, pendingWithdrawal: 0, availableBalance: 0 };
+    const local = getOwnerBalances(user.uid);
+    const pendingWithdrawal = withdrawalHistory.reduce((sum, w) => {
+      if (w.status === 'rejected' || w.status === 'completed') return sum;
+      return sum + Number(w.amount || 0);
+    }, 0);
+    const lockedWithdrawal = withdrawalHistory.reduce((sum, w) => {
+      if (w.status === 'rejected') return sum;
+      return sum + Number(w.amount || 0);
+    }, 0);
+    const availableBalance = Math.max(0, local.totalApprovedRevenue - lockedWithdrawal);
+    return {
+      totalApprovedRevenue: local.totalApprovedRevenue,
+      pendingWithdrawal,
+      availableBalance,
+    };
+  }, [user?.uid, withdrawalHistory]);
   const availableBalance = ownerBalances.availableBalance;
   const withdrawalPendingAmount = ownerBalances.pendingWithdrawal;
 
-  const refreshFinanceData = () => {
+  const refreshFinanceData = async () => {
     if (!user?.uid) return;
-    const accounts = getBankAccounts(user.uid);
-    const withdrawals = getWithdrawalRequests(user.uid).sort(
+    const accounts = await getAppBankAccounts();
+    const withdrawals = (await getAppWithdrawalRequests()).sort(
       (a, b) => new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime()
     );
     setBankAccounts(accounts);
@@ -220,11 +235,11 @@ export default function SettlementPage() {
   };
 
   useEffect(() => {
-    refreshFinanceData();
+    void refreshFinanceData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid]);
 
-  const handleSubmitWithdrawal = () => {
+  const handleSubmitWithdrawal = async () => {
     if (!user?.uid) return;
     const amount = parseInt(withdrawalAmount.replace(/\D/g, ''), 10) || 0;
     if (amount <= 0) {
@@ -235,33 +250,37 @@ export default function SettlementPage() {
       alert(currentLanguage === 'ko' ? '계좌를 선택해주세요.' : 'Vui lòng chọn tài khoản.');
       return;
     }
-    const result = createWithdrawalRequest(user.uid, amount, selectedBankId);
+    const result = await createAppWithdrawalRequest({ amount, bankAccountId: selectedBankId });
     if (!result.ok) {
       alert(result.message || 'Withdrawal request failed');
       return;
     }
     setWithdrawalAmount('');
-    refreshFinanceData();
+    await refreshFinanceData();
     alert(currentLanguage === 'ko' ? '출금 신청이 접수되었습니다.' : 'Yêu cầu rút tiền đã được gửi.');
   };
 
-  const handleAddBankAccount = () => {
+  const handleAddBankAccount = async () => {
     if (!user?.uid) return;
     if (!newBankName.trim() || !newAccountNumber.trim() || !newAccountHolder.trim()) {
       alert(currentLanguage === 'ko' ? '계좌 정보를 모두 입력해주세요.' : 'Vui lòng nhập đầy đủ thông tin tài khoản.');
       return;
     }
-    addBankAccount(user.uid, {
+    const ok = await addAppBankAccount({
       bankName: newBankName.trim(),
       accountNumber: newAccountNumber.trim(),
       accountHolder: newAccountHolder.trim(),
       isPrimary: setAsPrimaryOnCreate,
     });
+    if (!ok) {
+      alert(currentLanguage === 'ko' ? '계좌 등록에 실패했습니다.' : 'Đăng ký tài khoản thất bại.');
+      return;
+    }
     setNewBankName('');
     setNewAccountNumber('');
     setNewAccountHolder('');
     setSetAsPrimaryOnCreate(false);
-    refreshFinanceData();
+    await refreshFinanceData();
   };
 
   if (authLoading) {
@@ -492,7 +511,7 @@ export default function SettlementPage() {
                   </div>
                   
                   <button
-                    onClick={handleSubmitWithdrawal}
+                    onClick={() => void handleSubmitWithdrawal()}
                     className="w-full py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors"
                   >
                     {getUIText('submitWithdrawalRequest', currentLanguage)}
@@ -597,8 +616,10 @@ export default function SettlementPage() {
                           <button
                             onClick={() => {
                               if (!user?.uid) return;
-                              setPrimaryBankAccount(user.uid, account.id);
-                              refreshFinanceData();
+                              void (async () => {
+                                await setAppPrimaryBankAccount(account.id);
+                                await refreshFinanceData();
+                              })();
                             }}
                             className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-lg"
                           >
@@ -608,8 +629,10 @@ export default function SettlementPage() {
                         <button
                           onClick={() => {
                             if (!user?.uid) return;
-                            removeBankAccount(user.uid, account.id);
-                            refreshFinanceData();
+                            void (async () => {
+                              await removeAppBankAccount(account.id);
+                              await refreshFinanceData();
+                            })();
                           }}
                           className="px-3 py-1 text-sm bg-red-50 text-red-600 rounded-lg"
                         >
@@ -679,7 +702,7 @@ export default function SettlementPage() {
                   </div>
                   
                   <button
-                    onClick={handleAddBankAccount}
+                    onClick={() => void handleAddBankAccount()}
                     className="w-full py-3 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 transition-colors"
                   >
                     {getUIText('registerAccount', currentLanguage)}

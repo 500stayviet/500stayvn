@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { ArrowRight, CheckCircle2 } from 'lucide-react';
 import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
 import AdminSettlementStyleCard from '@/components/admin/AdminSettlementStyleCard';
@@ -57,6 +58,7 @@ const TABS: { id: SettlementTab; label: string }[] = [
 ];
 
 export default function AdminSettlementsPage() {
+  const searchParams = useSearchParams();
   const [items, setItems] = useState<SettlementCandidate[]>([]);
   const [queueVersion, setQueueVersion] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -103,6 +105,19 @@ export default function AdminSettlementsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    const tabParam = (searchParams.get('tab') || '').trim();
+    if (tabParam === 'request') {
+      setTab('request');
+    } else if (tabParam === 'pending') {
+      setTab('pending');
+    } else if (tabParam === 'approved') {
+      setTab('approved');
+    } else if (tabParam === 'held') {
+      setTab('held');
+    }
+  }, [searchParams]);
 
   useAdminDomainRefresh(['booking', 'payment'], () => {
     void load();

@@ -1,18 +1,15 @@
 'use client';
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useSearchParams } from 'next/navigation';
 import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
 import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
 import { useAdminMe } from '@/contexts/AdminMeContext';
 import {
-  approveWithdrawal,
-  completeWithdrawal,
-  getWithdrawalRequests,
-  holdWithdrawal,
-  rejectWithdrawal,
-  resumeWithdrawal,
-  WithdrawalRequest,
-} from '@/lib/api/adminFinance';
+  actAdminWithdrawal,
+  getAdminWithdrawalRequests,
+  type ServerWithdrawalRequest,
+} from '@/lib/api/financeServer';
 import { filterWithdrawalsBySearch, useOwnerEmailMap } from '@/lib/adminSearchHelpers';
 import { useAdminDomainRefresh } from '@/lib/adminDomainEventsClient';
 
@@ -27,28 +24,44 @@ const TABS: { id: WithdrawalTab; label: string }[] = [
 ];
 
 export default function AdminWithdrawalsPage() {
-  const [rows, setRows] = useState<WithdrawalRequest[]>([]);
+  const searchParams = useSearchParams();
+  const [rows, setRows] = useState<ServerWithdrawalRequest[]>([]);
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<WithdrawalTab>('pending');
   const [searchQuery, setSearchQuery] = useState('');
   const { me: admin } = useAdminMe();
 
-  const load = () => {
+  const load = async () => {
     setLoading(true);
-    setRows(getWithdrawalRequests());
+    setRows(await getAdminWithdrawalRequests());
     setLoading(false);
     refreshAdminBadges();
   };
 
   useEffect(() => {
-    load();
+    void load();
   }, []);
 
-  useAdminDomainRefresh(['booking', 'payment'], () => {
-    load();
+  useEffect(() => {
+    const tabParam = (searchParams.get('tab') || '').trim();
+    if (tabParam === 'processing') {
+      setTab('processing');
+    } else if (tabParam === 'pending') {
+      setTab('pending');
+    } else if (tabParam === 'rejected') {
+      setTab('rejected');
+    } else if (tabParam === 'completed') {
+      setTab('completed');
+    } else if (tabParam === 'held') {
+      setTab('held');
+    }
+  }, [searchParams]);
+
+  useAdminDomainRefresh(['booking', 'payment', 'adminWithdrawalRequest'], () => {
+    void load();
   });
 
-  const normalizeStatus = (s: WithdrawalRequest['status']) => (s === 'approved' ? 'processing' : s);
+  const normalizeStatus = (s: ServerWithdrawalRequest['status']) => (s === 'approved' ? 'processing' : s);
 
   const pending = useMemo(() => rows.filter((r) => normalizeStatus(r.status) === 'pending'), [rows]);
   const processing = useMemo(
@@ -91,7 +104,7 @@ export default function AdminWithdrawalsPage() {
             ? '반려된 출금 내역이 없습니다.'
             : '보류된 출금이 없습니다.';
 
-  const column = (list: WithdrawalRequest[], body: ReactNode) => (
+  const column = (list: ServerWithdrawalRequest[], body: ReactNode) => (
     <div className="flex min-h-0 max-h-[min(75vh,920px)] flex-col overflow-y-auto rounded-lg border border-slate-200 bg-slate-50/40">
       <div className="space-y-2 p-2">
         {list.length === 0 ? (
@@ -103,12 +116,12 @@ export default function AdminWithdrawalsPage() {
     </div>
   );
 
-  const run = (fn: () => void) => {
-    fn();
-    load();
+  const run = async (fn: () => Promise<boolean>) => {
+    const ok = await fn();
+    if (ok) await load();
   };
 
-  const ownerBlock = (r: WithdrawalRequest) => {
+  const ownerBlock = (r: ServerWithdrawalRequest) => {
     const email = emailMap.get(r.ownerId) || '—';
     return (
       <>
@@ -131,7 +144,7 @@ export default function AdminWithdrawalsPage() {
           </div>
           <button
             type="button"
-            onClick={load}
+            onClick={() => void load()}
             className="shrink-0 rounded-md bg-slate-100 px-4 py-2 text-sm font-medium hover:bg-slate-200"
           >
             {loading ? '불러오는 중...' : '새로고침'}
@@ -197,7 +210,7 @@ export default function AdminWithdrawalsPage() {
                       type="button"
                       onClick={() => {
                         if (!admin?.username) return;
-                        run(() => approveWithdrawal(r.id, admin!.username));
+                        void run(() => actAdminWithdrawal(r.id, 'approve'));
                       }}
                       className="rounded-md bg-blue-600 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
                     >
@@ -207,7 +220,7 @@ export default function AdminWithdrawalsPage() {
                       type="button"
                       onClick={() => {
                         if (!admin?.username) return;
-                        run(() => rejectWithdrawal(r.id, admin!.username, '관리자 반려'));
+                        void run(() => actAdminWithdrawal(r.id, 'reject', '관리자 반려'));
                       }}
                       className="rounded-md bg-red-50 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100"
                     >
@@ -228,7 +241,7 @@ export default function AdminWithdrawalsPage() {
                       type="button"
                       onClick={() => {
                         if (!admin?.username) return;
-                        run(() => holdWithdrawal(r.id, admin!.username, '관리자 보류'));
+                        void run(() => actAdminWithdrawal(r.id, 'hold', '관리자 보류'));
                       }}
                       className="rounded-md bg-amber-50 py-1.5 text-[10px] font-semibold text-amber-900 hover:bg-amber-100"
                     >
@@ -238,7 +251,7 @@ export default function AdminWithdrawalsPage() {
                       type="button"
                       onClick={() => {
                         if (!admin?.username) return;
-                        run(() => completeWithdrawal(r.id, admin!.username));
+                        void run(() => actAdminWithdrawal(r.id, 'complete'));
                       }}
                       className="rounded-md bg-green-600 py-1.5 text-[10px] font-semibold text-white hover:bg-green-700"
                     >
@@ -248,7 +261,7 @@ export default function AdminWithdrawalsPage() {
                       type="button"
                       onClick={() => {
                         if (!admin?.username) return;
-                        run(() => rejectWithdrawal(r.id, admin!.username, '관리자 반려'));
+                        void run(() => actAdminWithdrawal(r.id, 'reject', '관리자 반려'));
                       }}
                       className="rounded-md bg-red-50 py-1.5 text-[10px] font-semibold text-red-700 hover:bg-red-100"
                     >
@@ -269,7 +282,7 @@ export default function AdminWithdrawalsPage() {
                       type="button"
                       onClick={() => {
                         if (!admin?.username) return;
-                        run(() => resumeWithdrawal(r.id, admin!.username));
+                        void run(() => actAdminWithdrawal(r.id, 'resume'));
                       }}
                       className="rounded-md bg-blue-600 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
                     >
@@ -279,7 +292,7 @@ export default function AdminWithdrawalsPage() {
                       type="button"
                       onClick={() => {
                         if (!admin?.username) return;
-                        run(() => rejectWithdrawal(r.id, admin!.username, '관리자 반려'));
+                        void run(() => actAdminWithdrawal(r.id, 'reject', '관리자 반려'));
                       }}
                       className="rounded-md bg-red-50 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100"
                     >

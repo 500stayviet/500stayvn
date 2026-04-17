@@ -29,17 +29,23 @@ export default function AdminUsersPage() {
   const [tick, setTick] = useState(0);
   const [page, setPage] = useState(1);
 
-  const rows = useMemo(() => getAdminUsers(query, filter), [query, filter, tick]);
+  const { rows, nAll, nNew, nActive, nBlocked } = useMemo(() => {
+    const all = getAdminUsers(query, 'all');
+    const newRows = getAdminUsers(query, 'new');
+    const activeRows = getAdminUsers(query, 'active');
+    const blockedRows = getAdminUsers(query, 'blocked');
+    const selected =
+      filter === 'new' ? newRows : filter === 'active' ? activeRows : filter === 'blocked' ? blockedRows : all;
+    return {
+      rows: selected,
+      nAll: all.length,
+      nNew: newRows.length,
+      nActive: activeRows.length,
+      nBlocked: blockedRows.length,
+    };
+  }, [query, filter, tick]);
   const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
-  const pagedRows = useMemo(
-    () => rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-    [rows, page]
-  );
-
-  const nAll = useMemo(() => getAdminUsers(query, 'all').length, [query, tick]);
-  const nNew = useMemo(() => getAdminUsers(query, 'new').length, [query, tick]);
-  const nActive = useMemo(() => getAdminUsers(query, 'active').length, [query, tick]);
-  const nBlocked = useMemo(() => getAdminUsers(query, 'blocked').length, [query, tick]);
+  const pagedRows = useMemo(() => rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), [rows, page]);
 
   const tabCount = (id: AdminUserFilter) =>
     id === 'all' ? nAll : id === 'new' ? nNew : id === 'active' ? nActive : nBlocked;
@@ -50,14 +56,25 @@ export default function AdminUsersPage() {
   }, [query, filter]);
 
   useAdminDomainRefresh(['user', 'lessor_profile'], () => {
-    void refreshUsersCacheForAdmin().then(() => setTick((t) => t + 1));
+    void refreshUsersCacheForAdmin().then((ok) => {
+      if (!ok) return;
+      setTick((t) => t + 1);
+    });
   });
 
   useEffect(() => {
     if (filter !== 'new') return;
-    acknowledgeCurrentNewUsers();
-    refreshAdminBadges();
-    setTick((t) => t + 1);
+    let cancelled = false;
+    void (async () => {
+      await refreshUsersCacheForAdmin();
+      if (cancelled) return;
+      acknowledgeCurrentNewUsers();
+      refreshAdminBadges();
+      setTick((t) => t + 1);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [filter]);
 
   return (

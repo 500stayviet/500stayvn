@@ -14,6 +14,7 @@ import {
 export default function AdminDomainEventBridge() {
   const pathname = usePathname();
   const esRef = useRef<EventSource | null>(null);
+  const badgeRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (pathname === "/admin/login") {
@@ -39,8 +40,14 @@ export default function AdminDomainEventBridge() {
             window.dispatchEvent(
               new CustomEvent(ADMIN_DOMAIN_EVENT, { detail: data }),
             );
+            if (badgeRefreshTimerRef.current) {
+              clearTimeout(badgeRefreshTimerRef.current);
+            }
+            badgeRefreshTimerRef.current = setTimeout(() => {
+              refreshAdminBadges();
+              badgeRefreshTimerRef.current = null;
+            }, 250);
           }
-          refreshAdminBadges();
         } catch {
           /* ignore */
         }
@@ -59,6 +66,10 @@ export default function AdminDomainEventBridge() {
     return () => {
       cancelled = true;
       if (retryTimer) clearTimeout(retryTimer);
+      if (badgeRefreshTimerRef.current) {
+        clearTimeout(badgeRefreshTimerRef.current);
+        badgeRefreshTimerRef.current = null;
+      }
       esRef.current?.close();
       esRef.current = null;
     };

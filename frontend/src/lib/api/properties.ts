@@ -309,6 +309,22 @@ export async function getAllPropertiesForAdmin(): Promise<PropertyData[]> {
   }
 }
 
+/** 관리자 세션으로 전체 매물 목록을 로컬 캐시에 동기화 */
+export async function refreshPropertiesCacheForAdmin(): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
+  try {
+    const rows = await getAllPropertiesForAdmin();
+    propertiesCache = rows;
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
+    }
+    window.dispatchEvent(new CustomEvent('propertiesUpdated'));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** 관리자 세션에서 단건 매물 조회 (`/api/admin/properties/[id]`) */
 export async function getPropertyForAdmin(id: string): Promise<PropertyData | null> {
   if (typeof window === 'undefined' || !id) return null;

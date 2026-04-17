@@ -7,16 +7,14 @@ import { LogOut, UserCog } from 'lucide-react';
 import { ADMIN_NAV_ITEMS, type AdminNavItem } from '@/lib/adminNav';
 import { adminHasPermission } from '@/lib/adminPermissions';
 import { useAdminMe } from '@/contexts/AdminMeContext';
-import { acknowledgeCurrentRecentAudit } from '@/lib/adminAckState';
 import {
   ADMIN_BADGES_REFRESH_EVENT,
   badgeCountForNav,
   fetchAdminBadgeCounts,
-  refreshAdminBadges,
+  fetchAdminBadgeCountsFromServer,
   type AdminBadgeCounts,
 } from '@/lib/adminBadgeCounts';
 import { logoutAdmin } from '@/lib/api/adminAuth';
-import { refreshUsersCacheForAdmin } from '@/lib/api/auth';
 function navActive(pathname: string | null, href: string) {
   if (!pathname) return false;
   if (href === '/admin') {
@@ -60,10 +58,16 @@ const AdminNavLinks = memo(function AdminNavLinks({
       {items.map((item) => {
         const active = navActive(pathname, item.href);
         const n = badgeByHref?.get(item.href) ?? 0;
+        const targetHref =
+          item.href === '/admin/withdrawals'
+            ? '/admin/withdrawals?tab=processing'
+            : item.href === '/admin/settlements'
+              ? '/admin/settlements?tab=pending'
+              : item.href;
         return (
           <Link
             key={item.href}
-            href={item.href}
+            href={targetHref}
             onClick={() => onItemClick?.(item.href)}
             className={`inline-flex items-center rounded-md font-medium transition-colors ${
               compact
@@ -100,9 +104,25 @@ export default function AdminChrome({ children }: { children: React.ReactNode })
   useEffect(() => {
     let cancelled = false;
     let initialTimer: ReturnType<typeof setTimeout> | null = null;
+    let inFlight = false;
     const load = () => {
-      fetchAdminBadgeCounts().then((c) => {
-        if (!cancelled) setBadges(c);
+      if (inFlight) return;
+      inFlight = true;
+      void (async () => {
+        const local = await fetchAdminBadgeCounts({ includeExpensiveClientCounts: false });
+        const server = await fetchAdminBadgeCountsFromServer();
+        const merged: AdminBadgeCounts = {
+          ...local,
+          ...(server || {}),
+        };
+        // 서버 집계가 일시적으로 실패하면, 필요한 경우에만 비용 큰 클라이언트 계산을 보완한다.
+        if (!server) {
+          const fallback = await fetchAdminBadgeCounts({ includeExpensiveClientCounts: true });
+          Object.assign(merged, fallback);
+        }
+        if (!cancelled) setBadges(merged);
+      })().finally(() => {
+        inFlight = false;
       });
     };
     // Defer first badge fetch slightly to improve first admin paint.
@@ -118,18 +138,6 @@ export default function AdminChrome({ children }: { children: React.ReactNode })
       window.removeEventListener(ADMIN_BADGES_REFRESH_EVENT, load);
     };
   }, []);
-
-  useEffect(() => {
-    if (!me) return;
-    const run = () => void refreshUsersCacheForAdmin();
-    // Keep first paint responsive by warming caches on idle.
-    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-      const id = window.requestIdleCallback(run, { timeout: 2000 });
-      return () => window.cancelIdleCallback(id);
-    }
-    const timer = setTimeout(run, 1200);
-    return () => clearTimeout(timer);
-  }, [me]);
 
   const badgeByHref = useMemo(() => {
     if (!badges) return null;
@@ -148,23 +156,9 @@ export default function AdminChrome({ children }: { children: React.ReactNode })
   const onNavItemClick = useCallback(
     (href: string) => {
       if (typeof window === 'undefined') return;
-      if (href === '/admin/audit') {
-        // 즉시 UX 반영: 감사 메뉴 누르는 순간 배지 제거
-        setBadges((prev) => (prev ? { ...prev, auditRecent: 0 } : prev));
-        acknowledgeCurrentRecentAudit();
-        refreshAdminBadges();
-        window.dispatchEvent(new CustomEvent('admin-audit-reset-tab'));
-        return;
-      }
-      if (href === '/admin/kyc') {
-        window.dispatchEvent(new CustomEvent('admin-kyc-reset-tab'));
-        return;
-      }
-      if (href === '/admin/refunds') {
-        window.dispatchEvent(new CustomEvent('admin-refunds-reset-tab'));
-      }
+      // 배지 제거는 각 페이지의 확인 탭 진입 시에만 처리한다.
     },
-    [setBadges]
+    []
   );
 
   return (
