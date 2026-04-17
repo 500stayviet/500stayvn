@@ -14,17 +14,9 @@ import {
 import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
 import { useAdminMe } from '@/contexts/AdminMeContext';
 import {
-  approveSettlement,
-  getSettlementCandidates,
-  getSettlementPendingQueueIds,
-  holdPendingSettlement,
   SettlementCandidate,
-  holdSettlement,
-  moveBookingToSettlementPendingQueue,
-  reconcileSettlementPendingQueueWithBookings,
-  resumeSettlement,
-  resumeSettlementToRequest,
 } from '@/lib/api/adminFinance';
+import { getSettlementCandidatesServer, patchSettlementServer } from '@/lib/api/settlementServer';
 import { filterSettlementsBySearch, useOwnerEmailMap } from '@/lib/adminSearchHelpers';
 import { logAdminSystemEvent } from '@/lib/adminSystemLog';
 import { useAdminDomainRefresh } from '@/lib/adminDomainEventsClient';
@@ -71,21 +63,18 @@ export default function AdminSettlementsPage() {
   /** 연속 클릭(동기) 방지 — state보다 먼저 막음 */
   const actionGuardRef = useRef<Set<string>>(new Set());
 
-  const runBookingAction = useCallback((bookingId: string, fn: () => void) => {
+  const runBookingAction = useCallback((bookingId: string, fn: () => Promise<void> | void) => {
     if (actionGuardRef.current.has(bookingId)) return;
     actionGuardRef.current.add(bookingId);
-    try {
-      fn();
-    } finally {
+    void Promise.resolve(fn()).finally(() => {
       actionGuardRef.current.delete(bookingId);
-    }
+    });
   }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      await reconcileSettlementPendingQueueWithBookings();
-      const rows = await getSettlementCandidates();
+      const rows = await getSettlementCandidatesServer();
       setItems(rows);
       setUnseenRequest(await getUnseenSettlementRequestCount());
       setUnseenPending(await getUnseenSettlementPendingCount());
@@ -147,12 +136,11 @@ export default function AdminSettlementsPage() {
   }, [tab]);
 
   const { requestList, needApproval } = useMemo(() => {
-    const queue = getSettlementPendingQueueIds();
     const request: SettlementCandidate[] = [];
     const pending: SettlementCandidate[] = [];
     for (const i of items) {
       if (i.approvalStatus !== null) continue;
-      if (queue.has(i.bookingId)) pending.push(i);
+      if ((i as SettlementCandidate & { inPendingQueue?: boolean }).inPendingQueue) pending.push(i);
       else request.push(i);
     }
     return { requestList: request, needApproval: pending };
@@ -398,10 +386,16 @@ export default function AdminSettlementsPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      runBookingAction(row.bookingId, () => {
-                        moveBookingToSettlementPendingQueue(row.bookingId);
-                        bumpQueue();
-                        refreshAdminBadges();
+                      runBookingAction(row.bookingId, async () => {
+                        void patchSettlementServer({
+                          action: 'move_to_pending',
+                          bookingId: row.bookingId,
+                        }).then((ok) => {
+                          if (!ok) return;
+                          bumpQueue();
+                          refreshAdminBadges();
+                          void load();
+                        });
                       });
                     }}
                     className="flex items-center justify-center gap-1.5 rounded-md bg-slate-800 py-2 text-xs font-semibold text-white hover:bg-slate-900"
@@ -413,10 +407,18 @@ export default function AdminSettlementsPage() {
                     type="button"
                     onClick={() => {
                       if (!admin?.username) return;
-                      const ok = holdPendingSettlement(row, admin!.username, '관리자 보류');
-                      if (!ok) return;
-                      bumpQueue();
-                      void load();
+                      runBookingAction(row.bookingId, async () => {
+                        const ok = await patchSettlementServer({
+                          action: 'hold_pending',
+                          bookingId: row.bookingId,
+                          ownerId: row.ownerId,
+                          amount: row.amount,
+                          reason: '관리자 보류',
+                        });
+                        if (!ok) return;
+                        bumpQueue();
+                        await load();
+                      });
                     }}
                     className="rounded-md border border-amber-200 bg-amber-50 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-100"
                   >
@@ -435,11 +437,16 @@ export default function AdminSettlementsPage() {
                     type="button"
                     onClick={() => {
                       if (!admin?.username) return;
-                      runBookingAction(row.bookingId, () => {
-                        const ok = approveSettlement(row, admin!.username);
+                      runBookingAction(row.bookingId, async () => {
+                        const ok = await patchSettlementServer({
+                          action: 'approve',
+                          bookingId: row.bookingId,
+                          ownerId: row.ownerId,
+                          amount: row.amount,
+                        });
                         if (!ok) return;
                         bumpQueue();
-                        void load();
+                        await load();
                       });
                     }}
                     className="flex items-center justify-center gap-1.5 rounded-md bg-blue-600 py-2 text-xs font-semibold text-white hover:bg-blue-700"
@@ -451,11 +458,17 @@ export default function AdminSettlementsPage() {
                     type="button"
                     onClick={() => {
                       if (!admin?.username) return;
-                      runBookingAction(row.bookingId, () => {
-                        const ok = holdPendingSettlement(row, admin!.username, '관리자 보류');
+                      runBookingAction(row.bookingId, async () => {
+                        const ok = await patchSettlementServer({
+                          action: 'hold_pending',
+                          bookingId: row.bookingId,
+                          ownerId: row.ownerId,
+                          amount: row.amount,
+                          reason: '관리자 보류',
+                        });
                         if (!ok) return;
                         bumpQueue();
-                        void load();
+                        await load();
                       });
                     }}
                     className="rounded-md border border-amber-200 bg-amber-50 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-100"
@@ -474,9 +487,15 @@ export default function AdminSettlementsPage() {
                   type="button"
                   onClick={() => {
                     if (!admin?.username) return;
-                    runBookingAction(row.bookingId, () => {
-                      holdSettlement(row.bookingId, admin!.username, '관리자 보류');
-                      void load();
+                    runBookingAction(row.bookingId, async () => {
+                      void patchSettlementServer({
+                        action: 'hold_approved',
+                        bookingId: row.bookingId,
+                        reason: '관리자 보류',
+                      }).then((ok) => {
+                        if (!ok) return;
+                        void load();
+                      });
                     });
                   }}
                   className="mt-2 w-full rounded-md bg-amber-50 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-100"
@@ -493,11 +512,14 @@ export default function AdminSettlementsPage() {
                   type="button"
                   onClick={() => {
                     if (!admin?.username) return;
-                    runBookingAction(row.bookingId, () => {
-                      const ok = resumeSettlementToRequest(row.bookingId, admin!.username);
+                    runBookingAction(row.bookingId, async () => {
+                      const ok = await patchSettlementServer({
+                        action: 'resume_request',
+                        bookingId: row.bookingId,
+                      });
                       if (!ok) return;
                       bumpQueue();
-                      void load();
+                      await load();
                     });
                   }}
                   className="rounded-md bg-blue-600 py-2 text-xs font-semibold text-white hover:bg-blue-700"
@@ -508,10 +530,15 @@ export default function AdminSettlementsPage() {
                   type="button"
                   onClick={() => {
                     if (!admin?.username) return;
-                    runBookingAction(row.bookingId, () => {
-                      resumeSettlement(row.bookingId, admin!.username);
-                      bumpQueue();
-                      void load();
+                    runBookingAction(row.bookingId, async () => {
+                      void patchSettlementServer({
+                        action: 'resume_pending',
+                        bookingId: row.bookingId,
+                      }).then((ok) => {
+                        if (!ok) return;
+                        bumpQueue();
+                        void load();
+                      });
                     });
                   }}
                   className="rounded-md bg-blue-600 py-2 text-xs font-semibold text-white hover:bg-blue-700"

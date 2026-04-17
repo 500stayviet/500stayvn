@@ -36,14 +36,15 @@ import {
   getSettlementApprovals,
   getSettlementPendingQueueIds,
 } from '@/lib/api/adminFinance';
-import { getOwnerBalances } from '@/lib/api/adminFinance';
 import {
   addAppBankAccount,
   createAppWithdrawalRequest,
   getAppBankAccounts,
+  getAppOwnerBalances,
   getAppWithdrawalRequests,
   removeAppBankAccount,
   setAppPrimaryBankAccount,
+  type ServerOwnerBalances,
   type ServerBankAccount as BankAccount,
   type ServerWithdrawalRequest as WithdrawalRequest,
 } from '@/lib/api/financeServer';
@@ -82,6 +83,11 @@ export default function SettlementPage() {
   const [selectedBankId, setSelectedBankId] = useState('');
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [withdrawalHistory, setWithdrawalHistory] = useState<WithdrawalRequest[]>([]);
+  const [ownerBalances, setOwnerBalances] = useState<ServerOwnerBalances>({
+    totalApprovedRevenue: 0,
+    pendingWithdrawal: 0,
+    availableBalance: 0,
+  });
   const [newBankName, setNewBankName] = useState('');
   const [newAccountNumber, setNewAccountNumber] = useState('');
   const [newAccountHolder, setNewAccountHolder] = useState('');
@@ -199,24 +205,6 @@ export default function SettlementPage() {
   const { totalRevenue } = useMemo(() => {
     return aggregateRentalIncome(revenueEntries);
   }, [revenueEntries]);
-  const ownerBalances = useMemo(() => {
-    if (!user?.uid) return { totalApprovedRevenue: 0, pendingWithdrawal: 0, availableBalance: 0 };
-    const local = getOwnerBalances(user.uid);
-    const pendingWithdrawal = withdrawalHistory.reduce((sum, w) => {
-      if (w.status === 'rejected' || w.status === 'completed') return sum;
-      return sum + Number(w.amount || 0);
-    }, 0);
-    const lockedWithdrawal = withdrawalHistory.reduce((sum, w) => {
-      if (w.status === 'rejected') return sum;
-      return sum + Number(w.amount || 0);
-    }, 0);
-    const availableBalance = Math.max(0, local.totalApprovedRevenue - lockedWithdrawal);
-    return {
-      totalApprovedRevenue: local.totalApprovedRevenue,
-      pendingWithdrawal,
-      availableBalance,
-    };
-  }, [user?.uid, withdrawalHistory]);
   const availableBalance = ownerBalances.availableBalance;
   const withdrawalPendingAmount = ownerBalances.pendingWithdrawal;
 
@@ -226,8 +214,10 @@ export default function SettlementPage() {
     const withdrawals = (await getAppWithdrawalRequests()).sort(
       (a, b) => new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime()
     );
+    const balances = await getAppOwnerBalances();
     setBankAccounts(accounts);
     setWithdrawalHistory(withdrawals);
+    setOwnerBalances(balances);
     if (!selectedBankId) {
       const primary = accounts.find((a) => a.isPrimary);
       if (primary) setSelectedBankId(primary.id);

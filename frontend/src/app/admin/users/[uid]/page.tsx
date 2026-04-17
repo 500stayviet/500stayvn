@@ -11,7 +11,7 @@ import {
   getGuestRefundRelatedBookings,
 } from '@/lib/adminUserAccountDetail';
 import { useAdminMe } from '@/contexts/AdminMeContext';
-import { getOwnerBalances } from '@/lib/api/adminFinance';
+import { getAdminOwnerBalances, type ServerOwnerBalances } from '@/lib/api/financeServer';
 import { getAllBookingsForAdmin } from '@/lib/api/bookings';
 import { addSharedMemo, deleteSharedMemo, getSharedMemos } from '@/lib/api/adminMemos';
 import type { UserData } from '@/lib/api/auth';
@@ -67,7 +67,7 @@ export default function AdminUserDetailPage() {
     host: ReturnType<typeof computeHostBookingStats>;
     guest: ReturnType<typeof computeGuestBookingStats>;
     refunds: ReturnType<typeof getGuestRefundRelatedBookings>;
-    bal: ReturnType<typeof getOwnerBalances>;
+    bal: ServerOwnerBalances;
   } | null>(null);
   const [dataTick, setDataTick] = useState(0);
 
@@ -117,7 +117,7 @@ export default function AdminUserDetailPage() {
       const host = computeHostBookingStats(bookings, uid, now);
       const guest = computeGuestBookingStats(bookings, uid, now);
       const refunds = getGuestRefundRelatedBookings(bookings, uid);
-      const bal = getOwnerBalances(uid);
+      const bal = await getAdminOwnerBalances(uid);
       if (!cancelled) {
         setData({ host, guest, refunds, bal });
       }

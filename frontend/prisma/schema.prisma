@@ -324,3 +324,25 @@ model AdminFinanceLedger {
   @@index([ownerId, createdAt])
   @@index([type, createdAt])
 }
+
+/// 정산 승인 상태(서버 단일 원장)
+model AdminSettlementApproval {
+  id         String   @id @default(cuid())
+  bookingId  String   @unique
+  ownerId    String
+  amount     Float
+  status     String   @default("approved")
+  approvedBy String
+  approvedAt DateTime @default(now())
+  reason     String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([ownerId, status, approvedAt])
+}
+
+/// 정산 승인 대기 큐(승인요청 → 승인대기)
+model AdminSettlementPendingQueue {
+  bookingId String   @id
+  createdAt DateTime @default(now())
+}

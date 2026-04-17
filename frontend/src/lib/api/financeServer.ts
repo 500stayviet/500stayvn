@@ -36,6 +36,12 @@ export type ServerFinanceLedgerEntry = {
   createdAt: string;
 };
 
+export type ServerOwnerBalances = {
+  totalApprovedRevenue: number;
+  pendingWithdrawal: number;
+  availableBalance: number;
+};
+
 export async function getAppBankAccounts(): Promise<ServerBankAccount[]> {
   const res = await fetch('/api/app/finance/bank-accounts', withAppActor({ cache: 'no-store' }));
   if (!res.ok) return [];
@@ -140,4 +146,19 @@ export async function getAdminFinanceLedgerEntries(): Promise<ServerFinanceLedge
   if (!res.ok) return [];
   const json = (await res.json()) as { entries?: ServerFinanceLedgerEntry[] };
   return Array.isArray(json.entries) ? json.entries : [];
+}
+
+export async function getAppOwnerBalances(): Promise<ServerOwnerBalances> {
+  const res = await fetch('/api/app/finance/balance', withAppActor({ cache: 'no-store' }));
+  if (!res.ok) return { totalApprovedRevenue: 0, pendingWithdrawal: 0, availableBalance: 0 };
+  return (await res.json()) as ServerOwnerBalances;
+}
+
+export async function getAdminOwnerBalances(ownerId: string): Promise<ServerOwnerBalances> {
+  const res = await fetch(`/api/admin/finance/balances?ownerId=${encodeURIComponent(ownerId)}`, {
+    credentials: 'include',
+    cache: 'no-store',
+  });
+  if (!res.ok) return { totalApprovedRevenue: 0, pendingWithdrawal: 0, availableBalance: 0 };
+  return (await res.json()) as ServerOwnerBalances;
 }
