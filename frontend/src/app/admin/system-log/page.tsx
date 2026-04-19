@@ -13,12 +13,12 @@ import {
 } from '@/lib/adminBadgeCounts';
 import {
   ADMIN_SYSTEM_LOG_EVENT,
-  ADMIN_SYSTEM_LOG_STORAGE_KEY,
   clearEphemeralAdminLogs,
   clearPersistentAdminLogs,
+  ensureAdminSystemLogsLoaded,
   exportAdminLogsAsCsv,
-  getMergedAdminLogsForView,
   forceReloadAdminSystemLogsFromServer,
+  getMergedAdminLogsForView,
   type AdminLogSeverity,
   type AdminSystemLogEntry,
 } from '@/lib/adminSystemLog';
@@ -65,15 +65,15 @@ export default function AdminSystemLogPage() {
   });
 
   useEffect(() => {
+    let alive = true;
+    void ensureAdminSystemLogsLoaded().then(() => {
+      if (alive) bump();
+    });
     const onEvt = () => bump();
     window.addEventListener(ADMIN_SYSTEM_LOG_EVENT, onEvt);
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === ADMIN_SYSTEM_LOG_STORAGE_KEY) bump();
-    };
-    window.addEventListener('storage', onStorage);
     return () => {
+      alive = false;
       window.removeEventListener(ADMIN_SYSTEM_LOG_EVENT, onEvt);
-      window.removeEventListener('storage', onStorage);
     };
   }, [bump]);
 

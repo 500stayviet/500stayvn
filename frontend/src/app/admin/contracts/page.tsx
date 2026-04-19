@@ -44,7 +44,7 @@ export default function AdminContractsPage() {
     void load();
   }, [load]);
 
-  useAdminDomainRefresh(['booking', 'payment'], () => {
+  useAdminDomainRefresh(['booking', 'payment', 'adminFinanceLedger'], () => {
     void load();
   });
 

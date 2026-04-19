@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { bumpBookingUpdatedAtForDomainSignal } from '@/lib/server/bumpBookingDomainSignal';
 import { rejectAppWriteUnlessActorAllowed } from '@/lib/server/appSyncWriteGuard';
 
 /**
@@ -33,6 +34,7 @@ export async function DELETE(
       await tx.$executeRawUnsafe(`DELETE FROM "AdminSettlementPendingQueue" WHERE "bookingId" = $1`, bookingId);
       await tx.$executeRawUnsafe(`DELETE FROM "AdminSettlementApproval" WHERE "bookingId" = $1`, bookingId);
     });
+    await bumpBookingUpdatedAtForDomainSignal(bookingId);
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error('DELETE /api/app/finance/settlement-for-booking', error);

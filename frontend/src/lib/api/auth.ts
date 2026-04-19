@@ -22,6 +22,7 @@ import {
   USER_FACING_CLIENT_AUTH_ERROR_MESSAGE,
 } from "@/lib/runtime/networkResilience";
 import { withAppActor } from "@/lib/api/withAppActor";
+import { clearBookingsClientCache } from "@/lib/api/bookings";
 
 export interface UserData {
   uid: string;
@@ -67,10 +68,80 @@ export interface OwnerVerificationData {
 
 const USERS_STORAGE_KEY = "users";
 const CURRENT_USER_KEY = "currentUser";
+
+/**
+ * 미들웨어가 `/booking*`·결제 API 접근 시 참고하는 앱 액터 쿠키(비 HttpOnly).
+ * 로그인 세션은 LS `currentUser` 와 동기화됩니다.
+ */
+export const APP_ACTOR_UID_COOKIE = "stayviet_app_uid";
+
+function syncStayvietAppUidCookie(uid: string | null): void {
+  if (typeof document === "undefined") return;
+  try {
+    if (uid) {
+      document.cookie = `${APP_ACTOR_UID_COOKIE}=${encodeURIComponent(uid)}; Path=/; Max-Age=31536000; SameSite=Lax`;
+    } else {
+      document.cookie = `${APP_ACTOR_UID_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+/** 새로고침 직후 LS 만 있고 쿠키가 비어 있을 때 미들웨어와 맞추기 위해 호출 */
+export function syncAppActorUidCookieFromStorage(): void {
+  if (typeof window === "undefined" || typeof localStorage === "undefined") return;
+  syncStayvietAppUidCookie(localStorage.getItem(CURRENT_USER_KEY));
+}
 const BOOTSTRAP_KEY = "stayviet-user-bootstrap-v1";
 const BOOTSTRAP_SESSION_KEY = "stayviet-user-bootstrap-session-v1";
 
 let usersCache: UserData[] | null = null;
+
+/** 앱 GET `/api/app/users` in-flight (bootstrap·로그인·PATCH 후 갱신이 한 번만 나가도록) */
+let sharedAppUsersRefresh: Promise<boolean> | null = null;
+
+/**
+ * `setCurrentUser` 과 동기화되는 앱 액터 id.
+ * `withAppActor`·데이터 부트스트랩이 LS 읽기 타이밍보다 먼저 일치하도록 메모리를 우선합니다.
+ */
+let appActorIdMemory: string | null | undefined;
+
+let appActorStorageListenerAttached = false;
+
+/**
+ * 앱 액터 uid가 바뀔 때(같은 탭·다른 탭 공통): users/예약 메모리 즉시 비우고,
+ * 매물·채팅 배지는 microtask 로 비움(정적 import 순환 회피).
+ */
+function flushAppCachesOnActorChange(): void {
+  clearUsersClientMemory();
+  clearBookingsClientCache();
+  const runSide = () => {
+    void import("@/lib/api/properties")
+      .then((m) => m.clearPropertiesClientCache())
+      .catch(() => {});
+    void import("@/lib/api/chat")
+      .then((m) => m.notifyChatActorSessionReset())
+      .catch(() => {});
+  };
+  if (typeof queueMicrotask === "function") queueMicrotask(runSide);
+  else runSide();
+}
+
+/** 다른 탭에서 `currentUser` 가 바뀌면 메모리와 도메인 캐시를 같은 탭과 동일하게 파쇄 */
+function ensureAppActorCrossTabListener(): void {
+  if (typeof window === "undefined" || appActorStorageListenerAttached) return;
+  appActorStorageListenerAttached = true;
+  window.addEventListener("storage", (e: StorageEvent) => {
+    if (e.key !== CURRENT_USER_KEY) return;
+    const prev =
+      appActorIdMemory !== undefined ? appActorIdMemory : e.oldValue ?? null;
+    const next = e.newValue ?? null;
+    if (prev === next) return;
+    appActorIdMemory = next;
+    flushAppCachesOnActorChange();
+  });
+}
 
 function isLocalFallbackDisabled(): boolean {
   return getLocalFallbackMode() === "off";
@@ -192,6 +263,22 @@ export async function refreshUsersFromServer(): Promise<boolean> {
   }
 }
 
+function getSharedAppUsersRefresh(): Promise<boolean> {
+  if (!sharedAppUsersRefresh) {
+    sharedAppUsersRefresh = refreshUsersFromServer().finally(() => {
+      sharedAppUsersRefresh = null;
+    });
+  }
+  return sharedAppUsersRefresh;
+}
+
+/** 호스트/게스트: 회원 목록 메모리를 서버와 맞춤 (`bootstrapUsersFromServer` 와 동일 in-flight) */
+export async function ensureUsersLoadedForApp(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  if (!getCurrentUserId()) return false;
+  return getSharedAppUsersRefresh();
+}
+
 /**
  * 관리자 세션으로 전체 회원 목록을 캐시에 올림 (`getUsers()`·배지 등)
  */
@@ -225,18 +312,35 @@ export async function refreshUsersCacheForAdmin(): Promise<boolean> {
   }
 }
 
+let usersAdminLoadInFlight: Promise<boolean> | null = null;
+
+/** 관리자 화면용: 전체 회원 캐시를 서버에서 채웁니다. 동시 호출은 한 번의 로드로 합칩니다. */
+export async function ensureUsersCacheForAdmin(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  if (usersAdminLoadInFlight) return usersAdminLoadInFlight;
+  usersAdminLoadInFlight = refreshUsersCacheForAdmin().finally(() => {
+    usersAdminLoadInFlight = null;
+  });
+  return usersAdminLoadInFlight;
+}
+
 /**
  * 최초 로드: DB가 비어 있고 로컬에만 users가 있으면 import 후 다시 동기화
  */
 export async function bootstrapUsersFromServer(): Promise<void> {
   if (typeof window === "undefined") return;
 
-  const ok = await refreshUsersFromServer();
+  const ok = await getSharedAppUsersRefresh();
   if (!ok) return;
 
   if (isLedgerBootstrapDone(BOOTSTRAP_KEY, BOOTSTRAP_SESSION_KEY)) return;
 
   if (getUsers().length > 0) {
+    markLedgerBootstrapDone(BOOTSTRAP_KEY, BOOTSTRAP_SESSION_KEY);
+    return;
+  }
+
+  if (!canReadLocalFallback()) {
     markLedgerBootstrapDone(BOOTSTRAP_KEY, BOOTSTRAP_SESSION_KEY);
     return;
   }
@@ -272,7 +376,7 @@ export async function bootstrapUsersFromServer(): Promise<void> {
     );
     if (res.ok) {
       markLedgerBootstrapDone(BOOTSTRAP_KEY, BOOTSTRAP_SESSION_KEY);
-      await refreshUsersFromServer();
+      await getSharedAppUsersRefresh();
     }
   } catch (e) {
     /* 네트워크 오류 시 BOOTSTRAP_KEY 미설정 → 이후 재시도 */
@@ -300,17 +404,38 @@ export function saveUsers(users: UserData[]): void {
   setUsersCacheAndStorage(users);
 }
 
+/**
+ * 앱 액터 uid — `setCurrentUser` 가 메모리를 먼저 갱신하므로 LS 읽기보다 레이스가 적습니다.
+ * 다른 탭에서 `currentUser` 가 바뀌면 `storage` 로 메모리·캐시를 `flushAppCachesOnActorChange` 와 동일하게 맞춥니다.
+ */
 export function getCurrentUserId(): string | null {
   if (typeof window === "undefined" || typeof localStorage === "undefined")
     return null;
-  return localStorage.getItem(CURRENT_USER_KEY);
+  ensureAppActorCrossTabListener();
+  if (appActorIdMemory !== undefined) return appActorIdMemory;
+  appActorIdMemory = localStorage.getItem(CURRENT_USER_KEY);
+  return appActorIdMemory;
+}
+
+/** 앱 액터(uid) 전환 시 users 메모리·진행 중 users GET 슬롯 비움 */
+function clearUsersClientMemory(): void {
+  usersCache = null;
+  sharedAppUsersRefresh = null;
+  notifyUsersStorageChanged();
 }
 
 function setCurrentUser(uid: string | null): void {
   if (typeof window === "undefined" || typeof localStorage === "undefined")
     return;
+  const prev = localStorage.getItem(CURRENT_USER_KEY);
   if (uid) localStorage.setItem(CURRENT_USER_KEY, uid);
   else localStorage.removeItem(CURRENT_USER_KEY);
+  const next = localStorage.getItem(CURRENT_USER_KEY);
+  appActorIdMemory = next;
+  syncStayvietAppUidCookie(next);
+  if (prev !== next) {
+    flushAppCachesOnActorChange();
+  }
 }
 
 /** NextAuth(OAuth) 세션과 동기화할 때 사용 — `x-app-actor-id`·캐시 부트스트랩과 동일 키 */
@@ -417,7 +542,7 @@ export async function signUpWithEmail(data: SignUpData): Promise<any> {
     const user = json as UserData;
     setCurrentUser(user.uid);
     mergeAuthenticatedUserIntoCache(user);
-    await refreshUsersFromServer();
+    await getSharedAppUsersRefresh();
 
     return {
       user: {
@@ -508,7 +633,7 @@ export async function signInWithEmail(
     const user = json.user as UserData;
     setCurrentUser(user.uid);
     mergeAuthenticatedUserIntoCache(user);
-    await refreshUsersFromServer();
+    await getSharedAppUsersRefresh();
 
     return {
       user: {
@@ -576,7 +701,7 @@ export async function updateUserData(
       }),
     );
     if (res.ok) {
-      await refreshUsersFromServer();
+      await getSharedAppUsersRefresh();
       return;
     }
     if (res.status === 503 || res.status === 404) {
@@ -634,7 +759,7 @@ export async function deleteAccount(uid: string): Promise<void> {
       withAppActor({ method: "DELETE" }),
     );
     if (res.ok) {
-      await refreshUsersFromServer();
+      await getSharedAppUsersRefresh();
       setCurrentUser(null);
       return;
     }

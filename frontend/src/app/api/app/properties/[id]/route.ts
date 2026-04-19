@@ -1,7 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { rejectAppWriteUnlessActorAllowed } from '@/lib/server/appSyncWriteGuard';
+import { prismaPropertyToPropertyData } from '@/lib/server/appPropertyMapper';
+import { assertPublicCatalogGuard } from '@/lib/server/publicApiGuard';
+import { mapPropertiesToPublicDTO } from '@/lib/server/publicPropertyMask';
+import { getAppActorId, rejectAppWriteUnlessActorAllowed } from '@/lib/server/appSyncWriteGuard';
 import { appApiError } from '@/lib/server/appApiErrors';
+
+/**
+ * 단일 매물 조회 — 비로그인은 공개 활성만 마스킹 DTO, 로그인은 소유자·비삭제 매물 전체(숨김은 소유자만).
+ */
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const { id } = await context.params;
+  const pid = (id || '').trim();
+  if (!pid) return appApiError('invalid_id', 400);
+
+  const actor = getAppActorId(request);
+  try {
+    if (!actor) {
+      const guard = assertPublicCatalogGuard(request, 'GET /api/app/properties/[id]');
+      if (guard) return guard;
+      const row = await prisma.property.findFirst({
+        where: { id: pid, deleted: false, hidden: false, status: 'active' },
+      });
+      if (!row) return NextResponse.json({ error: 'not_found' }, { status: 404 });
+      const full = prismaPropertyToPropertyData(row);
+      return NextResponse.json({ property: mapPropertiesToPublicDTO([full])[0] });
+    }
+
+    const row = await prisma.property.findUnique({ where: { id: pid } });
+    if (!row || row.deleted) return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    if (row.hidden && row.ownerId !== actor) {
+      return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    }
+    return NextResponse.json({ property: prismaPropertyToPropertyData(row) });
+  } catch (e) {
+    console.error('GET /api/app/properties/[id]', pid, e);
+    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
+  }
+}
 
 /**
  * 매물 영구 삭제: 관련 예약·채팅·메시지 정리 후 Property 삭제

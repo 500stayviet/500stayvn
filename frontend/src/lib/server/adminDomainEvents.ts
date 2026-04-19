@@ -49,6 +49,14 @@ function modelToResource(model: string): string | null {
       return "admin_account";
     case "AdminSharedMemo":
       return "admin_memo";
+    case "AdminPropertyActionLog":
+      return "property";
+    case "AdminWithdrawalRequest":
+      return "adminWithdrawalRequest";
+    case "AdminFinanceLedger":
+      return "adminFinanceLedger";
+    case "AdminBankAccount":
+      return "admin_bank_account";
     default:
       return null;
   }

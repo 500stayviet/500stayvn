@@ -41,6 +41,19 @@ export type ChatUnreadSnapshot = {
 
 export const CHAT_UNREAD_UPDATED_EVENT = 'chatUnreadUpdated';
 
+/** 로그아웃·uid 전환 시 배지 구독자가 읽지 않음 수를 0으로 맞출 때 `detail.sessionClear` 와 함께 사용 */
+export function notifyChatActorSessionReset(): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(
+    new CustomEvent(CHAT_UNREAD_UPDATED_EVENT, {
+      detail: {
+        sessionClear: true as const,
+        snapshot: { asGuest: 0, asOwner: 0, byRoom: {} } as ChatUnreadSnapshot,
+      },
+    }),
+  );
+}
+
 type GetMessagesOptions = {
   limit?: number;
   before?: string;
@@ -374,7 +387,15 @@ export function subscribeChatUnreadUpdates(
 ): () => void {
   if (typeof window === 'undefined') return () => {};
   const handler = (event: Event) => {
-    const custom = event as CustomEvent<{ userId?: string; snapshot?: ChatUnreadSnapshot }>;
+    const custom = event as CustomEvent<{
+      userId?: string;
+      snapshot?: ChatUnreadSnapshot;
+      sessionClear?: boolean;
+    }>;
+    if (custom.detail?.sessionClear && custom.detail?.snapshot) {
+      callback(custom.detail.snapshot);
+      return;
+    }
     const targetUid = custom.detail?.userId;
     if (targetUid && targetUid !== userId) return;
     callback(custom.detail?.snapshot);

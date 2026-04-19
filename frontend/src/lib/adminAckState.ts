@@ -1,8 +1,6 @@
 'use client';
 
-import {
-  getLedgerEntries,
-} from '@/lib/api/adminFinance';
+import { getAdminFinanceLedgerEntriesSince } from '@/lib/api/financeServer';
 import { getSettlementCandidatesServer } from '@/lib/api/settlementServer';
 import { getUsers, type UserData } from '@/lib/api/auth';
 import { getAllBookingsForAdmin } from '@/lib/api/bookings';
@@ -19,15 +17,12 @@ import {
   isRefundBeforeRental,
   isRefundDuringOrAfterRental,
 } from '@/lib/adminBookingFilters';
-import { getModerationAudits } from '@/lib/api/adminModeration';
+import { ensureModerationAuditsLoaded, getModerationAudits } from '@/lib/api/adminModeration';
 import { getMergedAdminLogsForView } from '@/lib/adminSystemLog';
 import { isParentPropertyRecord } from '@/lib/utils/propertyUtils';
 import type { PropertyData } from '@/types/property';
-import { canReadLocalFallback } from '@/lib/runtime/localFallbackPolicy';
 import { ADMIN_ACK_STATE_UPDATED } from '@/lib/adminAckConstants';
-
-/** adminModeration.ts 와 동일 키 (순환 참조 방지 위해 직접 읽기) */
-const PROPERTIES_STORAGE_KEY = 'properties';
+import { readPropertiesArray } from '@/lib/api/properties';
 
 const KEY_USER_UIDS = 'admin_ack_new_user_uids_v1';
 const KEY_PROP_IDS = 'admin_ack_new_property_ids_v1';
@@ -72,46 +67,26 @@ const KEY_TO_CATEGORY: Record<string, AckCategory> = {
 const ackCache = new Map<string, Set<string>>();
 const ackHydrated = new Set<string>();
 
-function readPropsRaw(): PropertyData[] {
-  if (
-    typeof window === 'undefined' ||
-    typeof localStorage === 'undefined' ||
-    !canReadLocalFallback()
-  ) return [];
-  try {
-    const raw = localStorage.getItem(PROPERTIES_STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as PropertyData[]) : [];
-  } catch {
-    return [];
-  }
-}
-
 function readIdSet(key: string): Set<string> {
   if (typeof window === 'undefined') return new Set();
-  const cached = ackCache.get(key);
-  if (cached) return new Set(cached);
-  try {
-    const raw = localStorage.getItem(key);
-    const arr = raw ? (JSON.parse(raw) as string[]) : [];
-    const set = new Set(Array.isArray(arr) ? arr : []);
-    ackCache.set(key, set);
-    if (!ackHydrated.has(key)) {
-      ackHydrated.add(key);
-      void hydrateAckSetFromServer(key);
-    }
-    return new Set(set);
-  } catch {
-    return new Set();
+  if (!ackHydrated.has(key)) {
+    ackHydrated.add(key);
+    void hydrateAckSetFromServer(key);
   }
+  const cached = ackCache.get(key);
+  return cached ? new Set(cached) : new Set();
 }
 
 function writeIdSet(key: string, ids: Set<string>): void {
   if (typeof window === 'undefined') return;
   const next = new Set(ids);
   ackCache.set(key, next);
-  localStorage.setItem(key, JSON.stringify([...next]));
-  void pushAckSetToServer(key, [...next]);
   window.dispatchEvent(new CustomEvent(ADMIN_ACK_STATE_UPDATED));
+  void (async () => {
+    await pushAckSetToServer(key, [...next]);
+    await hydrateAckSetFromServer(key);
+    window.dispatchEvent(new CustomEvent(ADMIN_ACK_STATE_UPDATED));
+  })();
 }
 
 async function hydrateAckSetFromServer(key: string): Promise<void> {
@@ -127,7 +102,7 @@ async function hydrateAckSetFromServer(key: string): Promise<void> {
     const list = Array.isArray(data.ids) ? data.ids : [];
     const set = new Set(list.filter(Boolean));
     ackCache.set(key, set);
-    localStorage.setItem(key, JSON.stringify([...set]));
+    window.dispatchEvent(new CustomEvent(ADMIN_ACK_STATE_UPDATED));
   } catch {
     /* ignore */
   }
@@ -223,7 +198,7 @@ export function isAdminPropertyNewUnseen(
 
 export function countUnseenNewProperties(ackAtById: Map<string, Date> | null): number {
   if (typeof window === 'undefined') return 0;
-  return readPropsRaw().filter(
+  return readPropertiesArray().filter(
     (p) =>
       p.id &&
       !p.deleted &&
@@ -237,6 +212,77 @@ const USER_ACK_DETAIL_TTL_MS = 45_000;
 
 export function invalidateUserAckDetailCache(): void {
   userAckDetailCache = null;
+}
+
+function dropAckKeys(keys: string[]): void {
+  for (const k of keys) {
+    ackCache.delete(k);
+    ackHydrated.delete(k);
+  }
+}
+
+/**
+ * SSE `AdminDomainEvent` 수신 시, 해당 리소스와 직접 연관된 in-memory ack 캐시만 비웁니다.
+ * 다음 `readIdSet`에서 서버 hydrate로 다시 맞춥니다.
+ */
+export function invalidateAdminAckCachesForResource(resource: string | undefined): void {
+  if (typeof window === 'undefined' || !resource) return;
+  switch (resource) {
+    case 'booking':
+      dropAckKeys([
+        KEY_SETTLEMENT_PENDING_BOOKINGS,
+        KEY_SETTLEMENT_REQUEST_BOOKINGS,
+        KEY_CONTRACT_NEW_BOOKING_IDS,
+        KEY_REFUND_NEW_BOOKING_IDS,
+      ]);
+      break;
+    case 'user':
+      invalidateUserAckDetailCache();
+      dropAckKeys([KEY_USER_UIDS, KEY_KYC_NEW_UIDS]);
+      break;
+    case 'property':
+      invalidatePropertyAckDetailCache();
+      dropAckKeys([KEY_PROP_IDS]);
+      break;
+    case 'audit':
+      dropAckKeys([KEY_AUDIT_RECENT_KEYS]);
+      break;
+    case 'system_log':
+      dropAckKeys([KEY_SYSTEM_LOG_NEW_IDS]);
+      break;
+    case 'payment':
+      dropAckKeys([
+        KEY_SETTLEMENT_PENDING_BOOKINGS,
+        KEY_SETTLEMENT_REQUEST_BOOKINGS,
+        KEY_CONTRACT_NEW_BOOKING_IDS,
+        KEY_REFUND_NEW_BOOKING_IDS,
+      ]);
+      break;
+    case 'adminFinanceLedger':
+      dropAckKeys([
+        KEY_AUDIT_RECENT_KEYS,
+        KEY_SETTLEMENT_PENDING_BOOKINGS,
+        KEY_SETTLEMENT_REQUEST_BOOKINGS,
+        KEY_CONTRACT_NEW_BOOKING_IDS,
+        KEY_REFUND_NEW_BOOKING_IDS,
+      ]);
+      break;
+    case 'admin_bank_account':
+      dropAckKeys([
+        KEY_SETTLEMENT_PENDING_BOOKINGS,
+        KEY_SETTLEMENT_REQUEST_BOOKINGS,
+      ]);
+      break;
+    case 'adminWithdrawalRequest':
+      dropAckKeys([
+        KEY_SETTLEMENT_PENDING_BOOKINGS,
+        KEY_SETTLEMENT_REQUEST_BOOKINGS,
+      ]);
+      break;
+    default:
+      return;
+  }
+  window.dispatchEvent(new CustomEvent(ADMIN_ACK_STATE_UPDATED));
 }
 
 /** 서버에 저장된 계정 신규 확인 시각(관리자별). */
@@ -306,12 +352,12 @@ export function countUnseenNewUsers(ackAtById: Map<string, Date> | null): number
   ).length;
 }
 
-/** 상단 배지: 아직 '신규' 탭에서 확인하지 않은 신규 계정 수(로컬 ack만 — 서버 시각은 탭에서 별도) */
+/** 상단 배지: 아직 '신규' 탭에서 확인하지 않은 신규 계정 수(서버 ack를 메모리 캐시로 반영 — 상세 탭은 `fetchUserAcknowledgedAtMap`) */
 export function getUnseenNewUserCount(): number {
   return countUnseenNewUsers(null);
 }
 
-/** 상단 배지: 아직 '신규' 탭에서 확인하지 않은 신규 매물 수(로컬 ack만) */
+/** 상단 배지: 아직 '신규' 탭에서 확인하지 않은 신규 매물 수(서버 ack를 메모리 캐시로 반영 — 상세는 `fetchPropertyAcknowledgedAtMap`) */
 export function getUnseenNewPropertyCount(): number {
   return countUnseenNewProperties(null);
 }
@@ -358,13 +404,18 @@ export async function acknowledgeCurrentSettlementPending(): Promise<void> {
   writeIdSet(KEY_SETTLEMENT_PENDING_BOOKINGS, ack);
 }
 
-function recentAuditKeysIn24h(): string[] {
+async function recentAuditKeysIn24hAsync(): Promise<string[]> {
   const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
-  const out: string[] = [];
-  for (const e of getLedgerEntries()) {
-    const t = new Date(e.createdAt).getTime();
-    if (t >= dayAgo) out.push(`ledger:${e.id}`);
+  const sinceIso = new Date(dayAgo).toISOString();
+  let ledgerKeys: string[] = [];
+  try {
+    const ledger = await getAdminFinanceLedgerEntriesSince(sinceIso);
+    ledgerKeys = ledger.map((e) => `ledger:${e.id}`);
+  } catch {
+    ledgerKeys = [];
   }
+  await ensureModerationAuditsLoaded();
+  const out: string[] = [...ledgerKeys];
   for (const e of getModerationAudits()) {
     const t = new Date(e.createdAt).getTime();
     if (t >= dayAgo) out.push(`mod:${e.id}`);
@@ -373,17 +424,19 @@ function recentAuditKeysIn24h(): string[] {
 }
 
 /** 상단 배지: 아직 신규(24h) 탭에서 확인하지 않은 감사 로그 건수 */
-export function getUnseenRecentAuditCount(): number {
+export async function getUnseenRecentAuditCountAsync(): Promise<number> {
   if (typeof window === 'undefined') return 0;
+  const keys = await recentAuditKeysIn24hAsync();
   const ack = readIdSet(KEY_AUDIT_RECENT_KEYS);
-  return recentAuditKeysIn24h().filter((k) => !ack.has(k)).length;
+  return keys.filter((k) => !ack.has(k)).length;
 }
 
 /** 감사 신규(24h) 탭 진입 시 현재 로그 확인 처리 */
-export function acknowledgeCurrentRecentAudit(): void {
+export async function acknowledgeCurrentRecentAudit(): Promise<void> {
   if (typeof window === 'undefined') return;
   const ack = readIdSet(KEY_AUDIT_RECENT_KEYS);
-  recentAuditKeysIn24h().forEach((k) => ack.add(k));
+  const keys = await recentAuditKeysIn24hAsync();
+  keys.forEach((k) => ack.add(k));
   writeIdSet(KEY_AUDIT_RECENT_KEYS, ack);
 }
 

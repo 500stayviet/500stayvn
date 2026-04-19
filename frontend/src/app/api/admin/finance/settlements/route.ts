@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAdminFromRequest } from '@/lib/server/adminAuthServer';
+import { observeRouteResponse } from '@/lib/server/apiMonitoring';
+import { bumpBookingUpdatedAtForDomainSignal } from '@/lib/server/bumpBookingDomainSignal';
 
 type SettlementCandidateRow = {
   bookingId: string;
@@ -34,8 +36,11 @@ function toCandidate(row: SettlementCandidateRow) {
 }
 
 export async function GET(request: NextRequest) {
+  const startedAt = Date.now();
+  const route = 'GET /api/admin/finance/settlements';
   const me = await getAdminFromRequest(request);
-  if (!me) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  if (!me)
+    return observeRouteResponse(NextResponse.json({ error: 'unauthorized' }, { status: 401 }), route, startedAt);
   try {
     const rows = await prisma.$queryRawUnsafe<SettlementCandidateRow[]>(
       `
@@ -65,16 +70,27 @@ export async function GET(request: NextRequest) {
       ORDER BY b."updatedAt" DESC
       `
     );
-    return NextResponse.json({ candidates: rows.map(toCandidate) });
+    return observeRouteResponse(
+      NextResponse.json({ candidates: rows.map(toCandidate) }),
+      route,
+      startedAt
+    );
   } catch (error) {
     console.error('GET /api/admin/finance/settlements', error);
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
+    return observeRouteResponse(
+      NextResponse.json({ error: 'database_unavailable' }, { status: 503 }),
+      route,
+      startedAt
+    );
   }
 }
 
 export async function PATCH(request: NextRequest) {
+  const startedAt = Date.now();
+  const route = 'PATCH /api/admin/finance/settlements';
   const me = await getAdminFromRequest(request);
-  if (!me) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  if (!me)
+    return observeRouteResponse(NextResponse.json({ error: 'unauthorized' }, { status: 401 }), route, startedAt);
   let body: {
     action?: 'move_to_pending' | 'hold_pending' | 'approve' | 'hold_approved' | 'resume_pending' | 'resume_request';
     bookingId?: string;
@@ -85,14 +101,23 @@ export async function PATCH(request: NextRequest) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: 'invalid_body' }, { status: 400 });
+    return observeRouteResponse(
+      NextResponse.json({ error: 'invalid_body' }, { status: 400 }),
+      route,
+      startedAt
+    );
   }
   const bookingId = String(body.bookingId || '').trim();
   const action = body.action;
   const ownerId = String(body.ownerId || '').trim();
   const amount = Number(body.amount || 0);
   const reason = String(body.reason || '').trim() || null;
-  if (!bookingId || !action) return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
+  if (!bookingId || !action)
+    return observeRouteResponse(
+      NextResponse.json({ error: 'invalid_input' }, { status: 400 }),
+      route,
+      startedAt
+    );
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -255,12 +280,23 @@ export async function PATCH(request: NextRequest) {
 
       throw new Error('unsupported_action');
     });
-    return NextResponse.json({ ok: true });
+
+    await bumpBookingUpdatedAtForDomainSignal(bookingId);
+
+    return observeRouteResponse(NextResponse.json({ ok: true }), route, startedAt);
   } catch (error) {
     if (error instanceof Error && (error.message === 'not_found' || error.message === 'invalid_payload')) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      return observeRouteResponse(
+        NextResponse.json({ error: error.message }, { status: 400 }),
+        route,
+        startedAt
+      );
     }
     console.error('PATCH /api/admin/finance/settlements', error);
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
+    return observeRouteResponse(
+      NextResponse.json({ error: 'database_unavailable' }, { status: 503 }),
+      route,
+      startedAt
+    );
   }
 }

@@ -108,10 +108,13 @@ export default function AdminUserDetailPage() {
     refreshAdminBadges();
   }, [user]);
 
-  useAdminDomainRefresh(['user', 'booking', 'payment', 'admin_memo'], () => {
-    void loadUserAndMemos();
-    setDataTick((t) => t + 1);
-  });
+  useAdminDomainRefresh(
+    ['user', 'booking', 'payment', 'admin_memo', 'admin_bank_account', 'adminFinanceLedger'],
+    () => {
+      void loadUserAndMemos();
+      setDataTick((t) => t + 1);
+    }
+  );
 
   useEffect(() => {
     if (!uid) {

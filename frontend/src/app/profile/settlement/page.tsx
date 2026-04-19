@@ -32,15 +32,13 @@ import {
   aggregateRentalIncome,
 } from '@/lib/utils/rentalIncome';
 import { formatDate } from '@/lib/utils/dateUtils';
-import {
-  getSettlementApprovals,
-  getSettlementPendingQueueIds,
-} from '@/lib/api/adminFinance';
+import { useAdminDomainRefresh } from '@/lib/adminDomainEventsClient';
 import {
   addAppBankAccount,
   createAppWithdrawalRequest,
   getAppBankAccounts,
   getAppOwnerBalances,
+  getAppSettlementOverlay,
   getAppWithdrawalRequests,
   removeAppBankAccount,
   setAppPrimaryBankAccount,
@@ -92,6 +90,20 @@ export default function SettlementPage() {
   const [newAccountNumber, setNewAccountNumber] = useState('');
   const [newAccountHolder, setNewAccountHolder] = useState('');
   const [setAsPrimaryOnCreate, setSetAsPrimaryOnCreate] = useState(true);
+  const [revenueTick, setRevenueTick] = useState(0);
+
+  useAdminDomainRefresh(['booking'], () => {
+    setRevenueTick((t) => t + 1);
+  });
+
+  /** 임대인 탭은 관리자 SSE가 없을 수 있어, 탭이 다시 보일 때 서버 정산 오버레이를 한 번 당김 */
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === 'visible') setRevenueTick((t) => t + 1);
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, []);
 
   useEffect(() => {
     if (!user?.uid) {
@@ -105,15 +117,17 @@ export default function SettlementPage() {
     setServerTimeError(false);
     (async () => {
       try {
-        const [bookings, now] = await Promise.all([
+        const [bookings, now, settlementOverlay] = await Promise.all([
           getOwnerBookings(user.uid),
           getServerTime(),
+          getAppSettlementOverlay(),
         ]);
         if (cancelled) return;
         const serverTimeISO = toISO8601ForAudit(now);
         const serverTimeMs = now.getTime();
-        const settlementApprovals = getSettlementApprovals();
-        const adminPendingQueue = getSettlementPendingQueueIds();
+        const overlayByBookingId = new Map(
+          settlementOverlay.map((o) => [o.bookingId, o] as const)
+        );
 
         const eligible = bookings.filter((b) =>
           isEligibleForRentalIncome({
@@ -156,12 +170,12 @@ export default function SettlementPage() {
             // keep propertyTitle fallback
           }
           const bid = b.id ?? '';
-          const sa = settlementApprovals.find((a) => a.bookingId === bid);
-          const st = sa?.status;
+          const ov = overlayByBookingId.get(bid);
+          const st = ov?.approvalStatus as 'approved' | 'held' | undefined;
           const settlementHeld = st === 'held';
           const settlementApproved = st === 'approved';
           const settlementInAdminQueue =
-            !settlementHeld && !settlementApproved && adminPendingQueue.has(bid);
+            !settlementHeld && !settlementApproved && Boolean(ov?.inPendingQueue);
           const checkOutMoment = getCheckOutMoment(b.checkOutDate, b.checkOutTime ?? '12:00');
           const cot = checkOutMoment.getTime();
           const afterCheckOut =
@@ -200,7 +214,7 @@ export default function SettlementPage() {
     return () => {
       cancelled = true;
     };
-  }, [user?.uid]);
+  }, [user?.uid, revenueTick]);
 
   const { totalRevenue } = useMemo(() => {
     return aggregateRentalIncome(revenueEntries);

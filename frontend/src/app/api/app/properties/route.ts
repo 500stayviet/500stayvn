@@ -10,9 +10,10 @@ import {
   getAppActorId,
 } from '@/lib/server/appSyncWriteGuard';
 import { getAdminFromRequest } from '@/lib/server/adminAuthServer';
-import { appApiError } from '@/lib/server/appApiErrors';
 import type { PropertyData } from '@/types/property';
 import { reportApiException, reportApiSuccess } from '@/lib/server/apiMonitoring';
+import { assertPublicCatalogGuard } from '@/lib/server/publicApiGuard';
+import { mapPropertiesToPublicDTO } from '@/lib/server/publicPropertyMask';
 
 const MAX_BATCH = 5000;
 
@@ -116,7 +117,46 @@ export async function GET(request: NextRequest) {
     }
 
     const actor = getAppActorId(request);
-    if (!actor) return appApiError('actor_required', 401);
+    /**
+     * 비로그인: 공개 활성 매물만 마스킹 DTO로 반환 (레이트리밋·UA 검사는 `assertPublicCatalogGuard`).
+     * 로그인(`x-app-actor-id`): 기존처럼 소유·예약·카탈로그 병합 목록(비마스킹).
+     */
+    if (!actor) {
+      const guard = assertPublicCatalogGuard(request, 'GET /api/app/properties');
+      if (guard) return guard;
+      const rows = await prisma.property.findMany({
+        where: {
+          AND: [
+            { deleted: false, hidden: false, status: 'active' },
+            ...(cursor
+              ? [
+                  {
+                    OR: [
+                      { updatedAt: { lt: new Date(cursor.updatedAt) } },
+                      { updatedAt: new Date(cursor.updatedAt), id: { lt: cursor.id } },
+                    ],
+                  },
+                ]
+              : []),
+          ],
+        },
+        orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
+        take: limit,
+        ...(cursor ? {} : { skip: offset }),
+      });
+      const nextCursor = makePropertiesCursor(rows[rows.length - 1] || null);
+      reportApiSuccess('GET /api/app/properties', 200, startedAt);
+      return NextResponse.json({
+        properties: mapPropertiesToPublicDTO(rows.map(prismaPropertyToPropertyData)),
+        page: {
+          limit,
+          offset,
+          hasMore: rows.length === limit,
+          nextOffset: offset + rows.length,
+          nextCursor,
+        },
+      });
+    }
 
     const booked = await prisma.booking.findMany({
       where: { guestId: actor },

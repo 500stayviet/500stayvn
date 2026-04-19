@@ -1,5 +1,9 @@
 /**
- * Bookings API Service (PostgreSQL 원장 + 클라이언트 캐시)
+ * Bookings API Service (PostgreSQL 원장 + 클라이언트 메모리 캐시)
+ *
+ * - 원장: 서버 DB (`/api/app/bookings` GET/PUT, 관리자는 `/api/admin/bookings`).
+ * - `NEXT_PUBLIC_LOCAL_FALLBACK_MODE=off` 일 때는 예약 JSON을 localStorage에 읽거나 쓰지 않습니다.
+ *   이 탭의 `bookingsCache`만 사용하며, 로그인 후 `getSharedAppBookingsRefresh`로 서버에서 채웁니다.
  */
 
 import { toISODateString } from '../utils/dateUtils';
@@ -77,6 +81,8 @@ export interface BookingData {
   confirmedAt?: string; // 확정 시간 (ISO 문자열)
   cancelledAt?: string; // 취소 시간 (ISO 문자열)
   cancelReason?: string; // 취소 사유
+  /** 호스트 완료 처리 시각 (선택) */
+  completedAt?: string;
 
   /** 관리자 환불 승인(결제 상태가 refunded 로 전환됨) */
   refundAdminApproved?: boolean;
@@ -107,8 +113,10 @@ const BOOKINGS_STORAGE_KEY = 'bookings';
 const BOOKINGS_BOOTSTRAP_KEY = 'stayviet-bookings-bootstrap-v1';
 const BOOKINGS_BOOTSTRAP_SESSION_KEY = 'stayviet-bookings-bootstrap-session-v1';
 
+/** 서버 GET으로 채운 예약 스냅샷(탭 단위). off 모드에서는 LS와 무관하게 이 값만 신뢰합니다. */
 let bookingsCache: BookingData[] | null = null;
 
+/** readwrite 모드에서만 LS `bookings` 키를 읽어 메모리를 시드합니다. off/readonly 에서는 빈 배열만 반환합니다. */
 function loadBookingsCacheFromLocal(): BookingData[] {
   if (
     typeof window === 'undefined' ||
@@ -130,14 +138,53 @@ function loadBookingsCacheFromLocal(): BookingData[] {
   }
 }
 
+/** 동기 스냅샷: 메모리 우선, 폴백 readwrite 일 때만 LS에서 시드. */
 export function readBookingsArray(): BookingData[] {
   const base = bookingsCache !== null ? bookingsCache : loadBookingsCacheFromLocal();
   return JSON.parse(JSON.stringify(base)) as BookingData[];
 }
 
 let bookingsFlushTimer: ReturnType<typeof setTimeout> | null = null;
-let bookingsHydrationPromise: Promise<void> | null = null;
 
+/** 앱 액터용 GET 예약: 동시 호출을 한 번의 네트워크 요청으로 합칩니다. */
+let sharedAppBookingsRefresh: Promise<boolean> | null = null;
+
+function getSharedAppBookingsRefresh(): Promise<boolean> {
+  if (!sharedAppBookingsRefresh) {
+    sharedAppBookingsRefresh = refreshBookingsFromServer().finally(() => {
+      sharedAppBookingsRefresh = null;
+    });
+  }
+  return sharedAppBookingsRefresh;
+}
+
+/**
+ * 로그아웃·계정 전환 시 예약 메모리·진행 중 동기화 타이머를 비웁니다.
+ * (다른 사용자 예약이 잠깐 보이는 것을 방지)
+ */
+export function clearBookingsClientCache(): void {
+  bookingsCache = null;
+  sharedAppBookingsRefresh = null;
+  if (bookingsFlushTimer) {
+    clearTimeout(bookingsFlushTimer);
+    bookingsFlushTimer = null;
+  }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('bookingsUpdated'));
+  }
+}
+
+/**
+ * 호스트/게스트 화면 진입 전에 호출: 서버에서 내 예약 목록을 메모리에 채웁니다.
+ * `bootstrapBookingsFromServer`·`getAllBookings`와 동일한 in-flight 를 공유합니다.
+ */
+export async function ensureBookingsLoadedForApp(): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
+  if (!getCurrentUserId()) return false;
+  return getSharedAppBookingsRefresh();
+}
+
+/** 메모리에 서버 스냅샷을 반영하고, 폴백 readwrite 일 때만 LS에 미러링합니다. */
 export function writeBookingsArray(all: BookingData[]): void {
   bookingsCache = all;
   if (
@@ -156,17 +203,18 @@ export function writeBookingsArray(all: BookingData[]): void {
   }
   if (typeof window === 'undefined') return;
   if (bookingsFlushTimer) clearTimeout(bookingsFlushTimer);
+  // debounce: 연속 수정 시 PUT 횟수를 줄임 (off 에서도 서버가 유일 원장이므로 PUT 는 유지)
   bookingsFlushTimer = setTimeout(() => {
     bookingsFlushTimer = null;
     const snapshot = bookingsCache;
     if (!snapshot) return;
     void fetchWithRetry(
       '/api/app/bookings',
-      {
+      withAppActor({
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bookings: snapshot }),
-      },
+      }),
       { retries: 2, baseDelayMs: 300 }
     ).catch((e) => {
       console.warn('[bookings] PUT sync failed', e);
@@ -179,7 +227,8 @@ export function writeBookingsArray(all: BookingData[]): void {
   }, 500);
 }
 
-async function syncBookingsNow(snapshot: BookingData[]): Promise<void> {
+/** 즉시 PUT: 결제·확정·취소 등 사용자 액션 직후 서버 원장과 맞출 때 사용 (debounce 없음) */
+export async function syncBookingsNow(snapshot: BookingData[]): Promise<void> {
   if (typeof window === 'undefined') return;
   try {
     await fetchWithRetry(
@@ -247,6 +296,7 @@ async function patchPaymentMetaByBooking(
   }
 }
 
+/** 앱 액터 기준으로 DB 예약만 페이지네이션 조회해 `bookingsCache`에 반영합니다. */
 export async function refreshBookingsFromServer(): Promise<boolean> {
   if (typeof window === 'undefined') return false;
   if (!getCurrentUserId()) return false;
@@ -349,29 +399,61 @@ export async function getAllBookingsForAdmin(): Promise<BookingData[]> {
   }
 }
 
+/** 관리자 세션으로 전체 예약을 메모리에 반영합니다. readwrite 일 때만 동일 스냅샷을 LS에 미러합니다. */
+export async function refreshBookingsCacheForAdmin(): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
+  try {
+    const rows = await getAllBookingsForAdmin();
+    bookingsCache = rows;
+    if (typeof localStorage !== 'undefined' && canWriteLocalFallback()) {
+      localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(rows));
+    }
+    window.dispatchEvent(new CustomEvent('bookingsUpdated'));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+let bookingsAdminLoadInFlight: Promise<boolean> | null = null;
+
+/** 관리자 화면용: 전체 예약 캐시를 서버에서 채웁니다. 동시 호출은 한 번의 로드로 합칩니다. */
+export async function ensureBookingsCacheForAdmin(): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
+  if (bookingsAdminLoadInFlight) return bookingsAdminLoadInFlight;
+  bookingsAdminLoadInFlight = refreshBookingsCacheForAdmin().finally(() => {
+    bookingsAdminLoadInFlight = null;
+  });
+  return bookingsAdminLoadInFlight;
+}
+
+/** 앱 로그인 직후: 폴백 off 면 LS 없이 서버만, readwrite 면 1회 import 후 서버와 맞춤 */
 export async function bootstrapBookingsFromServer(): Promise<void> {
-  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
+  if (typeof window === 'undefined') return;
   if (!getCurrentUserId()) return;
   if (!canReadLocalFallback()) {
-    await refreshBookingsFromServer();
+    await getSharedAppBookingsRefresh();
     return;
   }
 
   if (isLedgerBootstrapDone(BOOKINGS_BOOTSTRAP_KEY, BOOKINGS_BOOTSTRAP_SESSION_KEY)) {
-    await refreshBookingsFromServer();
+    await getSharedAppBookingsRefresh();
     return;
   }
 
   let legacy: BookingData[] = [];
   try {
-    const raw = localStorage.getItem(BOOKINGS_STORAGE_KEY);
+    const raw =
+      typeof localStorage !== 'undefined'
+        ? localStorage.getItem(BOOKINGS_STORAGE_KEY)
+        : null;
     const parsed  = raw ? JSON.parse(raw) : [];
     legacy = Array.isArray(parsed) ? parsed : [];
   } catch {
     legacy = [];
   }
 
-  const ok = await refreshBookingsFromServer();
+  const ok = await getSharedAppBookingsRefresh();
   if (!ok) return;
 
   if ((bookingsCache?.length ?? 0) > 0) {
@@ -396,7 +478,7 @@ export async function bootstrapBookingsFromServer(): Promise<void> {
     );
     if (res.ok) {
       markLedgerBootstrapDone(BOOKINGS_BOOTSTRAP_KEY, BOOKINGS_BOOTSTRAP_SESSION_KEY);
-      await refreshBookingsFromServer();
+      await getSharedAppBookingsRefresh();
     }
   } catch (e) {
     /* 재시도는 다음 로드 */
@@ -417,16 +499,15 @@ function generateId(): string {
 }
 
 /**
- * 모든 예약 가져오기
+ * 모든 예약 가져오기 (로그인 시 서버 GET → 메모리, 이후 동기 `readBookingsArray`와 동일 스냅샷)
  */
 export async function getAllBookings(): Promise<BookingData[]> {
-  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return [];
+  if (typeof window === 'undefined') return [];
 
   try {
-    if (!bookingsHydrationPromise) {
-      bookingsHydrationPromise = refreshBookingsFromServer().then(() => undefined);
+    if (getCurrentUserId()) {
+      await getSharedAppBookingsRefresh();
     }
-    await bookingsHydrationPromise;
 
     const bookings = readBookingsArray();
     let changed = false;
@@ -583,7 +664,7 @@ export async function createBooking(
   },
   guestId: string
 ): Promise<BookingData> {
-  if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+  if (typeof window === 'undefined') {
     throw new Error('Not supported in SSR');
   }
   // 1. 중복 예약 체크 (Strict Overlap Check)
@@ -663,25 +744,6 @@ export async function createBooking(
   });
   
   newBooking.chatRoomId = chatRoom.id;
-  
-  // 3. Reservations API와 동기화 (Rule 1: 가용 기간 계산에 반영되도록)
-  try {
-    const { createReservation } = await import('./reservations');
-    await createReservation({
-      propertyId: newBooking.propertyId,
-      tenantId: guestId,
-      ownerId: newBooking.ownerId,
-      status: 'pending',
-      checkInDate: newBooking.checkInDate,
-      checkOutDate: newBooking.checkOutDate,
-      tenantName: newBooking.guestName,
-      tenantEmail: newBooking.guestEmail,
-      tenantPhone: newBooking.guestPhone,
-      notes: newBooking.guestMessage
-    });
-  } catch (error) {
-    console.error('Reservation sync failed:', error);
-  }
 
   bookings.push(newBooking);
   writeBookingsArray(bookings);
@@ -698,7 +760,7 @@ export async function completePayment(
   bookingId: string,
   paymentMethod: BookingData['paymentMethod']
 ): Promise<BookingData | null> {
-  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return null;
+  if (typeof window === 'undefined') return null;
   const bookings = await getAllBookings();
   const index = bookings.findIndex(b => b.id === bookingId);
   
@@ -725,7 +787,7 @@ export async function completePayment(
  * 예약 확정 처리
  */
 export async function confirmBooking(bookingId: string): Promise<BookingData | null> {
-  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return null;
+  if (typeof window === 'undefined') return null;
   const bookings = await getAllBookings();
   const index = bookings.findIndex(b => b.id === bookingId);
   
@@ -747,18 +809,6 @@ export async function confirmBooking(bookingId: string): Promise<BookingData | n
     updatedAt: new Date().toISOString(),
   };
 
-  // Reservations API와 동기화
-  try {
-    const { getAllReservations, updateReservationStatus } = await import('./reservations');
-    const allRes = await getAllReservations();
-    const res = allRes.find(r => r.propertyId === booking.propertyId && r.tenantId === booking.guestId && r.checkInDate === booking.checkInDate);
-    if (res && res.id) {
-      await updateReservationStatus(res.id, 'confirmed');
-    }
-  } catch (error) {
-    console.error('Reservation confirm sync failed:', error);
-  }
-
   writeBookingsArray(bookings);
   await syncBookingsNow(bookings);
   return bookings[index];
@@ -771,7 +821,7 @@ export async function cancelBooking(
   bookingId: string,
   reason?: string
 ): Promise<{ booking: BookingData | null; relistResult?: any }> {
-  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return { booking: null };
+  if (typeof window === 'undefined') return { booking: null };
   const bookings = await getAllBookings();
   const index = bookings.findIndex(b => b.id === bookingId);
   
@@ -785,18 +835,6 @@ export async function cancelBooking(
     cancelReason: reason,
     updatedAt: new Date().toISOString(),
   };
-
-  // Reservations API와 동기화 (Rule: 매물 복구 로직이 정확한 가용 기간을 계산할 수 있도록 먼저 수행)
-  try {
-    const { getAllReservations, updateReservationStatus } = await import('./reservations');
-    const allRes = await getAllReservations();
-    const res = allRes.find(r => r.propertyId === booking.propertyId && r.tenantId === booking.guestId && r.checkInDate === booking.checkInDate);
-    if (res && res.id) {
-      await updateReservationStatus(res.id, 'cancelled');
-    }
-  } catch (error) {
-    console.error('Reservation cancel sync failed:', error);
-  }
 
   // 매물 상태 자동 복구 로직 실행 (Rule 1, 2, 3, 5)
   let relistResult;
@@ -846,7 +884,7 @@ export async function deleteBooking(bookingId: string): Promise<void> {
 
     try {
       const { purgeSettlementStateForDeletedBooking } = await import('./adminFinance');
-      purgeSettlementStateForDeletedBooking(bookingId);
+      await purgeSettlementStateForDeletedBooking(bookingId);
     } catch (e) {
       console.error('정산 큐/승인 정리 실패:', e);
     }
@@ -860,7 +898,7 @@ export async function deleteBooking(bookingId: string): Promise<void> {
  * 취소되었고 결제는 완료됐으나 관리자 환불 승인 전인 건에 대해 환불 처리(상태 반영).
  */
 export async function approveRefundBooking(bookingId: string, adminId: string): Promise<boolean> {
-  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return false;
+  if (typeof window === 'undefined') return false;
   const bookings = await getAllBookings();
   const index = bookings.findIndex((b) => b.id === bookingId);
   if (index === -1) return false;
@@ -884,7 +922,7 @@ export async function approveRefundBooking(bookingId: string, adminId: string): 
   });
 
   const { appendRefundLedgerEntry } = await import('@/lib/api/adminFinance');
-  appendRefundLedgerEntry({
+  await appendRefundLedgerEntry({
     ownerId: b.ownerId,
     amount: b.totalPrice,
     bookingId: b.id!,
@@ -900,7 +938,7 @@ export async function setChatRoomId(
   bookingId: string,
   chatRoomId: string
 ): Promise<BookingData | null> {
-  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return null;
+  if (typeof window === 'undefined') return null;
   const bookings = await getAllBookings();
   const index = bookings.findIndex(b => b.id === bookingId);
   

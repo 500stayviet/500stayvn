@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import {
+  Archive,
   Bug,
   ClipboardList,
   FileSignature,
@@ -42,6 +43,13 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     label: '매물',
     icon: Home,
     description: '숨김·복구',
+    permissionId: 'properties',
+  },
+  {
+    href: '/admin/property-logs',
+    label: '매물 이력',
+    icon: Archive,
+    description: '삭제·취소 서버 로그',
     permissionId: 'properties',
   },
   {

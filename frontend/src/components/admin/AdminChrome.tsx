@@ -11,7 +11,6 @@ import {
   ADMIN_BADGES_REFRESH_EVENT,
   badgeCountForNav,
   fetchAdminBadgeCounts,
-  fetchAdminBadgeCountsFromServer,
   type AdminBadgeCounts,
 } from '@/lib/adminBadgeCounts';
 import { logoutAdmin } from '@/lib/api/adminAuth';
@@ -109,18 +108,9 @@ export default function AdminChrome({ children }: { children: React.ReactNode })
       if (inFlight) return;
       inFlight = true;
       void (async () => {
-        const local = await fetchAdminBadgeCounts({ includeExpensiveClientCounts: false });
-        const server = await fetchAdminBadgeCountsFromServer();
-        const merged: AdminBadgeCounts = {
-          ...local,
-          ...(server || {}),
-        };
-        // 서버 집계가 일시적으로 실패하면, 필요한 경우에만 비용 큰 클라이언트 계산을 보완한다.
-        if (!server) {
-          const fallback = await fetchAdminBadgeCounts({ includeExpensiveClientCounts: true });
-          Object.assign(merged, fallback);
-        }
-        if (!cancelled) setBadges(merged);
+        const next = await fetchAdminBadgeCounts();
+        if (cancelled) return;
+        setBadges((prev) => (next ? next : prev));
       })().finally(() => {
         inFlight = false;
       });

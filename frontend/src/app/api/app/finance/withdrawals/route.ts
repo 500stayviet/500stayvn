@@ -102,6 +102,10 @@ export async function POST(request: NextRequest) {
         requestId
       );
     });
+    await prisma.adminWithdrawalRequest.update({
+      where: { id: requestId },
+      data: { updatedAt: new Date() },
+    });
     return NextResponse.json({ ok: true, id: requestId }, { status: 201 });
   } catch (error) {
     console.error('POST /api/app/finance/withdrawals', error);

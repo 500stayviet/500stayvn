@@ -4,7 +4,11 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { getCurrentUserData, getCurrentUserId, refreshUsersFromServer } from "@/lib/api/auth";
+import {
+  ensureUsersLoadedForApp,
+  getCurrentUserData,
+  getCurrentUserId,
+} from "@/lib/api/auth";
 import { addProperty } from "@/lib/api/properties";
 import {
   isOwnerSupplyLengthDays,
@@ -201,7 +205,7 @@ export default function AddPropertyPage() {
       try {
         let userData = await getCurrentUserData(actorUid);
         if (!userData) {
-          await refreshUsersFromServer();
+          await ensureUsersLoadedForApp();
           userData = await getCurrentUserData(actorUid);
         }
 

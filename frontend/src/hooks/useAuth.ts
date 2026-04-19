@@ -9,11 +9,12 @@ import { useState, useEffect } from 'react';
 import { useSession, signOut as nextAuthSignOut } from 'next-auth/react';
 import {
   bootstrapUsersFromServer,
+  ensureUsersLoadedForApp,
   getCurrentUserData,
   getCurrentUserId,
-  refreshUsersFromServer,
   setAppSessionUserId,
   signOut as signOutAuth,
+  syncAppActorUidCookieFromStorage,
 } from '@/lib/api/auth';
 
 // 앱 내부에서 쓰는 최소 user 형태
@@ -84,12 +85,13 @@ export function useAuth() {
         }
       } else if (getCurrentUserId() && !getCurrentUserData()) {
         try {
-          await refreshUsersFromServer();
+          await ensureUsersLoadedForApp();
         } catch {
           /* ignore */
         }
       }
       applyLocal();
+      syncAppActorUidCookieFromStorage();
       setLoading(false);
     };
 
@@ -97,6 +99,7 @@ export function useAuth() {
 
     const loadUser = () => {
       applyLocal();
+      syncAppActorUidCookieFromStorage();
     };
 
     const handleStorageChange = (e: StorageEvent) => {

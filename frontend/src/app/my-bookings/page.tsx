@@ -106,6 +106,22 @@ function BookingListContent() {
           ? "closed"
           : "active";
   const [filter, setFilter] = useState<"active" | "closed">(initialFilter);
+  /** 다른 탭·기기에서 상태가 바뀐 뒤 돌아올 때 목록 갱신 (게스트는 Admin SSE 없음) */
+  const [bookingsReloadTick, setBookingsReloadTick] = useState(0);
+
+  useEffect(() => {
+    const bump = () => {
+      if (document.visibilityState === "visible") {
+        setBookingsReloadTick((t) => t + 1);
+      }
+    };
+    document.addEventListener("visibilitychange", bump);
+    window.addEventListener("focus", bump);
+    return () => {
+      document.removeEventListener("visibilitychange", bump);
+      window.removeEventListener("focus", bump);
+    };
+  }, []);
 
   useEffect(() => {
     const newTab = searchParams.get("tab");
@@ -149,7 +165,7 @@ function BookingListContent() {
       }
     };
     if (user) loadBookings();
-  }, [user]);
+  }, [user, bookingsReloadTick]);
 
   useEffect(() => {
     if (!user || bookings.length === 0) return;

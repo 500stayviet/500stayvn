@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAdminFromRequest } from '@/lib/server/adminAuthServer';
+import { observeRouteResponse } from '@/lib/server/apiMonitoring';
 
 type ActionType = 'approve' | 'reject' | 'hold' | 'resume' | 'complete';
 
@@ -35,8 +36,11 @@ function ledgerAmountForAction(action: ActionType, amount: number): number {
 }
 
 export async function GET(request: NextRequest) {
+  const startedAt = Date.now();
+  const route = 'GET /api/admin/finance/withdrawals';
   const me = await getAdminFromRequest(request);
-  if (!me) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  if (!me)
+    return observeRouteResponse(NextResponse.json({ error: 'unauthorized' }, { status: 401 }), route, startedAt);
   try {
     const rows = await prisma.$queryRawUnsafe<
       Array<{
@@ -60,33 +64,53 @@ export async function GET(request: NextRequest) {
       ORDER BY "requestedAt" DESC
       `
     );
-    return NextResponse.json({
-      withdrawals: rows.map((r) => ({
-        ...r,
-        status: r.status === 'approved' ? 'processing' : r.status,
-        requestedAt: new Date(r.requestedAt).toISOString(),
-        reviewedAt: r.reviewedAt ? new Date(r.reviewedAt).toISOString() : undefined,
-      })),
-    });
+    return observeRouteResponse(
+      NextResponse.json({
+        withdrawals: rows.map((r) => ({
+          ...r,
+          status: r.status === 'approved' ? 'processing' : r.status,
+          requestedAt: new Date(r.requestedAt).toISOString(),
+          reviewedAt: r.reviewedAt ? new Date(r.reviewedAt).toISOString() : undefined,
+        })),
+      }),
+      route,
+      startedAt
+    );
   } catch (error) {
     console.error('GET /api/admin/finance/withdrawals', error);
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
+    return observeRouteResponse(
+      NextResponse.json({ error: 'database_unavailable' }, { status: 503 }),
+      route,
+      startedAt
+    );
   }
 }
 
 export async function PATCH(request: NextRequest) {
+  const startedAt = Date.now();
+  const route = 'PATCH /api/admin/finance/withdrawals';
   const me = await getAdminFromRequest(request);
-  if (!me) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  if (!me)
+    return observeRouteResponse(NextResponse.json({ error: 'unauthorized' }, { status: 401 }), route, startedAt);
   let body: { id?: string; action?: ActionType; reason?: string };
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: 'invalid_body' }, { status: 400 });
+    return observeRouteResponse(
+      NextResponse.json({ error: 'invalid_body' }, { status: 400 }),
+      route,
+      startedAt
+    );
   }
   const id = String(body.id || '').trim();
   const action = body.action;
   const reason = String(body.reason || '').trim() || null;
-  if (!id || !action) return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
+  if (!id || !action)
+    return observeRouteResponse(
+      NextResponse.json({ error: 'invalid_input' }, { status: 400 }),
+      route,
+      startedAt
+    );
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -127,15 +151,28 @@ export async function PATCH(request: NextRequest) {
         me.username
       );
     });
-    return NextResponse.json({ ok: true });
+    /** Raw SQL은 Prisma 확장 미들웨어를 타지 않음 → `adminWithdrawalRequest` 도메인 이벤트·배지를 위해 한 번 Prisma 쓰기 */
+    await prisma.adminWithdrawalRequest.update({
+      where: { id },
+      data: { updatedAt: new Date() },
+    });
+    return observeRouteResponse(NextResponse.json({ ok: true }), route, startedAt);
   } catch (error) {
     if (error instanceof Error && error.message === 'not_found') {
-      return NextResponse.json({ error: 'not_found' }, { status: 404 });
+      return observeRouteResponse(NextResponse.json({ error: 'not_found' }, { status: 404 }), route, startedAt);
     }
     if (error instanceof Error && error.message === 'invalid_transition') {
-      return NextResponse.json({ error: 'invalid_transition' }, { status: 409 });
+      return observeRouteResponse(
+        NextResponse.json({ error: 'invalid_transition' }, { status: 409 }),
+        route,
+        startedAt
+      );
     }
     console.error('PATCH /api/admin/finance/withdrawals', error);
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
+    return observeRouteResponse(
+      NextResponse.json({ error: 'database_unavailable' }, { status: 503 }),
+      route,
+      startedAt
+    );
   }
 }

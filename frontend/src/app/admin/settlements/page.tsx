@@ -13,10 +13,8 @@ import {
 } from '@/lib/adminAckState';
 import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
 import { useAdminMe } from '@/contexts/AdminMeContext';
-import {
-  SettlementCandidate,
-} from '@/lib/api/adminFinance';
-import { getSettlementCandidatesServer, patchSettlementServer } from '@/lib/api/settlementServer';
+import { getSettlementCandidates, SettlementCandidate } from '@/lib/api/adminFinance';
+import { patchSettlementServer } from '@/lib/api/settlementServer';
 import { filterSettlementsBySearch, useOwnerEmailMap } from '@/lib/adminSearchHelpers';
 import { logAdminSystemEvent } from '@/lib/adminSystemLog';
 import { useAdminDomainRefresh } from '@/lib/adminDomainEventsClient';
@@ -74,7 +72,7 @@ export default function AdminSettlementsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const rows = await getSettlementCandidatesServer();
+      const rows = await getSettlementCandidates();
       setItems(rows);
       setUnseenRequest(await getUnseenSettlementRequestCount());
       setUnseenPending(await getUnseenSettlementPendingCount());
@@ -108,7 +106,8 @@ export default function AdminSettlementsPage() {
     }
   }, [searchParams]);
 
-  useAdminDomainRefresh(['booking', 'payment'], () => {
+  /** 원장·환불·원천징수 등이 `AdminFinanceLedger` 로만 들어와도 목록을 다시 읽음 */
+  useAdminDomainRefresh(['booking', 'payment', 'adminFinanceLedger'], () => {
     void load();
   });
 

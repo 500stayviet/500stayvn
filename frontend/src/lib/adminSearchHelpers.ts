@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getUsers } from '@/lib/api/auth';
 import type { BookingData } from '@/lib/api/bookings';
-import type { SettlementCandidate, WithdrawalRequest } from '@/lib/api/adminFinance';
+import type { SettlementCandidate } from '@/lib/api/adminFinance';
+import type { ServerWithdrawalRequest } from '@/lib/api/financeServer';
 
 /** ownerId → 이메일 (관리자 검색용) */
 export function getOwnerEmailMap(): Map<string, string> {
@@ -58,10 +59,10 @@ export function filterSettlementsBySearch(
 }
 
 export function filterWithdrawalsBySearch(
-  list: WithdrawalRequest[],
+  list: ServerWithdrawalRequest[],
   query: string,
   emailMap: Map<string, string>
-): WithdrawalRequest[] {
+): ServerWithdrawalRequest[] {
   const k = query.trim().toLowerCase();
   if (!k) return list;
   return list.filter((r) => {

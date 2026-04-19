@@ -4,8 +4,9 @@ import { useEffect, useMemo, useState } from 'react';
 import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
 import { AUDIT_TABS, buildUnifiedAuditRows, type AuditTabId } from '@/lib/adminAuditView';
 import type { LedgerEntry } from '@/lib/api/adminFinance';
-import { getModerationAudits } from '@/lib/api/adminModeration';
-import { acknowledgeCurrentRecentAudit, getUnseenRecentAuditCount } from '@/lib/adminAckState';
+import type { ModerationAuditEntry } from '@/lib/api/adminModeration';
+import { ensureModerationAuditsLoaded, getModerationAudits } from '@/lib/api/adminModeration';
+import { acknowledgeCurrentRecentAudit, getUnseenRecentAuditCountAsync } from '@/lib/adminAckState';
 import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
 import { useAdminDomainRefresh } from '@/lib/adminDomainEventsClient';
 import { getAdminFinanceLedgerEntries } from '@/lib/api/financeServer';
@@ -13,15 +14,24 @@ import { getAdminFinanceLedgerEntries } from '@/lib/api/financeServer';
 export default function AdminAuditPage() {
   const [tab, setTab] = useState<AuditTabId>('all');
   const [tick, setTick] = useState(0);
+  const [moderationRows, setModerationRows] = useState<ModerationAuditEntry[]>([]);
   const [ledgerRows, setLedgerRows] = useState<LedgerEntry[]>([]);
   const [nameByUsername, setNameByUsername] = useState<Record<string, string>>({});
   const [unseenNew, setUnseenNew] = useState(0);
 
-  const rows = useMemo(() => {
-    void tick;
-    const moderation = getModerationAudits();
-    return buildUnifiedAuditRows(ledgerRows, moderation);
-  }, [tick, ledgerRows]);
+  const rows = useMemo(() => buildUnifiedAuditRows(ledgerRows, moderationRows), [ledgerRows, moderationRows]);
+
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      await ensureModerationAuditsLoaded();
+      if (!alive) return;
+      setModerationRows(getModerationAudits());
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [tick]);
 
   useEffect(() => {
     let alive = true;
@@ -56,13 +66,19 @@ export default function AdminAuditPage() {
 
   useEffect(() => {
     if (tab !== 'new') return;
-    acknowledgeCurrentRecentAudit();
-    refreshAdminBadges();
+    void acknowledgeCurrentRecentAudit().then(() => refreshAdminBadges());
     setUnseenNew(0);
   }, [tab]);
 
   useEffect(() => {
-    setUnseenNew(getUnseenRecentAuditCount());
+    let alive = true;
+    void (async () => {
+      const n = await getUnseenRecentAuditCountAsync();
+      if (alive) setUnseenNew(n);
+    })();
+    return () => {
+      alive = false;
+    };
   }, [tick]);
 
   useAdminDomainRefresh(

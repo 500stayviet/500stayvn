@@ -1,99 +1,89 @@
 /**
- * Reservations API Service (LocalStorage 버전)
+ * Reservations — Booking 원장에서 파생되는 뷰
  *
- * 브라우저 LocalStorage에 예약 데이터를 저장하고 관리하는 서비스
+ * 단일 원장: 서버 DB + `bookings.ts` 메모리 캐시.
+ * `NEXT_PUBLIC_LOCAL_FALLBACK_MODE=off` 에서도 `reservations` LS 키는 사용하지 않습니다.
+ * 호스트 예약 목록·가용 기간 등은 `getAllBookings` 하이드레이션 이후 `readBookingsArray`와 동일 데이터를 봅니다.
  */
 
-import { canReadLocalFallback, canWriteLocalFallback } from '@/lib/runtime/localFallbackPolicy';
+import { toISODateString } from '@/lib/utils/dateUtils';
+import type { BookingData } from './bookings';
+import {
+  readBookingsArray,
+  getAllBookings,
+  writeBookingsArray,
+  deleteBooking,
+  syncBookingsNow,
+} from './bookings';
 
 /**
- * 예약 데이터 구조
+ * 예약 데이터 구조 (호스트 대시보드 등)
  */
 export interface ReservationData {
-  id?: string; // 예약 ID
-  propertyId: string; // 매물 ID
-  tenantId: string; // 임차인 사용자 ID
-  ownerId: string; // 임대인 사용자 ID
-  status: 'pending' | 'confirmed' | 'completed' | 'cancelled'; // 예약 상태
-  checkInDate: string | Date; // 체크인 날짜 (ISO 문자열 또는 Date 객체)
-  checkOutDate: string | Date; // 체크아웃 날짜 (ISO 문자열 또는 Date 객체)
-  createdAt?: string; // 예약 생성일 (ISO 문자열)
-  confirmedAt?: string; // 예약 확정일 (ISO 문자열)
-  completedAt?: string; // 예약 완료일 (ISO 문자열)
-  cancelledAt?: string; // 예약 취소일 (ISO 문자열)
-  tenantName?: string; // 임차인 이름
-  tenantEmail?: string; // 임차인 이메일
-  tenantPhone?: string; // 임차인 전화번호
-  notes?: string; // 메모
+  id?: string;
+  propertyId: string;
+  tenantId: string;
+  ownerId: string;
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  checkInDate: string | Date;
+  checkOutDate: string | Date;
+  createdAt?: string;
+  confirmedAt?: string;
+  completedAt?: string;
+  cancelledAt?: string;
+  tenantName?: string;
+  tenantEmail?: string;
+  tenantPhone?: string;
+  notes?: string;
+}
+
+/** DB 예약 한 건을 호스트 UI용 Reservation 형태로만 변환 (원장 복제 아님) */
+export function bookingToReservation(b: BookingData): ReservationData {
+  return {
+    id: b.id,
+    propertyId: b.propertyId,
+    tenantId: b.guestId,
+    ownerId: b.ownerId,
+    status: b.status,
+    checkInDate: toISODateString(b.checkInDate) || String(b.checkInDate),
+    checkOutDate: toISODateString(b.checkOutDate) || String(b.checkOutDate),
+    createdAt: b.createdAt,
+    confirmedAt: b.confirmedAt,
+    completedAt: b.completedAt,
+    cancelledAt: b.cancelledAt,
+    tenantName: b.guestName,
+    tenantEmail: b.guestEmail,
+    tenantPhone: b.guestPhone,
+    notes: b.guestMessage,
+  };
 }
 
 /**
- * LocalStorage 키
- */
-const STORAGE_KEY = 'reservations';
-
-let reservationsCache: ReservationData[] | null = null;
-
-function loadReservationsCacheFromLocal(): ReservationData[] {
-  if (
-    typeof window === 'undefined' ||
-    typeof localStorage === 'undefined' ||
-    !canReadLocalFallback()
-  ) {
-    return [];
-  }
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    const arr = stored ? (JSON.parse(stored) as ReservationData[]) : [];
-    return Array.isArray(arr) ? arr : [];
-  } catch {
-    return [];
-  }
-}
-
-/**
- * bookings.readBookingsArray 와 같이 동기로 스냅샷 복사 (같은 탭 내 캐시·정책 일치)
+ * 동기 스냅샷: `readBookingsArray`와 동일 시점의 메모리(또는 readwrite 시 LS 시드)를 매핑합니다.
+ * off 모드에서는 반드시 선행 `getAllBookings` / `ensureBookingsLoadedForApp` 후 호출하는 것이 안전합니다.
  */
 export function readReservationsArray(): ReservationData[] {
-  if (reservationsCache === null) {
-    reservationsCache = loadReservationsCacheFromLocal();
-  }
-  return JSON.parse(JSON.stringify(reservationsCache)) as ReservationData[];
+  if (typeof window === 'undefined') return [];
+  return readBookingsArray().map(bookingToReservation);
 }
 
 /**
- * 로컬 원장 스냅샷 저장: 메모리 캐시는 항상 갱신, localStorage 는 readwrite 에서만 기록
+ * 레거시 호환: 원장은 bookings만 갱신합니다. UI 이벤트만 발생시킵니다.
  */
-export function saveReservationsSnapshot(all: ReservationData[]): void {
-  reservationsCache = all;
-  if (
-    typeof window !== 'undefined' &&
-    typeof localStorage !== 'undefined' &&
-    canWriteLocalFallback()
-  ) {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
-    } catch {
-      /* ignore */
-    }
-  }
+export function saveReservationsSnapshot(_all?: ReservationData[]): void {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('reservationsUpdated'));
   }
 }
 
 /**
- * 모든 예약 조회
+ * 모든 예약 조회 (비동기: 서버 하이드레이션 포함)
  */
 export async function getAllReservations(): Promise<ReservationData[]> {
+  if (typeof window === 'undefined') return [];
   try {
-    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
-      return [];
-    }
-    if (reservationsCache === null) {
-      reservationsCache = loadReservationsCacheFromLocal();
-    }
-    return JSON.parse(JSON.stringify(reservationsCache)) as ReservationData[];
+    const bookings = await getAllBookings();
+    return bookings.map(bookingToReservation);
   } catch (error) {
     console.error('Error getting reservations:', error);
     return [];
@@ -102,9 +92,6 @@ export async function getAllReservations(): Promise<ReservationData[]> {
 
 /**
  * 임대인의 예약 목록 조회
- * 
- * @param ownerId - 임대인 사용자 ID
- * @param filterType - 필터 타입: 'active' (pending/confirmed), 'completed' (completed/cancelled), 'all' (모두)
  */
 export async function getReservationsByOwner(
   ownerId: string,
@@ -112,23 +99,19 @@ export async function getReservationsByOwner(
 ): Promise<ReservationData[]> {
   try {
     const allReservations = await getAllReservations();
-    
+
     let filtered = allReservations.filter((r) => r.ownerId === ownerId);
-    
+
     if (filterType === 'active') {
-      // 예약된 매물: pending, confirmed 상태만
-      filtered = filtered.filter((r) => 
-        r.status === 'pending' || r.status === 'confirmed'
+      filtered = filtered.filter(
+        (r) => r.status === 'pending' || r.status === 'confirmed'
       );
     } else if (filterType === 'completed') {
-      // 예약완료/취소된 매물: completed, cancelled 상태만
-      filtered = filtered.filter((r) => r.status === 'completed' || r.status === 'cancelled');
-    } else if (filterType === 'all') {
-      // 모든 상태 포함 (취소된 것 제외하고 싶다면 여기서 추가 필터링 가능)
-      // Gaps Logic에서는 pending, confirmed가 필요하므로 보통 'all'을 부르고 나중에 필터링함
+      filtered = filtered.filter(
+        (r) => r.status === 'completed' || r.status === 'cancelled'
+      );
     }
-    
-    // 최신순 정렬
+
     return filtered.sort((a, b) => {
       const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
       const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
@@ -141,104 +124,74 @@ export async function getReservationsByOwner(
 }
 
 /**
- * 예약 생성
+ * @deprecated 예약 생성은 `createBooking`만 사용하세요.
  */
 export async function createReservation(
-  reservation: Omit<ReservationData, 'id' | 'createdAt'>
+  _reservation: Omit<ReservationData, 'id' | 'createdAt'>
 ): Promise<ReservationData> {
-  try {
-    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
-      throw new Error('localStorage is not available');
-    }
-    
-    const allReservations = await getAllReservations();
-    
-    const { toISODateString } = await import('./bookings');
-    const newReservation: ReservationData = {
-      ...reservation,
-      id: `reservation-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      checkInDate: toISODateString(reservation.checkInDate),
-      checkOutDate: toISODateString(reservation.checkOutDate),
-      createdAt: new Date().toISOString(),
-    };
-    
-    allReservations.push(newReservation);
-    saveReservationsSnapshot(allReservations);
-
-    return newReservation;
-  } catch (error) {
-    console.error('Error creating reservation:', error);
-    throw error;
-  }
+  throw new Error(
+    'createReservation is deprecated; use createBooking from @/lib/api/bookings'
+  );
 }
 
 /**
- * 예약 상태 업데이트
+ * 예약 상태 업데이트 (`reservationId` === booking.id).
+ * 내부에서 `writeBookingsArray` + `syncBookingsNow` 로 서버 DB와 동일 경로로 반영합니다.
  */
 export async function updateReservationStatus(
   reservationId: string,
   status: ReservationData['status']
 ): Promise<ReservationData | null> {
-  try {
-    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
-      throw new Error('localStorage is not available');
-    }
-    
-    const allReservations = await getAllReservations();
-    const index = allReservations.findIndex((r) => r.id === reservationId);
-    
-    if (index === -1) {
-      return null;
-    }
-    
-    const updatedReservation: ReservationData = {
-      ...allReservations[index],
-      status,
-    };
-    
-    // 상태에 따른 날짜 설정
-    const now = new Date().toISOString();
-    if (status === 'confirmed' && !updatedReservation.confirmedAt) {
-      updatedReservation.confirmedAt = now;
-    } else if (status === 'completed' && !updatedReservation.completedAt) {
-      updatedReservation.completedAt = now;
-    } else if (status === 'cancelled' && !updatedReservation.cancelledAt) {
-      updatedReservation.cancelledAt = now;
-    }
-    
-    allReservations[index] = updatedReservation;
-    saveReservationsSnapshot(allReservations);
+  if (typeof window === 'undefined') return null;
 
-    return updatedReservation;
-  } catch (error) {
-    console.error('Error updating reservation status:', error);
-    throw error;
+  const bookings = await getAllBookings();
+  const index = bookings.findIndex((b) => b.id === reservationId);
+
+  if (index === -1) return null;
+
+  const now = new Date().toISOString();
+  const prev = bookings[index];
+  const next: BookingData = {
+    ...prev,
+    status,
+    updatedAt: now,
+  };
+
+  if (status === 'confirmed' && !next.confirmedAt) {
+    next.confirmedAt = now;
+  } else if (status === 'completed' && !next.completedAt) {
+    next.completedAt = now;
+  } else if (status === 'cancelled' && !next.cancelledAt) {
+    next.cancelledAt = now;
   }
+
+  bookings[index] = next;
+  writeBookingsArray(bookings);
+  await syncBookingsNow(bookings);
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('reservationsUpdated'));
+  }
+
+  return bookingToReservation(next);
 }
 
 /**
- * 예약 삭제 (영구 삭제)
+ * 예약 삭제 (영구 삭제) — booking id와 동일
  */
 export async function deleteReservation(reservationId: string): Promise<void> {
-  try {
-    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
-      throw new Error('localStorage is not available');
-    }
-    
-    const allReservations = await getAllReservations();
-    const filtered = allReservations.filter((r) => r.id !== reservationId);
-
-    saveReservationsSnapshot(filtered);
-  } catch (error) {
-    console.error('Error deleting reservation:', error);
-    throw error;
+  await deleteBooking(reservationId);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('reservationsUpdated'));
   }
 }
 
 /**
  * 예약 조회 (ID로)
  */
-export async function getReservationById(reservationId: string): Promise<ReservationData | null> {
+export async function getReservationById(
+  reservationId: string
+): Promise<ReservationData | null> {
   try {
     const allReservations = await getAllReservations();
     return allReservations.find((r) => r.id === reservationId) || null;

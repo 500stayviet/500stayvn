@@ -57,9 +57,12 @@ export default function AdminWithdrawalsPage() {
     }
   }, [searchParams]);
 
-  useAdminDomainRefresh(['booking', 'payment', 'adminWithdrawalRequest'], () => {
-    void load();
-  });
+  useAdminDomainRefresh(
+    ['booking', 'payment', 'adminWithdrawalRequest', 'adminFinanceLedger', 'admin_bank_account'],
+    () => {
+      void load();
+    }
+  );
 
   const normalizeStatus = (s: ServerWithdrawalRequest['status']) => (s === 'approved' ? 'processing' : s);
 

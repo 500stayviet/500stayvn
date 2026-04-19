@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import {
   appSimpleHash,
@@ -149,7 +150,7 @@ export async function POST(request: NextRequest) {
           blockedReason: null,
           deleted: false,
           deletedAt: null,
-          profileJson: null,
+          profileJson: Prisma.DbNull,
         },
       });
       reportApiSuccess('POST /api/app/users', 200, startedAt);

@@ -1,13 +1,18 @@
 'use client';
 
-import { getUsers, refreshUsersCacheForAdmin, refreshUsersFromServer, saveUsers, UserData } from '@/lib/api/auth';
+import {
+  ensureUsersCacheForAdmin,
+  ensureUsersLoadedForApp,
+  getUsers,
+  saveUsers,
+  UserData,
+} from '@/lib/api/auth';
 import { readPropertiesArray, writePropertiesArray } from '@/lib/api/properties';
 import { isPropertyNew, isUserNew } from '@/lib/adminNewUtils';
 import { PropertyData } from '@/types/property';
-import { canReadLocalFallback, canWriteLocalFallback } from '@/lib/runtime/localFallbackPolicy';
 
-const MODERATION_AUDIT_KEY = 'admin_moderation_audit_v1';
 let moderationAuditCache: ModerationAuditEntry[] | null = null;
+let moderationAuditLoadInFlight: Promise<void> | null = null;
 
 export interface ModerationAuditEntry {
   id: string;
@@ -26,49 +31,55 @@ export interface ModerationAuditEntry {
   createdAt: string;
 }
 
-function genId(prefix: string): string {
-  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+function normalizeModerationAuditRow(raw: unknown): ModerationAuditEntry | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const o = raw as Record<string, unknown>;
+  const id = typeof o.id === 'string' ? o.id : '';
+  const action = o.action as ModerationAuditEntry['action'];
+  const targetType = o.targetType as ModerationAuditEntry['targetType'];
+  const targetId = typeof o.targetId === 'string' ? o.targetId : '';
+  const createdBy = typeof o.createdBy === 'string' ? o.createdBy : '';
+  const createdAt =
+    typeof o.createdAt === 'string'
+      ? o.createdAt
+      : o.createdAt instanceof Date
+        ? o.createdAt.toISOString()
+        : '';
+  if (!id || !action || !targetType || !targetId || !createdBy || !createdAt) return null;
+  return {
+    id,
+    action,
+    targetType,
+    targetId,
+    ownerId: typeof o.ownerId === 'string' ? o.ownerId : undefined,
+    reason: typeof o.reason === 'string' ? o.reason : undefined,
+    createdBy,
+    createdAt,
+  };
 }
 
-function readModerationAudits(): ModerationAuditEntry[] {
-  if (moderationAuditCache) return moderationAuditCache;
-  if (
-    typeof window === 'undefined' ||
-    typeof localStorage === 'undefined' ||
-    !canReadLocalFallback()
-  ) return [];
-  try {
-    const raw = localStorage.getItem(MODERATION_AUDIT_KEY);
-    const rows = raw ? (JSON.parse(raw) as ModerationAuditEntry[]) : [];
-    moderationAuditCache = rows;
-    return rows;
-  } catch {
-    return [];
-  }
-}
-
-function saveModerationAudits(rows: ModerationAuditEntry[]): void {
-  if (
-    typeof window === 'undefined' ||
-    typeof localStorage === 'undefined' ||
-    !canWriteLocalFallback()
-  ) return;
-  moderationAuditCache = rows;
-  localStorage.setItem(MODERATION_AUDIT_KEY, JSON.stringify(rows));
-}
-
-async function refreshModerationAuditsFromServer(): Promise<void> {
+async function fetchModerationAuditsFromServer(): Promise<void> {
   if (typeof window === 'undefined') return;
   try {
     const r = await fetch('/api/admin/moderation-audits', { credentials: 'include', cache: 'no-store' });
     if (!r.ok) return;
-    const j = (await r.json()) as { rows?: ModerationAuditEntry[] };
+    const j = (await r.json()) as { rows?: unknown[] };
     if (!Array.isArray(j.rows)) return;
-    const asc = [...j.rows].reverse();
-    saveModerationAudits(asc);
+    const asc = [...j.rows].reverse().map(normalizeModerationAuditRow).filter((x): x is ModerationAuditEntry => x != null);
+    moderationAuditCache = asc;
   } catch {
     /* ignore */
   }
+}
+
+/** 서버에서 감사 행을 한 번 가져와 메모리 캐시에 넣습니다. 동시 호출은 한 요청으로 합칩니다. */
+export async function ensureModerationAuditsLoaded(): Promise<void> {
+  if (typeof window === 'undefined') return;
+  if (moderationAuditLoadInFlight) return moderationAuditLoadInFlight;
+  moderationAuditLoadInFlight = fetchModerationAuditsFromServer().finally(() => {
+    moderationAuditLoadInFlight = null;
+  });
+  return moderationAuditLoadInFlight;
 }
 
 function appendModerationAudit(
@@ -79,33 +90,29 @@ function appendModerationAudit(
   reason?: string,
   ownerId?: string
 ): void {
-  const rows = readModerationAudits();
-  const entry = {
-    id: genId('mad'),
-    action,
-    targetType,
-    targetId,
-    ownerId,
-    reason,
-    createdBy,
-    createdAt: new Date().toISOString(),
-  };
-  rows.push(entry);
-  saveModerationAudits(rows);
-  void fetch('/api/admin/moderation-audits', {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      action: entry.action,
-      targetType: entry.targetType,
-      targetId: entry.targetId,
-      ownerId: entry.ownerId,
-      reason: entry.reason,
-    }),
-  }).catch(() => {
-    /* ignore */
-  });
+  void (async () => {
+    try {
+      const res = await fetch('/api/admin/moderation-audits', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action,
+          targetType,
+          targetId,
+          ownerId,
+          reason,
+        }),
+      });
+      if (!res.ok) return;
+      const row = normalizeModerationAuditRow(await res.json());
+      if (!row) return;
+      const asc = moderationAuditCache ?? [];
+      moderationAuditCache = [...asc, row];
+    } catch {
+      /* ignore */
+    }
+  })();
 }
 
 function readAllPropertiesRaw(): PropertyData[] {
@@ -118,9 +125,9 @@ function saveAllPropertiesRaw(rows: PropertyData[]): void {
   writePropertiesArray(rows);
 }
 
+/** `ensureModerationAuditsLoaded()` 이후 메모리 캐시 기준, 최신 항목이 앞에 옵니다. */
 export function getModerationAudits(): ModerationAuditEntry[] {
-  void refreshModerationAuditsFromServer();
-  return readModerationAudits().slice().reverse();
+  return (moderationAuditCache ?? []).slice().reverse();
 }
 
 export type AdminUserFilter = 'all' | 'new' | 'active' | 'blocked';
@@ -164,8 +171,8 @@ export async function setUserBlocked(
       }),
     });
     if (res.ok) {
-      const ok = await refreshUsersCacheForAdmin();
-      if (!ok) await refreshUsersFromServer();
+      const ok = await ensureUsersCacheForAdmin();
+      if (!ok) await ensureUsersLoadedForApp();
     } else if (res.status === 503) {
       const users = getUsers().map((u) => ({ ...u }));
       const index = users.findIndex((u) => u.uid === uid);

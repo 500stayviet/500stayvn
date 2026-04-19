@@ -148,10 +148,82 @@ export async function getAdminFinanceLedgerEntries(): Promise<ServerFinanceLedge
   return Array.isArray(json.entries) ? json.entries : [];
 }
 
+/** `since`(ISO) 이후 원장만 — 감사·배지 등 가벼운 조회용 */
+export async function getAdminFinanceLedgerEntriesSince(sinceIso: string): Promise<ServerFinanceLedgerEntry[]> {
+  const q = new URLSearchParams({ since: sinceIso });
+  const res = await fetch(`/api/admin/finance/ledger?${q}`, {
+    credentials: 'include',
+    cache: 'no-store',
+  });
+  if (!res.ok) return [];
+  const json = (await res.json()) as { entries?: ServerFinanceLedgerEntry[] };
+  return Array.isArray(json.entries) ? json.entries : [];
+}
+
+export async function postAdminFinanceLedgerEntry(input: {
+  ownerId: string;
+  amount: number;
+  type: string;
+  refId?: string;
+  note?: string;
+}): Promise<boolean> {
+  const res = await fetch('/api/admin/finance/ledger', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+  return res.ok;
+}
+
+/** 환불 승인 원장 — 서버에서 idempotent(bookingId). */
+export async function postAdminRefundLedgerEntry(input: {
+  bookingId: string;
+  ownerId: string;
+  amount: number;
+}): Promise<boolean> {
+  const res = await fetch('/api/admin/finance/refund-ledger', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      bookingId: input.bookingId,
+      ownerId: input.ownerId,
+      amount: input.amount,
+    }),
+  });
+  return res.ok;
+}
+
 export async function getAppOwnerBalances(): Promise<ServerOwnerBalances> {
   const res = await fetch('/api/app/finance/balance', withAppActor({ cache: 'no-store' }));
   if (!res.ok) return { totalApprovedRevenue: 0, pendingWithdrawal: 0, availableBalance: 0 };
   return (await res.json()) as ServerOwnerBalances;
+}
+
+export type AppSettlementOverlayRow = {
+  bookingId: string;
+  approvalStatus: string | null;
+  inPendingQueue: boolean;
+};
+
+export async function getAppSettlementOverlay(): Promise<AppSettlementOverlayRow[]> {
+  const res = await fetch('/api/app/finance/settlement-overlay', withAppActor({ cache: 'no-store' }));
+  if (!res.ok) return [];
+  const json = (await res.json()) as { overlays?: AppSettlementOverlayRow[] };
+  return Array.isArray(json.overlays) ? json.overlays : [];
+}
+
+export async function purgeAppSettlementForBooking(bookingId: string): Promise<boolean> {
+  const res = await fetch(
+    '/api/app/finance/settlement-purge',
+    withAppActor({
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bookingId }),
+    })
+  );
+  return res.ok;
 }
 
 export async function getAdminOwnerBalances(ownerId: string): Promise<ServerOwnerBalances> {

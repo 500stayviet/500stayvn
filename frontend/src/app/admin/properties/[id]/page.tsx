@@ -8,6 +8,7 @@ import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
 import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
 import { acknowledgeNewProperty } from '@/lib/adminAckState';
 import { isPropertyNew } from '@/lib/adminNewUtils';
+import { useAdminDomainRefresh } from '@/lib/adminDomainEventsClient';
 import { useAdminMe } from '@/contexts/AdminMeContext';
 import { getUsers } from '@/lib/api/auth';
 import { addSharedMemo, deleteSharedMemo, getSharedMemos } from '@/lib/api/adminMemos';
@@ -58,31 +59,34 @@ export default function AdminPropertyDetailPage() {
   const [memoInput, setMemoInput] = useState('');
   const [memos, setMemos] = useState<Array<{ id: string; text: string; createdAt: string }>>([]);
 
-  const reload = useCallback(async () => {
-    if (!id) return;
+  const reload = useCallback(async (opts?: { signal?: AbortSignal }) => {
+    const signal = opts?.signal;
+    if (!id) {
+      setProperty(undefined);
+      return;
+    }
     const p = await getPropertyForAdmin(id);
+    if (signal?.aborted) return;
     setProperty(p);
+    const rows = await getSharedMemos('property', id, 'property');
+    if (signal?.aborted) return;
+    setMemos(rows.map((m) => ({ id: m.id, text: m.content, createdAt: m.createdAt })));
   }, [id]);
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      if (!id) {
-        setProperty(undefined);
-        return;
-      }
+    const ac = new AbortController();
+    if (!id) {
       setProperty(undefined);
-      const p = await getPropertyForAdmin(id);
-      if (!cancelled) {
-        setProperty(p);
-        const rows = await getSharedMemos('property', id, 'property');
-        setMemos(rows.map((m) => ({ id: m.id, text: m.content, createdAt: m.createdAt })));
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [id]);
+      return;
+    }
+    setProperty(undefined);
+    void reload({ signal: ac.signal });
+    return () => ac.abort();
+  }, [id, reload]);
+
+  useAdminDomainRefresh(['property', 'user', 'admin_memo', 'lessor_profile'], () => {
+    void reload();
+  });
 
   useEffect(() => {
     if (!property || !property.id) return;

@@ -1,19 +1,5 @@
 'use client';
 
-import { getUsers } from '@/lib/api/auth';
-import { getWithdrawalRequests } from '@/lib/api/adminFinance';
-import {
-  getUnseenNewContractCount,
-  getUnseenRecentAuditCount,
-  getUnseenNewKycCount,
-  getUnseenNewPropertyCount,
-  getUnseenNewRefundCount,
-  getUnseenNewSystemLogCount,
-  getUnseenNewUserCount,
-  getUnseenSettlementPendingCount,
-  getUnseenSettlementRequestCount,
-} from '@/lib/adminAckState';
-
 export const ADMIN_BADGES_REFRESH_EVENT = 'admin-badges-refresh';
 
 export function refreshAdminBadges(): void {
@@ -21,56 +7,46 @@ export function refreshAdminBadges(): void {
   window.dispatchEvent(new CustomEvent(ADMIN_BADGES_REFRESH_EVENT));
 }
 
-/** 관리자 상단 알림 배지용 건수 (클라이언트 전용 데이터 기준) */
-export async function fetchAdminBadgeCounts(
-  options?: { includeExpensiveClientCounts?: boolean }
-) {
-  const includeExpensive = options?.includeExpensiveClientCounts ?? true;
-  let settlementsPendingUnseen = 0;
-  let contractsNewUnseen = 0;
-  let refundsNewUnseen = 0;
+export type AdminBadgeCounts = {
+  usersNewUnseen: number;
+  propertiesNewUnseen: number;
+  contractsNewUnseen: number;
+  refundsNewUnseen: number;
+  settlementsPendingUnseen: number;
+  withdrawalsPending: number;
+  kycPending: number;
+  kycVerifiedReview: number;
+  kycNewUnseen: number;
+  auditRecent: number;
+  systemLogNewUnseen: number;
+};
 
-  if (includeExpensive) {
-    const settlementsRequestUnseen = await getUnseenSettlementRequestCount();
-    const settlementsQueueUnseen = await getUnseenSettlementPendingCount();
-    settlementsPendingUnseen = settlementsRequestUnseen + settlementsQueueUnseen;
-    contractsNewUnseen = await getUnseenNewContractCount();
-    refundsNewUnseen = await getUnseenNewRefundCount();
-  }
+function num(v: unknown): number {
+  const n = typeof v === 'number' ? v : Number(v);
+  return Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : 0;
+}
 
-  const wr = getWithdrawalRequests();
-  const withdrawalsPending = wr.filter((r) => {
-    const st = r.status === 'approved' ? 'processing' : r.status;
-    return st === 'pending';
-  }).length;
-
-  const usersNewUnseen = getUnseenNewUserCount();
-  const propertiesNewUnseen = getUnseenNewPropertyCount();
-
-  const users = getUsers();
-  const kycPending = users.filter((u) => !u.deleted && u.verification_status === 'pending').length;
-  const kycVerifiedReview = users.filter((u) => !u.deleted && u.verification_status === 'verified').length;
-  const kycNewUnseen = getUnseenNewKycCount();
-
-  const auditRecent = getUnseenRecentAuditCount();
-  const systemLogNewUnseen = getUnseenNewSystemLogCount();
-
+function parseAdminBadgeCounts(raw: unknown): AdminBadgeCounts | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const o = raw as Record<string, unknown>;
+  if ('error' in o && o.error != null) return null;
   return {
-    usersNewUnseen,
-    propertiesNewUnseen,
-    contractsNewUnseen,
-    refundsNewUnseen,
-    settlementsPendingUnseen,
-    withdrawalsPending,
-    kycPending,
-    kycVerifiedReview,
-    kycNewUnseen,
-    auditRecent,
-    systemLogNewUnseen,
+    usersNewUnseen: num(o.usersNewUnseen),
+    propertiesNewUnseen: num(o.propertiesNewUnseen),
+    contractsNewUnseen: num(o.contractsNewUnseen),
+    refundsNewUnseen: num(o.refundsNewUnseen),
+    settlementsPendingUnseen: num(o.settlementsPendingUnseen),
+    withdrawalsPending: num(o.withdrawalsPending),
+    kycPending: num(o.kycPending),
+    kycVerifiedReview: num(o.kycVerifiedReview),
+    kycNewUnseen: num(o.kycNewUnseen),
+    auditRecent: num(o.auditRecent),
+    systemLogNewUnseen: num(o.systemLogNewUnseen),
   };
 }
 
-export async function fetchAdminBadgeCountsFromServer(): Promise<Partial<AdminBadgeCounts> | null> {
+/** 관리자 상단 배지 — `/api/admin/badge-counts`만 사용 */
+export async function fetchAdminBadgeCounts(): Promise<AdminBadgeCounts | null> {
   if (typeof window === 'undefined') return null;
   try {
     const res = await fetch('/api/admin/badge-counts', {
@@ -78,13 +54,12 @@ export async function fetchAdminBadgeCountsFromServer(): Promise<Partial<AdminBa
       cache: 'no-store',
     });
     if (!res.ok) return null;
-    return (await res.json()) as Partial<AdminBadgeCounts>;
+    const raw = await res.json();
+    return parseAdminBadgeCounts(raw);
   } catch {
     return null;
   }
 }
-
-export type AdminBadgeCounts = Awaited<ReturnType<typeof fetchAdminBadgeCounts>>;
 
 /** href → 표시할 배지 숫자 (0이면 숨김) */
 export function badgeCountForNav(href: string, c: AdminBadgeCounts): number {

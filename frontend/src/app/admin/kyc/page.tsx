@@ -16,7 +16,7 @@ import { acknowledgeCurrentNewKyc, getUnseenNewKycCount } from '@/lib/adminAckSt
 import { ADMIN_NEW_MS } from '@/lib/adminNewUtils';
 import { logAdminSystemEvent } from '@/lib/adminSystemLog';
 import { useAdminDomainRefresh } from '@/lib/adminDomainEventsClient';
-import { refreshUsersCacheForAdmin } from '@/lib/api/auth';
+import { ensureUsersCacheForAdmin } from '@/lib/api/auth';
 
 const LANG_OPTIONS = [
   { code: 'ko', label: 'KO' },
@@ -155,7 +155,7 @@ export default function AdminKYCPage() {
     if (tab !== 'new') return;
     let cancelled = false;
     void (async () => {
-      await refreshUsersCacheForAdmin();
+      await ensureUsersCacheForAdmin();
       if (cancelled) return;
       acknowledgeCurrentNewKyc();
       if (cancelled) return;

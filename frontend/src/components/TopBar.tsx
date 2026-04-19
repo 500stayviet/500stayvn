@@ -165,7 +165,18 @@ export default function TopBar({ currentLanguage: propCurrentLanguage, onLanguag
         setUnreadCount(bookingUnread + snap.asGuest + snap.asOwner);
       });
     };
-    const unsub = subscribeChatUnreadUpdates(user.uid, () => reload());
+    const unsub = subscribeChatUnreadUpdates(user.uid, (snapshot) => {
+      // 세션 전환 시 chat 모듈이 snapshot 만 넘김 — 잘못된 uid 로 API 재호출하지 않음
+      if (snapshot) {
+        setUnreadChatCounts({ asGuest: snapshot.asGuest, asOwner: snapshot.asOwner });
+        const bookingUnread = [...notifications.asGuest, ...notifications.asOwner].filter(
+          (b) => b.id && !readNotificationIds.has(b.id),
+        ).length;
+        setUnreadCount(bookingUnread + snapshot.asGuest + snapshot.asOwner);
+        return;
+      }
+      reload();
+    });
     return () => unsub();
   }, [user, notifications, readNotificationIds]);
   

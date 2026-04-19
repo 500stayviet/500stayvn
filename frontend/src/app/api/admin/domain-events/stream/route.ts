@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { getAdminFromRequest } from "@/lib/server/adminAuthServer";
 import { prisma } from "@/lib/prisma";
+import { reportApiException, reportSlowOperation } from "@/lib/server/apiMonitoring";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -33,7 +34,9 @@ export async function GET(request: NextRequest) {
       send({ type: "connected", afterSeq: cursor });
 
       const pollMs = 1200;
+      const pollRoute = "poll /api/admin/domain-events/stream";
       const interval = setInterval(async () => {
+        const pollStarted = Date.now();
         try {
           if (request.signal.aborted) return;
           const rows = await prisma.adminDomainEvent.findMany({
@@ -41,6 +44,7 @@ export async function GET(request: NextRequest) {
             orderBy: { id: "asc" },
             take: 200,
           });
+          reportSlowOperation(pollRoute, pollStarted, { rowCount: rows.length });
           for (const row of rows) {
             cursor = row.id;
             send({
@@ -54,6 +58,7 @@ export async function GET(request: NextRequest) {
           }
         } catch (e) {
           console.error("[admin-domain-events stream] poll", e);
+          reportApiException(pollRoute, e, pollStarted);
         }
       }, pollMs);
 

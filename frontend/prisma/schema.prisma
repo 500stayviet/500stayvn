@@ -265,6 +265,22 @@ model AdminSystemLog {
   @@index([category, ts])
 }
 
+/** 매물 영구 삭제·예약 취소 등 운영 감사(서버 원장) */
+model AdminPropertyActionLog {
+  id             String   @id @default(cuid())
+  propertyId     String
+  actionType     String
+  reason         String?
+  adminId        String?
+  snapshotJson   Json?
+  reservationId  String?
+  ownerId        String?
+  createdAt      DateTime @default(now())
+
+  @@index([propertyId, createdAt])
+  @@index([actionType, createdAt])
+}
+
 /// 관리자 UI 실시간 갱신용 — Prisma 미들웨어가 쓰기 후 기록, SSE로 구독
 model AdminDomainEvent {
   id         Int      @id @default(autoincrement())

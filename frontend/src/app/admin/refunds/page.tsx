@@ -46,7 +46,7 @@ export default function AdminRefundsPage() {
     void load();
   }, [load]);
 
-  useAdminDomainRefresh(['booking', 'payment'], () => {
+  useAdminDomainRefresh(['booking', 'payment', 'adminFinanceLedger'], () => {
     void load();
   });
 

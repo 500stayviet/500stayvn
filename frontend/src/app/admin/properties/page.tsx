@@ -14,7 +14,8 @@ import { isPropertyNew, localCalendarDayStartMs } from '@/lib/adminNewUtils';
 import { useAdminMe } from '@/contexts/AdminMeContext';
 import type { AdminInventoryFilter } from '@/lib/api/properties';
 import { loadAdminInventoryPage } from '@/lib/api/properties';
-import { refreshUsersCacheForAdmin } from '@/lib/api/auth';
+import { ensureUsersCacheForAdmin } from '@/lib/api/auth';
+import { ensurePropertiesCacheForAdmin } from '@/lib/api/properties';
 import { useAdminDomainRefresh } from '@/lib/adminDomainEventsClient';
 import { setPropertyHidden } from '@/lib/api/adminModeration';
 import type { PropertyData } from '@/types/property';
@@ -110,7 +111,9 @@ export default function AdminPropertiesPage() {
   }, [query, filter]);
 
   useAdminDomainRefresh(['property', 'user'], () => {
-    void refreshUsersCacheForAdmin().then(() => setTick((t) => t + 1));
+    void Promise.all([ensureUsersCacheForAdmin(), ensurePropertiesCacheForAdmin()]).then(() =>
+      setTick((t) => t + 1)
+    );
   });
 
   /** 로컬 자정이 지나면 확인 완료 매물이 신규 탭에서 빠지도록 목록 재조회 */

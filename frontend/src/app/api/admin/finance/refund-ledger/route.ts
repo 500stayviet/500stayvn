@@ -2,27 +2,40 @@ import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { getAdminFromRequest } from '@/lib/server/adminAuthServer';
+import { observeRouteResponse } from '@/lib/server/apiMonitoring';
+import { bumpBookingUpdatedAtForDomainSignal } from '@/lib/server/bumpBookingDomainSignal';
 
 /**
  * Record refund_approved in AdminFinanceLedger (server ledger).
  * Idempotent when the same bookingId already has refund_approved.
  */
 export async function POST(request: NextRequest) {
+  const startedAt = Date.now();
+  const route = 'POST /api/admin/finance/refund-ledger';
   const me = await getAdminFromRequest(request);
-  if (!me) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  if (!me)
+    return observeRouteResponse(NextResponse.json({ error: 'unauthorized' }, { status: 401 }), route, startedAt);
 
   let body: { bookingId?: string; ownerId?: string; amount?: number };
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: 'invalid_body' }, { status: 400 });
+    return observeRouteResponse(
+      NextResponse.json({ error: 'invalid_body' }, { status: 400 }),
+      route,
+      startedAt
+    );
   }
 
   const bookingId = String(body.bookingId || '').trim();
   const ownerId = String(body.ownerId || '').trim();
   const amount = Number(body.amount);
   if (!bookingId || !ownerId || !Number.isFinite(amount) || amount < 0) {
-    return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
+    return observeRouteResponse(
+      NextResponse.json({ error: 'invalid_input' }, { status: 400 }),
+      route,
+      startedAt
+    );
   }
 
   try {
@@ -31,7 +44,11 @@ export async function POST(request: NextRequest) {
       bookingId
     );
     if (existing.length > 0) {
-      return NextResponse.json({ ok: true, duplicate: true });
+      return observeRouteResponse(
+        NextResponse.json({ ok: true, duplicate: true }),
+        route,
+        startedAt
+      );
     }
 
     await prisma.$executeRawUnsafe(
@@ -46,9 +63,14 @@ export async function POST(request: NextRequest) {
       'Admin refund approved (guest)',
       me.username
     );
-    return NextResponse.json({ ok: true });
+    await bumpBookingUpdatedAtForDomainSignal(bookingId);
+    return observeRouteResponse(NextResponse.json({ ok: true }), route, startedAt);
   } catch (error) {
     console.error('POST /api/admin/finance/refund-ledger', error);
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
+    return observeRouteResponse(
+      NextResponse.json({ error: 'database_unavailable' }, { status: 503 }),
+      route,
+      startedAt
+    );
   }
 }
