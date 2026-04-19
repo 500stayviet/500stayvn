@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAdminFromRequest } from '@/lib/server/adminAuthServer';
+import { Prisma } from '@prisma/client';
 
 function genId(): string {
   return `aack_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
@@ -13,20 +14,30 @@ export async function GET(request: NextRequest) {
   const category = (request.nextUrl.searchParams.get('category') || '').trim();
   if (!category) return NextResponse.json({ error: 'invalid_category' }, { status: 400 });
 
-  try {
-    const rows = (await prisma.$queryRawUnsafe(
-      `
-      SELECT "targetId"
-      FROM "AdminAckState"
-      WHERE "adminUsername" = $1
-        AND "category" = $2
-      ORDER BY "acknowledgedAt" DESC
-      `,
-      me.username,
-      category
-    )) as Array<{ targetId: string }>;
+  const detail = request.nextUrl.searchParams.get('detail') === '1';
 
-    return NextResponse.json({ ids: rows.map((r) => r.targetId) });
+  try {
+    const rows = await prisma.$queryRaw<Array<{ targetId: string; acknowledgedAt: Date }>>(
+      Prisma.sql`
+        SELECT "targetId", "acknowledgedAt"
+        FROM "AdminAckState"
+        WHERE "adminUsername" = ${me.username}
+          AND "category" = ${category}
+        ORDER BY "acknowledgedAt" DESC
+      `
+    );
+
+    const ids = rows.map((r) => r.targetId);
+    if (detail) {
+      return NextResponse.json({
+        ids,
+        entries: rows.map((r) => ({
+          targetId: r.targetId,
+          acknowledgedAt: r.acknowledgedAt.toISOString(),
+        })),
+      });
+    }
+    return NextResponse.json({ ids });
   } catch (e) {
     console.error('GET /api/admin/ack-state', e);
     return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });

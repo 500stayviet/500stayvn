@@ -3,8 +3,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
-import { acknowledgeCurrentNewProperties, getUnseenNewPropertyCount } from '@/lib/adminAckState';
+import {
+  acknowledgeNewProperty,
+  countUnseenNewProperties,
+  isAdminPropertyNewUnseen,
+} from '@/lib/adminAckState';
 import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
+import { useAdminAckHydrationTick } from '@/hooks/useAdminAckHydration';
+import { isPropertyNew, localCalendarDayStartMs } from '@/lib/adminNewUtils';
 import { useAdminMe } from '@/contexts/AdminMeContext';
 import type { AdminInventoryFilter } from '@/lib/api/properties';
 import { loadAdminInventoryPage } from '@/lib/api/properties';
@@ -41,6 +47,7 @@ function listingStatusLabel(p: PropertyData): { text: string; className: string 
 export default function AdminPropertiesPage() {
   const router = useRouter();
   const { me: admin } = useAdminMe();
+  const ackTick = useAdminAckHydrationTick();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<AdminInventoryFilter>('all');
   const [tick, setTick] = useState(0);
@@ -52,6 +59,7 @@ export default function AdminPropertiesPage() {
   const [nPaused, setNPaused] = useState(0);
   const [nHidden, setNHidden] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [propertyAckAt, setPropertyAckAt] = useState<Map<string, Date> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -66,6 +74,7 @@ export default function AdminPropertiesPage() {
         setNListed(res.nListed);
         setNPaused(res.nPaused);
         setNHidden(res.nHidden);
+        setPropertyAckAt(res.propertyAckAt);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -91,7 +100,10 @@ export default function AdminPropertiesPage() {
           : id === 'paused'
             ? nPaused
             : nHidden;
-  const unseenNew = useMemo(() => getUnseenNewPropertyCount(), [tick, filter]);
+  const unseenNew = useMemo(
+    () => countUnseenNewProperties(propertyAckAt),
+    [tick, filter, ackTick, propertyAckAt]
+  );
 
   useEffect(() => {
     setPage(1);
@@ -101,12 +113,18 @@ export default function AdminPropertiesPage() {
     void refreshUsersCacheForAdmin().then(() => setTick((t) => t + 1));
   });
 
+  /** 로컬 자정이 지나면 확인 완료 매물이 신규 탭에서 빠지도록 목록 재조회 */
   useEffect(() => {
-    if (filter !== 'new') return;
-    acknowledgeCurrentNewProperties();
-    refreshAdminBadges();
-    setTick((t) => t + 1);
-  }, [filter]);
+    let dayMs = localCalendarDayStartMs(new Date());
+    const id = window.setInterval(() => {
+      const next = localCalendarDayStartMs(new Date());
+      if (next !== dayMs) {
+        dayMs = next;
+        setTick((t) => t + 1);
+      }
+    }, 60_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   return (
     <AdminRouteGuard>
@@ -115,8 +133,8 @@ export default function AdminPropertiesPage() {
           <div>
             <h1 className="text-lg font-bold text-slate-900">매물 관리</h1>
             <p className="text-sm text-slate-500">
-              부모 매물만 표시 · 신규 24h · 전체 {nAll} · 신규 {nNew} · 노출(고객) {nListed} · 광고종료 {nPaused}{' '}
-                · 숨김 {nHidden}
+              부모 매물만 표시 · 신규 = 미확인은 확인 전까지 유지(수정 후에도 동일) · 확인한 뒤엔 그날만 목록(자정 이후 제외) · 최신순 · 전체{' '}
+              {nAll} · 신규 {nNew} · 노출(고객) {nListed} · 광고종료 {nPaused} · 숨김 {nHidden}
             </p>
           </div>
         </div>
@@ -163,6 +181,11 @@ export default function AdminPropertiesPage() {
             <table className="w-full min-w-[880px] border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                  {filter === 'new' ? (
+                    <th className="w-10 px-2 py-2 text-center" title="미확인 알림">
+                      알림
+                    </th>
+                  ) : null}
                   <th className="px-3 py-2">제목</th>
                   <th className="px-3 py-2">주소</th>
                   <th className="px-3 py-2">Owner</th>
@@ -180,9 +203,32 @@ export default function AdminPropertiesPage() {
                       className="cursor-pointer border-b border-slate-100 hover:bg-slate-50/80"
                       onClick={() => {
                         if (!p.id) return;
+                        if (isPropertyNew(p)) {
+                          acknowledgeNewProperty(p.id);
+                          refreshAdminBadges();
+                        }
                         router.push(`/admin/properties/${encodeURIComponent(p.id)}`);
                       }}
                     >
+                      {filter === 'new' ? (
+                        <td className="px-2 py-2 text-center align-middle">
+                          {isPropertyNew(p) ? (
+                            isAdminPropertyNewUnseen(p, propertyAckAt) ? (
+                              <span
+                                className="inline-block h-2.5 w-2.5 rounded-full bg-rose-500"
+                                title="미확인"
+                                aria-label="미확인 신규 매물"
+                              />
+                            ) : (
+                              <span
+                                className="inline-block h-2.5 w-2.5 rounded-full bg-slate-300"
+                                title="확인함"
+                                aria-label="확인한 신규 매물"
+                              />
+                            )
+                          ) : null}
+                        </td>
+                      ) : null}
                       <td className="max-w-[200px] truncate px-3 py-2 font-medium text-slate-900">
                         {p.title || '—'}
                       </td>

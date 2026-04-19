@@ -14,7 +14,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { Home, Plus, Building, MessageCircle, User, Map, Calendar, Heart } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { getCurrentUserData } from '@/lib/api/auth';
+import { getCurrentUserData, getCurrentUserId } from '@/lib/api/auth';
 import { getUIText } from '@/utils/i18n';
 
 interface BottomNavigationProps {
@@ -124,6 +124,9 @@ export default function BottomNavigation({ hideOnPaths = [] }: BottomNavigationP
     setIsVisible(!shouldHide);
   }, [pathname, hideOnPaths]);
 
+  /** useAuth user와 무관하게 로컬 액터 uid가 있으면 로그인된 것으로 간주(캐시·hydration 레이스 완화) */
+  const isAppLoggedIn = Boolean(user || (typeof window !== 'undefined' && getCurrentUserId()));
+
   // 네비게이션 아이템 클릭 핸들러
   const handleNavigation = (tab: string) => {
     setActiveTab(tab);
@@ -138,7 +141,7 @@ export default function BottomNavigation({ hideOnPaths = [] }: BottomNavigationP
         break;
       case 'add':
         // 로그인 확인 후 숙소 등록 페이지로 이동
-        if (user) {
+        if (isAppLoggedIn) {
           router.push('/add-property');
         } else {
           router.push('/login?returnUrl=/add-property');
@@ -146,7 +149,7 @@ export default function BottomNavigation({ hideOnPaths = [] }: BottomNavigationP
         break;
       case 'manage':
         // 로그인 확인 후 매물 관리 페이지로 이동
-        if (user) {
+        if (isAppLoggedIn) {
           router.push('/profile/my-properties');
         } else {
           router.push('/login?returnUrl=/profile/my-properties');
@@ -154,7 +157,7 @@ export default function BottomNavigation({ hideOnPaths = [] }: BottomNavigationP
         break;
       case 'chat':
         // 로그인 확인 후 채팅/예약 페이지로 이동
-        if (user) {
+        if (isAppLoggedIn) {
           // 사용자 역할에 따라 다른 페이지로 이동
           if (isOwnerMode) {
             router.push('/host/bookings');
@@ -167,7 +170,7 @@ export default function BottomNavigation({ hideOnPaths = [] }: BottomNavigationP
         break;
       case 'wishlist':
         // 로그인 확인 후 찜 목록 페이지로 이동
-        if (user) {
+        if (isAppLoggedIn) {
           router.push('/wishlist');
         } else {
           router.push('/login?returnUrl=/wishlist');
@@ -175,7 +178,7 @@ export default function BottomNavigation({ hideOnPaths = [] }: BottomNavigationP
         break;
       case 'profile':
         // 로그인 확인 후 프로필 페이지로 이동
-        if (user) {
+        if (isAppLoggedIn) {
           router.push('/profile');
         } else {
           router.push('/login');

@@ -17,6 +17,8 @@ import { addSharedMemo, deleteSharedMemo, getSharedMemos } from '@/lib/api/admin
 import type { UserData } from '@/lib/api/auth';
 import { setUserBlocked } from '@/lib/api/adminModeration';
 import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
+import { acknowledgeNewUser } from '@/lib/adminAckState';
+import { isUserNew } from '@/lib/adminNewUtils';
 import { useAdminDomainRefresh } from '@/lib/adminDomainEventsClient';
 
 function verificationLabel(v: UserData['verification_status']): { text: string; className: string } {
@@ -98,6 +100,13 @@ export default function AdminUserDetailPage() {
   useEffect(() => {
     loadUserAndMemos();
   }, [loadUserAndMemos]);
+
+  useEffect(() => {
+    if (!user || user === undefined) return;
+    if (!isUserNew(user)) return;
+    acknowledgeNewUser(user.uid);
+    refreshAdminBadges();
+  }, [user]);
 
   useAdminDomainRefresh(['user', 'booking', 'payment', 'admin_memo'], () => {
     void loadUserAndMemos();

@@ -6,6 +6,8 @@ import { useParams } from 'next/navigation';
 import { ArrowLeft, Save } from 'lucide-react';
 import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
 import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
+import { acknowledgeNewProperty } from '@/lib/adminAckState';
+import { isPropertyNew } from '@/lib/adminNewUtils';
 import { useAdminMe } from '@/contexts/AdminMeContext';
 import { getUsers } from '@/lib/api/auth';
 import { addSharedMemo, deleteSharedMemo, getSharedMemos } from '@/lib/api/adminMemos';
@@ -81,6 +83,13 @@ export default function AdminPropertyDetailPage() {
       cancelled = true;
     };
   }, [id]);
+
+  useEffect(() => {
+    if (!property || !property.id) return;
+    if (!isPropertyNew(property)) return;
+    acknowledgeNewProperty(property.id);
+    refreshAdminBadges();
+  }, [property]);
 
   if (!id) {
     return (

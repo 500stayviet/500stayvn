@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { getCurrentUserData } from "@/lib/api/auth";
+import { getCurrentUserData, getCurrentUserId, refreshUsersFromServer } from "@/lib/api/auth";
 import { addProperty } from "@/lib/api/properties";
 import {
   isOwnerSupplyLengthDays,
@@ -192,13 +192,18 @@ export default function AddPropertyPage() {
     const checkAccessAndMode = async () => {
       if (authLoading) return;
 
-      if (!user) {
+      const actorUid = user?.uid ?? getCurrentUserId();
+      if (!actorUid) {
         router.push("/login");
         return;
       }
 
       try {
-        const userData = await getCurrentUserData(user.uid);
+        let userData = await getCurrentUserData(actorUid);
+        if (!userData) {
+          await refreshUsersFromServer();
+          userData = await getCurrentUserData(actorUid);
+        }
 
         // KYC 1~3단계 토큰이 모두 있어야 매물 등록 가능
         // 사용자 요구��항: "코인3개가 되면 다 사용가능한거야"

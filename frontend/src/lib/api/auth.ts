@@ -313,6 +313,11 @@ function setCurrentUser(uid: string | null): void {
   else localStorage.removeItem(CURRENT_USER_KEY);
 }
 
+/** NextAuth(OAuth) 세션과 동기화할 때 사용 — `x-app-actor-id`·캐시 부트스트랩과 동일 키 */
+export function setAppSessionUserId(uid: string | null): void {
+  setCurrentUser(uid);
+}
+
 export function getCurrentUserData(): UserData | null;
 export async function getCurrentUserData(uid: string): Promise<UserData | null>;
 export function getCurrentUserData(

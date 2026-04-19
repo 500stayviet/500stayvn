@@ -1,11 +1,17 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
-import { acknowledgeCurrentNewUsers, getUnseenNewUserCount } from '@/lib/adminAckState';
+import {
+  acknowledgeNewUser,
+  countUnseenNewUsers,
+  fetchUserAcknowledgedAtMap,
+  isAdminUserNewUnseen,
+} from '@/lib/adminAckState';
 import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
+import { useAdminAckHydrationTick } from '@/hooks/useAdminAckHydration';
+import { isUserNew, localCalendarDayStartMs, shouldShowUserInAdminNewTab } from '@/lib/adminNewUtils';
 import { useAdminMe } from '@/contexts/AdminMeContext';
 import type { AdminUserFilter } from '@/lib/api/adminModeration';
 import { getAdminUsers, setUserBlocked } from '@/lib/api/adminModeration';
@@ -24,32 +30,55 @@ const FILTER_TABS: { id: AdminUserFilter; label: string }[] = [
 export default function AdminUsersPage() {
   const router = useRouter();
   const { me: admin } = useAdminMe();
+  const ackTick = useAdminAckHydrationTick();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<AdminUserFilter>('all');
   const [tick, setTick] = useState(0);
   const [page, setPage] = useState(1);
+  const [userAckAt, setUserAckAt] = useState<Map<string, Date> | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchUserAcknowledgedAtMap().then((m) => {
+      if (!cancelled) setUserAckAt(m);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [tick]);
 
   const { rows, nAll, nNew, nActive, nBlocked } = useMemo(() => {
     const all = getAdminUsers(query, 'all');
-    const newRows = getAdminUsers(query, 'new');
+    const newRowsRaw = getAdminUsers(query, 'new');
+    const newRowsFiltered =
+      userAckAt == null
+        ? newRowsRaw
+        : newRowsRaw.filter((u) => shouldShowUserInAdminNewTab(u, userAckAt));
     const activeRows = getAdminUsers(query, 'active');
     const blockedRows = getAdminUsers(query, 'blocked');
     const selected =
-      filter === 'new' ? newRows : filter === 'active' ? activeRows : filter === 'blocked' ? blockedRows : all;
+      filter === 'new'
+        ? newRowsFiltered
+        : filter === 'active'
+          ? activeRows
+          : filter === 'blocked'
+            ? blockedRows
+            : all;
     return {
       rows: selected,
       nAll: all.length,
-      nNew: newRows.length,
+      nNew: newRowsFiltered.length,
       nActive: activeRows.length,
       nBlocked: blockedRows.length,
     };
-  }, [query, filter, tick]);
+  }, [query, filter, tick, userAckAt]);
+
   const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
   const pagedRows = useMemo(() => rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), [rows, page]);
 
   const tabCount = (id: AdminUserFilter) =>
     id === 'all' ? nAll : id === 'new' ? nNew : id === 'active' ? nActive : nBlocked;
-  const unseenNew = useMemo(() => getUnseenNewUserCount(), [tick, filter]);
+  const unseenNew = useMemo(() => countUnseenNewUsers(userAckAt), [tick, filter, ackTick, userAckAt]);
 
   useEffect(() => {
     setPage(1);
@@ -63,19 +92,16 @@ export default function AdminUsersPage() {
   });
 
   useEffect(() => {
-    if (filter !== 'new') return;
-    let cancelled = false;
-    void (async () => {
-      await refreshUsersCacheForAdmin();
-      if (cancelled) return;
-      acknowledgeCurrentNewUsers();
-      refreshAdminBadges();
-      setTick((t) => t + 1);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [filter]);
+    let dayMs = localCalendarDayStartMs(new Date());
+    const id = window.setInterval(() => {
+      const next = localCalendarDayStartMs(new Date());
+      if (next !== dayMs) {
+        dayMs = next;
+        setTick((t) => t + 1);
+      }
+    }, 60_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   return (
     <AdminRouteGuard>
@@ -84,7 +110,8 @@ export default function AdminUsersPage() {
           <div>
             <h1 className="text-lg font-bold text-slate-900">계정 관리</h1>
             <p className="text-sm text-slate-500">
-              신규는 가입 후 24시간 이내 · 신규 {nNew} · 전체 {nAll} · 정상 {nActive} · 차단 {nBlocked}
+              신규 = 가입 24h 이내(행 클릭 시 확인 · 확인 당일만 목록 유지, 자정 이후 제외) · 신규 {nNew} · 전체 {nAll} · 정상{' '}
+              {nActive} · 차단 {nBlocked}
             </p>
           </div>
         </div>
@@ -126,9 +153,14 @@ export default function AdminUsersPage() {
           <p className="py-12 text-center text-sm text-slate-500">조회 결과가 없습니다.</p>
         ) : (
           <div className="overflow-x-auto rounded-md border border-slate-200">
-            <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+            <table className="w-full min-w-[760px] border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                  {filter === 'new' ? (
+                    <th className="w-10 px-2 py-2 text-center" title="미확인 알림">
+                      알림
+                    </th>
+                  ) : null}
                   <th className="px-3 py-2">이름</th>
                   <th className="px-3 py-2">이메일</th>
                   <th className="px-3 py-2">전화번호</th>
@@ -143,9 +175,32 @@ export default function AdminUsersPage() {
                     key={u.uid}
                     className="cursor-pointer border-b border-slate-100 hover:bg-slate-50/80"
                     onClick={() => {
+                      if (isUserNew(u)) {
+                        acknowledgeNewUser(u.uid);
+                        refreshAdminBadges();
+                      }
                       router.push(`/admin/users/${encodeURIComponent(u.uid)}`);
                     }}
                   >
+                    {filter === 'new' ? (
+                      <td className="px-2 py-2 text-center align-middle">
+                        {isUserNew(u) ? (
+                          isAdminUserNewUnseen(u, userAckAt) ? (
+                            <span
+                              className="inline-block h-2.5 w-2.5 rounded-full bg-rose-500"
+                              title="미확인"
+                              aria-label="미확인 신규 계정"
+                            />
+                          ) : (
+                            <span
+                              className="inline-block h-2.5 w-2.5 rounded-full bg-slate-300"
+                              title="확인함"
+                              aria-label="확인한 신규 계정"
+                            />
+                          )
+                        ) : null}
+                      </td>
+                    ) : null}
                     <td className="px-3 py-2 font-medium text-slate-900">{u.displayName || '—'}</td>
                     <td className="max-w-[200px] truncate px-3 py-2 text-slate-700">{u.email}</td>
                     <td className="max-w-[120px] truncate px-3 py-2 text-slate-700">{u.phoneNumber || '—'}</td>

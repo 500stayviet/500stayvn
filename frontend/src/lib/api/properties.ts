@@ -21,6 +21,7 @@ import {
   readBookingsArray,
   writeBookingsArray,
 } from './bookings';
+import { adminPropertyLastActivityMs } from '@/lib/adminNewUtils';
 import { hasAvailableBookingPeriod, isParentPropertyRecord } from '@/lib/utils/propertyUtils';
 import { canReadLocalFallback, canWriteLocalFallback } from '@/lib/runtime/localFallbackPolicy';
 import {
@@ -929,8 +930,8 @@ export type AdminInventoryFilter = 'all' | 'new' | 'listed' | 'paused' | 'hidden
  */
 function sortPropsNewestFirst(arr: PropertyData[]): PropertyData[] {
   return [...arr].sort((a, b) => {
-    const at = new Date(a.updatedAt || a.createdAt || 0).getTime();
-    const bt = new Date(b.updatedAt || b.createdAt || 0).getTime();
+    const at = adminPropertyLastActivityMs(a);
+    const bt = adminPropertyLastActivityMs(b);
     return bt - at;
   });
 }
@@ -981,12 +982,18 @@ export async function loadAdminInventoryPage(
   nListed: number;
   nPaused: number;
   nHidden: number;
+  /** 신규 탭 알림(미확인·수정 재알림)용 서버 확인 시각 */
+  propertyAckAt: Map<string, Date>;
 }> {
   if (typeof window === 'undefined') {
-    return { rows: [], nAll: 0, nNew: 0, nListed: 0, nPaused: 0, nHidden: 0 };
+    return { rows: [], nAll: 0, nNew: 0, nListed: 0, nPaused: 0, nHidden: 0, propertyAckAt: new Map() };
   }
   const rows = await getAllPropertiesForAdmin();
-  const { isPropertyNew } = await import('@/lib/adminNewUtils');
+  const { isPropertyNew, shouldShowPropertyInAdminNewTab } = await import('@/lib/adminNewUtils');
+  const { fetchPropertyAcknowledgedAtMap } = await import('@/lib/adminAckState');
+  const propertyAckAt = await fetchPropertyAcknowledgedAtMap();
+  const matchesAdminNewTab = (p: PropertyData) => shouldShowPropertyInAdminNewTab(p, propertyAckAt);
+
   const keyword = search.trim().toLowerCase();
 
   const ownerEmailByUid = new Map<string, string>();
@@ -1001,12 +1008,14 @@ export async function loadAdminInventoryPage(
   const keywordMatched = base.filter((p) => matchesAdminInventoryKeyword(p, keyword, ownerEmailByUid));
 
   const nAll = keywordMatched.length;
-  const nNew = keywordMatched.filter((p) => propertyMatchesAdminTab(p, 'new', isPropertyNew)).length;
+  const nNew = keywordMatched.filter((p) => matchesAdminNewTab(p)).length;
   const nListed = keywordMatched.filter((p) => propertyMatchesAdminTab(p, 'listed', isPropertyNew)).length;
   const nPaused = keywordMatched.filter((p) => propertyMatchesAdminTab(p, 'paused', isPropertyNew)).length;
   const nHidden = keywordMatched.filter((p) => propertyMatchesAdminTab(p, 'hidden', isPropertyNew)).length;
 
-  const tabRows = keywordMatched.filter((p) => propertyMatchesAdminTab(p, filter, isPropertyNew));
+  const tabRows = keywordMatched.filter((p) =>
+    filter === 'new' ? matchesAdminNewTab(p) : propertyMatchesAdminTab(p, filter, isPropertyNew)
+  );
   return {
     rows: sortPropsNewestFirst(tabRows),
     nAll,
@@ -1014,6 +1023,7 @@ export async function loadAdminInventoryPage(
     nListed,
     nPaused,
     nHidden,
+    propertyAckAt: new Map(propertyAckAt),
   };
 }
 

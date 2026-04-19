@@ -36,8 +36,10 @@ export async function GET(request: NextRequest) {
        AND a."targetId" = p."id"
       WHERE p."deleted" = false
         AND p."id" NOT LIKE '%_child_%'
-        AND p."createdAt" >= ${since}::timestamptz
-        AND a."id" IS NULL
+        AND (
+          a."id" IS NULL
+          OR GREATEST(p."updatedAt", p."createdAt") > a."acknowledgedAt"
+        )
     `);
 
     const kycNewUnseenPromise = prisma.$queryRaw<Array<{ count: number }>>(Prisma.sql`

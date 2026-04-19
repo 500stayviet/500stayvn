@@ -4,9 +4,14 @@ import {
   getLedgerEntries,
 } from '@/lib/api/adminFinance';
 import { getSettlementCandidatesServer } from '@/lib/api/settlementServer';
-import { getUsers } from '@/lib/api/auth';
+import { getUsers, type UserData } from '@/lib/api/auth';
 import { getAllBookingsForAdmin } from '@/lib/api/bookings';
-import { isPropertyNew, isUserNew } from '@/lib/adminNewUtils';
+import {
+  adminPropertyLastActivityMs,
+  adminUserLastActivityMs,
+  isPropertyNew,
+  isUserNew,
+} from '@/lib/adminNewUtils';
 import {
   isContractCompletedTab,
   isContractInProgressTab,
@@ -19,6 +24,7 @@ import { getMergedAdminLogsForView } from '@/lib/adminSystemLog';
 import { isParentPropertyRecord } from '@/lib/utils/propertyUtils';
 import type { PropertyData } from '@/types/property';
 import { canReadLocalFallback } from '@/lib/runtime/localFallbackPolicy';
+import { ADMIN_ACK_STATE_UPDATED } from '@/lib/adminAckConstants';
 
 /** adminModeration.ts 와 동일 키 (순환 참조 방지 위해 직접 읽기) */
 const PROPERTIES_STORAGE_KEY = 'properties';
@@ -105,6 +111,7 @@ function writeIdSet(key: string, ids: Set<string>): void {
   ackCache.set(key, next);
   localStorage.setItem(key, JSON.stringify([...next]));
   void pushAckSetToServer(key, [...next]);
+  window.dispatchEvent(new CustomEvent(ADMIN_ACK_STATE_UPDATED));
 }
 
 async function hydrateAckSetFromServer(key: string): Promise<void> {
@@ -141,41 +148,172 @@ async function pushAckSetToServer(key: string, ids: string[]): Promise<void> {
   }
 }
 
-/** 상단 배지: 아직 '신규' 탭에서 확인하지 않은 신규 계정 수 */
-export function getUnseenNewUserCount(): number {
-  if (typeof window === 'undefined') return 0;
-  const ack = readIdSet(KEY_USER_UIDS);
-  return getUsers().filter((u) => !u.deleted && isUserNew(u) && !ack.has(u.uid)).length;
+let propertyAckDetailCache: { map: Map<string, Date>; fetchedAt: number } | null = null;
+const PROPERTY_ACK_DETAIL_TTL_MS = 45_000;
+
+export function invalidatePropertyAckDetailCache(): void {
+  propertyAckDetailCache = null;
 }
 
-/** 상단 배지: 아직 '신규' 탭에서 확인하지 않은 신규 매물 수 */
-export function getUnseenNewPropertyCount(): number {
-  if (typeof window === 'undefined') return 0;
+/** 서버에 저장된 매물 신규 확인 시각(관리자별). 짧은 TTL 캐시로 `/api/admin/ack-state` 호출을 줄입니다. */
+export async function fetchPropertyAcknowledgedAtMap(force = false): Promise<Map<string, Date>> {
+  if (typeof window === 'undefined') return new Map();
+  if (
+    !force &&
+    propertyAckDetailCache &&
+    Date.now() - propertyAckDetailCache.fetchedAt < PROPERTY_ACK_DETAIL_TTL_MS
+  ) {
+    return new Map(propertyAckDetailCache.map);
+  }
+  try {
+    const res = await fetch('/api/admin/ack-state?category=properties.new&detail=1', {
+      credentials: 'include',
+      cache: 'no-store',
+    });
+    if (!res.ok) return new Map();
+    const data = (await res.json()) as {
+      entries?: Array<{ targetId?: string; acknowledgedAt?: string }>;
+    };
+    const m = new Map<string, Date>();
+    if (!Array.isArray(data.entries)) return m;
+    for (const e of data.entries) {
+      if (!e.targetId || !e.acknowledgedAt) continue;
+      const d = new Date(e.acknowledgedAt);
+      if (Number.isFinite(d.getTime())) m.set(e.targetId, d);
+    }
+    propertyAckDetailCache = { map: m, fetchedAt: Date.now() };
+    return new Map(m);
+  } catch {
+    return new Map();
+  }
+}
+
+/** 매물 행·상세 진입 시 해당 매물만 확인 처리(알림 제거). */
+export function acknowledgeNewProperty(propertyId: string): void {
+  if (typeof window === 'undefined' || !propertyId) return;
   const ack = readIdSet(KEY_PROP_IDS);
+  ack.add(propertyId);
+  invalidatePropertyAckDetailCache();
+  writeIdSet(KEY_PROP_IDS, ack);
+}
+
+/**
+ * 신규 탭 알림: 미확인(또는 확인 후 매물이 다시 수정됨).
+ * `ackAtById`가 있으면 서버 확인 시각과 마지막 수정 시각을 비교한다.
+ */
+export function isAdminPropertyNewUnseen(
+  p: PropertyData,
+  ackAtById: Map<string, Date> | null = null
+): boolean {
+  if (typeof window === 'undefined' || !p.id || p.deleted) return false;
+  if (!isParentPropertyRecord(p)) return false;
+  const activity = adminPropertyLastActivityMs(p);
+  if (activity <= 0) return false;
+  if (ackAtById != null) {
+    const acked = ackAtById.get(p.id);
+    if (!acked) return true;
+    if (activity > acked.getTime()) {
+      return true;
+    }
+    return false;
+  }
+  if (!isPropertyNew(p)) return false;
+  return !readIdSet(KEY_PROP_IDS).has(p.id);
+}
+
+export function countUnseenNewProperties(ackAtById: Map<string, Date> | null): number {
+  if (typeof window === 'undefined') return 0;
   return readPropsRaw().filter(
-    (p) => p.id && !p.deleted && isParentPropertyRecord(p) && isPropertyNew(p) && !ack.has(p.id)
+    (p) =>
+      p.id &&
+      !p.deleted &&
+      isParentPropertyRecord(p) &&
+      isAdminPropertyNewUnseen(p, ackAtById)
   ).length;
 }
 
-/** 신규 탭 진입 시 현재 신규 목록을 확인 처리 → 해당 알림 제거 */
-export function acknowledgeCurrentNewUsers(): void {
-  if (typeof window === 'undefined') return;
+let userAckDetailCache: { map: Map<string, Date>; fetchedAt: number } | null = null;
+const USER_ACK_DETAIL_TTL_MS = 45_000;
+
+export function invalidateUserAckDetailCache(): void {
+  userAckDetailCache = null;
+}
+
+/** 서버에 저장된 계정 신규 확인 시각(관리자별). */
+export async function fetchUserAcknowledgedAtMap(force = false): Promise<Map<string, Date>> {
+  if (typeof window === 'undefined') return new Map();
+  if (
+    !force &&
+    userAckDetailCache &&
+    Date.now() - userAckDetailCache.fetchedAt < USER_ACK_DETAIL_TTL_MS
+  ) {
+    return new Map(userAckDetailCache.map);
+  }
+  try {
+    const res = await fetch('/api/admin/ack-state?category=users.new&detail=1', {
+      credentials: 'include',
+      cache: 'no-store',
+    });
+    if (!res.ok) return new Map();
+    const data = (await res.json()) as {
+      entries?: Array<{ targetId?: string; acknowledgedAt?: string }>;
+    };
+    const m = new Map<string, Date>();
+    if (!Array.isArray(data.entries)) return m;
+    for (const e of data.entries) {
+      if (!e.targetId || !e.acknowledgedAt) continue;
+      const d = new Date(e.acknowledgedAt);
+      if (Number.isFinite(d.getTime())) m.set(e.targetId, d);
+    }
+    userAckDetailCache = { map: m, fetchedAt: Date.now() };
+    return new Map(m);
+  } catch {
+    return new Map();
+  }
+}
+
+/** 계정 행·상세 진입 시 해당 uid만 확인 처리. */
+export function acknowledgeNewUser(uid: string): void {
+  if (typeof window === 'undefined' || !uid) return;
   const ack = readIdSet(KEY_USER_UIDS);
-  getUsers()
-    .filter((u) => !u.deleted && isUserNew(u))
-    .forEach((u) => ack.add(u.uid));
+  ack.add(uid);
+  invalidateUserAckDetailCache();
   writeIdSet(KEY_USER_UIDS, ack);
 }
 
-export function acknowledgeCurrentNewProperties(): void {
-  if (typeof window === 'undefined') return;
-  const ack = readIdSet(KEY_PROP_IDS);
-  readPropsRaw()
-    .filter((p) => p.id && !p.deleted && isParentPropertyRecord(p) && isPropertyNew(p))
-    .forEach((p) => {
-      if (p.id) ack.add(p.id);
-    });
-  writeIdSet(KEY_PROP_IDS, ack);
+/**
+ * 신규 탭 알림: 미확인(또는 확인 후 계정 정보가 다시 갱신됨).
+ */
+export function isAdminUserNewUnseen(
+  u: Pick<UserData, 'uid' | 'createdAt' | 'updatedAt' | 'deleted'>,
+  ackAtById: Map<string, Date> | null = null
+): boolean {
+  if (typeof window === 'undefined' || !u.uid || u.deleted) return false;
+  if (!isUserNew(u)) return false;
+  const activity = adminUserLastActivityMs(u);
+  if (ackAtById != null) {
+    const acked = ackAtById.get(u.uid);
+    if (!acked) return true;
+    return activity > acked.getTime();
+  }
+  return !readIdSet(KEY_USER_UIDS).has(u.uid);
+}
+
+export function countUnseenNewUsers(ackAtById: Map<string, Date> | null): number {
+  if (typeof window === 'undefined') return 0;
+  return getUsers().filter(
+    (u) => !u.deleted && isUserNew(u) && isAdminUserNewUnseen(u, ackAtById)
+  ).length;
+}
+
+/** 상단 배지: 아직 '신규' 탭에서 확인하지 않은 신규 계정 수(로컬 ack만 — 서버 시각은 탭에서 별도) */
+export function getUnseenNewUserCount(): number {
+  return countUnseenNewUsers(null);
+}
+
+/** 상단 배지: 아직 '신규' 탭에서 확인하지 않은 신규 매물 수(로컬 ack만) */
+export function getUnseenNewPropertyCount(): number {
+  return countUnseenNewProperties(null);
 }
 
 /** 상단 배지: 아직 '승인 요청'에서 확인하지 않은 건 수 */
