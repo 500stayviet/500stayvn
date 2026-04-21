@@ -5,9 +5,11 @@ applications:
       phases:
         preBuild:
           commands:
-            - nvm install 20
-            - nvm use 20
-            - npm install --no-audit --prefer-offline
+            # 매 빌드마다 Node 재설치로 시간 소모/타임아웃이 나지 않도록,
+            # 먼저 사용 시도 후 없을 때만 설치합니다.
+            - nvm use 20 || nvm install 20
+            # CI 환경은 npm ci가 더 빠르고 lockfile 재현성이 높습니다.
+            - npm ci --no-audit --prefer-offline
         build:
           commands:
             - |
@@ -25,7 +27,6 @@ applications:
               GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET
               EOF
             - npx prisma migrate deploy --schema=./prisma/schema.prisma
-            - npx prisma generate --schema=./prisma/schema.prisma
             - npm run build
           env:
             NODE_ENV: production
