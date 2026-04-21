@@ -44,6 +44,38 @@ function makeBookingsCursor(next: { updatedAt?: Date | null; id: string } | null
   return Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
 }
 
+function iso(v: unknown): string | null {
+  if (typeof v !== 'string' || !v.trim()) return null;
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
+/**
+ * 서버에서도 중복 예약(동일 매물의 pending/confirmed 기간 겹침)을 막아
+ * 클라이언트 우회 호출에서도 골든패스 데이터 무결성을 보장합니다.
+ */
+function hasOverlappingActiveBookings(bookings: BookingData[]): boolean {
+  const byProperty = new Map<string, Array<{ start: string; end: string }>>();
+  for (const b of bookings) {
+    if (!b?.propertyId) continue;
+    if (b.status !== 'pending' && b.status !== 'confirmed') continue;
+    const start = iso(b.checkInDate);
+    const end = iso(b.checkOutDate);
+    if (!start || !end || start >= end) continue;
+    if (!byProperty.has(b.propertyId)) byProperty.set(b.propertyId, []);
+    byProperty.get(b.propertyId)!.push({ start, end });
+  }
+  for (const ranges of byProperty.values()) {
+    ranges.sort((a, b) => a.start.localeCompare(b.start));
+    for (let i = 1; i < ranges.length; i += 1) {
+      // [prev.start, prev.end) vs [curr.start, curr.end)
+      if (ranges[i].start < ranges[i - 1].end) return true;
+    }
+  }
+  return false;
+}
+
 /**
  * 예약 목록
  * - 관리자 또는 sync secret: 전체
@@ -145,6 +177,9 @@ export async function PUT(request: NextRequest) {
   const bookings = Array.isArray(body.bookings) ? body.bookings : [];
   if (bookings.length > MAX_BATCH) {
     return NextResponse.json({ error: 'too_many' }, { status: 400 });
+  }
+  if (hasOverlappingActiveBookings(bookings)) {
+    return NextResponse.json({ error: 'duplicate_booking_overlap' }, { status: 409 });
   }
 
   try {
