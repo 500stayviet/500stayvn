@@ -2,14 +2,12 @@
  * Bookings API Service (PostgreSQL 원장 + 클라이언트 메모리 캐시)
  *
  * - 원장: 서버 DB (`/api/app/bookings` GET/PUT, 관리자는 `/api/admin/bookings`).
- * - `NEXT_PUBLIC_LOCAL_FALLBACK_MODE=off` 일 때는 예약 JSON을 localStorage에 읽거나 쓰지 않습니다.
- *   이 탭의 `bookingsCache`만 사용하며, 로그인 후 `getSharedAppBookingsRefresh`로 서버에서 채웁니다.
+ * - 비즈니스 원천 데이터는 서버 DB(`/api/app/bookings`)입니다.
+ * - localStorage는 UI 편의 데이터에만 사용하고, 예약 원천은 저장/복원하지 않습니다.
  */
 
 import { toISODateString } from '../utils/dateUtils';
-import { canReadLocalFallback, canWriteLocalFallback } from '@/lib/runtime/localFallbackPolicy';
 import {
-  isLedgerBootstrapDone,
   markLedgerBootstrapDone,
 } from '@/lib/runtime/localBootstrapMarkers';
 import {
@@ -106,41 +104,15 @@ export interface CreateBookingRequest {
   petCount?: number;
 }
 
-/**
- * LocalStorage 키
- */
-const BOOKINGS_STORAGE_KEY = 'bookings';
 const BOOKINGS_BOOTSTRAP_KEY = 'stayviet-bookings-bootstrap-v1';
 const BOOKINGS_BOOTSTRAP_SESSION_KEY = 'stayviet-bookings-bootstrap-session-v1';
 
 /** 서버 GET으로 채운 예약 스냅샷(탭 단위). off 모드에서는 LS와 무관하게 이 값만 신뢰합니다. */
 let bookingsCache: BookingData[] | null = null;
 
-/** readwrite 모드에서만 LS `bookings` 키를 읽어 메모리를 시드합니다. off/readonly 에서는 빈 배열만 반환합니다. */
-function loadBookingsCacheFromLocal(): BookingData[] {
-  if (
-    typeof window === 'undefined' ||
-    typeof localStorage === 'undefined' ||
-    !canReadLocalFallback()
-  ) return [];
-  try {
-    const data = localStorage.getItem(BOOKINGS_STORAGE_KEY);
-    const arr = data ? (JSON.parse(data) as BookingData[]) : [];
-    if (!Array.isArray(arr)) {
-      bookingsCache = [];
-      return [];
-    }
-    bookingsCache = arr;
-    return arr;
-  } catch {
-    bookingsCache = [];
-    return [];
-  }
-}
-
-/** 동기 스냅샷: 메모리 우선, 폴백 readwrite 일 때만 LS에서 시드. */
+/** 동기 스냅샷: 메모리 우선. */
 export function readBookingsArray(): BookingData[] {
-  const base = bookingsCache !== null ? bookingsCache : loadBookingsCacheFromLocal();
+  const base = bookingsCache !== null ? bookingsCache : [];
   return JSON.parse(JSON.stringify(base)) as BookingData[];
 }
 
@@ -184,20 +156,9 @@ export async function ensureBookingsLoadedForApp(): Promise<boolean> {
   return getSharedAppBookingsRefresh();
 }
 
-/** 메모리에 서버 스냅샷을 반영하고, 폴백 readwrite 일 때만 LS에 미러링합니다. */
+/** 메모리에 서버 스냅샷을 반영합니다. */
 export function writeBookingsArray(all: BookingData[]): void {
   bookingsCache = all;
-  if (
-    typeof window !== 'undefined' &&
-    typeof localStorage !== 'undefined' &&
-    canWriteLocalFallback()
-  ) {
-    try {
-      localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(all));
-    } catch {
-      /* ignore */
-    }
-  }
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('bookingsUpdated'));
   }
@@ -299,7 +260,10 @@ async function patchPaymentMetaByBooking(
 /** 앱 액터 기준으로 DB 예약만 페이지네이션 조회해 `bookingsCache`에 반영합니다. */
 export async function refreshBookingsFromServer(): Promise<boolean> {
   if (typeof window === 'undefined') return false;
-  if (!getCurrentUserId()) return false;
+  if (!getCurrentUserId()) {
+    bookingsCache = [];
+    return true;
+  }
   try {
     const list: BookingData[] = [];
     let offset = 0;
@@ -332,9 +296,6 @@ export async function refreshBookingsFromServer(): Promise<boolean> {
       offset = Number(data.page?.nextOffset ?? offset + chunk.length);
     }
     bookingsCache = list;
-    if (typeof localStorage !== 'undefined' && canWriteLocalFallback()) {
-      localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(list));
-    }
     window.dispatchEvent(new CustomEvent('bookingsUpdated'));
     return true;
   } catch (e) {
@@ -399,15 +360,12 @@ export async function getAllBookingsForAdmin(): Promise<BookingData[]> {
   }
 }
 
-/** 관리자 세션으로 전체 예약을 메모리에 반영합니다. readwrite 일 때만 동일 스냅샷을 LS에 미러합니다. */
+/** 관리자 세션으로 전체 예약을 메모리에 반영합니다. */
 export async function refreshBookingsCacheForAdmin(): Promise<boolean> {
   if (typeof window === 'undefined') return false;
   try {
     const rows = await getAllBookingsForAdmin();
     bookingsCache = rows;
-    if (typeof localStorage !== 'undefined' && canWriteLocalFallback()) {
-      localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(rows));
-    }
     window.dispatchEvent(new CustomEvent('bookingsUpdated'));
     return true;
   } catch {
@@ -427,68 +385,11 @@ export async function ensureBookingsCacheForAdmin(): Promise<boolean> {
   return bookingsAdminLoadInFlight;
 }
 
-/** 앱 로그인 직후: 폴백 off 면 LS 없이 서버만, readwrite 면 1회 import 후 서버와 맞춤 */
+/** 앱 로그인 직후: 서버에서 최신 예약 스냅샷만 동기화합니다. */
 export async function bootstrapBookingsFromServer(): Promise<void> {
   if (typeof window === 'undefined') return;
-  if (!getCurrentUserId()) return;
-  if (!canReadLocalFallback()) {
-    await getSharedAppBookingsRefresh();
-    return;
-  }
-
-  if (isLedgerBootstrapDone(BOOKINGS_BOOTSTRAP_KEY, BOOKINGS_BOOTSTRAP_SESSION_KEY)) {
-    await getSharedAppBookingsRefresh();
-    return;
-  }
-
-  let legacy: BookingData[] = [];
-  try {
-    const raw =
-      typeof localStorage !== 'undefined'
-        ? localStorage.getItem(BOOKINGS_STORAGE_KEY)
-        : null;
-    const parsed  = raw ? JSON.parse(raw) : [];
-    legacy = Array.isArray(parsed) ? parsed : [];
-  } catch {
-    legacy = [];
-  }
-
-  const ok = await getSharedAppBookingsRefresh();
-  if (!ok) return;
-
-  if ((bookingsCache?.length ?? 0) > 0) {
-    markLedgerBootstrapDone(BOOKINGS_BOOTSTRAP_KEY, BOOKINGS_BOOTSTRAP_SESSION_KEY);
-    return;
-  }
-
-  if (legacy.length === 0) {
-    markLedgerBootstrapDone(BOOKINGS_BOOTSTRAP_KEY, BOOKINGS_BOOTSTRAP_SESSION_KEY);
-    return;
-  }
-
-  try {
-    const res = await fetchWithRetry(
-      '/api/app/bookings/import',
-      withAppActor({
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookings: legacy }),
-      }),
-      { retries: 2, baseDelayMs: 300 }
-    );
-    if (res.ok) {
-      markLedgerBootstrapDone(BOOKINGS_BOOTSTRAP_KEY, BOOKINGS_BOOTSTRAP_SESSION_KEY);
-      await getSharedAppBookingsRefresh();
-    }
-  } catch (e) {
-    /* 재시도는 다음 로드 */
-    console.warn('[bookings] bootstrap import failed', e);
-    emitUserFacingSyncError({
-      area: 'bookings',
-      action: 'bootstrap',
-      message: '예약 초기 동기화에 실패했습니다. 네트워크를 확인해주세요.',
-    });
-  }
+  await getSharedAppBookingsRefresh();
+  markLedgerBootstrapDone(BOOKINGS_BOOTSTRAP_KEY, BOOKINGS_BOOTSTRAP_SESSION_KEY);
 }
 
 /**
@@ -499,15 +400,13 @@ function generateId(): string {
 }
 
 /**
- * 모든 예약 가져오기 (로그인 시 서버 GET → 메모리, 이후 동기 `readBookingsArray`와 동일 스냅샷)
+ * 모든 예약 가져오기 (서버 원천)
  */
 export async function getAllBookings(): Promise<BookingData[]> {
   if (typeof window === 'undefined') return [];
 
   try {
-    if (getCurrentUserId()) {
-      await getSharedAppBookingsRefresh();
-    }
+    await getSharedAppBookingsRefresh();
 
     const bookings = readBookingsArray();
     let changed = false;
