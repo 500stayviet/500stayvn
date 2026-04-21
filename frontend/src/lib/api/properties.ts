@@ -9,7 +9,6 @@ import { PropertyData } from '@/types/property';
 import {
   getReservationsByOwner,
   ReservationData,
-  readReservationsArray,
 } from './reservations';
 import { parseDate, toISODateString } from '@/lib/utils/dateUtils';
 import {
@@ -22,9 +21,7 @@ import {
 } from './bookings';
 import { adminPropertyLastActivityMs } from '@/lib/adminNewUtils';
 import { hasAvailableBookingPeriod, isParentPropertyRecord } from '@/lib/utils/propertyUtils';
-import { canReadLocalFallback, canWriteLocalFallback } from '@/lib/runtime/localFallbackPolicy';
 import {
-  isLedgerBootstrapDone,
   markLedgerBootstrapDone,
 } from '@/lib/runtime/localBootstrapMarkers';
 import {
@@ -62,17 +59,6 @@ export type PropertiesByOwnerResult = {
   properties: PropertyData[];
   bookedDateRanges: Map<string, PropertyDateRange[]>;
 };
-
-function groupReservationsByOwner(reservations: ReservationData[]): Map<string, ReservationData[]> {
-  const map = new Map<string, ReservationData[]>();
-  for (const r of reservations) {
-    const oid = r.ownerId;
-    if (!oid) continue;
-    if (!map.has(oid)) map.set(oid, []);
-    map.get(oid)!.push(r);
-  }
-  return map;
-}
 
 async function syncPropertiesNow(snapshot: PropertyData[]): Promise<void> {
   if (typeof window === 'undefined') return;
@@ -134,39 +120,17 @@ export function buildBookedRangesForParentListing(
 }
 
 /**
- * LocalStorage 키
+ * 비즈니스 원천은 서버 DB(`/api/app/properties`) — LS는 UI 편의 전용으로만 사용합니다.
  */
-const STORAGE_KEY = 'properties';
 const PROPS_BOOTSTRAP_KEY = 'stayviet-properties-bootstrap-v1';
 const PROPS_BOOTSTRAP_SESSION_KEY = 'stayviet-properties-bootstrap-session-v1';
 
 /** `/api/app/properties` GET 으로 채운 매물 스냅샷(탭 단위). off 모드에서는 LS 미러 없이 이 값이 기준입니다. */
 let propertiesCache: PropertyData[] | null = null;
 
-function loadPropertyCacheFromLocal(): PropertyData[] {
-  if (
-    typeof window === 'undefined' ||
-    typeof localStorage === 'undefined' ||
-    !canReadLocalFallback()
-  ) return [];
-  try {
-    const s = localStorage.getItem(STORAGE_KEY);
-    const arr = s ? (JSON.parse(s) as PropertyData[]) : [];
-    if (!Array.isArray(arr)) {
-      propertiesCache = [];
-      return [];
-    }
-    propertiesCache = arr;
-    return arr;
-  } catch {
-    propertiesCache = [];
-    return [];
-  }
-}
-
 /** @public — 관리자 모더레이션 등 외부에서 동일 스냅샷 필요 시 */
 export function readPropertiesArray(): PropertyData[] {
-  const base = propertiesCache !== null ? propertiesCache : loadPropertyCacheFromLocal();
+  const base = propertiesCache !== null ? propertiesCache : [];
   return JSON.parse(JSON.stringify(base)) as PropertyData[];
 }
 
@@ -230,16 +194,7 @@ async function hydratePropertyAndBookingMemoryIfLoggedIn(): Promise<void> {
 
 export function writePropertiesArray(all: PropertyData[]): void {
   propertiesCache = all;
-  if (
-    typeof window !== 'undefined' &&
-    typeof localStorage !== 'undefined' &&
-    canWriteLocalFallback()
-  ) {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
-    } catch {
-      /* ignore */
-    }
+  if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('propertiesUpdated'));
   }
   if (typeof window === 'undefined') return;
@@ -269,7 +224,6 @@ export function writePropertiesArray(all: PropertyData[]): void {
 
 export async function refreshPropertiesFromServer(): Promise<boolean> {
   if (typeof window === 'undefined') return false;
-  if (!getCurrentUserId()) return false;
   try {
     const list: PropertyData[] = [];
     let offset = 0;
@@ -302,9 +256,6 @@ export async function refreshPropertiesFromServer(): Promise<boolean> {
       offset = Number(data.page?.nextOffset ?? offset + chunk.length);
     }
     propertiesCache = list;
-    if (typeof localStorage !== 'undefined' && canWriteLocalFallback()) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-    }
     window.dispatchEvent(new CustomEvent('propertiesUpdated'));
     return true;
   } catch (e) {
@@ -375,9 +326,6 @@ export async function refreshPropertiesCacheForAdmin(): Promise<boolean> {
   try {
     const rows = await getAllPropertiesForAdmin();
     propertiesCache = rows;
-    if (typeof localStorage !== 'undefined' && canWriteLocalFallback()) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
-    }
     window.dispatchEvent(new CustomEvent('propertiesUpdated'));
     return true;
   } catch {
@@ -415,63 +363,10 @@ export async function getPropertyForAdmin(id: string): Promise<PropertyData | nu
 /** 앱 로그인 직후: 폴백 off 면 LS 없이 서버만, readwrite 면 1회 import 후 서버와 맞춤 */
 export async function bootstrapPropertiesFromServer(): Promise<void> {
   if (typeof window === 'undefined') return;
-  if (!getCurrentUserId()) return;
-  if (!canReadLocalFallback()) {
-    await getSharedAppPropertiesRefresh();
-    return;
-  }
-
-  if (isLedgerBootstrapDone(PROPS_BOOTSTRAP_KEY, PROPS_BOOTSTRAP_SESSION_KEY)) {
-    await getSharedAppPropertiesRefresh();
-    return;
-  }
-
-  let legacyParsed: PropertyData[] = [];
-  const legacyRaw =
-    typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
-  try {
-    const parsed = legacyRaw ? JSON.parse(legacyRaw) : [];
-    legacyParsed = Array.isArray(parsed) ? parsed : [];
-  } catch {
-    legacyParsed = [];
-  }
-
-  const ok = await getSharedAppPropertiesRefresh();
-  if (!ok) return;
-
-  if ((propertiesCache?.length ?? 0) > 0) {
-    markLedgerBootstrapDone(PROPS_BOOTSTRAP_KEY, PROPS_BOOTSTRAP_SESSION_KEY);
-    return;
-  }
-
-  if (legacyParsed.length === 0) {
-    markLedgerBootstrapDone(PROPS_BOOTSTRAP_KEY, PROPS_BOOTSTRAP_SESSION_KEY);
-    return;
-  }
-
-  try {
-    const res = await fetchWithRetry(
-      '/api/app/properties/import',
-      withAppActor({
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ properties: legacyParsed }),
-      }),
-      { retries: 2, baseDelayMs: 300 }
-    );
-    if (res.ok) {
-      markLedgerBootstrapDone(PROPS_BOOTSTRAP_KEY, PROPS_BOOTSTRAP_SESSION_KEY);
-      await getSharedAppPropertiesRefresh();
-    }
-  } catch (e) {
-    /* 다음 로드에 재시도 */
-    console.warn('[properties] bootstrap import failed', e);
-    emitUserFacingSyncError({
-      area: 'properties',
-      action: 'bootstrap',
-      message: '매물 초기 동기화에 실패했습니다. 잠시 후 다시 시도해주세요.',
-    });
-  }
+  // 4단계: 비즈니스 매물 데이터는 LS를 bootstrap 소스로 쓰지 않습니다.
+  // 비로그인도 공개 API를 통해 마스킹 데이터가 내려오므로 항상 서버에서 동기화합니다.
+  await getSharedAppPropertiesRefresh();
+  markLedgerBootstrapDone(PROPS_BOOTSTRAP_KEY, PROPS_BOOTSTRAP_SESSION_KEY);
 }
 
 export interface CancelledPropertyLog {
@@ -899,26 +794,19 @@ function toDate(dateInput: string | Date | undefined | null): Date | null {
 }
 
 /**
- * 모든 매물 조회 — 로그인 시 `getSharedAppPropertiesRefresh` 로 서버 스냅샷을 먼저 맞춘 뒤 메모리를 읽습니다.
+ * 모든 매물 조회(서버 원천) — 비로그인도 공개 API로 마스킹 목록을 가져옵니다.
  */
 export async function getAllProperties(): Promise<PropertyData[]> {
   try {
-    if (typeof window === 'undefined') {
-      return [];
-    }
-    if (getCurrentUserId()) {
-      await getSharedAppPropertiesRefresh();
-    }
+    if (typeof window === 'undefined') return [];
+    await getSharedAppPropertiesRefresh();
 
     const properties = readPropertiesArray();
-    
     // 삭제/숨김 매물 제외
     const activeProperties = properties.filter((p) => !p.deleted && !p.hidden);
-    
-    // 날짜는 ISO 문자열 그대로 반환 (필요시 컴포넌트에서 Date로 변환)
+
     return activeProperties.map((prop) => ({
       ...prop,
-      // LocalStorage에는 ISO 문자열로 저장되어 있으므로 그대로 반환
       checkInDate: prop.checkInDate,
       checkOutDate: prop.checkOutDate,
       createdAt: prop.createdAt,
@@ -931,50 +819,14 @@ export async function getAllProperties(): Promise<PropertyData[]> {
 }
 
 /**
- * 예약 가능한 매물만 조회 (Gaps Logic 적용)
+ * 예약 가능한 매물만 조회.
+ * 비로그인은 공개 API가 이미 마스킹/노출 기준을 반영하므로 추가 LS 결합 없이 필터만 적용합니다.
  */
 export async function getAvailableProperties(): Promise<PropertyData[]> {
   try {
-    if (typeof window === 'undefined' || typeof localStorage === 'undefined') return [];
-    await hydratePropertyAndBookingMemoryIfLoggedIn();
-    const allProps = readPropertiesArray();
-    const availableProperties: PropertyData[] = [];
-    const allReservations = readReservationsArray();
-    const byOwner = groupReservationsByOwner(allReservations);
-
-    // 자동 승격(active 복귀)을 100% 차단하기 위해,
-    // 고객 노출 후보는 오직 `status: 'active'`만으로 제한한다.
-    // (gap이 다시 생겨도 INACTIVE_SHORT_TERM -> active 자동 전환은 하지 않음)
-    const candidateProps = allProps.filter(
-      (p) =>
-        !p.deleted &&
-        !p.hidden &&
-        isParentPropertyRecord(p) &&
-        p.status === 'active'
-    );
-
-    for (const property of candidateProps) {
-      if (!property.ownerId) continue;
-      const reservations = byOwner.get(property.ownerId) || [];
-      const bookedRanges = buildBookedRangesForParentListing(property, allProps, reservations);
-
-      if (hasAvailableBookingPeriod(property, bookedRanges)) {
-        availableProperties.push(property);
-      } else {
-        await updateProperty(property.id!, {
-          status: 'INACTIVE_SHORT_TERM',
-          history: [
-            ...(property.history || []),
-            {
-              action: 'AUTO_SUSPEND_GAP',
-              timestamp: new Date().toISOString(),
-              details: 'Suspended: Gap < 7d (규칙상 광고종료·데이터 보존)',
-            },
-          ],
-        });
-      }
-    }
-    return availableProperties;
+    if (typeof window === 'undefined') return [];
+    const allProps = await getAllProperties();
+    return allProps.filter((p) => isParentPropertyRecord(p) && p.status === 'active');
   } catch (error) {
     console.error('Error getting available properties:', error);
     return [];
@@ -1087,31 +939,23 @@ export async function loadAdminInventoryPage(
 }
 
 /**
- * 실시간 매물 리스너 (LocalStorage 버전)
- * 
+ * 실시간 매물 리스너 (서버 폴링 + 커스텀 이벤트)
+ *
  * @param callback - 데이터 변경 시 호출되는 콜백 함수
  * @returns 구독 해제 함수
  */
 export function subscribeToProperties(
   callback: (properties: PropertyData[]) => void
 ): () => void {
-  // 브라우저 환경 확인
-  if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+  if (typeof window === 'undefined') {
     callback([]);
     return () => {};
   }
-  
-  // 초기 데이터 로드 (예약 가능한 매물만)
+
+  // 초기 데이터 로드 (비로그인 포함 서버 기준)
   getAvailableProperties().then(callback);
-  
-  // storage 이벤트 리스너 등록 (다른 탭에서 변경 시)
-  const handleStorageChange = (e: StorageEvent) => {
-    if (e.key === STORAGE_KEY) {
-      getAvailableProperties().then(callback);
-    }
-  };
-  
-  // 커스텀 이벤트 리스너 (같은 탭에서 매물 업데이트 시 즉시 반영)
+
+  // 커스텀 이벤트 리스너 (같은 탭 변경 시 즉시 반영)
   const handlePropertiesUpdated = () => {
     console.log('[subscribeToProperties] propertiesUpdated event received, refreshing...');
     getAvailableProperties().then((data) => {
@@ -1119,17 +963,15 @@ export function subscribeToProperties(
       callback(data);
     });
   };
-  
-  window.addEventListener('storage', handleStorageChange);
+
   window.addEventListener('propertiesUpdated', handlePropertiesUpdated);
-  
-  // 주기적으로 확인 - 10초로 늘림 (커스텀 이벤트로 즉시 반영되므로)
+
+  // 폴링 폴백
   const interval = setInterval(() => {
     getAvailableProperties().then(callback);
   }, 10000);
-  
+
   return () => {
-    window.removeEventListener('storage', handleStorageChange);
     window.removeEventListener('propertiesUpdated', handlePropertiesUpdated);
     clearInterval(interval);
   };
@@ -1200,21 +1042,20 @@ export async function getParentPropertyId(propertyId: string): Promise<string> {
  */
 export async function getProperty(id: string): Promise<PropertyData | null> {
   try {
-    if (typeof window === 'undefined') return null;
-    await hydratePropertiesMemoryIfLoggedIn();
-    const properties = readPropertiesArray();
-    const property = properties.find((p) => p.id === id);
-    
-    if (!property) return null;
-    
-    // 날짜는 ISO 문자열 그대로 반환
-    return {
-      ...property,
-      checkInDate: property.checkInDate,
-      checkOutDate: property.checkOutDate,
-      createdAt: property.createdAt,
-      updatedAt: property.updatedAt,
-    };
+    if (typeof window === 'undefined' || !id) return null;
+    /**
+     * 4단계: 상세도 로컬 원천 대신 서버 API 사용.
+     * - 비로그인: 마스킹된 공개 DTO
+     * - 로그인: 액터 헤더로 소유/참여 범위의 원본 DTO
+     */
+    const res = await fetchWithRetry(
+      `/api/app/properties/${encodeURIComponent(id)}`,
+      withAppActor({ cache: 'no-store' }),
+      { retries: 2, baseDelayMs: 300 }
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as { property?: PropertyData };
+    return data?.property ?? null;
   } catch (error) {
     console.error('Error getting property:', error);
     return null;
