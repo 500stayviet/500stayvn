@@ -5,11 +5,35 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
-const AWS_REGION = process.env.NEXT_PUBLIC_AWS_REGION || 'ap-southeast-1';
-const AWS_API_KEY = process.env.NEXT_PUBLIC_AWS_API_KEY || '';
-const AWS_PLACE_INDEX_NAME = process.env.NEXT_PUBLIC_AWS_PLACE_INDEX_NAME || '';
+function readFirstNonEmpty(...values: Array<string | undefined>): string {
+  for (const v of values) {
+    const trimmed = (v || '').trim();
+    if (trimmed.length > 0) return trimmed;
+  }
+  return '';
+}
 
-const BASE_URL = `https://places.geo.${AWS_REGION}.amazonaws.com`;
+function resolveAwsLocationConfig() {
+  const region = readFirstNonEmpty(
+    process.env.NEXT_PUBLIC_AWS_REGION,
+    process.env.AWS_REGION,
+    'ap-southeast-1'
+  );
+  const apiKey = readFirstNonEmpty(
+    process.env.NEXT_PUBLIC_AWS_API_KEY,
+    process.env.AWS_API_KEY
+  );
+  const placeIndexName = readFirstNonEmpty(
+    process.env.NEXT_PUBLIC_AWS_PLACE_INDEX_NAME,
+    process.env.AWS_PLACE_INDEX_NAME
+  );
+  return {
+    region,
+    apiKey,
+    placeIndexName,
+    baseUrl: `https://places.geo.${region}.amazonaws.com`,
+  };
+}
 
 // CORS 헤더 설정
 const corsHeaders = {
@@ -28,14 +52,16 @@ export async function OPTIONS() {
  */
 export async function POST(request: NextRequest) {
   try {
-    if (!AWS_API_KEY) {
+    const cfg = resolveAwsLocationConfig();
+
+    if (!cfg.apiKey) {
       return NextResponse.json(
         { error: 'AWS API Key is not configured' },
         { status: 500, headers: corsHeaders }
       );
     }
 
-    if (!AWS_PLACE_INDEX_NAME) {
+    if (!cfg.placeIndexName) {
       return NextResponse.json(
         { error: 'AWS Place Index Name is not configured' },
         { status: 500, headers: corsHeaders }
@@ -53,7 +79,7 @@ export async function POST(request: NextRequest) {
         if (!text || text.trim().length === 0) {
           return NextResponse.json({ Suggestions: [] }, { headers: corsHeaders });
         }
-        url = `${BASE_URL}/places/v0/indexes/${AWS_PLACE_INDEX_NAME}/search/suggestions?key=${encodeURIComponent(AWS_API_KEY)}`;
+        url = `${cfg.baseUrl}/places/v0/indexes/${cfg.placeIndexName}/search/suggestions?key=${encodeURIComponent(cfg.apiKey)}`;
         requestBody = {
           Text: text,
           MaxResults: 10,
@@ -75,7 +101,7 @@ export async function POST(request: NextRequest) {
         if (!text || text.trim().length === 0) {
           return NextResponse.json({ Results: [] }, { headers: corsHeaders });
         }
-        url = `${BASE_URL}/places/v0/indexes/${AWS_PLACE_INDEX_NAME}/search/text?key=${encodeURIComponent(AWS_API_KEY)}`;
+        url = `${cfg.baseUrl}/places/v0/indexes/${cfg.placeIndexName}/search/text?key=${encodeURIComponent(cfg.apiKey)}`;
         // 400 에러 방지: FilterCategories 제거, 기본 파라미터만 사용
         requestBody = {
           Text: text,
@@ -91,12 +117,12 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: 'PlaceId is required' }, { status: 400, headers: corsHeaders });
         }
         // AWS Location Service의 GetPlace API 엔드포인트
-        url = `${BASE_URL}/places/v0/indexes/${AWS_PLACE_INDEX_NAME}/places/${encodeURIComponent(placeId)}?key=${encodeURIComponent(AWS_API_KEY)}`;
+        url = `${cfg.baseUrl}/places/v0/indexes/${cfg.placeIndexName}/places/${encodeURIComponent(placeId)}?key=${encodeURIComponent(cfg.apiKey)}`;
         // GetPlace는 GET 요청이므로 requestBody는 사용하지 않음
         break;
 
       case 'position':
-        url = `${BASE_URL}/places/v0/indexes/${AWS_PLACE_INDEX_NAME}/search/position?key=${encodeURIComponent(AWS_API_KEY)}`;
+        url = `${cfg.baseUrl}/places/v0/indexes/${cfg.placeIndexName}/search/position?key=${encodeURIComponent(cfg.apiKey)}`;
         requestBody = {
           Position: [longitude, latitude],
           MaxResults: 1,
