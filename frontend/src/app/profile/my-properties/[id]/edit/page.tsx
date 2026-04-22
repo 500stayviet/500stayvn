@@ -46,7 +46,11 @@ import {
   VIETNAM_CITIES,
   ALL_REGIONS,
 } from "@/lib/data/vietnam-regions";
-import { uploadToS3 } from "@/lib/s3-client";
+import {
+  buildEditPropertyUpdates,
+  buildUnitNumber,
+  resolveEditPropertyImageUrls,
+} from "./utils/editPropertySubmit";
 
 // 베트남 스타일 컬러: Coral Red + Golden Orange + Sunshine Yellow (add-property와 동일)
 const COLORS = {
@@ -327,12 +331,6 @@ function EditPropertyContent() {
     }
   };
 
-  const formatRoomNumber = (room: string) => {
-    const num = parseInt(room.replace(/\D/g, ""), 10);
-    if (isNaN(num)) return room;
-    return num.toString().padStart(4, "0");
-  };
-
   const stripTime = (d: Date) =>
     new Date(d.getFullYear(), d.getMonth(), d.getDate());
 
@@ -396,70 +394,37 @@ function EditPropertyContent() {
         return;
       }
 
-      const existingUrls = imagePreviews.filter(
-        (url) =>
-          typeof url === "string" &&
-          (url.startsWith("http") || url.startsWith("/")),
-      );
-      let newUrls: string[] = [];
-      if (images.length > 0) {
-        newUrls = await Promise.all(
-          images.map((file) => uploadToS3(file, "properties")),
-        );
-      }
-      const imageUrls = [...existingUrls, ...newUrls];
-
-      const unitNumber =
-        buildingNumber && roomNumber
-          ? `${buildingNumber}동 ${formatRoomNumber(roomNumber)}호`
-          : buildingNumber
-            ? `${buildingNumber}동`
-            : roomNumber
-              ? `${formatRoomNumber(roomNumber)}호`
-              : undefined;
+      const imageUrls = await resolveEditPropertyImageUrls(imagePreviews, images);
+      const unitNumber = buildUnitNumber(buildingNumber, roomNumber);
 
       const publicAddress = address;
 
-      const updates: Partial<import("@/types/property").PropertyData> = {
-        title: propertyName.trim(), // 매물명 = title
-        original_description: propertyDescription || publicAddress,
-        price: parseInt(weeklyRent.replace(/\D/g, "") || "0", 10),
-        priceUnit: "vnd",
-        area: 0,
-        bedrooms: Number(bedrooms),
-        bathrooms: Number(bathrooms),
-        coordinates: { lat: coordinates.lat, lng: coordinates.lng },
+      const updates = buildEditPropertyUpdates({
+        propertyName,
+        propertyDescription,
         address: publicAddress,
-        unitNumber: unitNumber || undefined,
-        images: imageUrls,
-        amenities: selectedAmenities,
-        propertyType: propertyType || undefined,
-        cleaningPerWeek: selectedAmenities.includes("cleaning")
-          ? cleaningPerWeek
-          : 0,
-        petAllowed: selectedAmenities.includes("pet"),
-        ...(selectedAmenities.includes("pet") && { maxPets }),
-        petFee:
-          selectedAmenities.includes("pet") && petFeeAmount.trim()
-            ? parseInt(petFeeAmount.replace(/\D/g, ""), 10) || undefined
-            : undefined,
-        maxAdults: Number(maxAdults),
-        maxChildren: Number(maxChildren),
-        checkInDate: checkInDate ? new Date(checkInDate) : undefined,
-        checkOutDate: checkOutDate ? new Date(checkOutDate) : undefined,
-        checkInTime: checkInTime,
-        checkOutTime: checkOutTime,
-        ...(icalPlatform && { icalPlatform }),
-        ...(icalCalendarName.trim() && {
-          icalCalendarName: icalCalendarName.trim(),
-        }),
-        ...(icalUrl.trim() && { icalUrl: icalUrl.trim() }),
-      };
-
-      // 예약 취소(pending) 상태에서 기간을 다시 조정하고 저장하면, 수동 재등록으로 '광고중(active)'로 전환
-      if (propertyStatus === "pending") {
-        (updates as any).status = "active";
-      }
+        weeklyRent,
+        bedrooms,
+        bathrooms,
+        coordinates,
+        unitNumber,
+        imageUrls,
+        selectedAmenities,
+        propertyType,
+        cleaningPerWeek,
+        maxPets,
+        petFeeAmount,
+        maxAdults,
+        maxChildren,
+        checkInDate,
+        checkOutDate,
+        checkInTime,
+        checkOutTime,
+        icalPlatform,
+        icalCalendarName,
+        icalUrl,
+        propertyStatus,
+      });
 
       if (isDeleted) await restoreProperty(propertyId);
       await updateProperty(propertyId, updates);
