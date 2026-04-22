@@ -5,11 +5,8 @@ applications:
       phases:
         preBuild:
           commands:
-            # 매 빌드마다 Node 재설치로 시간 소모/타임아웃이 나지 않도록,
-            # 먼저 사용 시도 후 없을 때만 설치합니다.
             - nvm use 20 || nvm install 20
-            # Amplify 환경에서 npm ci EUSAGE가 간헐 재발해 preBuild가 멈추므로 install 단독으로 고정합니다.
-            - npm install --ignore-scripts --no-audit --prefer-offline
+            - npm ci --no-audit
         build:
           commands:
             - |
@@ -26,9 +23,7 @@ applications:
               GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID
               GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET
               EOF
-            # 마이그레이션은 별도 릴리즈 작업에서 수행하고, 배포 빌드에서는 정지/타임아웃 위험을 피합니다.
-            - echo "[build] skip prisma migrate deploy in Amplify build"
-            - echo "[build] npm run build start"
+            - npx prisma generate --schema=./prisma/schema.prisma
             - npm run build
           env:
             NODE_ENV: production
