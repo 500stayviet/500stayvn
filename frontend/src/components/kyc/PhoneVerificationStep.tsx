@@ -22,6 +22,17 @@ import {
   verifyPhoneCode 
 } from '@/lib/firebase/firebase';
 
+const PHONE_AUTH_DEBUG = process.env.NEXT_PUBLIC_PHONE_AUTH_DEBUG === 'true';
+
+const phoneAuthDebugLog = (message: string, payload?: unknown) => {
+  if (!PHONE_AUTH_DEBUG) return;
+  if (payload !== undefined) {
+    console.log(message, payload);
+    return;
+  }
+  console.log(message);
+};
+
 interface PhoneVerificationStepProps {
   currentLanguage: SupportedLanguage;
   onComplete: (data: PhoneVerificationData) => void;
@@ -89,7 +100,16 @@ export default function PhoneVerificationStep({
 
       // reCAPTCHA verifier 초기화
       try {
+        if (recaptchaVerifierRef.current) {
+          phoneAuthDebugLog('[phone-auth] existing recaptcha verifier reused in component', {
+            containerId: recaptchaContainerId,
+          });
+        }
         recaptchaVerifierRef.current = createRecaptchaVerifier(recaptchaContainerId);
+        phoneAuthDebugLog('[phone-auth] reCAPTCHA verifier ready in PhoneVerificationStep', {
+          containerId: recaptchaContainerId,
+          mode: 'invisible',
+        });
       } catch (error) {
         console.error('Error initializing reCAPTCHA:', error);
       }
@@ -98,7 +118,13 @@ export default function PhoneVerificationStep({
     // 컴포넌트 언마운트 시 정리
     return () => {
       if (recaptchaVerifierRef.current) {
+        phoneAuthDebugLog('[phone-auth] recaptcha clear started', { containerId: recaptchaContainerId });
         recaptchaVerifierRef.current.clear();
+        phoneAuthDebugLog('[phone-auth] recaptcha clear completed', { containerId: recaptchaContainerId });
+      }
+      if (typeof window !== 'undefined' && window.__phoneAuthRecaptchaVerifier) {
+        delete window.__phoneAuthRecaptchaVerifier;
+        phoneAuthDebugLog('[phone-auth] global recaptcha verifier handle removed');
       }
     };
   }, []);
@@ -125,6 +151,7 @@ export default function PhoneVerificationStep({
         throw new Error('reCAPTCHA not initialized');
       }
 
+      phoneAuthDebugLog('[phone-auth] OTP send requested', { phoneNumber: normalizedPhone });
       // Firebase 전화번호 인증 요청
       const result = await sendPhoneVerificationCode(
         normalizedPhone,
@@ -139,7 +166,12 @@ export default function PhoneVerificationStep({
       console.log('Verification code sent via Firebase');
       return true;
     } catch (err: any) {
-      console.error('Firebase phone auth error:', err);
+      console.error('Firebase phone auth error:', {
+        code: err?.code,
+        message: err?.message,
+        stack: err?.stack,
+        error: err,
+      });
       
       // 에러 메시지 처리
       let errorMessage = 'Failed to send verification code';
@@ -157,6 +189,7 @@ export default function PhoneVerificationStep({
       setError(errorMessage);
       return false;
     } finally {
+      phoneAuthDebugLog('[phone-auth] 인증 프로세스 종료', { phase: 'handleSendOTP' });
       setLoading(false);
     }
   };
@@ -170,6 +203,9 @@ export default function PhoneVerificationStep({
     try {
       // Firebase 인증 코드 확인
       const result = await verifyPhoneCode(confirmationResult, otpCode);
+      phoneAuthDebugLog('[phone-auth] OTP verify success', {
+        firebaseUid: result?.user?.uid,
+      });
       
       // 인증 성공
       setIsPhoneVerified(true);
@@ -190,7 +226,12 @@ export default function PhoneVerificationStep({
       
       console.log('Phone verification successful:', verifiedPhoneNumber);
     } catch (err: any) {
-      console.error('Firebase verification error:', err);
+      console.error('Firebase verification error:', {
+        code: err?.code,
+        message: err?.message,
+        stack: err?.stack,
+        error: err,
+      });
       
       // 에러 메시지 처리
       let errorMessage = 'Invalid verification code';
@@ -203,6 +244,7 @@ export default function PhoneVerificationStep({
       
       setOtpError(errorMessage);
     } finally {
+      phoneAuthDebugLog('[phone-auth] 인증 프로세스 종료', { phase: 'handleVerifyOTP' });
       setIsVerifyingOtp(false);
     }
   };
