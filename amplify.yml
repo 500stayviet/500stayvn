@@ -8,9 +8,9 @@ applications:
             # 매 빌드마다 Node 재설치로 시간 소모/타임아웃이 나지 않도록,
             # 먼저 사용 시도 후 없을 때만 설치합니다.
             - nvm use 20 || nvm install 20
-            # preBuild에서 postinstall(prisma generate)로 멈추는 타임아웃을 피하려고 스크립트는 건너뜁니다.
-            # Prisma generate는 build 단계의 npm run build에서 실행됩니다.
-            - npm install --ignore-scripts --no-audit --prefer-offline
+            # npm ci를 기본으로 복구하되, preBuild 타임아웃 방지를 위해 install scripts는 건너뜁니다.
+            # lockfile 불일치가 재발하면 install로 폴백합니다.
+            - npm ci --ignore-scripts --no-audit --prefer-offline || npm install --ignore-scripts --no-audit --prefer-offline
         build:
           commands:
             - |
@@ -27,7 +27,10 @@ applications:
               GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID
               GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET
               EOF
+            - echo "[build] prisma migrate deploy start"
             - npx prisma migrate deploy --schema=./prisma/schema.prisma
+            - echo "[build] prisma migrate deploy done"
+            - echo "[build] npm run build start"
             - npm run build
           env:
             NODE_ENV: production
