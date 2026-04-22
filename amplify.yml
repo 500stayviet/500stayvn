@@ -11,8 +11,14 @@ applications:
         build:
           commands:
             - |
-              echo "[build] writing env file at $(pwd)/.env"
-              cat > ./.env <<EOF
+              echo "[build] cwd: $(pwd)"
+              if [ -d "./frontend" ]; then
+                ENV_TARGET="./frontend/.env"
+              else
+                ENV_TARGET="./.env"
+              fi
+              echo "[build] writing env file at ${ENV_TARGET}"
+              cat > "${ENV_TARGET}" <<EOF
               DATABASE_URL=$DATABASE_URL
               DIRECT_URL=$DIRECT_URL
               NEXTAUTH_URL=$NEXTAUTH_URL
@@ -34,6 +40,20 @@ applications:
               AWS_MAP_NAME=$NEXT_PUBLIC_AWS_MAP_NAME
               AWS_PLACE_INDEX_NAME=$NEXT_PUBLIC_AWS_PLACE_INDEX_NAME
               EOF
+              echo "[build] validating required AWS env keys in ${ENV_TARGET}"
+              for key in NEXT_PUBLIC_AWS_REGION NEXT_PUBLIC_AWS_API_KEY NEXT_PUBLIC_AWS_MAP_NAME NEXT_PUBLIC_AWS_PLACE_INDEX_NAME; do
+                if grep -q "^${key}=.\+" "${ENV_TARGET}"; then
+                  echo "[build] ${key}=<set>"
+                else
+                  echo "[build] ${key}=<missing>"
+                fi
+              done
+              if [ -f package.json ]; then
+                echo "[build] package.json found in $(pwd)"
+              else
+                echo "[build] package.json not found in $(pwd)"
+                exit 1
+              fi
             # 빌드 중에는 Prisma Client만 생성하고, DB 마이그레이션은 릴리즈 절차에서 별도 실행
             - npx prisma generate --schema=./prisma/schema.prisma
             - npm run build
