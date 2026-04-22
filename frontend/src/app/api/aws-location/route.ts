@@ -55,6 +55,7 @@ export async function POST(request: NextRequest) {
     const cfg = resolveAwsLocationConfig();
 
     if (!cfg.apiKey) {
+      console.error('[aws-location] missing env var: NEXT_PUBLIC_AWS_API_KEY or AWS_API_KEY');
       return NextResponse.json(
         { error: 'AWS API Key is not configured' },
         { status: 500, headers: corsHeaders }
@@ -62,6 +63,17 @@ export async function POST(request: NextRequest) {
     }
 
     if (!cfg.placeIndexName) {
+      console.error('[aws-location] missing env var: NEXT_PUBLIC_AWS_PLACE_INDEX_NAME or AWS_PLACE_INDEX_NAME');
+      console.error('[aws-location] env snapshot:', {
+        NEXT_PUBLIC_AWS_REGION: Boolean((process.env.NEXT_PUBLIC_AWS_REGION || '').trim()),
+        NEXT_PUBLIC_AWS_API_KEY: Boolean((process.env.NEXT_PUBLIC_AWS_API_KEY || '').trim()),
+        NEXT_PUBLIC_AWS_MAP_NAME: Boolean((process.env.NEXT_PUBLIC_AWS_MAP_NAME || '').trim()),
+        NEXT_PUBLIC_AWS_PLACE_INDEX_NAME: Boolean((process.env.NEXT_PUBLIC_AWS_PLACE_INDEX_NAME || '').trim()),
+        AWS_REGION: Boolean((process.env.AWS_REGION || '').trim()),
+        AWS_API_KEY: Boolean((process.env.AWS_API_KEY || '').trim()),
+        AWS_MAP_NAME: Boolean((process.env.AWS_MAP_NAME || '').trim()),
+        AWS_PLACE_INDEX_NAME: Boolean((process.env.AWS_PLACE_INDEX_NAME || '').trim()),
+      });
       return NextResponse.json(
         { error: 'AWS Place Index Name is not configured' },
         { status: 500, headers: corsHeaders }

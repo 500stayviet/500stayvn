@@ -5,12 +5,14 @@ applications:
       phases:
         preBuild:
           commands:
+            # 상업 운영 표준: 재현 가능한 설치만 허용 (npm ci 실패 시 즉시 실패)
             - nvm use 20 || nvm install 20
             - npm ci --no-audit
         build:
           commands:
             - |
-              cat > .env <<EOF
+              echo "[build] writing env file at $(pwd)/.env"
+              cat > ./.env <<EOF
               DATABASE_URL=$DATABASE_URL
               DIRECT_URL=$DIRECT_URL
               NEXTAUTH_URL=$NEXTAUTH_URL
@@ -22,11 +24,12 @@ applications:
               FACEBOOK_CLIENT_SECRET=$FACEBOOK_CLIENT_SECRET
               GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID
               GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET
-              NEXT_PUBLIC_AWS_REGION=${NEXT_PUBLIC_AWS_REGION:-$AWS_REGION}
-              NEXT_PUBLIC_AWS_API_KEY=${NEXT_PUBLIC_AWS_API_KEY:-$AWS_API_KEY}
-              NEXT_PUBLIC_AWS_MAP_NAME=${NEXT_PUBLIC_AWS_MAP_NAME:-$AWS_MAP_NAME}
-              NEXT_PUBLIC_AWS_PLACE_INDEX_NAME=${NEXT_PUBLIC_AWS_PLACE_INDEX_NAME:-$AWS_PLACE_INDEX_NAME}
+              NEXT_PUBLIC_AWS_REGION=$NEXT_PUBLIC_AWS_REGION
+              NEXT_PUBLIC_AWS_API_KEY=$NEXT_PUBLIC_AWS_API_KEY
+              NEXT_PUBLIC_AWS_MAP_NAME=$NEXT_PUBLIC_AWS_MAP_NAME
+              NEXT_PUBLIC_AWS_PLACE_INDEX_NAME=$NEXT_PUBLIC_AWS_PLACE_INDEX_NAME
               EOF
+            # 빌드 중에는 Prisma Client만 생성하고, DB 마이그레이션은 릴리즈 절차에서 별도 실행
             - npx prisma generate --schema=./prisma/schema.prisma
             - npm run build
           env:

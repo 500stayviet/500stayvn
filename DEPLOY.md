@@ -35,6 +35,24 @@ npm run build
 
 5. Smoke-check critical flows against the target DB (login, booking, payment API, admin pages).
 
+### Step 1.5) Verify Amplify runtime environment values
+
+Before push, confirm `main` branch environment variables are present in Amplify:
+
+- `NEXT_PUBLIC_AWS_REGION`
+- `NEXT_PUBLIC_AWS_API_KEY`
+- `NEXT_PUBLIC_AWS_MAP_NAME`
+- `NEXT_PUBLIC_AWS_PLACE_INDEX_NAME`
+- `AWS_REGION`
+- `AWS_API_KEY`
+- `AWS_MAP_NAME`
+- `AWS_PLACE_INDEX_NAME`
+
+Important:
+
+- Keep values without extra quotes or trailing spaces.
+- After changing env vars, always run a new deploy.
+
 ### Step 2) Deploy code by Git push
 
 1. Commit only intended release changes (including lockfile updates when dependencies changed).
@@ -49,6 +67,19 @@ git push origin main
    - build: `npx prisma generate --schema=./prisma/schema.prisma` then `npm run build`
 
 4. Verify deployment result is `Deployed` and run production smoke tests.
+
+### Step 3) Post-deploy API health check (required)
+
+Validate the AWS location proxy endpoint from production:
+
+```bash
+curl -X POST "https://<your-domain>/api/aws-location" \
+  -H "Content-Type: application/json" \
+  -d "{\"action\":\"suggestions\",\"text\":\"Hoang Sa\",\"language\":\"vi\"}"
+```
+
+Expected: non-500 response with JSON payload.  
+If `500` occurs, inspect response body first and fix env/config before further releases.
 
 ## When dependencies change
 
@@ -79,3 +110,4 @@ If `npm ci` fails locally, do not deploy until lockfile mismatch is resolved.
 - Build timeout: check whether migration was accidentally reintroduced into Amplify build.
 - Prisma client errors: ensure `npx prisma generate` runs during build and schema path is correct.
 - Env errors: confirm required Amplify environment variables are configured.
+- `/api/aws-location` returns 500: check response body for missing env key, then verify both `NEXT_PUBLIC_AWS_*` and `AWS_*` variables on Amplify `main` branch.
