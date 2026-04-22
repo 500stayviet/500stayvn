@@ -41,6 +41,7 @@ import {
   FULL_ELECTRONICS_IDS,
 } from "@/lib/constants/facilities";
 import {
+  getDistrictsByCityId,
   searchRegions,
   VIETNAM_CITIES,
   ALL_REGIONS,
@@ -171,6 +172,7 @@ export default function AddPropertyPage() {
     photoLibraryInputRef,
     cameraInputRef,
     setShowPhotoLibrary,
+    closePhotoLibrary,
     handlePhotoLibrarySelect,
     togglePhotoSelection,
     handleConfirmPhotoSelection,
@@ -180,6 +182,7 @@ export default function AddPropertyPage() {
     handleAddImageClick,
     handleSelectFromLibrary,
     handleTakePhoto,
+    closeImageSourceMenu,
     handleGuidelinePopupClick,
     handleImageRemove,
   } = usePropertyImageManager({
@@ -233,6 +236,9 @@ export default function AddPropertyPage() {
     });
     if (validationMessage) {
       alert(validationMessage);
+      return;
+    }
+    if (!coordinates) {
       return;
     }
 
@@ -474,7 +480,7 @@ export default function AddPropertyPage() {
               {showImageSourceMenu && (
                 <div
                   className="fixed inset-0 bg-black/50 flex items-end justify-center z-50"
-                  onClick={() => setShowImageSourceMenu(false)}
+                  onClick={closeImageSourceMenu}
                 >
                   <div
                     className="w-full bg-white rounded-t-2xl p-6 max-w-[430px]"
@@ -530,7 +536,7 @@ export default function AddPropertyPage() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setShowImageSourceMenu(false)}
+                        onClick={closeImageSourceMenu}
                         className="w-full py-3 px-4 text-gray-600 rounded-xl font-medium hover:bg-gray-100 transition-colors"
                       >
                         {currentLanguage === "ko"
@@ -555,16 +561,7 @@ export default function AddPropertyPage() {
                   <div className="flex items-center justify-between p-4 border-b border-gray-200">
                     <button
                       type="button"
-                      onClick={() => {
-                        setShowPhotoLibrary(false);
-                        setPhotoLibraryFiles([]);
-                        photoLibraryPreviews.forEach((url) =>
-                          URL.revokeObjectURL(url),
-                        );
-                        setPhotoLibraryPreviews([]);
-                        setSelectedLibraryIndices(new Set());
-                        setFullScreenImageIndex(null);
-                      }}
+                      onClick={closePhotoLibrary}
                       className="text-gray-700"
                     >
                       <X className="w-6 h-6" />

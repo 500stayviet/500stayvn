@@ -1,15 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/contexts/LanguageContext";
-import {
-  getProperty,
-  updateProperty,
-  restoreProperty,
-} from "@/lib/api/properties";
-import { getPropertyBookings } from "@/lib/api/bookings";
+import { getProperty, updateProperty, restoreProperty } from "@/lib/api/properties";
 import {
   Camera,
   MapPin,
@@ -32,13 +27,12 @@ import {
   FULL_FURNITURE_IDS,
   FULL_ELECTRONICS_IDS,
 } from "@/lib/constants/facilities";
-import { parseDate } from "@/lib/utils/dateUtils";
 import {
   LISTING_MAX_SUPPLY_DAYS,
-  LISTING_MIN_STAY_DAYS,
 } from "@/lib/constants/listingCalendar";
 import { getUIText } from "@/utils/i18n";
 import { areSamePropertyValues } from "@/lib/utils/propertyDedup";
+import type { SupportedLanguage } from "@/lib/api/translation";
 import {
   getDistrictIdForCoord,
   getDistrictsByCityId,
@@ -51,6 +45,9 @@ import {
   buildUnitNumber,
   resolveEditPropertyImageUrls,
 } from "./utils/editPropertySubmit";
+import { useEditPropertyLoader } from "./hooks/useEditPropertyLoader";
+import { useEditPropertyImageManager } from "./hooks/useEditPropertyImageManager";
+import { useEditPropertyCalendarRules } from "./hooks/useEditPropertyCalendarRules";
 
 // 베트남 스타일 컬러: Coral Red + Golden Orange + Sunshine Yellow (add-property와 동일)
 const COLORS = {
@@ -72,6 +69,16 @@ const COLORS = {
 
 // 1. 모든 비즈니스 로직을 담은 내부 컴포넌트
 function EditPropertyContent() {
+  const toSupportedLanguage = (lang: string): SupportedLanguage => {
+    if (lang === "ko" || lang === "vi" || lang === "ja" || lang === "zh") {
+      return lang;
+    }
+    return "en";
+  };
+
+  const getLocalizedLabel = (label: { en: string } & Record<string, string>) =>
+    label[currentLanguage] || label.en;
+
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
@@ -125,13 +132,24 @@ function EditPropertyContent() {
   const [bedrooms, setBedrooms] = useState(1);
   const [bathrooms, setBathrooms] = useState(1);
 
-  const [showCalendar, setShowCalendar] = useState(false);
-  const [rentalCalendarAcknowledged, setRentalCalendarAcknowledged] = useState(false);
-  const [calendarMode, setCalendarMode] = useState<"checkin" | "checkout">(
-    "checkin",
-  );
-  const [checkInDate, setCheckInDate] = useState<Date | null>(null);
-  const [checkOutDate, setCheckOutDate] = useState<Date | null>(null);
+  const {
+    showCalendar,
+    rentalCalendarAcknowledged,
+    calendarMode,
+    checkInDate,
+    checkOutDate,
+    setCheckInDate,
+    setCheckOutDate,
+    openCheckInCalendar,
+    openCheckOutCalendar,
+    closeCalendar,
+    onCheckInSelect,
+    onCheckOutSelect,
+    onCheckInReset,
+  } = useEditPropertyCalendarRules({
+    needsRentalCalendarAck,
+    extensionMaxDate,
+  });
   const [bookedRanges, setBookedRanges] = useState<
     { checkIn: Date; checkOut: Date }[]
   >([]);
@@ -154,29 +172,24 @@ function EditPropertyContent() {
   const [icalUrl, setIcalUrl] = useState("");
   const [showIcalDropdown, setShowIcalDropdown] = useState(false);
 
-  const [showPhotoLibrary, setShowPhotoLibrary] = useState(false);
-  const [photoLibraryFiles, setPhotoLibraryFiles] = useState<File[]>([]);
-  const [photoLibraryPreviews, setPhotoLibraryPreviews] = useState<string[]>(
-    [],
-  );
-  const [selectedLibraryIndices, setSelectedLibraryIndices] = useState<
-    Set<number>
-  >(new Set());
-  const [showImageSourceMenu, setShowImageSourceMenu] = useState(false);
   const [showAddressModal, setShowAddressModal] = useState(false);
-
-  const photoLibraryInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
-
-  const parseUnitNumber = (unitNumber: string | undefined) => {
-    if (!unitNumber || !unitNumber.trim()) return { building: "", room: "" };
-    const match = unitNumber.match(/^(.+?)동\s*(.+?)호$/);
-    if (match) {
-      const room = match[2].replace(/^0+/, "") || match[2];
-      return { building: match[1].trim(), room };
-    }
-    return { building: "", room: "" };
-  };
+  const {
+    showImageSourceMenu,
+    photoLibraryInputRef,
+    cameraInputRef,
+    handlePhotoLibraryChange,
+    handleCameraChange,
+    handleRemoveImage,
+    openImageSourceMenu,
+    closeImageSourceMenu,
+    openPhotoLibrary,
+    openCamera,
+  } = useEditPropertyImageManager({
+    imagePreviews,
+    setImagePreviews,
+    setImages,
+    maxImageCount: 5,
+  });
 
   useEffect(() => {
     if (!selectedCityId || !selectedDistrictId) return;
@@ -203,101 +216,44 @@ function EditPropertyContent() {
     }
   }, [propertyType]);
 
-  useEffect(() => {
-    if (propertyLoaded || authLoading || !user || !propertyId) return;
-    const loadData = async () => {
-      try {
-        const p = await getProperty(propertyId);
-        if (!p) {
-          router.push("/profile/my-properties");
-          return;
-        }
-
-        setIsDeleted(!!p.deleted || p.status !== "active");
-        setPropertyStatus(p.status);
-        setAddress(p.address || "");
-        setWeeklyRent(p.price?.toString() || "");
-        setSelectedAmenities(p.amenities || []);
-        setCoordinates(p.coordinates || null);
-        setImagePreviews(p.images || []);
-        setMaxAdults(p.maxAdults ?? 1);
-        setMaxChildren(p.maxChildren ?? 0);
-        setBedrooms(p.bedrooms ?? 1);
-        setBathrooms(p.bathrooms ?? 1);
-        setCheckInDate(parseDate(p.checkInDate));
-        setCheckOutDate(parseDate(p.checkOutDate));
-        const pt = (p as { propertyType?: string }).propertyType || "";
-        setPropertyType(
-          pt as
-            | ""
-            | "studio"
-            | "one_room"
-            | "two_room"
-            | "three_plus"
-            | "detached",
-        );
-        const cleaning =
-          (p as { cleaningPerWeek?: number }).cleaningPerWeek ?? 0;
-        setCleaningPerWeek(cleaning > 0 ? cleaning : 1);
-        const fee = (p as { petFee?: number }).petFee;
-        setPetFeeAmount(fee != null ? fee.toString() : "");
-        setMaxPets((p as { maxPets?: number }).maxPets ?? 1);
-        setPropertyName(p.title || ""); // 매물명 = title
-        setPropertyDescription(
-          (p as { original_description?: string }).original_description || "",
-        );
-        // 체크인/체크아웃 시간 로드
-        setCheckInTime((p as { checkInTime?: string }).checkInTime || "14:00");
-        setCheckOutTime((p as { checkOutTime?: string }).checkOutTime || "12:00");
-        setIcalPlatform(p.icalPlatform || "");
-        setIcalCalendarName(p.icalCalendarName || "");
-        setIcalUrl(p.icalUrl || "");
-
-        const { building, room } = parseUnitNumber(p.unitNumber);
-        setBuildingNumber(building);
-        setRoomNumber(room);
-
-        if (p.coordinates) {
-          const districtId = getDistrictIdForCoord(
-            p.coordinates.lat,
-            p.coordinates.lng,
-          );
-          if (districtId) {
-            const district = ALL_REGIONS.find((r) => r.id === districtId);
-            if (district?.parentCity) {
-              setSelectedDistrictId(districtId);
-              setSelectedCityId(district.parentCity);
-            }
-          } else {
-            const matches = searchRegions(p.address || "");
-            const districtMatch = matches.find((r) => r.type === "district");
-            const cityMatch = matches.find((r) => r.type === "city");
-            if (districtMatch) {
-              setSelectedDistrictId(districtMatch.id);
-              setSelectedCityId(districtMatch.parentCity ?? "");
-            } else if (cityMatch) {
-              setSelectedCityId(cityMatch.id);
-              setSelectedDistrictId("");
-            }
-          }
-        }
-
-        const b = await getPropertyBookings(propertyId);
-        setBookedRanges(
-          b.map((rs) => ({
-            checkIn: new Date(rs.checkInDate),
-            checkOut: new Date(rs.checkOutDate),
-          })),
-        );
-        setPropertyLoaded(true);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoadingProperty(false);
-      }
-    };
-    loadData();
-  }, [propertyId, user, authLoading, propertyLoaded, router]);
+  useEditPropertyLoader({
+    propertyLoaded,
+    authLoading,
+    user,
+    propertyId,
+    onRedirect: (path) => router.push(path),
+    setIsDeleted,
+    setPropertyStatus,
+    setAddress,
+    setWeeklyRent,
+    setSelectedAmenities,
+    setCoordinates,
+    setImagePreviews,
+    setMaxAdults,
+    setMaxChildren,
+    setBedrooms,
+    setBathrooms,
+    setCheckInDate,
+    setCheckOutDate,
+    setPropertyType,
+    setCleaningPerWeek,
+    setPetFeeAmount,
+    setMaxPets,
+    setPropertyName,
+    setPropertyDescription,
+    setCheckInTime,
+    setCheckOutTime,
+    setIcalPlatform,
+    setIcalCalendarName,
+    setIcalUrl,
+    setBuildingNumber,
+    setRoomNumber,
+    setSelectedDistrictId,
+    setSelectedCityId,
+    setBookedRanges,
+    setPropertyLoaded,
+    setLoadingProperty,
+  });
 
   const handleAddressConfirm = (data: {
     address: string;
@@ -329,35 +285,6 @@ function EditPropertyContent() {
       setSelectedCityId("");
       setSelectedDistrictId("");
     }
-  };
-
-  const stripTime = (d: Date) =>
-    new Date(d.getFullYear(), d.getMonth(), d.getDate());
-
-  const isValidRentalDates = (checkIn: Date | null, checkOut: Date | null) => {
-    if (!checkIn || !checkOut) return false;
-
-    const inDay = stripTime(checkIn);
-    const outDay = stripTime(checkOut);
-    if (!(outDay.getTime() > inDay.getTime())) return false;
-
-    const diffDays = Math.round(
-      (outDay.getTime() - inDay.getTime()) / (1000 * 60 * 60 * 24),
-    );
-
-    // 최소 7일 + 7일 배수
-    if (diffDays < LISTING_MIN_STAY_DAYS) return false;
-    if (diffDays % LISTING_MIN_STAY_DAYS !== 0) return false;
-
-    // 체크인은 과거 불가
-    const today = stripTime(new Date());
-    if (inDay.getTime() < today.getTime()) return false;
-
-    // 종료일 상한 (maxDate: 약 91일)
-    const maxDay = stripTime(extensionMaxDate);
-    if (outDay.getTime() > maxDay.getTime()) return false;
-
-    return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -485,7 +412,7 @@ function EditPropertyContent() {
       router.push("/profile/my-properties?tab=live");
     } catch (err) {
       console.error("Update failed:", err);
-      const errorMessage = (err as any).message || String(err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
       alert(
         currentLanguage === "ko"
           ? `오류가 발생했습니다: ${errorMessage}`
@@ -611,20 +538,7 @@ function EditPropertyContent() {
                     />
                     <button
                       type="button"
-                      onClick={() => {
-                        const removed = imagePreviews[index];
-                        setImagePreviews((prev) =>
-                          prev.filter((_, i) => i !== index),
-                        );
-                        if (removed?.startsWith("blob:")) {
-                          const newIndex = imagePreviews
-                            .slice(0, index)
-                            .filter((u) => u.startsWith("blob:")).length;
-                          setImages((prev) =>
-                            prev.filter((_, i) => i !== newIndex),
-                          );
-                        }
-                      }}
+                      onClick={() => handleRemoveImage(index)}
                       className="property-register-icon-btn property-register-icon-btn--photo absolute top-1 right-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
                     >
                       <X className="w-3.5 h-3.5" />
@@ -635,7 +549,7 @@ function EditPropertyContent() {
                   <>
                     <button
                       type="button"
-                      onClick={() => setShowImageSourceMenu(true)}
+                      onClick={openImageSourceMenu}
                       className="aspect-square rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors"
                     >
                       <Camera className="w-8 h-8 text-gray-400 mb-1" />
@@ -654,14 +568,7 @@ function EditPropertyContent() {
                       type="file"
                       accept="image/*"
                       multiple
-                      onChange={(e) => {
-                        const files = Array.from(e.target.files || []);
-                        setImages((prev) => [...prev, ...files]);
-                        setImagePreviews((prev) => [
-                          ...prev,
-                          ...files.map((f) => URL.createObjectURL(f)),
-                        ]);
-                      }}
+                      onChange={handlePhotoLibraryChange}
                       className="hidden"
                     />
                     <input
@@ -669,13 +576,7 @@ function EditPropertyContent() {
                       type="file"
                       accept="image/*"
                       capture="environment"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          setImages((prev) => [...prev, file]);
-                          setImagePreviews((prev) => [...prev, URL.createObjectURL(file)]);
-                        }
-                      }}
+                      onChange={handleCameraChange}
                       className="hidden"
                     />
                   </>
@@ -686,7 +587,7 @@ function EditPropertyContent() {
               {showImageSourceMenu && (
                 <div
                   className="fixed inset-0 bg-black/50 flex items-end z-50"
-                  onClick={() => setShowImageSourceMenu(false)}
+                  onClick={closeImageSourceMenu}
                 >
                   <div
                     className="w-full bg-white rounded-t-2xl p-6"
@@ -702,10 +603,7 @@ function EditPropertyContent() {
                     <div className="space-y-3">
                       <button
                         type="button"
-                        onClick={() => {
-                          setShowImageSourceMenu(false);
-                          photoLibraryInputRef.current?.click();
-                        }}
+                        onClick={openPhotoLibrary}
                         className="w-full py-4 px-4 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-3"
                       >
                         <Camera className="w-5 h-5" />
@@ -719,10 +617,7 @@ function EditPropertyContent() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => {
-                          setShowImageSourceMenu(false);
-                          cameraInputRef.current?.click();
-                        }}
+                        onClick={openCamera}
                         className="w-full py-4 px-4 bg-gray-100 text-gray-900 rounded-xl font-medium hover:bg-gray-200 transition-colors flex items-center justify-center gap-3"
                       >
                         <Camera className="w-5 h-5" />
@@ -736,7 +631,7 @@ function EditPropertyContent() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setShowImageSourceMenu(false)}
+                        onClick={closeImageSourceMenu}
                         className="w-full py-3 px-4 text-gray-600 rounded-xl font-medium hover:bg-gray-100 transition-colors"
                       >
                         {currentLanguage === "ko"
@@ -1237,10 +1132,7 @@ function EditPropertyContent() {
                 {/* 체크인 날짜 */}
                 <button
                   type="button"
-                  onClick={() => {
-                    setCalendarMode("checkin");
-                    setShowCalendar(true);
-                  }}
+                  onClick={openCheckInCalendar}
                   className={`flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border-2 ${
                     needsRentalCalendarAck && !rentalCalendarAcknowledged
                       ? "border-red-500"
@@ -1339,10 +1231,7 @@ function EditPropertyContent() {
                 {/* 체크아웃 날짜 */}
                 <button
                   type="button"
-                  onClick={() => {
-                    setCalendarMode("checkout");
-                    setShowCalendar(true);
-                  }}
+                  onClick={openCheckOutCalendar}
                   className={`flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border-2 ${
                     needsRentalCalendarAck && !rentalCalendarAcknowledged
                       ? "border-red-500"
@@ -1517,8 +1406,7 @@ function EditPropertyContent() {
                   const options = FACILITY_OPTIONS.filter(
                     (o) => o.category === cat.id,
                   );
-                  const catLabel =
-                    (cat.label as any)[currentLanguage] || cat.label.en;
+                  const catLabel = getLocalizedLabel(cat.label);
                   const isBadgeCategory =
                     cat.id === "furniture" ||
                     cat.id === "electronics" ||
@@ -1558,8 +1446,7 @@ function EditPropertyContent() {
                         {options.map((opt) => {
                           const Icon = opt.icon;
                           const isSelected = selectedAmenities.includes(opt.id);
-                          const label =
-                            (opt.label as any)[currentLanguage] || opt.label.en;
+                          const label = getLocalizedLabel(opt.label);
                           const isPet = opt.id === "pet";
                           const isCleaning = opt.id === "cleaning";
                           return (
@@ -1933,7 +1820,7 @@ function EditPropertyContent() {
       {showCalendar && (
         <div
           className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
-          onClick={() => setShowCalendar(false)}
+          onClick={closeCalendar}
         >
           <div onClick={(e) => e.stopPropagation()}>
             <CalendarComponent
@@ -1942,31 +1829,14 @@ function EditPropertyContent() {
               minDate={autoExtend && checkInDate ? checkInDate : undefined}
               maxDate={extensionMaxDate}
               lockCheckInForOwnerMode={autoExtend}
-              onCheckInSelect={(d) => {
-                if (needsRentalCalendarAck) setRentalCalendarAcknowledged(false);
-                setCheckInDate(d);
-                setCheckOutDate(null);
-                setCalendarMode("checkout");
-              }}
-              onCheckOutSelect={(d) => {
-                setCheckOutDate(d);
-                if (needsRentalCalendarAck) {
-                  const valid = isValidRentalDates(checkInDate, d);
-                  setRentalCalendarAcknowledged(valid);
-                }
-                setShowCalendar(false);
-              }}
-              onCheckInReset={() => {
-                setCheckInDate(null);
-                setCheckOutDate(null);
-                if (needsRentalCalendarAck) setRentalCalendarAcknowledged(false);
-                setCalendarMode("checkin");
-              }}
+              onCheckInSelect={onCheckInSelect}
+              onCheckOutSelect={onCheckOutSelect}
+              onCheckInReset={onCheckInReset}
               mode={calendarMode}
               bookedRanges={bookedRanges}
               isOwnerMode={true}
-              currentLanguage={currentLanguage as any}
-              onClose={() => setShowCalendar(false)}
+              currentLanguage={toSupportedLanguage(currentLanguage)}
+              onClose={closeCalendar}
             />
           </div>
         </div>
@@ -1975,7 +1845,7 @@ function EditPropertyContent() {
       {showImageSourceMenu && (
         <div
           className="fixed inset-0 bg-black/50 z-50 flex items-end"
-          onClick={() => setShowImageSourceMenu(false)}
+          onClick={closeImageSourceMenu}
         >
           <div
             className="w-full bg-white rounded-t-3xl p-6 space-y-3"
@@ -1983,10 +1853,7 @@ function EditPropertyContent() {
           >
             <button
               type="button"
-              onClick={() => {
-                setShowImageSourceMenu(false);
-                photoLibraryInputRef.current?.click();
-              }}
+              onClick={openPhotoLibrary}
               className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold"
             >
               {currentLanguage === "ko"
@@ -2001,10 +1868,7 @@ function EditPropertyContent() {
             </button>
             <button
               type="button"
-              onClick={() => {
-                setShowImageSourceMenu(false);
-                cameraInputRef.current?.click();
-              }}
+              onClick={openCamera}
               className="w-full py-4 bg-gray-100 rounded-xl font-bold"
             >
               {currentLanguage === "ko"
@@ -2019,7 +1883,7 @@ function EditPropertyContent() {
             </button>
             <button
               type="button"
-              onClick={() => setShowImageSourceMenu(false)}
+              onClick={closeImageSourceMenu}
               className="w-full py-4 text-gray-400"
             >
               {getUIText("cancel", currentLanguage)}
@@ -2034,14 +1898,7 @@ function EditPropertyContent() {
         accept="image/*"
         multiple
         className="hidden"
-        onChange={(e) => {
-          const files = Array.from(e.target.files || []);
-          setImages((prev) => [...prev, ...files]);
-          setImagePreviews((prev) => [
-            ...prev,
-            ...files.map((f) => URL.createObjectURL(f)),
-          ]);
-        }}
+        onChange={handlePhotoLibraryChange}
       />
       <input
         ref={cameraInputRef}
@@ -2049,13 +1906,7 @@ function EditPropertyContent() {
         accept="image/*"
         capture="environment"
         className="hidden"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) {
-            setImages((prev) => [...prev, file]);
-            setImagePreviews((prev) => [...prev, URL.createObjectURL(file)]);
-          }
-        }}
+        onChange={handleCameraChange}
       />
 
       {/* 주소 확인 모달 */}

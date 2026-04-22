@@ -1,6 +1,9 @@
 import { getCurrentUserData } from "@/lib/api/auth";
-import { uploadToS3 } from "@/lib/s3-client";
 import { isOwnerSupplyLengthDays } from "@/lib/constants/listingCalendar";
+import {
+  buildUnitNumber,
+  uploadPropertyFiles,
+} from "@/lib/utils/propertyForm";
 
 type PropertyType =
   | ""
@@ -228,29 +231,14 @@ export const ensureAddPropertyKycReady = async (
   };
 };
 
-const formatRoomNumber = (room: string) => {
-  const num = parseInt(room.replace(/\D/g, ""), 10);
-  if (isNaN(num)) return room;
-  return num.toString().padStart(4, "0");
-};
-
-export const buildUnitNumber = (buildingNumber: string, roomNumber: string) => {
-  if (buildingNumber && roomNumber) {
-    return `${buildingNumber}동 ${formatRoomNumber(roomNumber)}호`;
-  }
-  if (buildingNumber) return `${buildingNumber}동`;
-  if (roomNumber) return `${formatRoomNumber(roomNumber)}호`;
-  return undefined;
-};
+export { buildUnitNumber };
 
 export const uploadPropertyImages = async (
   images: File[],
   currentLanguage: string,
 ): Promise<{ ok: true; imageUrls: string[] } | { ok: false; message: string }> => {
   try {
-    const imageUrls = await Promise.all(
-      images.map((image) => uploadToS3(image, "properties")),
-    );
+    const imageUrls = await uploadPropertyFiles(images);
     return { ok: true, imageUrls };
   } catch (error) {
     console.error("S3 업로드 실패:", error);

@@ -42,6 +42,10 @@ export const usePropertyImageManager = ({
     setFullScreenImageIndex(null);
   };
 
+  const closePhotoLibrary = () => {
+    clearPhotoLibrarySession();
+  };
+
   const handleOpenPhotoLibrary = () => {
     photoLibraryInputRef.current?.click();
   };
@@ -135,6 +139,10 @@ export const usePropertyImageManager = ({
     cameraInputRef.current?.click();
   };
 
+  const closeImageSourceMenu = () => {
+    setShowImageSourceMenu(false);
+  };
+
   const handleGuidelinePopupClick = () => {
     setShowGuidelinePopup(false);
     localStorage.setItem(GUIDELINE_STORAGE_KEY, Date.now().toString());
@@ -164,6 +172,7 @@ export const usePropertyImageManager = ({
     photoLibraryInputRef,
     cameraInputRef,
     setShowPhotoLibrary,
+    closePhotoLibrary,
     handlePhotoLibrarySelect,
     togglePhotoSelection,
     handleConfirmPhotoSelection,
@@ -173,6 +182,7 @@ export const usePropertyImageManager = ({
     handleAddImageClick,
     handleSelectFromLibrary,
     handleTakePhoto,
+    closeImageSourceMenu,
     handleGuidelinePopupClick,
     handleImageRemove,
   };

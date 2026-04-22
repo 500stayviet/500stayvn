@@ -1,34 +1,16 @@
-import { uploadToS3 } from "@/lib/s3-client";
 import type { PropertyData } from "@/types/property";
+import {
+  buildUnitNumber,
+  mergeExistingAndUploadedImageUrls,
+} from "@/lib/utils/propertyForm";
 
-export const buildUnitNumber = (buildingNumber: string, roomNumber: string) => {
-  const formatRoomNumber = (room: string) => {
-    const num = parseInt(room.replace(/\D/g, ""), 10);
-    if (isNaN(num)) return room;
-    return num.toString().padStart(4, "0");
-  };
-
-  if (buildingNumber && roomNumber) {
-    return `${buildingNumber}동 ${formatRoomNumber(roomNumber)}호`;
-  }
-  if (buildingNumber) return `${buildingNumber}동`;
-  if (roomNumber) return `${formatRoomNumber(roomNumber)}호`;
-  return undefined;
-};
+export { buildUnitNumber };
 
 export const resolveEditPropertyImageUrls = async (
   imagePreviews: string[],
   images: File[],
 ) => {
-  const existingUrls = imagePreviews.filter(
-    (url) =>
-      typeof url === "string" && (url.startsWith("http") || url.startsWith("/")),
-  );
-  let newUrls: string[] = [];
-  if (images.length > 0) {
-    newUrls = await Promise.all(images.map((file) => uploadToS3(file, "properties")));
-  }
-  return [...existingUrls, ...newUrls];
+  return mergeExistingAndUploadedImageUrls(imagePreviews, images);
 };
 
 interface BuildEditPropertyUpdatesInput {

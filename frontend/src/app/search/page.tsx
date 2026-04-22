@@ -8,7 +8,6 @@
 "use client";
 
 import { useState, useEffect, useRef, Suspense, useCallback } from "react";
-import { flushSync } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -47,18 +46,15 @@ import {
 } from "@/lib/utils/dateUtils";
 import {
   VIETNAM_CITIES,
-  getDistrictsByCityId,
   ALL_REGIONS,
-  searchRegions,
 } from "@/lib/data/vietnam-regions";
 import type { VietnamRegion } from "@/lib/data/vietnam-regions";
+import { getSuggestionBadge, cleanDisplayName, cleanSubAddress } from "@/hooks/useLocationSearch";
 import {
-  useLocationSearch,
-  getSuggestionBadge,
-  cleanDisplayName,
-  cleanSubAddress,
-  type LocationSuggestion,
-} from "@/hooks/useLocationSearch";
+  useSearchRoomFilter,
+} from "./hooks/useSearchRoomFilter";
+import { useSearchCalendarFilter } from "./hooks/useSearchCalendarFilter";
+import { useSearchLocationFilter } from "./hooks/useSearchLocationFilter";
 
 // 두 좌표 간 거리 계산 (Haversine 공식)
 function calculateDistance(
@@ -161,42 +157,38 @@ function SearchContent() {
   const { user } = useAuth();
   const { currentLanguage, setCurrentLanguage } = useLanguage();
 
-  const [searchQuery, setSearchQuery] = useState(query);
-  const [selectedCityId, setSelectedCityId] = useState<string | null>(
-    cityIdParam || null,
-  );
-  const [selectedDistrictId, setSelectedDistrictId] = useState<string | null>(
-    districtIdParam || null,
-  );
   const [properties, setProperties] = useState<PropertyData[]>([]);
   const [filteredProperties, setFilteredProperties] = useState<PropertyData[]>(
     [],
   );
   const [loading, setLoading] = useState(true);
-  const [searchLocation, setSearchLocation] = useState<{
-    lat: number;
-    lng: number;
-  } | null>(null);
 
   // 날짜 필터
-  const [showCalendar, setShowCalendar] = useState(false);
-  const [calendarMode, setCalendarMode] = useState<"checkin" | "checkout">(
-    "checkin",
-  );
-  const [checkInDate, setCheckInDate] = useState<Date | null>(null);
-  const [checkOutDate, setCheckOutDate] = useState<Date | null>(null);
+  const {
+    showCalendar,
+    calendarMode,
+    checkInDate,
+    checkOutDate,
+    openCalendar,
+    closeCalendar,
+    handleCheckInSelect,
+    handleCheckOutSelect,
+    resetCalendarDates,
+    formatDate,
+  } = useSearchCalendarFilter(currentLanguage);
 
   // 방 개수 필터 (매물 등록 시 카테고리/방 개수 기반)
-  type RoomFilterValue =
-    | "studio"
-    | "one_room"
-    | "two_room"
-    | "three_plus"
-    | "detached"
-    | null;
-  const [roomFilter, setRoomFilter] = useState<RoomFilterValue>(null);
-  const [showRoomDropdown, setShowRoomDropdown] = useState(false);
-  const roomDropdownRef = useRef<HTMLDivElement>(null);
+  const {
+    roomFilter,
+    setRoomFilter,
+    showRoomDropdown,
+    roomDropdownRef,
+    roomFilterOptions,
+    selectedRoomLabel,
+    closeRoomDropdown,
+    resetRoomFilter,
+    toggleRoomDropdown,
+  } = useSearchRoomFilter(currentLanguage);
 
   // 고급필터
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
@@ -225,120 +217,33 @@ function SearchContent() {
     !!(query || cityIdParam || districtIdParam)
   );
 
+  const {
+    searchQuery,
+    selectedCityId,
+    selectedDistrictId,
+    searchLocation,
+    setSearchLocation,
+    suggestions,
+    isSearching,
+    showSuggestions,
+    setShowSuggestions,
+    searchContainerRef,
+    closedBySelection,
+    handleAddressInputChange,
+    handleSelectSuggestion,
+    handleCityChange,
+    handleDistrictChange,
+    districts,
+    syncFromUrlParams,
+    applyRegionMatchFromQuery,
+  } = useSearchLocationFilter({
+    currentLanguage,
+    initialQuery: query,
+    initialCityId: cityIdParam,
+    initialDistrictId: districtIdParam,
+    applyFilters: () => applyFilters(),
+  });
 
-  // 방 개수 필터 옵션 라벨 (5개국어)
-  const ROOM_FILTER_OPTIONS: {
-    value: RoomFilterValue;
-    ko: string;
-    vi: string;
-    en: string;
-    ja: string;
-    zh: string;
-  }[] = [
-    {
-      value: "studio",
-      ko: "스튜디오",
-      vi: "Studio",
-      en: "Studio",
-      ja: "スタジオ",
-      zh: "一室",
-    },
-    {
-      value: "one_room",
-      ko: "1룸(방·거실 분리)",
-      vi: "1 phòng (phòng + phòng khách)",
-      en: "1 Room (bed + living)",
-      ja: "1ルーム",
-      zh: "一室(卧室+客厅)",
-    },
-    {
-      value: "two_room",
-      ko: "2룸",
-      vi: "2 phòng",
-      en: "2 Rooms",
-      ja: "2ルーム",
-      zh: "两室",
-    },
-    {
-      value: "three_plus",
-      ko: "3룸+",
-      vi: "3+ phòng",
-      en: "3+ Rooms",
-      ja: "3ルーム+",
-      zh: "三室以上",
-    },
-    {
-      value: "detached",
-      ko: "독채",
-      vi: "Nhà riêng",
-      en: "Detached",
-      ja: "戸建て",
-      zh: "独栋",
-    },
-  ];
-  // 주소 검색 보기 (홈과 동일 로직)
-  const { suggestions, isSearching, search, clearSuggestions } =
-    useLocationSearch(currentLanguage);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const searchContainerRef = useRef<HTMLDivElement>(null);
-  /** 보기 선택으로 닫은 뒤, 검색창 내용을 수정하기 전까지 드롭다운 비표시 (state로 해서 선택 직후 리렌더 보장) */
-  const [closedBySelection, setClosedBySelection] = useState(false);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        searchContainerRef.current &&
-        !searchContainerRef.current.contains(event.target as Node)
-      ) {
-        setShowSuggestions(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const handleAddressInputChange = async (
-    e: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const value = e.target.value;
-    setClosedBySelection(false); // 검색창 수정 시에만 드롭다운 다시 허용
-    setSearchQuery(value);
-    if (!value.trim()) {
-      clearSuggestions();
-      setShowSuggestions(false);
-      return;
-    }
-    await search(value);
-    setShowSuggestions(true);
-  };
-
-  const handleSelectSuggestion = (suggestion: LocationSuggestion) => {
-    const text = suggestion.Text || "";
-    // 보기 선택 직후 드롭다운이 즉시 사라지도록 동기 반영 (지도/시야 가림 방지)
-    flushSync(() => {
-      setShowSuggestions(false);
-      setClosedBySelection(true);
-    });
-    clearSuggestions();
-    setSearchQuery(text);
-    const regionId = (suggestion.PlaceId || "").replace(/^region-/, "");
-    const region = ALL_REGIONS.find((r) => r.id === regionId);
-    if (region) {
-      if (region.type === "city") {
-        setSelectedCityId(region.id);
-        setSelectedDistrictId(null);
-        setSearchLocation({ lat: region.center[1], lng: region.center[0] });
-      } else {
-        setSelectedCityId(region.parentCity ?? null);
-        setSelectedDistrictId(region.id);
-        setSearchLocation({ lat: region.center[1], lng: region.center[0] });
-      }
-      // 구/도시 선택 시 자동으로 필터링 적용
-      setTimeout(() => {
-        applyFilters();
-      }, 100);
-    }
-  };
 
   // 매물 클릭 시 /properties/[id] 로 이동 (인터셉팅 라우트에서 모달처럼 표시)
   const handlePropertyClick = (property: PropertyData) => {
@@ -347,45 +252,23 @@ function SearchContent() {
 
   // 현재 매물 인덱스
 
-  const selectedCity = selectedCityId
-    ? (VIETNAM_CITIES.find((c) => c.id === selectedCityId) ??
-      ALL_REGIONS.find((r) => r.id === selectedCityId))
-    : null;
-  const districts = selectedCityId ? getDistrictsByCityId(selectedCityId) : [];
-  const selectedDistrict = selectedDistrictId
-    ? districts.find((d) => d.id === selectedDistrictId)
-    : null;
-
   // URL 파라미터와 동기화: q, cityId, districtId
   useEffect(() => {
-    setSearchQuery(query);
-    if (cityIdParam) setSelectedCityId(cityIdParam);
-    else setSelectedCityId(null);
-    if (districtIdParam) setSelectedDistrictId(districtIdParam);
-    else setSelectedDistrictId(null);
+    syncFromUrlParams(query, cityIdParam, districtIdParam);
     
     // URL 파라미터가 있으면 자동 필터링 적용 플래그 설정
     if (query || cityIdParam || districtIdParam) {
       setShouldAutoApplyFilters(true);
     }
-  }, [query, cityIdParam, districtIdParam]);
+  }, [query, cityIdParam, districtIdParam, syncFromUrlParams]);
 
   // 홈에서 도시/구 검색으로 들어온 경우: q만 있고 cityId/districtId 없으면 검색어로 지역 매칭
   useEffect(() => {
     if (!query.trim() || cityIdParam || districtIdParam) return;
-    const matches = searchRegions(query);
-    const districtMatch = matches.find((r) => r.type === "district");
-    const cityMatch = matches.find((r) => r.type === "city");
-    if (districtMatch) {
-      setSelectedCityId(districtMatch.parentCity ?? null);
-      setSelectedDistrictId(districtMatch.id);
-      setShouldAutoApplyFilters(true);
-    } else if (cityMatch) {
-      setSelectedCityId(cityMatch.id);
-      setSelectedDistrictId(null);
+    if (applyRegionMatchFromQuery(query)) {
       setShouldAutoApplyFilters(true);
     }
-  }, [query]);
+  }, [query, cityIdParam, districtIdParam, applyRegionMatchFromQuery]);
 
   // 매물 주당 임대료 최대값 (고급필터 슬라이더 상한)
   const priceCap =
@@ -671,26 +554,6 @@ function SearchContent() {
     }
   }, [properties, shouldAutoApplyFilters]);
 
-  const handleCheckInSelect = (date: Date) => {
-    setCheckInDate(date);
-    setCheckOutDate(null);
-    setCalendarMode("checkout");
-    setShowCalendar(true);
-  };
-
-  const handleCheckOutSelect = (date: Date) => {
-    setCheckOutDate(date);
-    setShowCalendar(false);
-  };
-
-  const openCalendar = (mode: "checkin" | "checkout") => {
-    setCalendarMode(mode);
-    setShowCalendar(true);
-  };
-
-  const closeCalendar = () => {
-    setShowCalendar(false);
-  };
 
   // 고급 필터 초기화 함수 (주소, 도시, 구는 유지)
   const resetAdvancedFilters = () => {
@@ -720,11 +583,10 @@ function SearchContent() {
     setAmenityFilters({});
 
     // 방 개수 필터 초기화
-    setRoomFilter(null);
+    resetRoomFilter();
 
     // 날짜 필터 초기화
-    setCheckInDate(null);
-    setCheckOutDate(null);
+    resetCalendarDates();
 
     // 주소, 도시, 구는 초기화하지 않음 (검색 위치, 검색어, 도시/구 선택 유지)
     // setSearchLocation(null);
@@ -735,42 +597,6 @@ function SearchContent() {
     // 필터 적용 상태 초기화
     setFiltersApplied(false);
     setFilteredProperties(properties);
-  };
-
-  const formatDate = (date: Date | null): string => {
-    if (!date) return "";
-    const locale =
-      currentLanguage === "ko"
-        ? "ko-KR"
-        : currentLanguage === "vi"
-          ? "vi-VN"
-          : currentLanguage === "ja"
-            ? "ja-JP"
-            : currentLanguage === "zh"
-              ? "zh-CN"
-              : "en-US";
-    return date.toLocaleDateString(locale, { month: "short", day: "numeric" });
-  };
-
-  // 방 개수 드롭다운 외부 클릭 시 닫기
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        roomDropdownRef.current &&
-        !roomDropdownRef.current.contains(event.target as Node)
-      ) {
-        setShowRoomDropdown(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const roomFilterLabel = (): string => {
-    if (!roomFilter) return getUIText("roomsLabel", currentLanguage);
-    const opt = ROOM_FILTER_OPTIONS.find((o) => o.value === roomFilter);
-    if (!opt) return "";
-    return opt[currentLanguage as "ko" | "vi" | "en" | "ja" | "zh"] ?? opt.en;
   };
 
   const BRAND = {
@@ -888,23 +714,7 @@ function SearchContent() {
               <select
                 value={selectedCityId ?? ""}
                 onChange={(e) => {
-                  const id = e.target.value || null;
-                  setSelectedCityId(id);
-                  setSelectedDistrictId(null);
-                  if (id) {
-                    const city =
-                      VIETNAM_CITIES.find((c) => c.id === id) ??
-                      ALL_REGIONS.find((r) => r.id === id);
-                    if (city)
-                      setSearchLocation({
-                        lat: city.center[1],
-                        lng: city.center[0],
-                      });
-                  } else setSearchLocation(null);
-                  // 도시 선택 시 자동으로 필터링 적용
-                  setTimeout(() => {
-                    applyFilters();
-                  }, 100);
+                  handleCityChange(e.target.value || null);
                 }}
                 className="w-full rounded-lg border px-3 py-2.5 text-sm min-h-[42px] focus:ring-2 focus:ring-[#E63946] focus:border-transparent transition-colors"
                 style={{
@@ -932,29 +742,7 @@ function SearchContent() {
               <select
                 value={selectedDistrictId ?? ""}
                 onChange={(e) => {
-                  const id = e.target.value || null;
-                  setSelectedDistrictId(id);
-                  if (id) {
-                    const district = districts.find((d) => d.id === id);
-                    if (district)
-                      setSearchLocation({
-                        lat: district.center[1],
-                        lng: district.center[0],
-                      });
-                  } else if (selectedCityId) {
-                    const city =
-                      VIETNAM_CITIES.find((c) => c.id === selectedCityId) ??
-                      ALL_REGIONS.find((r) => r.id === selectedCityId);
-                    if (city)
-                      setSearchLocation({
-                        lat: city.center[1],
-                        lng: city.center[0],
-                      });
-                  } else setSearchLocation(null);
-                  // 구 선택 시 자동으로 필터링 적용
-                  setTimeout(() => {
-                    applyFilters();
-                  }, 100);
+                  handleDistrictChange(e.target.value || null);
                 }}
                 disabled={!selectedCityId || districts.length === 0}
                 className="w-full rounded-lg border px-3 py-2.5 text-sm min-h-[42px] focus:ring-2 focus:ring-[#E63946] focus:border-transparent disabled:opacity-70 disabled:cursor-not-allowed transition-colors"
@@ -1011,8 +799,8 @@ function SearchContent() {
               <button
                 type="button"
                 onClick={() => {
-                  setShowRoomDropdown(!showRoomDropdown);
-                  setShowCalendar(false);
+                  toggleRoomDropdown();
+                  closeCalendar();
                 }}
                 className={`w-full flex flex-col items-center justify-center px-3 py-3 rounded-lg border transition-colors ${roomFilter ? "text-white hover:opacity-90" : "bg-gray-50 border-gray-200 hover:bg-gray-100"}`}
                 style={roomFilter ? { backgroundColor: BRAND.primary, borderColor: BRAND.primary } : undefined}
@@ -1023,7 +811,7 @@ function SearchContent() {
                 </div>
                 <div className={`text-xs truncate max-w-[100%] inline-block ${roomFilter ? "font-bold text-white" : "font-black"}`} style={!roomFilter ? { color: BRAND.primaryLight, WebkitTextStroke: "1.5px", WebkitTextStrokeColor: BRAND.primaryLight } : undefined}>
                   {roomFilter
-                    ? (ROOM_FILTER_OPTIONS.find((o) => o.value === roomFilter)?.[currentLanguage as "ko" | "vi" | "en" | "ja" | "zh"] ?? "Select").substring(0, 8)
+                    ? selectedRoomLabel.substring(0, 8)
                     : "—"}
                 </div>
               </button>
@@ -1032,24 +820,25 @@ function SearchContent() {
                   <button
                     type="button"
                     onClick={() => {
-                      setRoomFilter(null);
-                      setShowRoomDropdown(false);
+                      resetRoomFilter();
+                      closeRoomDropdown();
                     }}
                     className={`w-full text-left px-4 py-2 text-sm font-medium transition-colors ${!roomFilter ? "bg-gray-50 text-gray-900" : "text-gray-700 hover:bg-gray-50"}`}
                   >
                     {getUIText("allLabel", currentLanguage)}
                   </button>
-                  {ROOM_FILTER_OPTIONS.map((opt) => (
+                  {roomFilterOptions.map((opt) => (
                     <button
                       key={opt.value ?? "all"}
                       type="button"
                       onClick={() => {
                         setRoomFilter(opt.value);
-                        setShowRoomDropdown(false);
+                        closeRoomDropdown();
                       }}
                       className={`w-full text-left px-4 py-2 text-sm font-medium transition-colors ${roomFilter === opt.value ? "bg-gray-50 text-gray-900" : "text-gray-700 hover:bg-gray-50"}`}
                     >
-                      {opt[currentLanguage as "ko" | "vi" | "en" | "ja" | "zh"] ?? opt.en}
+                      {opt[currentLanguage as "ko" | "vi" | "en" | "ja" | "zh"] ??
+                        opt.en}
                     </button>
                   ))}
                 </div>
@@ -1062,8 +851,8 @@ function SearchContent() {
             <button
               onClick={() => {
                 setShowAdvancedFilters(!showAdvancedFilters);
-                setShowCalendar(false);
-                setShowRoomDropdown(false);
+                closeCalendar();
+                closeRoomDropdown();
               }}
               className={`text-xs font-bold flex items-center gap-1 px-4 py-2 rounded-lg transition-colors ${showAdvancedFilters ? "text-white" : "hover:bg-gray-50"}`}
               style={showAdvancedFilters ? { backgroundColor: BRAND.primary } : { color: BRAND.primary }}
@@ -1573,8 +1362,8 @@ function SearchContent() {
             </button>
             <button
               onClick={async () => {
-                setShowCalendar(false);
-                setShowRoomDropdown(false);
+                closeCalendar();
+                closeRoomDropdown();
                 await geocodeSearchQuery();
                 setFiltersApplied(true);
                 setFilterVersion((v) => v + 1);
@@ -1602,11 +1391,7 @@ function SearchContent() {
                 currentLanguage={currentLanguage}
                 onClose={closeCalendar}
                 mode={calendarMode}
-                onCheckInReset={() => {
-                  setCheckInDate(null);
-                  setCheckOutDate(null);
-                  setCalendarMode("checkin");
-                }}
+                onCheckInReset={resetCalendarDates}
               />
             </div>
           </div>
