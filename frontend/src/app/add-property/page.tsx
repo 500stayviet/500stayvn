@@ -1,19 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/contexts/LanguageContext";
-import {
-  ensureUsersLoadedForApp,
-  getCurrentUserData,
-  getCurrentUserId,
-} from "@/lib/api/auth";
 import { addProperty } from "@/lib/api/properties";
-import {
-  isOwnerSupplyLengthDays,
-  LISTING_MAX_SUPPLY_DAYS,
-} from "@/lib/constants/listingCalendar";
+import { LISTING_MAX_SUPPLY_DAYS } from "@/lib/constants/listingCalendar";
 import { getUIText } from "@/utils/i18n";
 import {
   Camera,
@@ -41,8 +33,6 @@ import { motion } from "framer-motion";
 import TopBar from "@/components/TopBar";
 import CalendarComponent from "@/components/CalendarComponent";
 import AddressVerificationModal from "@/components/AddressVerificationModal";
-// 기존 import들 사이에 추가
-import { uploadToS3 } from "@/lib/s3-client";
 import {
   FACILITY_OPTIONS,
   FACILITY_CATEGORIES,
@@ -51,11 +41,21 @@ import {
   FULL_ELECTRONICS_IDS,
 } from "@/lib/constants/facilities";
 import {
-  getDistrictsByCityId,
   searchRegions,
   VIETNAM_CITIES,
   ALL_REGIONS,
 } from "@/lib/data/vietnam-regions";
+import { usePropertyImageManager } from "./hooks/usePropertyImageManager";
+import { useAddPropertyAccess } from "./hooks/useAddPropertyAccess";
+import { useAddPropertyFormRules } from "./hooks/useAddPropertyFormRules";
+import { useAddPropertyCalendarIcal } from "./hooks/useAddPropertyCalendarIcal";
+import {
+  buildUnitNumber,
+  ensureAddPropertyKycReady,
+  getAddPropertyErrorMessage,
+  uploadPropertyImages,
+  validateAddPropertyInput,
+} from "./utils/addPropertySubmit";
 
 // 베트남 스타일 컬러: Coral Red + Golden Orange + Sunshine Yellow
 const COLORS = {
@@ -80,9 +80,11 @@ export default function AddPropertyPage() {
   const { user, loading: authLoading } = useAuth();
   const { currentLanguage, setCurrentLanguage } = useLanguage();
   const [loading, setLoading] = useState(false);
-  const [checkingAccess, setCheckingAccess] = useState(true);
-  const [hasAccess, setHasAccess] = useState(false);
-  const [isOwnerMode, setIsOwnerMode] = useState(false); // 임대인 모드 여부
+  const { checkingAccess, hasAccess } = useAddPropertyAccess({
+    user,
+    authLoading,
+    onRedirect: (path) => router.push(path),
+  });
 
   const todayOnly = (() => {
     const d = new Date();
@@ -124,117 +126,71 @@ export default function AddPropertyPage() {
   const [checkInTime, setCheckInTime] = useState("14:00");
   const [checkOutTime, setCheckOutTime] = useState("12:00");
 
-  // 매물종류에 따라 방/화장실 제한 적용
-  useEffect(() => {
-    if (!propertyType) {
-      setBedrooms(0);
-      setBathrooms(0);
-      return;
-    }
-    if (propertyType === "studio" || propertyType === "one_room") {
-      setBedrooms(1);
-      setBathrooms((b) => (b < 1 || b > 2 ? 1 : b));
-    } else if (propertyType === "two_room") {
-      setBedrooms(2);
-      setBathrooms((b) => (b < 1 || b > 3 ? 1 : b));
-    } else if (propertyType === "three_plus") {
-      setBedrooms((prev) => (prev >= 2 && prev <= 5 ? prev : 3));
-      setBathrooms((b) => (b < 1 || b > 6 ? 1 : b));
-    } else if (propertyType === "detached") {
-      setBedrooms((b) => Math.min(10, Math.max(1, b || 1)));
-      setBathrooms((b) => Math.min(10, Math.max(1, b || 1)));
-    }
-  }, [propertyType]);
+  const { toggleFacility, petAllowed, bedroomOptions, bathroomOptions } =
+    useAddPropertyFormRules({
+      propertyType,
+      setBedrooms,
+      setBathrooms,
+      selectedCityId,
+      selectedDistrictId,
+      setSelectedDistrictId,
+      selectedFacilities,
+      setSelectedFacilities,
+    });
 
-  useEffect(() => {
-    if (!selectedCityId || !selectedDistrictId) return;
-    const districts = getDistrictsByCityId(selectedCityId);
-    if (!districts.some((d) => d.id === selectedDistrictId)) {
-      setSelectedDistrictId("");
-    }
-  }, [selectedCityId]);
+  const {
+    showCalendar,
+    calendarMode,
+    checkInDate,
+    checkOutDate,
+    icalPlatform,
+    icalCalendarName,
+    icalUrl,
+    showIcalDropdown,
+    setIcalPlatform,
+    setIcalCalendarName,
+    setIcalUrl,
+    setShowIcalDropdown,
+    openCheckInCalendar,
+    openCheckOutCalendar,
+    closeCalendar,
+    onCheckInSelect,
+    onCheckOutSelect,
+    onCheckInReset,
+    toggleIcalDropdown,
+  } = useAddPropertyCalendarIcal();
 
-  // 임대 희망 날짜
-  const [showCalendar, setShowCalendar] = useState(false);
-  const [calendarMode, setCalendarMode] = useState<"checkin" | "checkout">(
-    "checkin",
-  );
-  const [checkInDate, setCheckInDate] = useState<Date | null>(null);
-  const [checkOutDate, setCheckOutDate] = useState<Date | null>(null);
-
-  // 외부 캘린더(iCal) 가져오기
-  const [icalPlatform, setIcalPlatform] = useState<string>("");
-  const [icalCalendarName, setIcalCalendarName] = useState("");
-  const [icalUrl, setIcalUrl] = useState("");
-  const [showIcalDropdown, setShowIcalDropdown] = useState(false);
-
-  // 사진첩 모달 상태
-  const [showPhotoLibrary, setShowPhotoLibrary] = useState(false);
-  const [photoLibraryFiles, setPhotoLibraryFiles] = useState<File[]>([]);
-  const [photoLibraryPreviews, setPhotoLibraryPreviews] = useState<string[]>(
-    [],
-  );
-  const [selectedLibraryIndices, setSelectedLibraryIndices] = useState<
-    Set<number>
-  >(new Set());
-  const [fullScreenImageIndex, setFullScreenImageIndex] = useState<
-    number | null
-  >(null);
-
-  // 이미지 소스 선택 메뉴 상태
-  const [showImageSourceMenu, setShowImageSourceMenu] = useState(false);
-  const [showGuidelinePopup, setShowGuidelinePopup] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const photoLibraryInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const {
+    showPhotoLibrary,
+    photoLibraryPreviews,
+    selectedLibraryIndices,
+    fullScreenImageIndex,
+    showImageSourceMenu,
+    showGuidelinePopup,
+    photoLibraryInputRef,
+    cameraInputRef,
+    setShowPhotoLibrary,
+    handlePhotoLibrarySelect,
+    togglePhotoSelection,
+    handleConfirmPhotoSelection,
+    handleViewFullScreen,
+    handleBackToLibrary,
+    handleCameraCapture,
+    handleAddImageClick,
+    handleSelectFromLibrary,
+    handleTakePhoto,
+    handleGuidelinePopupClick,
+    handleImageRemove,
+  } = usePropertyImageManager({
+    images,
+    setImages,
+    imagePreviews,
+    setImagePreviews,
+  });
 
   // 주소 확인 모달
   const [showAddressModal, setShowAddressModal] = useState(false);
-
-  // 접근 권한 확인 및 사용자 모드 설정
-  useEffect(() => {
-    const checkAccessAndMode = async () => {
-      if (authLoading) return;
-
-      const actorUid = user?.uid ?? getCurrentUserId();
-      if (!actorUid) {
-        router.push("/login");
-        return;
-      }
-
-      try {
-        let userData = await getCurrentUserData(actorUid);
-        if (!userData) {
-          await ensureUsersLoadedForApp();
-          userData = await getCurrentUserData(actorUid);
-        }
-
-        // KYC 1~3단계 토큰이 모두 있어야 매물 등록 가능
-        // 사용자 요구��항: "코인3개가 되면 다 사용가능한거야"
-        const kycSteps = userData?.kyc_steps || {};
-        const allStepsCompleted =
-          kycSteps.step1 && kycSteps.step2 && kycSteps.step3;
-
-        // 프로필 페이지와 동일한 조건: KYC 완료 또는 owner 권한
-        if (allStepsCompleted || userData?.is_owner === true) {
-          setHasAccess(true);
-          // 임대인 모드 설정 (KYC 완료 + 코인 3개 이상)
-          // 실제로는 userData.coins 또는 userData.owner_status 등을 확인해야 함
-          // 여기서는 KYC 완료 시 임대인 모드로 간주
-          setIsOwnerMode(true);
-        } else {
-          // KYC 미완료 시 1~3단계 인증 페이지로 이동
-          router.push("/kyc");
-        }
-      } catch (error) {
-        router.push("/kyc");
-      } finally {
-        setCheckingAccess(false);
-      }
-    };
-
-    checkAccessAndMode();
-  }, [user, authLoading, router]);
 
   // 주소 확인 모달에서 주소 확정 시 (도시·구 자동 설정)
   const handleAddressConfirm = (data: {
@@ -255,487 +211,56 @@ export default function AddPropertyPage() {
     setSelectedCityId(cityMatch ? cityMatch.id : "");
   };
 
-  // 사진첩 열기 핸들러
-  const handleOpenPhotoLibrary = () => {
-    photoLibraryInputRef.current?.click();
-  };
-
-  // 사진첩에서 파일 선택 시
-  const handlePhotoLibrarySelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
-
-    // 사진첩에 파일 저장
-    setPhotoLibraryFiles(files);
-
-    // 미리보기 생성
-    const previews = files.map((file) => URL.createObjectURL(file));
-    setPhotoLibraryPreviews(previews);
-
-    // 선택 초기화
-    setSelectedLibraryIndices(new Set());
-
-    // 사진첩 모달 열기
-    setShowPhotoLibrary(true);
-
-    // input 초기화
-    e.target.value = "";
-  };
-
-  // 사진첩에서 사진 선택/해제
-  const togglePhotoSelection = (index: number) => {
-    const maxSelectable = 5 - images.length;
-    if (maxSelectable <= 0) return;
-
-    setSelectedLibraryIndices((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(index)) {
-        newSet.delete(index);
-      } else {
-        if (newSet.size < maxSelectable) {
-          newSet.add(index);
-        }
-      }
-      return newSet;
-    });
-  };
-
-  // 선택한 사진들을 추가
-  const handleConfirmPhotoSelection = () => {
-    const selectedFiles = Array.from(selectedLibraryIndices)
-      .sort((a, b) => a - b)
-      .map((index) => photoLibraryFiles[index]);
-
-    if (selectedFiles.length === 0) return;
-
-    const newImages = [...images, ...selectedFiles];
-    setImages(newImages);
-
-    // 미리보기 생성
-    const newPreviews = selectedFiles.map((file) => URL.createObjectURL(file));
-    setImagePreviews([...imagePreviews, ...newPreviews]);
-
-    // 사진첩 닫기 및 정리
-    setShowPhotoLibrary(false);
-    setPhotoLibraryFiles([]);
-    photoLibraryPreviews.forEach((url) => URL.revokeObjectURL(url));
-    setPhotoLibraryPreviews([]);
-    setSelectedLibraryIndices(new Set());
-    setFullScreenImageIndex(null);
-  };
-
-  // 전체화면 이미지 보기
-  const handleViewFullScreen = (index: number) => {
-    setFullScreenImageIndex(index);
-  };
-
-  // 전체화면에서 사진첩으로 돌아가기
-  const handleBackToLibrary = () => {
-    setFullScreenImageIndex(null);
-  };
-
-  // 카메라로 촬영 핸들러
-  const handleCameraCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
-
-    const remainingSlots = 5 - images.length;
-    if (remainingSlots === 0) return;
-
-    const file = files[0];
-    const newImages = [...images, file];
-    setImages(newImages);
-
-    // 미리보기 생성
-    const preview = URL.createObjectURL(file);
-    setImagePreviews([...imagePreviews, preview]);
-
-    // input 초기화
-    e.target.value = "";
-  };
-
-  // 이미지 추가 버튼 클릭 (사진첩 또는 카메라 선택) - ref는 이미 위에서 선언됨
-
-  const handleAddImageClick = () => {
-    if (images.length >= 5) return;
-
-    // 1시간에 한 번만 가이드라인 팝업 표시
-    const GUIDELINE_STORAGE_KEY = "property_guideline_last_shown";
-    const lastShownTime = localStorage.getItem(GUIDELINE_STORAGE_KEY);
-    const now = Date.now();
-    const oneHour = 60 * 60 * 1000; // 1시간 (밀리초)
-
-    if (lastShownTime) {
-      const timeSinceLastShown = now - parseInt(lastShownTime, 10);
-      if (timeSinceLastShown < oneHour) {
-        // 1시간이 지나지 않았으면 팝업 없이 바로 이미지 소스 메뉴 표시
-        setShowImageSourceMenu(true);
-        return;
-      }
-    }
-
-    // 1시간이 지났거나 처음이면 가이드라인 팝업 표시
-    setShowGuidelinePopup(true);
-  };
-
-  const handleSelectFromLibrary = () => {
-    setShowImageSourceMenu(false);
-    handleOpenPhotoLibrary();
-  };
-
-  const handleTakePhoto = () => {
-    setShowImageSourceMenu(false);
-    cameraInputRef.current?.click();
-  };
-
-  const handleGuidelinePopupClick = () => {
-    setShowGuidelinePopup(false);
-
-    // 가이드라인을 본 시간을 localStorage에 저장
-    const GUIDELINE_STORAGE_KEY = "property_guideline_last_shown";
-    localStorage.setItem(GUIDELINE_STORAGE_KEY, Date.now().toString());
-
-    setShowImageSourceMenu(true);
-  };
-
-  // 이미지 삭제 핸들러
-  const handleImageRemove = (index: number) => {
-    const newImages = images.filter((_, i) => i !== index);
-    const newPreviews = imagePreviews.filter((_, i) => i !== index);
-
-    // URL 해제
-    URL.revokeObjectURL(imagePreviews[index]);
-
-    setImages(newImages);
-    setImagePreviews(newPreviews);
-  };
-
-  // 숙소시설 및 정책 선택/해제
-  const toggleFacility = (facilityId: string) => {
-    setSelectedFacilities((prev) =>
-      prev.includes(facilityId)
-        ? prev.filter((id) => id !== facilityId)
-        : [...prev, facilityId],
-    );
-  };
-
-  const petAllowed = selectedFacilities.includes("pet");
-
-  // 방 개수 옵션 (매물종류별)
-  const bedroomOptions = (() => {
-    if (!propertyType) return [];
-    if (propertyType === "studio" || propertyType === "one_room") return [1];
-    if (propertyType === "two_room") return [2];
-    if (propertyType === "three_plus") return [2, 3, 4, 5]; // 5 = 5+
-    if (propertyType === "detached") return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    return [];
-  })();
-
-  // 화장실 개수 옵션 (매물종류별)
-  const bathroomOptions = (() => {
-    if (!propertyType) return [];
-    if (propertyType === "studio" || propertyType === "one_room") return [1, 2];
-    if (propertyType === "two_room") return [1, 2, 3];
-    if (propertyType === "three_plus") return [1, 2, 3, 4, 5, 6]; // 6 = 5+
-    if (propertyType === "detached") return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    return [];
-  })();
-
   // 폼 제출
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // 필수 정보 검증
-    if (!address || address.trim() === "") {
-      alert(
-        currentLanguage === "ko"
-          ? "주소를 입력해주세요."
-          : currentLanguage === "vi"
-            ? "Vui lòng nhập địa chỉ."
-            : currentLanguage === "ja"
-              ? "住所を入力してください。"
-              : currentLanguage === "zh"
-                ? "请输入地址。"
-                : "Please enter an address.",
-      );
-      return;
-    }
-
-    // 좌표 검증
-    if (!coordinates || !coordinates.lat || !coordinates.lng) {
-      alert(
-        currentLanguage === "ko"
-          ? "주소를 선택하여 좌표를 설정해주세요. 주소 입력 버튼을 클릭하여 주소를 확인해주세요."
-          : currentLanguage === "vi"
-            ? "Vui lòng chọn địa chỉ để thiết lập tọa độ. Vui lòng nhấp vào nút nhập địa chỉ để xác nhận địa chỉ."
-            : currentLanguage === "ja"
-              ? "住所を選択して座標を設定してください。住所入力ボタンをクリックして住所を確認してください。"
-              : currentLanguage === "zh"
-                ? "请选择地址以设置坐标。请点击地址输入按钮确认地址。"
-                : "Please select an address to set coordinates. Please click the address input button to verify the address.",
-      );
-      return;
-    }
-
-    // 도시/구 필수 검증
-    if (!selectedCityId) {
-      alert(
-        currentLanguage === "ko"
-          ? "도시를 선택해주세요."
-          : currentLanguage === "vi"
-            ? "Vui lòng chọn thành phố."
-            : currentLanguage === "ja"
-              ? "都市を選択してください。"
-              : currentLanguage === "zh"
-                ? "请选择城市。"
-                : "Please select a city.",
-      );
-      return;
-    }
-
-    if (!selectedDistrictId) {
-      alert(
-        currentLanguage === "ko"
-          ? "구를 선택해주세요."
-          : currentLanguage === "vi"
-            ? "Vui lòng chọn quận."
-            : currentLanguage === "ja"
-              ? "区を選択してください。"
-              : currentLanguage === "zh"
-                ? "请选择区。"
-                : "Please select a district.",
-      );
-      return;
-    }
-
-    if (imagePreviews.length === 0) {
-      alert(
-        currentLanguage === "ko"
-          ? "최소 1장의 사진을 등록해주세요."
-          : currentLanguage === "vi"
-            ? "Vui lòng đăng ít nhất 1 ảnh."
-            : currentLanguage === "ja"
-              ? "最低1枚の写真を登録してください。"
-              : currentLanguage === "zh"
-                ? "请至少上传1张照片。"
-                : "Please upload at least 1 image.",
-      );
-      return;
-    }
-
-    if (!weeklyRent || weeklyRent.trim() === "") {
-      alert(
-        currentLanguage === "ko"
-          ? "1주일 임대료를 입력해주세요."
-          : currentLanguage === "vi"
-            ? "Vui lòng nhập giá thuê 1 tuần."
-            : currentLanguage === "ja"
-              ? "1週間の賃貸料を入力してください。"
-              : currentLanguage === "zh"
-                ? "请输入1周租金。"
-                : "Please enter weekly rent.",
-      );
-      return;
-    }
-
-    const rentValue = parseInt(weeklyRent.replace(/\D/g, ""));
-    if (isNaN(rentValue) || rentValue <= 0) {
-      alert(
-        currentLanguage === "ko"
-          ? "유효한 임대료를 입력해주세요."
-          : currentLanguage === "vi"
-            ? "Vui lòng nhập giá thuê hợp lệ."
-            : currentLanguage === "ja"
-              ? "有効な賃貸料を入力してください。"
-              : currentLanguage === "zh"
-                ? "请输入有效的租金金额。"
-                : "Please enter a valid rent amount.",
-      );
-      return;
-    }
-
-    if (!propertyType) {
-      alert(
-        currentLanguage === "ko"
-          ? "매물 종류를 선택해주세요."
-          : currentLanguage === "vi"
-            ? "Vui lòng chọn loại bất động sản."
-            : currentLanguage === "ja"
-              ? "物件の種類を選択してください。"
-              : currentLanguage === "zh"
-                ? "请选择物业类型。"
-                : "Please select property type.",
-      );
-      return;
-    }
-
-    // 매물명 필수 검증
-    if (!title || title.trim() === "") {
-      alert(
-        currentLanguage === "ko"
-          ? "매물명을 입력해주세요."
-          : currentLanguage === "vi"
-            ? "Vui lòng nhập tên bất động sản."
-            : currentLanguage === "ja"
-              ? "物件名を入力してください。"
-              : currentLanguage === "zh"
-                ? "请输入物业名称。"
-                : "Please enter property name.",
-      );
-      return;
-    }
-
-    if (!user) {
-      alert(
-        currentLanguage === "ko"
-          ? "로그인이 필요합니다."
-          : currentLanguage === "vi"
-            ? "Cần đăng nhập."
-            : currentLanguage === "ja"
-              ? "ログインが必要です。"
-              : currentLanguage === "zh"
-                ? "需要登录。"
-                : "Please login.",
-      );
-      return;
-    }
-
-    if (!checkInDate || !checkOutDate) {
-      alert(
-        currentLanguage === "ko"
-          ? "임대 시작일과 종료일을 선택해주세요."
-          : currentLanguage === "vi"
-            ? "Vui lòng chọn ngày bắt đầu và kết thúc thuê."
-            : currentLanguage === "ja"
-              ? "賃貸開始日と終了日を選択してください。"
-              : currentLanguage === "zh"
-                ? "请选择租赁开始和结束日期。"
-                : "Please select rental start and end dates.",
-      );
-      return;
-    }
-
-    const diffTime = checkOutDate.getTime() - checkInDate.getTime();
-    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-
-    const inDayOnly = new Date(
-      checkInDate.getFullYear(),
-      checkInDate.getMonth(),
-      checkInDate.getDate(),
-    );
-    const outDayOnly = new Date(
-      checkOutDate.getFullYear(),
-      checkOutDate.getMonth(),
-      checkOutDate.getDate(),
-    );
-
-    const inOk =
-      inDayOnly.getTime() >= todayOnly.getTime() &&
-      inDayOnly.getTime() <= maxRentalDay.getTime();
-    const outOk =
-      outDayOnly.getTime() >= todayOnly.getTime() &&
-      outDayOnly.getTime() <= maxRentalDay.getTime();
-
-    if (!inOk || !outOk) {
-      alert(
-        currentLanguage === "ko"
-          ? "임대 시작일과 종료일은 오늘 기준 최대 91일 이내에서 선택해주세요."
-          : currentLanguage === "vi"
-            ? "Vui lòng chọn ngày bắt đầu và kết thúc thuê trong vòng 91 ngày tính từ hôm nay."
-            : currentLanguage === "ja"
-              ? "賃貸開始日と終了日は、今日基準で最大91日以内で選択してください。"
-              : currentLanguage === "zh"
-                ? "请在以今天为基准的91天以内选择入住和退房日期。"
-                : "Please select rental start/end dates within 91 days from today.",
-      );
-      return;
-    }
-
-    if (!isOwnerSupplyLengthDays(diffDays)) {
-      alert(
-        currentLanguage === "ko"
-          ? "임대 기간은 7일 단위이며, 최대 약 3개월(91일)까지 선택할 수 있습니다."
-          : currentLanguage === "vi"
-            ? "Thời hạn thuê theo bội 7 ngày, tối đa ~3 tháng (91 ngày)."
-            : currentLanguage === "ja"
-              ? "賃貸期間は7日単位で、最長約3か月（91日）までです。"
-              : currentLanguage === "zh"
-                ? "租期为7天倍数，最长约3个月（91天）。"
-                : "Rental length must be in 7-day steps, up to ~3 months (91 days).",
-      );
+    const validationMessage = validateAddPropertyInput({
+      address,
+      coordinates,
+      selectedCityId,
+      selectedDistrictId,
+      imagePreviewsLength: imagePreviews.length,
+      weeklyRent,
+      propertyType,
+      title,
+      hasUser: Boolean(user),
+      checkInDate,
+      checkOutDate,
+      todayOnly,
+      maxRentalDay,
+      currentLanguage,
+    });
+    if (validationMessage) {
+      alert(validationMessage);
       return;
     }
 
     setLoading(true);
     try {
-      // KYC 1~3단계 토큰 확인
-      const userData = await getCurrentUserData(user.uid);
-      const kycSteps = userData?.kyc_steps || {};
-      const allStepsCompleted =
-        kycSteps.step1 && kycSteps.step2 && kycSteps.step3;
-
-      if (!allStepsCompleted) {
+      if (!user) {
         alert(
           currentLanguage === "ko"
-            ? "매물을 등록하려면 KYC 인증 1~3단계를 모두 완료해야 합니다."
+            ? "로그인이 필요합니다."
             : currentLanguage === "vi"
-              ? "Bạn phải hoàn thành tất cả các bước xác thực KYC (1-3) để đăng bất động sản."
-              : currentLanguage === "ja"
-                ? "物件を登録するには、KYC認証1〜3段階をすべて完了する必要があります。"
-              : currentLanguage === "zh"
-                ? "要注册物业，必须完成KYC认证1-3阶段。"
-              : "You must complete all KYC verification steps (1-3) to register a property.",
+              ? "Cần đăng nhập."
+              : "Please login.",
         );
-        setLoading(false);
+        return;
+      }
+
+      const kycState = await ensureAddPropertyKycReady(user.uid, currentLanguage);
+      if (!kycState.ok) {
+        alert(kycState.message);
         router.push("/kyc");
         return;
       }
 
-      // 동호수 조합 (비공개 - 별도 필드로만 저장)
-      // 호실 번호는 4자리로 패딩 (예: 1호 → 0001호)
-      const formatRoomNumber = (room: string) => {
-        const num = parseInt(room.replace(/\D/g, ""));
-        if (isNaN(num)) return room;
-        return num.toString().padStart(4, "0");
-      };
-
-      const unitNumber =
-        buildingNumber && roomNumber
-          ? `${buildingNumber}동 ${formatRoomNumber(roomNumber)}호`
-          : buildingNumber
-            ? `${buildingNumber}동`
-            : roomNumber
-              ? `${formatRoomNumber(roomNumber)}호`
-              : undefined;
-
-      // 주소와 설명에는 동호수 포함하지 않음 (비공개)
-      const publicAddress = address;
-
-      // 이미지 업로드
-      let imageUrls: string[];
-      try {
-        imageUrls = await Promise.all(
-          images.map((image) => uploadToS3(image, "properties")),
-        );
-      } catch (error) {
-        console.error("S3 업로드 실패:", error);
-        // 실제 에러 메시지를 사용자에게 표시
-        const errorMessage =
-          error instanceof Error ? error.message : "S3 업로드 실패";
-        alert(
-          currentLanguage === "ko"
-            ? `사진 업로드 실패: ${errorMessage}`
-            : currentLanguage === "vi"
-              ? `Tải ảnh lên thất bại: ${errorMessage}`
-              : `Photo upload failed: ${errorMessage}`,
-        );
-        setLoading(false);
+      const uploadResult = await uploadPropertyImages(images, currentLanguage);
+      if (!uploadResult.ok) {
+        alert(uploadResult.message);
         return;
       }
-
-      // 날짜를 Date 객체로 변환 (LocalStorage용)
-      const checkInDateObj = checkInDate || undefined;
-      const checkOutDateObj = checkOutDate || undefined;
 
       await addProperty({
         title: title.trim(),
@@ -747,10 +272,10 @@ export default function AddPropertyPage() {
         bedrooms: bedrooms,
         bathrooms: bathrooms,
         coordinates: coordinates, // 좌표는 필수 (위에서 검증됨)
-        address: publicAddress, // 동호수 제외
-        images: imageUrls,
+        address: address, // 동호수 제외
+        images: uploadResult.imageUrls,
         amenities: selectedFacilities,
-        unitNumber: unitNumber, // 동호수 (예약 완료 후에만 표시, 비공개)
+        unitNumber: buildUnitNumber(buildingNumber, roomNumber), // 동호수 (예약 완료 후에만 표시, 비공개)
         propertyType,
         cleaningPerWeek: selectedFacilities.includes("cleaning")
           ? cleaningPerWeek
@@ -762,8 +287,8 @@ export default function AddPropertyPage() {
             petFee: parseInt(petFeeAmount.replace(/\D/g, ""), 10) || undefined,
           }),
         ownerId: user.uid, // 임대인 사용자 ID 저장
-        checkInDate: checkInDateObj,
-        checkOutDate: checkOutDateObj,
+        checkInDate: checkInDate || undefined,
+        checkOutDate: checkOutDate || undefined,
         checkInTime: checkInTime,
         checkOutTime: checkOutTime,
         maxAdults: maxAdults,
@@ -780,41 +305,14 @@ export default function AddPropertyPage() {
       });
 
       setShowSuccessModal(true);
-      } catch (error: any) {
+    } catch (error: unknown) {
       // 중복 등록 등 예상된 비즈니스 로직 에러는 콘솔 에러를 남기지 않음 (개발 오버레이 방지)
       const knownErrors = ["OverlapDetected", "AlreadyBooked"];
-      if (!knownErrors.includes(error.message)) {
+      const message = error instanceof Error ? error.message : undefined;
+      if (!message || !knownErrors.includes(message)) {
         console.error("매물 등록 중 예기치 못한 패:", error);
       }
-
-      if (
-        error.message === "OverlapDetected" ||
-        error.message === "AlreadyBooked"
-      ) {
-        alert(
-          currentLanguage === "ko"
-            ? "이미 동일한 주소와 날짜에 등록된 매물이 있습니다."
-            : currentLanguage === "vi"
-              ? "Đã có bất động sản được đăng ký với cùng địa chỉ và ngày."
-            : currentLanguage === "ja"
-              ? "同じ住所と日付に既に登録された物件があります。"
-            : currentLanguage === "zh"
-              ? "相同地址和日期已有注册的物业。"
-            : "A property has already been registered at the same address and date.",
-        );
-      } else {
-        alert(
-          currentLanguage === "ko"
-            ? "매물 등록 중 오류가 발생했습니다."
-            : currentLanguage === "vi"
-              ? "Đã xảy ra lỗi khi đăng ký bất động sản."
-            : currentLanguage === "ja"
-              ? "物件登録中にエラーが発生しました。"
-            : currentLanguage === "zh"
-              ? "物业注册过程中发生错误。"
-            : "An error occurred while registering the property.",
-        );
-      }
+      alert(getAddPropertyErrorMessage(currentLanguage, message));
     } finally {
       setLoading(false);
     }
@@ -1751,10 +1249,7 @@ export default function AddPropertyPage() {
                 {/* 체크인 날짜 */}
                 <button
                   type="button"
-                  onClick={() => {
-                    setCalendarMode("checkin");
-                    setShowCalendar(true);
-                  }}
+                  onClick={openCheckInCalendar}
                   className="flex items-center px-3 py-2 rounded-md transition-colors"
                   style={{
                     backgroundColor: COLORS.white,
@@ -1829,10 +1324,7 @@ export default function AddPropertyPage() {
                 {/* 체크아웃 날짜 */}
                 <button
                   type="button"
-                  onClick={() => {
-                    setCalendarMode("checkout");
-                    setShowCalendar(true);
-                  }}
+                  onClick={openCheckOutCalendar}
                   className="flex items-center px-3 py-2 rounded-md transition-colors"
                   style={{
                     backgroundColor: COLORS.white,
@@ -2378,7 +1870,7 @@ export default function AddPropertyPage() {
             >
               <button
                 type="button"
-                onClick={() => setShowIcalDropdown(!showIcalDropdown)}
+                onClick={toggleIcalDropdown}
                 className="w-full py-3 px-4 flex items-center justify-between transition-colors text-left min-h-[48px]"
                 style={{ backgroundColor: `${COLORS.border}20` }}
               >
@@ -2537,30 +2029,18 @@ export default function AddPropertyPage() {
       {showCalendar && (
         <div
           className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
-          onClick={() => setShowCalendar(false)}
+          onClick={closeCalendar}
         >
           <div onClick={(e) => e.stopPropagation()}>
             <CalendarComponent
               checkInDate={checkInDate}
               checkOutDate={checkOutDate}
               maxDate={maxRentalDay}
-              onCheckInSelect={(date) => {
-                setCheckInDate(date);
-                setCheckOutDate(null);
-                setCalendarMode("checkout");
-                setShowCalendar(true);
-              }}
-              onCheckOutSelect={(date) => {
-                setCheckOutDate(date);
-                setShowCalendar(false);
-              }}
-              onCheckInReset={() => {
-                setCheckInDate(null);
-                setCheckOutDate(null);
-                setCalendarMode("checkin");
-              }}
+              onCheckInSelect={onCheckInSelect}
+              onCheckOutSelect={onCheckOutSelect}
+              onCheckInReset={onCheckInReset}
               currentLanguage={currentLanguage}
-              onClose={() => setShowCalendar(false)}
+              onClose={closeCalendar}
               mode={calendarMode}
               bookedRanges={[]}
               isOwnerMode={true}
