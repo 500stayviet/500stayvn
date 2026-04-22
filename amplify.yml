@@ -28,6 +28,11 @@ applications:
               NEXT_PUBLIC_AWS_API_KEY=$NEXT_PUBLIC_AWS_API_KEY
               NEXT_PUBLIC_AWS_MAP_NAME=$NEXT_PUBLIC_AWS_MAP_NAME
               NEXT_PUBLIC_AWS_PLACE_INDEX_NAME=$NEXT_PUBLIC_AWS_PLACE_INDEX_NAME
+              # 서버 전용(Fallback) 변수들을 동일한 값으로 주입
+              AWS_REGION=$NEXT_PUBLIC_AWS_REGION
+              AWS_API_KEY=$NEXT_PUBLIC_AWS_API_KEY
+              AWS_MAP_NAME=$NEXT_PUBLIC_AWS_MAP_NAME
+              AWS_PLACE_INDEX_NAME=$NEXT_PUBLIC_AWS_PLACE_INDEX_NAME
               EOF
             # 빌드 중에는 Prisma Client만 생성하고, DB 마이그레이션은 릴리즈 절차에서 별도 실행
             - npx prisma generate --schema=./prisma/schema.prisma
