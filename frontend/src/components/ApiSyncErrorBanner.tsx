@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { UserFacingSyncError } from "@/lib/runtime/networkResilience";
 
 const MAX_ITEMS = 4;
+const DEDUPE_WINDOW_MS = 15_000;
 
 type BannerItem = UserFacingSyncError & { id: string };
 
@@ -19,15 +20,24 @@ export default function ApiSyncErrorBanner() {
       const custom = event as CustomEvent<UserFacingSyncError>;
       const detail = custom.detail;
       if (!detail?.message) return;
-      setItems((prev) =>
-        [
+      const now = Date.now();
+      const signature = `${detail.area}:${detail.action}:${detail.message}`;
+      setItems((prev) => {
+        const hasRecentDuplicate = prev.some((item) => {
+          const sameSignature = `${item.area}:${item.action}:${item.message}` === signature;
+          if (!sameSignature) return false;
+          const createdAt = Number(item.id.split("_")[1] || 0);
+          return createdAt > 0 && now - createdAt < DEDUPE_WINDOW_MS;
+        });
+        if (hasRecentDuplicate) return prev;
+        return [
           {
             ...detail,
-            id: `sync_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+            id: `sync_${now}_${Math.random().toString(36).slice(2, 9)}`,
           },
           ...prev,
-        ].slice(0, MAX_ITEMS),
-      );
+        ].slice(0, MAX_ITEMS);
+      });
     };
     window.addEventListener("stayviet-api-sync-error", onSyncError as EventListener);
     return () =>

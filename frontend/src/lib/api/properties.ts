@@ -63,7 +63,7 @@ export type PropertiesByOwnerResult = {
 async function syncPropertiesNow(snapshot: PropertyData[]): Promise<void> {
   if (typeof window === 'undefined') return;
   try {
-    await fetchWithRetry(
+    const res = await fetchWithRetry(
       '/api/app/properties',
       withAppActor({
         method: 'PUT',
@@ -72,12 +72,15 @@ async function syncPropertiesNow(snapshot: PropertyData[]): Promise<void> {
       }),
       { retries: 2, baseDelayMs: 300 }
     );
+    if (!res.ok) throw new Error(String(res.status));
   } catch (e) {
+    const code = e instanceof Error ? Number(e.message) : NaN;
+    const status = Number.isFinite(code) ? code : null;
     console.warn('[properties] immediate PUT sync failed', e);
     emitUserFacingSyncError({
       area: 'properties',
       action: 'sync',
-      message: '매물 저장에 실패했습니다. 잠시 후 다시 시도해주세요.',
+      message: getPropertySyncErrorMessage(status),
     });
     throw e;
   }
@@ -127,6 +130,14 @@ const PROPS_BOOTSTRAP_SESSION_KEY = 'stayviet-properties-bootstrap-session-v1';
 
 /** `/api/app/properties` GET 으로 채운 매물 스냅샷(탭 단위). off 모드에서는 LS 미러 없이 이 값이 기준입니다. */
 let propertiesCache: PropertyData[] | null = null;
+
+/** 공개 매물 동기화 실패를 사용자 친화 문구로 매핑합니다. */
+function getPropertySyncErrorMessage(status: number | null): string {
+  if (status === 429) return '요청이 많습니다. 잠시 후 다시 시도해 주세요.';
+  if (status === 503) return '서버가 일시적으로 불안정합니다. 잠시 후 다시 시도해 주세요.';
+  if (status === 404) return '조건에 맞는 매물이 아직 없습니다.';
+  return '오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
+}
 
 /** @public — 관리자 모더레이션 등 외부에서 동일 스냅샷 필요 시 */
 export function readPropertiesArray(): PropertyData[] {
@@ -243,6 +254,11 @@ export async function refreshPropertiesFromServer(): Promise<boolean> {
           });
           return false;
         }
+        if (res.status === 404) {
+          propertiesCache = [];
+          window.dispatchEvent(new CustomEvent('propertiesUpdated'));
+          return true;
+        }
         throw new Error(String(res.status));
       }
       const data = (await res.json()) as {
@@ -273,7 +289,7 @@ export async function refreshPropertiesFromServer(): Promise<boolean> {
     emitUserFacingSyncError({
       area: 'properties',
       action: 'refresh',
-      message: '오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
+      message: getPropertySyncErrorMessage(Number.isFinite(code) ? code : null),
     });
     return false;
   }
