@@ -7,14 +7,11 @@
  */
 
 "use client";
-import { motion, AnimatePresence } from "framer-motion";
-import PhoneVerificationStep from "@/components/kyc/PhoneVerificationStep";
-import IdDocumentStep from "@/components/kyc/IdDocumentStep";
-import FaceVerificationStep from "@/components/kyc/FaceVerificationStep";
 import TopBar from "@/components/TopBar";
 import { useKycPageState } from "./hooks/useKycPageState";
 import KycStepProgress from "./components/KycStepProgress";
 import KycStep2SuccessModal from "./components/KycStep2SuccessModal";
+import KycStepContent from "./components/KycStepContent";
 
 export default function KYCPage() {
   const {
@@ -75,51 +72,15 @@ export default function KYCPage() {
             </div>
           )}
 
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
-            <AnimatePresence mode="sync">
-              {currentStep === 1 && (
-                <motion.div
-                  key="step1"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                >
-                  <PhoneVerificationStep
-                    currentLanguage={currentLanguage}
-                    onComplete={handlePhoneVerificationComplete}
-                    initialPhoneNumber={phoneData?.phoneNumber}
-                  />
-                </motion.div>
-              )}
-              {currentStep === 2 && (
-                <motion.div
-                  key="step2"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                >
-                  <IdDocumentStep
-                    currentLanguage={currentLanguage}
-                    onComplete={handleIdDocumentComplete}
-                    onNext={handleIdDocumentNext}
-                  />
-                </motion.div>
-              )}
-              {currentStep === 3 && (
-                <motion.div
-                  key="step3"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                >
-                  <FaceVerificationStep
-                    currentLanguage={currentLanguage}
-                    onComplete={handleFaceVerificationComplete}
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+          <KycStepContent
+            currentStep={currentStep}
+            currentLanguage={currentLanguage}
+            initialPhoneNumber={phoneData?.phoneNumber}
+            onPhoneVerificationComplete={handlePhoneVerificationComplete}
+            onIdDocumentComplete={handleIdDocumentComplete}
+            onIdDocumentNext={handleIdDocumentNext}
+            onFaceVerificationComplete={handleFaceVerificationComplete}
+          />
 
           {loading && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
