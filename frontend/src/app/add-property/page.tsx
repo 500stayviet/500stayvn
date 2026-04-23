@@ -5,12 +5,9 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { LISTING_MAX_SUPPLY_DAYS } from "@/lib/constants/listingCalendar";
-import { getUIText } from "@/utils/i18n";
 import {
   Loader2,
   Check,
-  ChevronDown,
-  ChevronUp,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import TopBar from "@/components/TopBar";
@@ -26,6 +23,10 @@ import { AddPropertyImageSection } from "./components/AddPropertyImageSection";
 import { AddPropertyPolicySection } from "./components/AddPropertyPolicySection";
 import { AddPropertyAddressSection } from "./components/AddPropertyAddressSection";
 import { AddPropertyRentalSection } from "./components/AddPropertyRentalSection";
+import { AddPropertyTypeSection } from "./components/AddPropertyTypeSection";
+import { AddPropertyCheckTimeSection } from "./components/AddPropertyCheckTimeSection";
+import { AddPropertyBasicInfoSection } from "./components/AddPropertyBasicInfoSection";
+import { AddPropertyExternalCalendarSection } from "./components/AddPropertyExternalCalendarSection";
 import { ADD_PROPERTY_COLORS as COLORS } from "./constants/addPropertyColors";
 
 
@@ -307,211 +308,21 @@ export default function AddPropertyPage() {
               onGuidelinePopupClick={handleGuidelinePopupClick}
             />
 
-            {/* 매물 종류 / 방 개수 / 화장실 수 */}
-            <section
-              className="p-5 rounded-2xl"
-              style={{
-                backgroundColor: `${COLORS.border}20`,
-                border: `1.5px dashed ${COLORS.border}`,
-              }}
-            >
-              <h2
-                className="text-sm font-bold mb-4"
-                style={{ color: COLORS.text }}
-              >
-                {currentLanguage === "ko"
-                  ? "매물 종류"
-                  : currentLanguage === "vi"
-                    ? "Loại bất động sản"
-                  : currentLanguage === "ja"
-                    ? "物件の種類"
-                  : currentLanguage === "zh"
-                    ? "物业类型"
-                    : "Property Type"}
-                <span style={{ color: COLORS.error }} className="ml-1">
-                  *
-                </span>
-              </h2>
-              <div className="flex flex-wrap gap-2">
-                {(
-                  [
-                    {
-                      value: "studio" as const,
-                      ko: "스튜디오",
-                      vi: "Studio",
-                      en: "Studio",
-                      ja: "スタジオ",
-                      zh: "工作室",
-                    },
-                    {
-                      value: "one_room" as const,
-                      ko: "원룸(방·거실 분리)",
-                      vi: "Phòng đơn (phòng ngủ & phòng khách riêng)",
-                      en: "One Room (bedroom & living room separate)",
-                      ja: "ワンルーム（寝室・リビング別）",
-                      zh: "一室（卧室与客厅分开）",
-                    },
-                    {
-                      value: "two_room" as const,
-                      ko: "2룸",
-                      vi: "2 phòng",
-                      en: "2 Rooms",
-                      ja: "2ルーム",
-                      zh: "2室",
-                    },
-                    {
-                      value: "three_plus" as const,
-                      ko: "3+룸",
-                      vi: "3+ phòng",
-                      en: "3+ Rooms",
-                      ja: "3+ルーム",
-                      zh: "3+室",
-                    },
-                    {
-                      value: "detached" as const,
-                      ko: "독채",
-                      vi: "Nhà riêng",
-                      en: "Detached House",
-                      ja: "一戸建て",
-                      zh: "独栋房屋",
-                    },
-                  ] as const
-                ).map(({ value, ko, vi, en, ja, zh }) => {
-                  const label = 
-                    currentLanguage === "ko" ? ko :
-                    currentLanguage === "vi" ? vi :
-                    currentLanguage === "ja" ? ja :
-                    currentLanguage === "zh" ? zh :
-                    en;
-                  
-                  return (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => setPropertyType(value)}
-                      className="inline-flex items-center justify-center px-3 py-2 rounded-xl text-xs font-bold transition-all"
-                      style={{
-                        backgroundColor: propertyType === value ? COLORS.primary : COLORS.white,
-                        color: propertyType === value ? COLORS.white : COLORS.text,
-                        border: `1px solid ${propertyType === value ? COLORS.primary : COLORS.border}`,
-                      }}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {propertyType && (
-                <div
-                  className="grid grid-cols-3 gap-2 mt-4 pt-4"
-                  style={{ borderTop: `1px solid ${COLORS.border}40` }}
-                >
-                  <div>
-                    <label
-                      className="block text-[11px] font-medium mb-1.5"
-                      style={{ color: COLORS.textSecondary }}
-                    >
-                      {currentLanguage === "ko"
-                        ? "방 개수"
-                        : currentLanguage === "vi"
-                          ? "Số phòng"
-                          : "Bedrooms"}
-                    </label>
-                    <select
-                      value={bedrooms}
-                      onChange={(e) => setBedrooms(Number(e.target.value))}
-                      disabled={
-                        propertyType === "studio" ||
-                        propertyType === "one_room" ||
-                        propertyType === "two_room"
-                      }
-                      className="w-full px-2 py-2 rounded-md text-sm min-h-[36px] focus:outline-none transition-all"
-                      style={{
-                        backgroundColor: COLORS.white,
-                        border: `1px solid ${COLORS.border}`,
-                        color: COLORS.text,
-                      }}
-                    >
-                      {bedroomOptions.map((n) => (
-                        <option key={n} value={n}>
-                          {n === 5 &&
-                          (propertyType === "three_plus" ||
-                            propertyType === "detached")
-                            ? "5+"
-                            : n}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label
-                      className="block text-[11px] font-medium mb-1.5"
-                      style={{ color: COLORS.textSecondary }}
-                    >
-                      {currentLanguage === "ko"
-                        ? "화장실 수"
-                        : currentLanguage === "vi"
-                          ? "Số phòng tắm"
-                          : "Bathrooms"}
-                    </label>
-                    <select
-                      value={bathrooms}
-                      onChange={(e) => setBathrooms(Number(e.target.value))}
-                      className="w-full px-2 py-2 rounded-md text-sm min-h-[36px] focus:outline-none transition-all"
-                      style={{
-                        backgroundColor: COLORS.white,
-                        border: `1px solid ${COLORS.border}`,
-                        color: COLORS.text,
-                      }}
-                    >
-                      {bathroomOptions.map((n) => (
-                        <option key={n} value={n}>
-                          {n === 6 && propertyType === "three_plus" ? "5+" : n}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label
-                      className="block text-[11px] font-medium mb-1.5"
-                      style={{ color: COLORS.textSecondary }}
-                    >
-                      {currentLanguage === "ko"
-                        ? "최대 인원"
-                        : currentLanguage === "vi"
-                          ? "Số người tối đa"
-                          : "Max Guests"}
-                    </label>
-                    <select
-                      value={maxAdults}
-                      onChange={(e) => {
-                        const v = Number(e.target.value);
-                        setMaxAdults(v);
-                        setMaxChildren(0);
-                      }}
-                      className="w-full px-2 py-2 rounded-md text-sm min-h-[36px] focus:outline-none transition-all"
-                      style={{
-                        backgroundColor: COLORS.white,
-                        border: `1px solid ${COLORS.border}`,
-                        color: COLORS.text,
-                      }}
-                    >
-                      {Array.from({ length: 20 }, (_, i) => i + 1).map((n) => (
-                        <option key={n} value={n}>
-                          {n}
-                          {currentLanguage === "ko"
-                            ? "명"
-                            : currentLanguage === "vi"
-                              ? " người"
-                              : " guests"}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              )}
-            </section>
+            <AddPropertyTypeSection
+              currentLanguage={currentLanguage}
+              colors={COLORS}
+              propertyType={propertyType}
+              bedrooms={bedrooms}
+              bathrooms={bathrooms}
+              maxAdults={maxAdults}
+              bedroomOptions={bedroomOptions}
+              bathroomOptions={bathroomOptions}
+              onPropertyTypeChange={setPropertyType}
+              onBedroomsChange={setBedrooms}
+              onBathroomsChange={setBathrooms}
+              onMaxAdultsChange={setMaxAdults}
+              onMaxChildrenReset={() => setMaxChildren(0)}
+            />
 
             <AddPropertyAddressSection
               currentLanguage={currentLanguage}
@@ -563,302 +374,36 @@ export default function AddPropertyPage() {
               getLocalizedLabel={getLocalizedLabel}
             />
 
-            {/* 체크인/체크아웃 시간 */}
-            <section
-              className="p-5 rounded-2xl"
-              style={{
-                backgroundColor: COLORS.surface,
-                border: `1.5px dashed ${COLORS.border}`,
-              }}
-            >
-              <h2
-                className="text-sm font-bold mb-4"
-                style={{ color: COLORS.text }}
-              >
-                {currentLanguage === "ko"
-                  ? "체크인/체크아웃 시간"
-                  : currentLanguage === "vi"
-                    ? "Giờ check-in/check-out"
-                  : currentLanguage === "ja"
-                    ? "チェックイン/チェックアウト時間"
-                  : currentLanguage === "zh"
-                    ? "入住/退房时间"
-                    : "Check-in/Check-out Time"}
-              </h2>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label
-                    className="block text-[11px] font-medium mb-1.5"
-                    style={{ color: COLORS.textSecondary }}
-                  >
-                    {currentLanguage === "ko" ? "체크인" : "Check-in"}
-                  </label>
-                  <select
-                    value={checkInTime}
-                    onChange={(e) => setCheckInTime(e.target.value)}
-                    className="w-full px-2 py-2 rounded-md text-sm min-h-[36px] focus:outline-none transition-all"
-                    style={{
-                      backgroundColor: COLORS.white,
-                      border: `1px solid ${COLORS.border}`,
-                      color: COLORS.text,
-                    }}
-                  >
-                    {Array.from({ length: 24 }, (_, i) => {
-                      const hour = i.toString().padStart(2, "0");
-                      return [`${hour}:00`, `${hour}:30`];
-                    })
-                      .flat()
-                      .map((time) => (
-                        <option key={time} value={time}>
-                          {time}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-                <div>
-                  <label
-                    className="block text-[11px] font-medium mb-1.5"
-                    style={{ color: COLORS.textSecondary }}
-                  >
-                    {currentLanguage === "ko" ? "체크아웃" : "Check-out"}
-                  </label>
-                  <select
-                    value={checkOutTime}
-                    onChange={(e) => setCheckOutTime(e.target.value)}
-                    className="w-full px-2 py-2 rounded-md text-sm min-h-[36px] focus:outline-none transition-all"
-                    style={{
-                      backgroundColor: COLORS.white,
-                      border: `1px solid ${COLORS.border}`,
-                      color: COLORS.text,
-                    }}
-                  >
-                    {Array.from({ length: 24 }, (_, i) => {
-                      const hour = i.toString().padStart(2, "0");
-                      return [`${hour}:00`, `${hour}:30`];
-                    })
-                      .flat()
-                      .map((time) => (
-                        <option key={time} value={time}>
-                          {time}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-              </div>
-            </section>
+            <AddPropertyCheckTimeSection
+              currentLanguage={currentLanguage}
+              colors={COLORS}
+              checkInTime={checkInTime}
+              checkOutTime={checkOutTime}
+              onCheckInTimeChange={setCheckInTime}
+              onCheckOutTimeChange={setCheckOutTime}
+            />
 
-            {/* 매물명 */}
-            <section
-              className="p-5 rounded-2xl"
-              style={{
-                backgroundColor: COLORS.surface,
-                border: `1.5px dashed ${COLORS.border}`,
-              }}
-            >
-              <h2
-                className="text-sm font-bold mb-3"
-                style={{ color: COLORS.text }}
-              >
-                {getUIText("title", currentLanguage)}
-                <span style={{ color: COLORS.error }} className="ml-1">
-                  *
-                </span>
-              </h2>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder={getUIText(
-                  "titlePlaceholder",
-                  currentLanguage,
-                )}
-                className="w-full px-3 py-2.5 rounded-lg text-sm min-h-[40px] focus:outline-none transition-all"
-                style={{
-                  backgroundColor: COLORS.white,
-                  border: `1px solid ${COLORS.border}`,
-                }}
-                required
-              />
-            </section>
+            <AddPropertyBasicInfoSection
+              currentLanguage={currentLanguage}
+              colors={COLORS}
+              title={title}
+              propertyDescription={propertyDescription}
+              onTitleChange={setTitle}
+              onPropertyDescriptionChange={setPropertyDescription}
+            />
 
-            {/* 매물 설명 */}
-            <section
-              className="p-5 rounded-2xl"
-              style={{
-                backgroundColor: COLORS.surface,
-                border: `1.5px dashed ${COLORS.border}`,
-              }}
-            >
-              <h2
-                className="text-sm font-bold mb-3"
-                style={{ color: COLORS.text }}
-              >
-                {currentLanguage === "ko"
-                  ? "매물 설명"
-                  : currentLanguage === "vi"
-                    ? "Mô tả bất động sản"
-                    : "Property Description"}
-                <span style={{ color: COLORS.error }} className="ml-1">
-                  *
-                </span>
-              </h2>
-              <textarea
-                value={propertyDescription}
-                onChange={(e) => setPropertyDescription(e.target.value)}
-                placeholder={
-                  currentLanguage === "ko"
-                    ? "매물에 대한 상세 설명을 입력해주세요..."
-                    : currentLanguage === "vi"
-                      ? "Nhập mô tả chi tiết về bất động sản..."
-                      : "Enter detailed description..."
-                }
-                rows={4}
-                className="w-full px-3 py-2.5 rounded-lg resize-none text-sm min-h-[100px] focus:outline-none transition-all"
-                style={{
-                  backgroundColor: COLORS.white,
-                  border: `1px solid ${COLORS.border}`,
-                }}
-                required
-              />
-              <p
-                className="text-[10px] mt-2 flex items-start gap-1"
-                style={{ color: COLORS.success }}
-              >
-                <span>i</span>
-                <span>
-                  {currentLanguage === "ko"
-                    ? "베트남어로 입력해주세요. 자동 번역 기능이 제공됩니다."
-                    : currentLanguage === "vi"
-                      ? "Vui lòng nhập bằng tiếng Việt. Tính năng dịch tự động sẽ được cung cấp."
-                      : "Please enter in Vietnamese. Automatic translation will be provided."}
-                </span>
-              </p>
-            </section>
-
-            {/* 외부 캘린더 가져오기 */}
-            <section
-              className="rounded-2xl overflow-hidden"
-              style={{
-                backgroundColor: COLORS.surface,
-                border: `1.5px dashed ${COLORS.border}`,
-              }}
-            >
-              <button
-                type="button"
-                onClick={toggleIcalDropdown}
-                className="w-full py-3 px-4 flex items-center justify-between transition-colors text-left min-h-[48px]"
-                style={{ backgroundColor: `${COLORS.border}20` }}
-              >
-                <span
-                  className="text-sm font-medium"
-                  style={{ color: COLORS.text }}
-                >
-                  {currentLanguage === "ko"
-                    ? "외부 캘린더 가져오기"
-                    : currentLanguage === "vi"
-                      ? "Đồng bộ lịch ngoài"
-                      : "Import External Calendar"}
-                </span>
-                {showIcalDropdown ? (
-                  <ChevronUp
-                    className="w-4 h-4"
-                    style={{ color: COLORS.textSecondary }}
-                  />
-                ) : (
-                  <ChevronDown
-                    className="w-4 h-4"
-                    style={{ color: COLORS.textSecondary }}
-                  />
-                )}
-              </button>
-              {showIcalDropdown && (
-                <div
-                  className="p-4 pt-3 space-y-3"
-                  style={{ borderTop: `1px solid ${COLORS.border}30` }}
-                >
-                  <p
-                    className="text-[11px]"
-                    style={{ color: COLORS.textSecondary }}
-                  >
-                    {currentLanguage === "ko"
-                      ? "에어비앤비, 아고다 등 예약을 500stay와 동기화합니다."
-                      : "Sync bookings from Airbnb, Agoda, etc."}
-                  </p>
-                  <div>
-                    <label
-                      className="block text-[11px] font-medium mb-1.5"
-                      style={{ color: COLORS.textSecondary }}
-                    >
-                      {currentLanguage === "ko" ? "플랫폼" : "Platform"}
-                    </label>
-                    <select
-                      value={icalPlatform}
-                      onChange={(e) => setIcalPlatform(e.target.value)}
-                      className="w-full px-2 py-2 text-sm rounded-md min-h-[36px] focus:outline-none"
-                      style={{
-                        backgroundColor: COLORS.white,
-                        border: `1px solid ${COLORS.border}`,
-                        color: COLORS.text,
-                      }}
-                    >
-                      <option value="">
-                        {currentLanguage === "ko" ? "선택 안 함" : "None"}
-                      </option>
-                      <option value="airbnb">Airbnb</option>
-                      <option value="agoda">Agoda</option>
-                      <option value="booking_com">Booking.com</option>
-                      <option value="other">
-                        {currentLanguage === "ko" ? "기타" : "Other"}
-                      </option>
-                    </select>
-                  </div>
-                  <div>
-                    <label
-                      className="block text-[11px] font-medium mb-1.5"
-                      style={{ color: COLORS.textSecondary }}
-                    >
-                      {currentLanguage === "ko"
-                        ? "캘린더 이름"
-                        : "Calendar name"}
-                    </label>
-                    <input
-                      type="text"
-                      value={icalCalendarName}
-                      onChange={(e) => setIcalCalendarName(e.target.value)}
-                      placeholder={
-                        currentLanguage === "ko"
-                          ? "예: 에어비앤비 예약"
-                          : "e.g. Airbnb"
-                      }
-                      className="w-full px-2 py-2 text-sm rounded-md min-h-[36px] focus:outline-none"
-                      style={{
-                        backgroundColor: COLORS.white,
-                        border: `1px solid ${COLORS.border}`,
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label
-                      className="block text-[11px] font-medium mb-1.5"
-                      style={{ color: COLORS.textSecondary }}
-                    >
-                      iCal URL (.ics)
-                    </label>
-                    <input
-                      type="url"
-                      value={icalUrl}
-                      onChange={(e) => setIcalUrl(e.target.value)}
-                      placeholder="https://..."
-                      className="w-full px-2 py-2 text-sm rounded-md min-h-[36px] focus:outline-none"
-                      style={{
-                        backgroundColor: COLORS.white,
-                        border: `1px solid ${COLORS.border}`,
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-            </section>
+            <AddPropertyExternalCalendarSection
+              currentLanguage={currentLanguage}
+              colors={COLORS}
+              showIcalDropdown={showIcalDropdown}
+              icalPlatform={icalPlatform}
+              icalCalendarName={icalCalendarName}
+              icalUrl={icalUrl}
+              onToggleIcalDropdown={toggleIcalDropdown}
+              onIcalPlatformChange={setIcalPlatform}
+              onIcalCalendarNameChange={setIcalCalendarName}
+              onIcalUrlChange={setIcalUrl}
+            />
 
             {/* 등록 버튼 */}
             <button
