@@ -68,3 +68,18 @@ PR 차단선:
 - smoke 시나리오는 1~2개 핵심 플로우만 유지한다.
 - 신규 핵심 플로우가 생기면 smoke 편입 여부를 우선 검토한다.
 - flaky 테스트는 full nightly에 먼저 두고, 안정화 후 PR smoke로 승격한다.
+
+---
+
+## 6) 야간 실패 알림(옵션)
+
+nightly 실패를 즉시 알기 위해 webhook 알림을 사용할 수 있다.
+
+- GitHub Actions secret 이름:
+  - `E2E_NIGHTLY_WEBHOOK_URL`
+- 동작 조건:
+  - `e2e-nightly-full` 잡 실패 시
+  - secret 값이 설정되어 있을 때만 전송
+- 알림 내용:
+  - 저장소/브랜치
+  - 실패한 Actions run 링크
