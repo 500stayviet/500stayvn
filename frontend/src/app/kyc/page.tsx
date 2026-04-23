@@ -12,6 +12,8 @@ import { useKycPageState } from "./hooks/useKycPageState";
 import KycStepProgress from "./components/KycStepProgress";
 import KycStep2SuccessModal from "./components/KycStep2SuccessModal";
 import KycStepContent from "./components/KycStepContent";
+import KycPageHeader from "./components/KycPageHeader";
+import KycLoadingOverlay from "./components/KycLoadingOverlay";
 
 export default function KYCPage() {
   const {
@@ -53,16 +55,7 @@ export default function KYCPage() {
         />
 
         <div className="px-6 py-6">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900 mb-1">
-              {currentLanguage === "ko" ? "임대인 인증" : "Host Verification"}
-            </h1>
-            <p className="text-sm text-gray-600">
-              {currentLanguage === "ko"
-                ? "3단계 인증을 완료해주세요"
-                : "Please complete the 3-step verification"}
-            </p>
-          </div>
+          <KycPageHeader currentLanguage={currentLanguage} />
 
           <KycStepProgress currentStep={currentStep} steps={steps} />
 
@@ -82,16 +75,7 @@ export default function KYCPage() {
             onFaceVerificationComplete={handleFaceVerificationComplete}
           />
 
-          {loading && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-2xl p-6 flex flex-col items-center gap-4">
-                <div className="animate-spin h-8 w-8 text-blue-600 border-4 border-t-transparent rounded-full"></div>
-                <p className="text-sm text-gray-700">
-                  {currentLanguage === "ko" ? "처리 중..." : "Đang xử lý..."}
-                </p>
-              </div>
-            </div>
-          )}
+          {loading && <KycLoadingOverlay currentLanguage={currentLanguage} />}
 
           {showStep2SuccessModal && (
             <KycStep2SuccessModal
