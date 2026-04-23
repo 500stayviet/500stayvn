@@ -55,3 +55,6 @@ public/uploads/
 test-results/
 playwright-report/
 blob-report/
+
+# Local tooling locks
+skills-lock.json
