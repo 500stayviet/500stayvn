@@ -9,31 +9,16 @@
 
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/contexts/LanguageContext";
+import type { SupportedLanguage } from "@/lib/api/translation";
 import { getAvailableProperties } from "@/lib/api/properties";
 import { PropertyData } from "@/types/property";
 import { geocodeAddress } from "@/lib/api/geocoding";
 import { getUIText } from "@/utils/i18n";
 import PropertyCard from "@/components/PropertyCard";
 import TopBar from "@/components/TopBar";
-import {
-  Calendar,
-  ChevronLeft,
-  ChevronRight,
-  ChevronDown,
-  MapPin,
-  Search,
-  X,
-  Bed,
-  Sparkles,
-  Tv,
-  RotateCcw,
-} from "lucide-react";
-import { FACILITY_OPTIONS } from "@/lib/constants/facilities";
+import { Calendar, ChevronRight, Search, Bed, RotateCcw } from "lucide-react";
 import CalendarComponent from "@/components/CalendarComponent";
-import Image from "next/image";
-import { formatPrice, formatFullPrice } from "@/lib/utils/propertyUtils";
 import { VIETNAM_CITIES } from "@/lib/data/vietnam-regions";
 import type { VietnamRegion } from "@/lib/data/vietnam-regions";
 import { getSuggestionBadge, cleanDisplayName, cleanSubAddress } from "@/hooks/useLocationSearch";
@@ -43,6 +28,8 @@ import {
 import { useSearchCalendarFilter } from "./hooks/useSearchCalendarFilter";
 import { useSearchLocationFilter } from "./hooks/useSearchLocationFilter";
 import { useSearchFilterEngine } from "./hooks/useSearchFilterEngine";
+import { SearchAdvancedFiltersPanel } from "./components/SearchAdvancedFiltersPanel";
+import { snapRentSliderPrice } from "./utils/rentPriceSliderUtils";
 
 function getRegionDisplayName(region: VietnamRegion, lang: string): string {
   if (lang === "ko") return region.nameKo ?? region.name ?? "";
@@ -52,69 +39,6 @@ function getRegionDisplayName(region: VietnamRegion, lang: string): string {
   return region.name ?? "";
 }
 
-/** VND 천 단위 콤마 포맷 */
-function formatVndWithComma(value: number): string {
-  return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-}
-
-/** VND 만 단위 포맷 (예: 2,500,000 -> 250만) */
-function formatVndToMan(value: number): string {
-  if (value < 10000) return value.toString();
-  const man = Math.floor(value / 10000);
-  const remainder = value % 10000;
-  if (remainder === 0) return `${man.toLocaleString()}만`;
-  return `${man.toLocaleString()}.${Math.floor(remainder / 1000)}만`;
-}
-
-/** VND 만 단위 간단 포맷 (예: 2,500,000 -> 250만) */
-function formatVndToManSimple(value: number): string {
-  if (value < 10000) return value.toString();
-  const man = Math.floor(value / 10000);
-  return `${man.toLocaleString()}만`;
-}
-
-/** 입력 문자열을 숫자로 파싱 (콤마 제거) */
-function parseVndInput(s: string): number {
-  const n = parseInt(String(s).replace(/\D/g, ""), 10);
-  return isNaN(n) ? 0 : n;
-}
-
-/** 비선형 구간별 step (VND): ~200만 10만 / 200만~500만 50만 / 500만~1000만 100만 / 1000만+ 1000만 */
-function getStepForValue(value: number): number {
-  if (value < 2_000_000) return 100_000;
-  if (value < 5_000_000) return 500_000;
-  if (value < 10_000_000) return 1_000_000;
-  return 10_000_000;
-}
-
-/** 0 ~ priceCap 구간의 비선형 허용 금액 배열 (슬라이더 스텝용) */
-function getAllowedPriceValues(priceCap: number): number[] {
-  const out: number[] = [0];
-  let v = 0;
-  while (v < priceCap) {
-    const step = getStepForValue(v);
-    v += step;
-    if (v <= priceCap) out.push(v);
-  }
-  if (out[out.length - 1] !== priceCap) out.push(priceCap);
-  return out;
-}
-
-/** 허용 값 배열에서 value에 가장 가까운 인덱스 */
-function getClosestAllowedIndex(value: number, allowed: number[]): number {
-  if (allowed.length === 0) return 0;
-  let best = 0;
-  let bestDist = Math.abs(allowed[0] - value);
-  for (let i = 1; i < allowed.length; i++) {
-    const d = Math.abs(allowed[i] - value);
-    if (d < bestDist) {
-      bestDist = d;
-      best = i;
-    }
-  }
-  return best;
-}
-
 // 2. 실제 로직이 담긴 컴포넌트로 분리
 function SearchContent() {
   const router = useRouter();
@@ -122,7 +46,6 @@ function SearchContent() {
   const query = searchParams.get("q") || "";
   const cityIdParam = searchParams.get("cityId") || "";
   const districtIdParam = searchParams.get("districtId") || "";
-  const { user } = useAuth();
   const { currentLanguage, setCurrentLanguage } = useLanguage();
 
   const [properties, setProperties] = useState<PropertyData[]>([]);
@@ -169,11 +92,6 @@ function SearchContent() {
   const [amenityFilters, setAmenityFilters] = useState<Record<string, boolean>>(
     {},
   );
-  /** 임대료 바: 클릭한 쪽 포인터만 드래그되도록 (min | max | null) */
-  const [rentActiveThumb, setRentActiveThumb] = useState<"min" | "max" | null>(
-    null,
-  );
-  const rentTrackRef = useRef<HTMLDivElement>(null);
 
   // 필터 적용 상태 (검색 버튼을 눌러야 필터 적용)
   const [filtersApplied, setFiltersApplied] = useState(false);
@@ -336,21 +254,25 @@ function SearchContent() {
 
   // 고급 필터 초기화 함수 (주소, 도시, 구는 유지)
   const resetAdvancedFilters = () => {
-    // 가격 범위 초기화 (전체 매물의 최소/최대값으로)
+    const sliderCap =
+      properties.length > 0
+        ? Math.max(0, ...properties.map((p) => p.price || 0))
+        : 50_000_000;
+    // 가격 범위 초기화 (전체 매물의 최소/최대값으로, 슬라이더 스텝에 스냅)
     if (properties.length > 0) {
       const prices = properties.map((p) => p.price || 0).filter((p) => p > 0);
       if (prices.length > 0) {
         const min = Math.min(...prices);
         const max = Math.max(...prices);
-        setMinPrice(min);
-        setMaxPrice(max);
+        setMinPrice(snapRentSliderPrice(min, sliderCap));
+        setMaxPrice(snapRentSliderPrice(max, sliderCap));
       } else {
         setMinPrice(0);
-        setMaxPrice(50000000);
+        setMaxPrice(snapRentSliderPrice(50_000_000, sliderCap));
       }
     } else {
       setMinPrice(0);
-      setMaxPrice(50000000);
+      setMaxPrice(snapRentSliderPrice(50_000_000, sliderCap));
     }
 
     // 풀 옵션 필터 초기화
@@ -644,480 +566,23 @@ function SearchContent() {
           </div>
 
           {showAdvancedFilters && (
-            <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-5">
-              {/* 임대료(주당) — 비선형 가격 범위 슬라이더만, 실시간 금액 표시, 최소 거리 유지 */}
-              {(() => {
-                const allowedValues = getAllowedPriceValues(priceCap);
-                const minIndex = getClosestAllowedIndex(
-                  minPrice,
-                  allowedValues,
-                );
-                const maxIndex = getClosestAllowedIndex(
-                  maxPrice,
-                  allowedValues,
-                );
-                const safeMinIndex = Math.max(
-                  0,
-                  Math.min(minIndex, maxIndex - 1),
-                );
-                const safeMaxIndex = Math.min(
-                  allowedValues.length - 1,
-                  Math.max(maxIndex, safeMinIndex + 1),
-                );
-                const handleRentTrackPointerDown = (e: React.PointerEvent) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-
-                  const el = rentTrackRef.current;
-                  if (!el) {
-                    return;
-                  }
-
-                  const rect = el.getBoundingClientRect();
-                  const x = e.clientX - rect.left;
-                  const pct = Math.max(0, Math.min(1, x / rect.width));
-
-                  // 클릭한 위치와 각 포인터의 거리 계산 (퍼센트 단위)
-                  const minPos = (minPrice / (priceCap || 1)) * 100;
-                  const maxPos = (maxPrice / (priceCap || 1)) * 100;
-                  const clickPos = pct * 100;
-
-                  // 가까운 포인터 선택
-                  const distToMin = Math.abs(clickPos - minPos);
-                  const distToMax = Math.abs(clickPos - maxPos);
-
-                  // 더 가까운 포인터만 이동
-                  if (distToMin < distToMax) {
-                    // 최저값 포인터가 더 가까움
-                    const newValue = Math.round(pct * priceCap);
-                    const nearestValue =
-                      allowedValues[
-                        getClosestAllowedIndex(newValue, allowedValues)
-                      ];
-                    if (nearestValue < maxPrice) {
-                      setMinPrice(nearestValue);
-                    } else {
-                      // 최저값이 최대값에 도달하면 최대값 이동
-                      setMaxPrice(nearestValue);
-                    }
-                  } else if (distToMax < distToMin) {
-                    // 최대값 포인터가 더 가까움
-                    const newValue = Math.round(pct * priceCap);
-                    const nearestValue =
-                      allowedValues[
-                        getClosestAllowedIndex(newValue, allowedValues)
-                      ];
-                    if (nearestValue > minPrice) {
-                      setMaxPrice(nearestValue);
-                    } else {
-                      // 최대값이 최저값에 도달하면 최저값 이동
-                      setMinPrice(nearestValue);
-                    }
-                  } else {
-                    // 거리가 같을 때 (매우 드문 경우)
-                    const newValue = Math.round(pct * priceCap);
-                    const nearestValue =
-                      allowedValues[
-                        getClosestAllowedIndex(newValue, allowedValues)
-                      ];
-                    if (nearestValue < maxPrice) {
-                      setMinPrice(nearestValue);
-                    } else {
-                      setMaxPrice(nearestValue);
-                    }
-                  }
-                };
-                return (
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">
-                      {getUIText("rentWeekly", currentLanguage)}
-                    </label>
-                    {/* 가격 표시 - v0 스타일 */}
-                    <div className="mb-3 p-3 bg-white rounded-lg border border-gray-200">
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-gray-900 tracking-tight">
-                          {formatVndToManSimple(minPrice)} — {formatVndToManSimple(maxPrice)}
-                        </div>
-                        <div className="text-xs text-gray-400 mt-1 font-medium">
-                          VND / {currentLanguage === "ko" ? "주" : currentLanguage === "vi" ? "tuần" : "week"}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 개선된 비선형 슬라이더 - 자 모양 눈금 추가 */}
-                    <div
-                      className="relative py-6"
-                      ref={rentTrackRef}
-                      onPointerDown={handleRentTrackPointerDown}
-                    >
-                      {/* 자 모양 배경 - 가로선 */}
-                      <div className="absolute left-0 right-0 top-3 h-px bg-gray-300" />
-
-                      {/* 주요 구간 눈금 (자 모양) */}
-                      <div className="absolute left-0 right-0 top-3 flex justify-between pointer-events-none">
-                        {[0, 2000000, 5000000, 10000000, priceCap]
-                          .filter((value, index, array) => 
-                            // 중복 제거: priceCap이 배열의 다른 값과 같으면 마지막 요소만 유지
-                            value !== priceCap || index === array.length - 1
-                          )
-                          .map((value) => {
-                            if (value > priceCap) return null;
-                            const position = (value / (priceCap || 1)) * 100;
-                            return (
-                              <div
-                                key={`price-marker-${value}`}
-                                className="absolute top-0 -translate-x-1/2"
-                                style={{ left: `${position}%` }}
-                              >
-                                {/* 긴 눈금선 */}
-                                <div className="w-px h-3 bg-gray-400" />
-                                {/* 눈금 라벨 */}
-                                <div className="absolute top-4 left-1/2 -translate-x-1/2 text-[10px] text-gray-500 whitespace-nowrap">
-                                  {formatVndToManSimple(value)}
-                                </div>
-                              </div>
-                            );
-                          })}
-                      </div>
-
-                      {/* 중간 눈금 (짧은 선) */}
-                      <div className="absolute left-0 right-0 top-3 flex justify-between pointer-events-none">
-                        {[
-                          1000000, 3000000, 4000000, 6000000, 7000000, 8000000,
-                          9000000,
-                        ].map((value) => {
-                          if (value > priceCap) return null;
-                          const position = (value / (priceCap || 1)) * 100;
-                          return (
-                            <div
-                              key={value}
-                              className="absolute top-0 -translate-x-1/2"
-                              style={{ left: `${position}%` }}
-                            >
-                              <div className="w-px h-2 bg-gray-300" />
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* 선택된 범위 */}
-                      <div
-                        className="absolute top-3 h-px rounded-full -translate-y-1/2"
-                        style={{
-                          backgroundColor: BRAND.primary,
-                          left: `${(minPrice / (priceCap || 1)) * 100}%`,
-                          width: `${((maxPrice - minPrice) / (priceCap || 1)) * 100}%`,
-                        }}
-                      />
-
-                      {/* 최저가 포인터 - 드래그 가능 (웹+앱 호환) */}
-                      <div
-                        className="absolute top-3 -translate-x-1/2 -translate-y-1/2 cursor-pointer z-30"
-                        style={{
-                          left: `${(minPrice / (priceCap || 1)) * 100}%`,
-                        }}
-                        onPointerDown={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-
-                          // 포인터 이동 이벤트 핸들러 (웹+앱 호환)
-                          const handlePointerMove = (
-                            moveEvent: PointerEvent,
-                          ) => {
-                            const trackEl = rentTrackRef.current;
-                            if (!trackEl) {
-                              return;
-                            }
-
-                            const rect = trackEl.getBoundingClientRect();
-                            const x = moveEvent.clientX - rect.left;
-                            const pct = Math.max(
-                              0,
-                              Math.min(1, x / rect.width),
-                            );
-                            const newValue = Math.round(pct * priceCap);
-                            const nearestValue =
-                              allowedValues[
-                                getClosestAllowedIndex(newValue, allowedValues)
-                              ];
-
-                            if (nearestValue < maxPrice) {
-                              setMinPrice(nearestValue);
-                            }
-                          };
-
-                          // 포인터 업 이벤트 핸들러
-                          const handlePointerUp = () => {
-                            document.removeEventListener(
-                              "pointermove",
-                              handlePointerMove,
-                            );
-                            document.removeEventListener(
-                              "pointerup",
-                              handlePointerUp,
-                            );
-                            document.removeEventListener(
-                              "pointerleave",
-                              handlePointerUp,
-                            );
-                            document.removeEventListener(
-                              "pointercancel",
-                              handlePointerUp,
-                            );
-                          };
-
-                          // 포인터가 창 밖으로 나갈 때도 드래그 종료
-                          const handlePointerLeave = () => {
-                            handlePointerUp();
-                          };
-
-                          // 포인터 취소 시 드래그 종료
-                          const handlePointerCancel = () => {
-                            handlePointerUp();
-                          };
-
-                          document.addEventListener(
-                            "pointermove",
-                            handlePointerMove,
-                          );
-                          document.addEventListener(
-                            "pointerup",
-                            handlePointerUp,
-                          );
-                          document.addEventListener(
-                            "pointerleave",
-                            handlePointerLeave,
-                          );
-                          document.addEventListener(
-                            "pointercancel",
-                            handlePointerCancel,
-                          );
-                        }}
-                      >
-                        <div className="w-6 h-6 bg-white border-2 rounded-full shadow-md flex items-center justify-center" style={{ borderColor: BRAND.primary }}>
-                          <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: BRAND.primary }} />
-                        </div>
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-xs font-bold text-white px-2 py-1 rounded-md shadow border whitespace-nowrap" style={{ backgroundColor: BRAND.primary, borderColor: BRAND.primary }}>
-                          {formatVndToManSimple(minPrice)}
-                        </div>
-                      </div>
-
-                      {/* 최대가 포인터 - 드래그 가능 (웹+앱 호환) */}
-                      <div
-                        className="absolute top-3 -translate-x-1/2 -translate-y-1/2 cursor-pointer z-30"
-                        style={{
-                          left: `${(maxPrice / (priceCap || 1)) * 100}%`,
-                        }}
-                        onPointerDown={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-
-                          // 포인터 이동 이벤트 핸들러 (웹+앱 호환)
-                          const handlePointerMove = (
-                            moveEvent: PointerEvent,
-                          ) => {
-                            const trackEl = rentTrackRef.current;
-                            if (!trackEl) {
-                              return;
-                            }
-
-                            const rect = trackEl.getBoundingClientRect();
-                            const x = moveEvent.clientX - rect.left;
-                            const pct = Math.max(
-                              0,
-                              Math.min(1, x / rect.width),
-                            );
-                            const newValue = Math.round(pct * priceCap);
-                            const nearestValue =
-                              allowedValues[
-                                getClosestAllowedIndex(newValue, allowedValues)
-                              ];
-
-                            if (nearestValue > minPrice) {
-                              setMaxPrice(nearestValue);
-                            }
-                          };
-
-                          // 포인터 업 이벤트 핸들러
-                          const handlePointerUp = () => {
-                            document.removeEventListener(
-                              "pointermove",
-                              handlePointerMove,
-                            );
-                            document.removeEventListener(
-                              "pointerup",
-                              handlePointerUp,
-                            );
-                            document.removeEventListener(
-                              "pointerleave",
-                              handlePointerUp,
-                            );
-                            document.removeEventListener(
-                              "pointercancel",
-                              handlePointerUp,
-                            );
-                          };
-
-                          // 포인터가 창 밖으로 나갈 때도 드래그 종료
-                          const handlePointerLeave = () => {
-                            handlePointerUp();
-                          };
-
-                          // 포인터 취소 시 드래그 종료
-                          const handlePointerCancel = () => {
-                            handlePointerUp();
-                          };
-
-                          document.addEventListener(
-                            "pointermove",
-                            handlePointerMove,
-                          );
-                          document.addEventListener(
-                            "pointerup",
-                            handlePointerUp,
-                          );
-                          document.addEventListener(
-                            "pointerleave",
-                            handlePointerLeave,
-                          );
-                          document.addEventListener(
-                            "pointercancel",
-                            handlePointerCancel,
-                          );
-                        }}
-                      >
-                        <div className="w-6 h-6 bg-white border-2 rounded-full shadow-md flex items-center justify-center" style={{ borderColor: BRAND.primary }}>
-                          <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: BRAND.primary }} />
-                        </div>
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-xs font-bold text-white px-2 py-1 rounded-md shadow border whitespace-nowrap" style={{ backgroundColor: BRAND.primary, borderColor: BRAND.primary }}>
-                          {formatVndToManSimple(maxPrice)}
-                        </div>
-                      </div>
-
-                      {/* 숨겨진 슬라이더 (백업) */}
-                      <input
-                        type="range"
-                        min={0}
-                        max={allowedValues.length - 1}
-                        step={1}
-                        value={safeMinIndex}
-                        onChange={(e) => {
-                          const idx = Math.min(
-                            Number(e.target.value),
-                            safeMaxIndex - 1,
-                          );
-                          setMinPrice(allowedValues[idx]);
-                        }}
-                        className="absolute inset-0 w-full h-10 opacity-0 cursor-pointer z-20"
-                      />
-                      <input
-                        type="range"
-                        min={0}
-                        max={allowedValues.length - 1}
-                        step={1}
-                        value={safeMaxIndex}
-                        onChange={(e) => {
-                          const idx = Math.max(
-                            Number(e.target.value),
-                            safeMinIndex + 1,
-                          );
-                          setMaxPrice(allowedValues[idx]);
-                        }}
-                        className="absolute inset-0 w-full h-10 opacity-0 cursor-pointer z-20"
-                      />
-                    </div>
-
-                    {/* 간단한 설명 */}
-                    <div className="mt-2 text-xs text-gray-500 text-center">
-                      {currentLanguage === "ko"
-                        ? "드래그하여 가격 범위 조정"
-                        : currentLanguage === "vi"
-                          ? "Kéo để điều chỉnh khoảng giá"
-                          : "Drag to adjust price range"}
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* 풀 가구 / 풀 가전 / 풀옵션 주방 */}
-              <div>
-                <span className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">
-                  {getUIText("fullOption", currentLanguage)}
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setFullFurniture(!fullFurniture)}
-                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-colors shrink-0 ${
-                      fullFurniture ? "text-white border" : "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
-                    }`}
-                    style={fullFurniture ? { backgroundColor: BRAND.primary, borderColor: BRAND.primary } : undefined}
-                  >
-                    <Bed className="w-3.5 h-3.5" />
-                    {getUIText("fullFurniture", currentLanguage)}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFullElectronics(!fullElectronics)}
-                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-colors shrink-0 ${
-                      fullElectronics ? "text-white border" : "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
-                    }`}
-                    style={fullElectronics ? { backgroundColor: BRAND.primary, borderColor: BRAND.primary } : undefined}
-                  >
-                    <Tv className="w-3.5 h-3.5" />
-                    {getUIText("fullElectronics", currentLanguage)}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFullOptionKitchen(!fullOptionKitchen)}
-                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-colors shrink-0 ${
-                      fullOptionKitchen ? "text-white border" : "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
-                    }`}
-                    style={fullOptionKitchen ? { backgroundColor: BRAND.primary, borderColor: BRAND.primary } : undefined}
-                  >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    {getUIText("fullKitchen", currentLanguage)}
-                  </button>
-                </div>
-              </div>
-
-              {/* 시설·정책 — 매물 등록 시 숙소시설 및 정책과 동일한 아이콘 전체 */}
-              <div>
-                <span className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">
-                  {getUIText("amenitiesPolicy", currentLanguage)}
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  {FACILITY_OPTIONS.map((opt) => {
-                    const Icon = opt.icon;
-                    const label =
-                      opt.id === "cleaning"
-                        ? getUIText("cleaningShort", currentLanguage)
-                        : (opt.label[currentLanguage] ?? opt.label.en);
-                    const on = !!amenityFilters[opt.id];
-                    return (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => {
-                          setAmenityFilters((prev) => ({
-                            ...prev,
-                            [opt.id]: !prev[opt.id],
-                          }));
-                        }}
-                        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-colors shrink-0 ${
-                          on ? "text-white border" : "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
-                        }`}
-                        style={on ? { backgroundColor: BRAND.primary, borderColor: BRAND.primary } : undefined}
-                        title={label}
-                      >
-                        <Icon className="w-3.5 h-3.5 shrink-0" />
-                        <span className="truncate max-w-[70px]">{label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
+            <SearchAdvancedFiltersPanel
+              currentLanguage={currentLanguage as SupportedLanguage}
+              primaryColor={BRAND.primary}
+              priceCap={priceCap}
+              minPrice={minPrice}
+              maxPrice={maxPrice}
+              setMinPrice={setMinPrice}
+              setMaxPrice={setMaxPrice}
+              fullFurniture={fullFurniture}
+              setFullFurniture={setFullFurniture}
+              fullElectronics={fullElectronics}
+              setFullElectronics={setFullElectronics}
+              fullOptionKitchen={fullOptionKitchen}
+              setFullOptionKitchen={setFullOptionKitchen}
+              amenityFilters={amenityFilters}
+              setAmenityFilters={setAmenityFilters}
+            />
           )}
 
           {/* 초기화 버튼 - 검색하기 버튼 위에 배치 - v0 스타일 */}

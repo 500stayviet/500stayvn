@@ -31,7 +31,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import SearchBox from "@/components/map/SearchBox";
 import { Suggestion } from "@/types/map";
-import { formatPrice } from "@/lib/utils/propertyUtils";
+import { formatCurrency } from "@/lib/utils/formatCurrency";
 import { getUIText } from "@/utils/i18n";
 
 interface Property {
@@ -1248,29 +1248,38 @@ export default function GrabMapComponent({
           </div>
         `;
         } else {
-          // 단일 매물: 집 마커. 선택 시 내부는 주황 유지, 테두리만 파란색
-          const markerSize = isZoomedIn ? 36 : 30;
+          // 단일 매물: 텍스트 가격 마커 (k/M 포맷). 선택 시 테두리 강조.
           const borderStyle = isSelected
             ? "3px solid #E63946"
             : "2px solid white";
+          const singleProperty = clusterProperties[0];
+          const markerPrice = singleProperty?.price
+            ? Number(singleProperty.price)
+            : 0;
+          const markerPriceText = formatCurrency(markerPrice);
+          const markerMinWidth = Math.max(
+            isZoomedIn ? 58 : 52,
+            markerPriceText.length * (isZoomedIn ? 8 : 7) + (isZoomedIn ? 24 : 20),
+          );
           el.innerHTML = `
           <div style="
             background-color: #FF6B35;
-            width: ${markerSize}px;
-            height: ${markerSize}px;
-            border-radius: 50% 50% 50% 0;
-            transform: rotate(-45deg);
+            min-width: ${markerMinWidth}px;
+            height: ${isZoomedIn ? 28 : 26}px;
+            padding: 0 ${isZoomedIn ? 9 : 7}px;
+            border-radius: 999px;
             border: ${borderStyle};
             box-shadow: 0 2px 6px rgba(0,0,0,0.2);
             display: flex;
             align-items: center;
             justify-content: center;
+            color: white;
+            font-size: ${isZoomedIn ? 12 : 11}px;
+            font-weight: 700;
+            line-height: 1;
+            letter-spacing: 0.1px;
           ">
-            <svg xmlns="http://www.w3.org/2000/svg" style="transform:rotate(45deg)" width="${isZoomedIn ? 16 : 13}" height="${isZoomedIn ? 16 : 13}" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 10.5L12 3l9 7.5"/>
-              <path d="M5 10v8a1 1 0 001 1h12a1 1 0 001-1v-8"/>
-              <path d="M10 19v-5h4v5"/>
-            </svg>
+            ${markerPriceText}
           </div>
         `;
         }
@@ -1417,7 +1426,7 @@ export default function GrabMapComponent({
                 <div style="padding: 6px 0; border-bottom: ${idx < filtered.length - 1 ? "1px solid #e5e7eb" : "none"};">
                   <div style="font-weight: 600; font-size: 13px; margin-bottom: 2px;">${p.name || ""}</div>
                   <div style="color: #FF6B35; font-size: 14px; font-weight: bold; margin-bottom: 2px;">
-                    ${formatPrice(price, "vnd")}
+                    ${formatCurrency(price)}
                   </div>
                   <div style="font-size: 10px; color: #9ca3af;">
                     📍 ${getUIText("distanceFromCenter", currentLanguage)} ${(distance * 1000).toFixed(0)}m
@@ -1442,7 +1451,7 @@ export default function GrabMapComponent({
           <div style="padding: 8px; cursor: pointer;" class="property-popup" data-property-id="${property.id}">
             <div style="font-weight: bold; font-size: 14px; margin-bottom: 4px;">${property.name || ""}</div>
             <div style="color: #FF6B35; font-size: 16px; font-weight: bold;">
-              ${formatPrice(price, "vnd")}
+              ${formatCurrency(price)}
             </div>
             <div style="font-size: 11px; color: #3b82f6; margin-top: 6px; text-align: center;">
               ${getUIText("tapToViewDetails", currentLanguage)}

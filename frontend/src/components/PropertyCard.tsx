@@ -13,6 +13,7 @@ import { Bed, Bath, Users, Wifi, Sofa, Tv, UtensilsCrossed } from 'lucide-react'
 import Image from 'next/image';
 import { PropertyData } from '@/types/property';
 import { SupportedLanguage } from '@/lib/api/translation';
+import { formatCurrency } from '@/lib/utils/formatCurrency';
 import { formatPrice } from '@/lib/utils/propertyUtils';
 import { isAvailableNow, formatDateForBadge } from '@/lib/utils/dateUtils';
 import { 
@@ -118,7 +119,9 @@ export default function PropertyCard({
           style={{ backgroundColor: colors.primary }}
         >
           <p className="text-sm">
-            {formatPrice(property.price, property.priceUnit)}
+            {property.priceUnit === 'vnd'
+              ? formatCurrency(property.price ?? 0)
+              : formatPrice(property.price, property.priceUnit)}
             <span className="text-[10px] font-normal ml-1">
               {currentLanguage === 'ko' ? '/주' : currentLanguage === 'vi' ? '/tuần' : '/week'}
             </span>
