@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, Suspense } from "react";
+import { useState, useEffect, useMemo, Suspense, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -57,7 +57,7 @@ function MyPropertiesContent() {
   /** 광고대기: 휴지통 → 광고종료(데이터 유지) */
   const [showEndAdFromPendingConfirm, setShowEndAdFromPendingConfirm] = useState<string | null>(null);
 
-  const fetchInventory = async (): Promise<InventoryBuckets> => {
+  const fetchInventory = useCallback(async (): Promise<InventoryBuckets> => {
     if (!user) throw new Error("User is not authenticated");
     await getAvailableProperties();
     const [activeResult] = await Promise.all([getPropertiesByOwner(user.uid, false)]);
@@ -71,7 +71,7 @@ function MyPropertiesContent() {
           p.hidden || p.status === "closed" || p.status === "INACTIVE_SHORT_TERM",
       ),
     };
-  };
+  }, [user]);
 
   const properties = useMemo(() => {
     if (!inventory) return [];
@@ -113,7 +113,7 @@ function MyPropertiesContent() {
       }
     };
     init();
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, fetchInventory]);
 
   useEffect(() => {
     if (!user || authLoading) return;
@@ -122,7 +122,7 @@ function MyPropertiesContent() {
     };
     window.addEventListener("propertiesUpdated", onInventoryChange);
     return () => window.removeEventListener("propertiesUpdated", onInventoryChange);
-  }, [user, authLoading]);
+  }, [user, authLoading, fetchInventory]);
 
   const openId = searchParams.get("open");
   useEffect(() => {
@@ -142,7 +142,7 @@ function MyPropertiesContent() {
       await hostDeletePropertySoft(id, user!.uid);
       setInventory(await fetchInventory());
       setShowDeleteConfirm(null);
-    } catch (e) {
+    } catch {
       alert("Error deleting property");
     } finally {
       setDeletingId(null);

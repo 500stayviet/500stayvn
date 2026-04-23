@@ -19,17 +19,9 @@ import {
   ChevronDown,
   ChevronUp,
   Sparkles,
-  Home,
-  Search,
-  Building,
-  User,
-  Plus,
-  Image as ImageIcon,
-  Heart,
-  MessageCircle,
-  Map,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import Image from "next/image";
 import TopBar from "@/components/TopBar";
 import CalendarComponent from "@/components/CalendarComponent";
 import AddressVerificationModal from "@/components/AddressVerificationModal";
@@ -44,7 +36,6 @@ import {
   getDistrictsByCityId,
   searchRegions,
   VIETNAM_CITIES,
-  ALL_REGIONS,
 } from "@/lib/data/vietnam-regions";
 import { usePropertyImageManager } from "./hooks/usePropertyImageManager";
 import { useAddPropertyAccess } from "./hooks/useAddPropertyAccess";
@@ -79,7 +70,7 @@ const COLORS = {
 export default function AddPropertyPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const { currentLanguage, setCurrentLanguage } = useLanguage();
+  const { currentLanguage } = useLanguage();
   const [loading, setLoading] = useState(false);
   const { checkingAccess, hasAccess } = useAddPropertyAccess({
     user,
@@ -151,7 +142,6 @@ export default function AddPropertyPage() {
     setIcalPlatform,
     setIcalCalendarName,
     setIcalUrl,
-    setShowIcalDropdown,
     openCheckInCalendar,
     openCheckOutCalendar,
     closeCalendar,
@@ -171,7 +161,6 @@ export default function AddPropertyPage() {
     showGuidelinePopup,
     photoLibraryInputRef,
     cameraInputRef,
-    setShowPhotoLibrary,
     closePhotoLibrary,
     handlePhotoLibrarySelect,
     togglePhotoSelection,
@@ -196,6 +185,16 @@ export default function AddPropertyPage() {
   const [showAddressModal, setShowAddressModal] = useState(false);
 
   // 주소 확인 모달에서 주소 확정 시 (도시·구 자동 설정)
+  const getLocalizedLabel = (
+    label: { en: string; ko?: string; vi?: string; ja?: string; zh?: string },
+  ) => {
+    if (currentLanguage === "ko") return label.ko ?? label.en;
+    if (currentLanguage === "vi") return label.vi ?? label.en;
+    if (currentLanguage === "ja") return label.ja ?? label.en;
+    if (currentLanguage === "zh") return label.zh ?? label.en;
+    return label.en;
+  };
+
   const handleAddressConfirm = (data: {
     address: string;
     lat: number;
@@ -425,10 +424,13 @@ export default function AddPropertyPage() {
                     key={index}
                     className="relative aspect-square rounded-xl overflow-hidden border-2 border-gray-200"
                   >
-                    <img
+                    <Image
                       src={preview}
                       alt={`Preview ${index + 1}`}
-                      className="w-full h-full object-cover"
+                      fill
+                      unoptimized
+                      className="object-cover"
+                      sizes="(max-width: 430px) 33vw, 140px"
                     />
                     <button
                       type="button"
@@ -592,12 +594,15 @@ export default function AddPropertyPage() {
                             className="relative aspect-square"
                             onClick={() => togglePhotoSelection(index)}
                           >
-                            <img
+                            <Image
                               src={preview}
                               alt={`Photo ${index + 1}`}
-                              className={`w-full h-full object-cover rounded ${
+                              fill
+                              unoptimized
+                              className={`object-cover rounded ${
                                 isSelected ? "opacity-50" : ""
                               }`}
+                              sizes="(max-width: 430px) 25vw, 110px"
                             />
                             {isSelected && (
                               <div className="absolute inset-0 flex items-center justify-center bg-blue-500/30 rounded">
@@ -648,11 +653,16 @@ export default function AddPropertyPage() {
               {/* 전체화면 이미지 보기 */}
               {fullScreenImageIndex !== null && (
                 <div className="fixed inset-0 bg-black z-[60] flex items-center justify-center">
-                  <img
-                    src={photoLibraryPreviews[fullScreenImageIndex]}
-                    alt={`Full screen ${fullScreenImageIndex + 1}`}
-                    className="max-w-full max-h-full object-contain"
-                  />
+                  <div className="relative w-full h-full">
+                    <Image
+                      src={photoLibraryPreviews[fullScreenImageIndex]}
+                      alt={`Full screen ${fullScreenImageIndex + 1}`}
+                      fill
+                      unoptimized
+                      className="object-contain"
+                      sizes="100vw"
+                    />
+                  </div>
                   {/* 우측 하단: 사진첩으로 돌아가기 버튼 */}
                   <button
                     type="button"
@@ -1512,7 +1522,9 @@ export default function AddPropertyPage() {
                       }}
                     >
                       <div className="flex items-center gap-2 mb-2 justify-start text-left">
-                        <p className="text-xs font-bold text-gray-500 text-left">{(cat.label as any)[currentLanguage]}</p>
+                        <p className="text-xs font-bold text-gray-500 text-left">
+                          {getLocalizedLabel(cat.label)}
+                        </p>
                         {/* 뱃지 획득 안내 문구 추가 */}
                         {isBadgeCategory && (
                           <div className="flex items-center gap-1 bg-orange-50 px-2 py-0.5 rounded-full">
@@ -1527,7 +1539,7 @@ export default function AddPropertyPage() {
                         {FACILITY_OPTIONS.filter(o => o.category === cat.id).map(opt => {
                           const Icon = opt.icon;
                           const isSelected = selectedFacilities.includes(opt.id);
-                          const label = (opt.label as any)[currentLanguage] || opt.label.en;
+                          const label = getLocalizedLabel(opt.label);
                           return (
                             <div key={opt.id} className="flex flex-col items-center gap-1.5 text-left">
                               <button
