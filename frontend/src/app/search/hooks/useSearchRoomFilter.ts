@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { SupportedLanguage } from "@/lib/api/translation";
 import { getUIText } from "@/utils/i18n";
 
 export type RoomFilterValue =
@@ -95,7 +96,8 @@ export const useSearchRoomFilter = (currentLanguage: string) => {
   }, [roomFilter, languageKey]);
 
   const roomFilterLabel = useMemo(() => {
-    if (!roomFilter) return getUIText("roomsLabel", currentLanguage);
+    if (!roomFilter)
+      return getUIText("roomsLabel", currentLanguage as SupportedLanguage);
     const opt = ROOM_FILTER_OPTIONS.find((o) => o.value === roomFilter);
     if (!opt) return "";
     return opt[languageKey] ?? opt.en;

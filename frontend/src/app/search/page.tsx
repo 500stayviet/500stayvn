@@ -7,7 +7,7 @@
 
 "use client";
 
-import { useState, useEffect, useRef, Suspense, useCallback } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -30,24 +30,11 @@ import {
   Tv,
   RotateCcw,
 } from "lucide-react";
-import {
-  FULL_OPTION_KITCHEN_IDS,
-  FULL_FURNITURE_IDS,
-  FULL_ELECTRONICS_IDS,
-  FACILITY_OPTIONS,
-} from "@/lib/constants/facilities";
+import { FACILITY_OPTIONS } from "@/lib/constants/facilities";
 import CalendarComponent from "@/components/CalendarComponent";
 import Image from "next/image";
 import { formatPrice, formatFullPrice } from "@/lib/utils/propertyUtils";
-import {
-  parseDate,
-  isAvailableNow,
-  formatDateForBadge,
-} from "@/lib/utils/dateUtils";
-import {
-  VIETNAM_CITIES,
-  ALL_REGIONS,
-} from "@/lib/data/vietnam-regions";
+import { VIETNAM_CITIES } from "@/lib/data/vietnam-regions";
 import type { VietnamRegion } from "@/lib/data/vietnam-regions";
 import { getSuggestionBadge, cleanDisplayName, cleanSubAddress } from "@/hooks/useLocationSearch";
 import {
@@ -55,26 +42,7 @@ import {
 } from "./hooks/useSearchRoomFilter";
 import { useSearchCalendarFilter } from "./hooks/useSearchCalendarFilter";
 import { useSearchLocationFilter } from "./hooks/useSearchLocationFilter";
-
-// 두 좌표 간 거리 계산 (Haversine 공식)
-function calculateDistance(
-  lat1: number,
-  lng1: number,
-  lat2: number,
-  lng2: number,
-): number {
-  const R = 6371; // 지구 반지름 (km)
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLng / 2) *
-      Math.sin(dLng / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c; // km 단위
-}
+import { useSearchFilterEngine } from "./hooks/useSearchFilterEngine";
 
 function getRegionDisplayName(region: VietnamRegion, lang: string): string {
   if (lang === "ko") return region.nameKo ?? region.name ?? "";
@@ -244,6 +212,24 @@ function SearchContent() {
     applyFilters: () => applyFilters(),
   });
 
+  const { applyFilters } = useSearchFilterEngine({
+    properties,
+    setFilteredProperties,
+    setFiltersApplied,
+    selectedCityId,
+    selectedDistrictId,
+    districts,
+    searchLocation,
+    checkInDate,
+    checkOutDate,
+    roomFilter,
+    fullFurniture,
+    fullElectronics,
+    fullOptionKitchen,
+    amenityFilters,
+    minPrice,
+    maxPrice,
+  });
 
   // 매물 클릭 시 /properties/[id] 로 이동 (인터셉팅 라우트에서 모달처럼 표시)
   const handlePropertyClick = (property: PropertyData) => {
@@ -328,213 +314,6 @@ function SearchContent() {
     } catch (error) {
       setSearchLocation(null);
     }
-  };
-
-  // 매물 필터링
-  const applyFilters = () => {
-    console.log('applyFilters called with:', {
-      propertiesCount: properties.length,
-      selectedCityId,
-      selectedDistrictId,
-      searchLocation,
-      filtersApplied,
-      shouldAutoApplyFilters
-    });
-    
-    if (properties.length === 0) {
-      console.log('No properties to filter');
-      setFilteredProperties([]);
-      return;
-    }
-    
-    let filtered = properties;
-
-    // 구 필터링: 선택된 구에 있는 매물만 표시 (구 ID 직접 비교 + 도시 ID 검증)
-    if (selectedDistrictId) {
-      const selectedDistrict = districts.find(
-        (d) => d.id === selectedDistrictId,
-      );
-      if (selectedDistrict) {
-        filtered = filtered.filter((property) => {
-          // 1. 구 ID가 있는 경우: 정확한 ID 비교
-          if (property.districtId) {
-            // 구 ID가 일치하는지 확인
-            const districtMatch = property.districtId === selectedDistrictId;
-
-            // 도시 ID도 있는 경우 도시 ID도 검증 (구는 특정 도시에 속하므로)
-            if (property.cityId && selectedCityId) {
-              return districtMatch && property.cityId === selectedCityId;
-            }
-
-            return districtMatch;
-          }
-
-          // 2. 구 ID가 없지만 도시 ID가 있는 경우: 도시 ID 비교
-          if (property.cityId && selectedCityId) {
-            // 구를 선택했으면 해당 구의 도시 ID와 매물의 도시 ID 비교
-            return property.cityId === selectedCityId;
-          }
-
-          // 3. 구 ID와 도시 ID 모두 없는 경우: 거리 기반 필터링 (하위 호환성)
-          if (!property.coordinates) return false;
-          const distance = calculateDistance(
-            selectedDistrict.center[1], // lat
-            selectedDistrict.center[0], // lng
-            property.coordinates.lat,
-            property.coordinates.lng,
-          );
-          return distance <= 12; // 구 반경 12km 이내
-        });
-      }
-    } else if (selectedCityId) {
-      // 도시만 선택된 경우: 도시 ID 비교 + 하위 호환성
-      const selectedCity =
-        VIETNAM_CITIES.find((c) => c.id === selectedCityId) ||
-        ALL_REGIONS.find((r) => r.id === selectedCityId);
-      if (selectedCity) {
-        filtered = filtered.filter((property) => {
-          // 1. 도시 ID가 있는 경우: 정확한 ID 비교 (우선순위 1)
-          if (property.cityId) {
-            return property.cityId === selectedCityId;
-          }
-
-          // 2. 도시 ID가 없는 경우: 거리 기반 필터링 (하위 호환성)
-          if (!property.coordinates) return false;
-          const distance = calculateDistance(
-            selectedCity.center[1], // lat
-            selectedCity.center[0], // lng
-            property.coordinates.lat,
-            property.coordinates.lng,
-          );
-          return distance <= 50; // 도시 반경 50km 이내
-        });
-      }
-    } else if (searchLocation) {
-      // 검색 위치가 있는 경우: 검색 위치 기준 50km 이내
-      filtered = filtered.filter((property) => {
-        if (!property.coordinates) return false;
-        const distance = calculateDistance(
-          searchLocation.lat,
-          searchLocation.lng,
-          property.coordinates.lat,
-          property.coordinates.lng,
-        );
-        return distance <= 50;
-      });
-    }
-
-    if (checkInDate && checkOutDate) {
-      filtered = filtered.filter((property) => {
-        if (!property.checkInDate || !property.checkOutDate) return false;
-        const propCheckInDate = parseDate(property.checkInDate);
-        const propCheckOutDate = parseDate(property.checkOutDate);
-        if (!propCheckInDate || !propCheckOutDate) return false;
-        return (
-          checkInDate <= propCheckOutDate && checkOutDate >= propCheckInDate
-        );
-      });
-    }
-
-    // 방 개수/카테고리 필터 (매물 등록 시 저장된 propertyType, bedrooms 기반)
-    // 독채: 카테고리 '독채' 선택 시 노출 + 방 개수 필터(2룸/3룸+) 선택 시 해당 방 수 독채도 노출
-    if (roomFilter) {
-      filtered = filtered.filter((property) => {
-        const pt = property.propertyType;
-        const beds = property.bedrooms ?? 0;
-        switch (roomFilter) {
-          case "studio":
-            return pt === "studio";
-          case "one_room":
-            return pt === "one_room";
-          case "two_room":
-            return beds === 2; // 방 개수 2 (two_room, three_plus 2, 독채 2 포함)
-          case "three_plus":
-            return beds >= 3; // 방 개수 3,4,5+ (three_plus, 독채 3+ 포함)
-          case "detached":
-            return pt === "detached";
-          default:
-            return true;
-        }
-      });
-    }
-
-    if (fullFurniture) {
-      filtered = filtered.filter((property) =>
-        FULL_FURNITURE_IDS.every((id) =>
-          (property.amenities || []).includes(id),
-        ),
-      );
-    }
-    if (fullElectronics) {
-      filtered = filtered.filter((property) =>
-        FULL_ELECTRONICS_IDS.every((id) =>
-          (property.amenities || []).includes(id),
-        ),
-      );
-    }
-    if (fullOptionKitchen) {
-      filtered = filtered.filter((property) =>
-        FULL_OPTION_KITCHEN_IDS.every((id) =>
-          (property.amenities || []).includes(id),
-        ),
-      );
-    }
-    // 시설·정책: 선택된 항목이 true인 매물만
-    Object.entries(amenityFilters).forEach(([id, on]) => {
-      if (!on) return;
-      if (id === "pet") {
-        filtered = filtered.filter((p) => p.petAllowed === true);
-      } else if (id === "cleaning") {
-        filtered = filtered.filter(
-          (p) =>
-            (p.amenities || []).includes("cleaning") ||
-            (p.cleaningPerWeek != null && p.cleaningPerWeek > 0),
-        );
-      } else {
-        filtered = filtered.filter((p) => (p.amenities || []).includes(id));
-      }
-    });
-
-    filtered = filtered.filter((property) => {
-      const price = property.price || 0;
-      return price >= minPrice && price <= maxPrice;
-    });
-
-    // 거리순 정렬 (가장 가까운 매물 먼저)
-    if (selectedDistrictId || selectedCityId || searchLocation) {
-      const centerPoint = selectedDistrictId
-        ? districts.find((d) => d.id === selectedDistrictId)?.center
-        : selectedCityId
-          ? (
-              VIETNAM_CITIES.find((c) => c.id === selectedCityId) ||
-              ALL_REGIONS.find((r) => r.id === selectedCityId)
-            )?.center
-          : searchLocation
-            ? [searchLocation.lng, searchLocation.lat]
-            : null;
-
-      if (centerPoint) {
-        filtered = filtered.sort((a, b) => {
-          if (!a.coordinates || !b.coordinates) return 0;
-          const distA = calculateDistance(
-            centerPoint[1], // lat
-            centerPoint[0], // lng
-            a.coordinates.lat,
-            a.coordinates.lng,
-          );
-          const distB = calculateDistance(
-            centerPoint[1], // lat
-            centerPoint[0], // lng
-            b.coordinates.lat,
-            b.coordinates.lng,
-          );
-          return distA - distB;
-        });
-      }
-    }
-
-    setFilteredProperties(filtered);
-    setFiltersApplied(true);
   };
 
   useEffect(() => {
