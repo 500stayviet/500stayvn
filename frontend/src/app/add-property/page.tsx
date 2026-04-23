@@ -7,11 +7,8 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { LISTING_MAX_SUPPLY_DAYS } from "@/lib/constants/listingCalendar";
 import { getUIText } from "@/utils/i18n";
 import {
-  MapPin,
   Loader2,
-  X,
   Check,
-  Calendar,
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
@@ -19,11 +16,7 @@ import { motion } from "framer-motion";
 import TopBar from "@/components/TopBar";
 import CalendarComponent from "@/components/CalendarComponent";
 import AddressVerificationModal from "@/components/AddressVerificationModal";
-import {
-  getDistrictsByCityId,
-  searchRegions,
-  VIETNAM_CITIES,
-} from "@/lib/data/vietnam-regions";
+import { searchRegions } from "@/lib/data/vietnam-regions";
 import { usePropertyImageManager } from "./hooks/usePropertyImageManager";
 import { useAddPropertyAccess } from "./hooks/useAddPropertyAccess";
 import { useAddPropertyFormRules } from "./hooks/useAddPropertyFormRules";
@@ -31,6 +24,8 @@ import { useAddPropertyCalendarIcal } from "./hooks/useAddPropertyCalendarIcal";
 import { useAddPropertySubmit } from "./hooks/useAddPropertySubmit";
 import { AddPropertyImageSection } from "./components/AddPropertyImageSection";
 import { AddPropertyPolicySection } from "./components/AddPropertyPolicySection";
+import { AddPropertyAddressSection } from "./components/AddPropertyAddressSection";
+import { AddPropertyRentalSection } from "./components/AddPropertyRentalSection";
 import { ADD_PROPERTY_COLORS as COLORS } from "./constants/addPropertyColors";
 
 
@@ -518,578 +513,41 @@ export default function AddPropertyPage() {
               )}
             </section>
 
-            {/* 주소 */}
-            <section
-              className="p-5 rounded-2xl"
-              style={{
-                backgroundColor: `${COLORS.border}20`,
-                border: `1.5px dashed ${COLORS.border}`,
+            <AddPropertyAddressSection
+              currentLanguage={currentLanguage}
+              colors={COLORS}
+              address={address}
+              coordinates={coordinates}
+              selectedCityId={selectedCityId}
+              selectedDistrictId={selectedDistrictId}
+              buildingNumber={buildingNumber}
+              roomNumber={roomNumber}
+              onOpenAddressModal={() => setShowAddressModal(true)}
+              onClearAddress={() => {
+                setAddress("");
+                setCoordinates(null);
+                setSelectedCityId("");
+                setSelectedDistrictId("");
               }}
-            >
-              <h2
-                className="text-sm font-bold mb-4"
-                style={{ color: COLORS.text }}
-              >
-                {currentLanguage === "ko"
-                  ? "주소"
-                  : currentLanguage === "vi"
-                    ? "Địa chỉ"
-                  : currentLanguage === "ja"
-                    ? "住所"
-                  : currentLanguage === "zh"
-                    ? "地址"
-                    : "Address"}
-                <span style={{ color: COLORS.error }} className="ml-1">
-                  *
-                </span>
-              </h2>
-              
-              {/* 주소 찾기 버튼 */}
-              <div className="pb-2">
-                <div className="flex items-center gap-2 mb-2">
-                  <p className="text-xs font-bold text-gray-500">
-                    {currentLanguage === "ko" ? "주소 찾기" : 
-                     currentLanguage === "vi" ? "Tìm địa chỉ" :
-                     currentLanguage === "ja" ? "住所検索" :
-                     currentLanguage === "zh" ? "查找地址" :
-                     "Find Address"}
-                  </p>
-                </div>
-                {(!address || !coordinates) && (
-                  <button
-                    type="button"
-                    onClick={() => setShowAddressModal(true)}
-                    className="w-full px-4 py-3 rounded-lg transition-all flex items-center justify-center gap-2 font-medium active:scale-[0.98]"
-                    style={{
-                      backgroundColor: COLORS.primary,
-                      color: COLORS.white,
-                    }}
-                  >
-                    <MapPin className="w-5 h-5" />
-                    <span>
-                      {currentLanguage === "ko"
-                        ? "주소 찾기"
-                        : currentLanguage === "vi"
-                          ? "Tìm địa chỉ"
-                          : "Find Address"}
-                    </span>
-                  </button>
-                )}
-                {address && coordinates && (
-                  <div
-                    className="p-3 rounded-lg cursor-pointer transition-colors"
-                    style={{
-                      backgroundColor: `${COLORS.success}15`,
-                      border: `1px solid ${COLORS.success}30`,
-                    }}
-                    onClick={() => setShowAddressModal(true)}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div
-                        className="p-1.5 rounded-md flex-shrink-0"
-                        style={{ backgroundColor: `${COLORS.success}20` }}
-                      >
-                        <Check
-                          className="w-4 h-4"
-                          style={{ color: COLORS.success }}
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <span
-                          className="text-[11px] font-medium"
-                          style={{ color: COLORS.success }}
-                        >
-                          {currentLanguage === "ko"
-                            ? "확정된 주소 (클릭하여 수정)"
-                            : currentLanguage === "vi"
-                              ? "Địa chỉ đã xác nhận"
-                              : "Confirmed Address"}
-                        </span>
-                        <p
-                          className="text-sm font-medium mt-0.5"
-                          style={{ color: COLORS.text }}
-                        >
-                          {address}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setAddress("");
-                          setCoordinates(null);
-                          setSelectedCityId("");
-                          setSelectedDistrictId("");
-                        }}
-                        className="property-register-icon-btn property-register-icon-btn--photo rounded-full transition-colors flex-shrink-0"
-                        style={{ backgroundColor: `${COLORS.success}20` }}
-                      >
-                        <X
-                          className="w-3.5 h-3.5"
-                          style={{ color: COLORS.textSecondary }}
-                        />
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* 도시·구 */}
-              <div className="pt-4 pb-2"
-                style={{
-                  borderTop: `1.5px dashed ${COLORS.border}`,
-                }}
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <p className="text-xs font-bold text-gray-500">
-                    {currentLanguage === "ko" ? "도시·구" : 
-                     currentLanguage === "vi" ? "Thành phố·Quận" :
-                     currentLanguage === "ja" ? "都市・区" :
-                     currentLanguage === "zh" ? "城市・区" :
-                     "City·District"}
-                  </p>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label
-                      className="block text-[11px] font-medium mb-1.5"
-                      style={{ color: COLORS.textSecondary }}
-                    >
-                      {currentLanguage === "ko"
-                        ? "도시"
-                        : currentLanguage === "vi"
-                          ? "Thành phố"
-                          : "City"}
-                      <span style={{ color: COLORS.error }} className="ml-1">
-                        *
-                      </span>
-                    </label>
-                    <select
-                      value={selectedCityId}
-                      onChange={(e) => {
-                        setSelectedCityId(e.target.value);
-                        setSelectedDistrictId("");
-                      }}
-                      disabled={!address || !coordinates}
-                      className="w-full px-2 py-2 rounded-md text-sm min-h-[36px] focus:outline-none transition-all"
-                      style={{
-                        backgroundColor: COLORS.white,
-                        border: `1px solid ${COLORS.border}`,
-                        color: COLORS.text,
-                      }}
-                    >
-                      <option value="">
-                        {currentLanguage === "ko"
-                          ? "선택"
-                          : currentLanguage === "vi"
-                            ? "Chọn"
-                            : currentLanguage === "ja"
-                              ? "選択"
-                              : currentLanguage === "zh"
-                                ? "选择"
-                                : "Select"}
-                      </option>
-                      {VIETNAM_CITIES.map((c) => {
-                        const langMap: Record<string, string> = {
-                          ko: c.nameKo,
-                          vi: c.nameVi,
-                          en: c.name,
-                          ja: c.nameJa ?? c.name,
-                          zh: c.nameZh ?? c.name,
-                        };
-                        return (
-                          <option key={c.id} value={c.id}>
-                            {langMap[currentLanguage] ?? c.name}
-                          </option>
-                        );
-                      })}
-                    </select>
-                  </div>
-                  <div>
-                    <label
-                      className="block text-[11px] font-medium mb-1.5"
-                      style={{ color: COLORS.textSecondary }}
-                    >
-                      {currentLanguage === "ko"
-                        ? "구"
-                        : currentLanguage === "vi"
-                          ? "Quận"
-                          : "District"}
-                      <span style={{ color: COLORS.error }} className="ml-1">
-                        *
-                      </span>
-                    </label>
-                    <select
-                      value={selectedDistrictId}
-                      onChange={(e) => setSelectedDistrictId(e.target.value)}
-                      disabled={!address || !coordinates || !selectedCityId}
-                      className="w-full px-2 py-2 rounded-md text-sm min-h-[36px] focus:outline-none transition-all"
-                      style={{
-                        backgroundColor: COLORS.white,
-                        border: `1px solid ${COLORS.border}`,
-                        color: COLORS.text,
-                      }}
-                    >
-                      <option value="">
-                        {currentLanguage === "ko"
-                          ? "선택"
-                          : currentLanguage === "vi"
-                            ? "Chọn"
-                          : currentLanguage === "ja"
-                            ? "選択"
-                          : currentLanguage === "zh"
-                            ? "选择"
-                            : "Select"}
-                      </option>
-                      {getDistrictsByCityId(selectedCityId).map((d) => {
-                        const langMap: Record<string, string> = {
-                          ko: d.nameKo,
-                          vi: d.nameVi,
-                          en: d.name,
-                          ja: d.nameJa ?? d.name,
-                          zh: d.nameZh ?? d.name,
-                        };
-                        return (
-                          <option key={d.id} value={d.id}>
-                            {langMap[currentLanguage] ?? d.name}
-                          </option>
-                        );
-                      })}
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* 동호수 입력 */}
-              <div className="pt-4 pb-2"
-                style={{
-                  borderTop: `1.5px dashed ${COLORS.border}`,
-                }}
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <p className="text-xs font-bold text-gray-500">
-                    {currentLanguage === "ko" ? "동호수" : 
-                     currentLanguage === "vi" ? "Số phòng" :
-                     currentLanguage === "ja" ? "部屋番号" :
-                     currentLanguage === "zh" ? "房间号" :
-                     "Unit Number"}
-                  </p>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label
-                      className="block text-[11px] font-medium mb-1.5"
-                      style={{ color: COLORS.textSecondary }}
-                    >
-                      {currentLanguage === "ko"
-                        ? "동"
-                        : currentLanguage === "vi"
-                          ? "Tòa"
-                          : "Building"}
-                    </label>
-                    <input
-                      type="text"
-                      value={buildingNumber}
-                      onChange={(e) => setBuildingNumber(e.target.value)}
-                      placeholder={
-                        currentLanguage === "ko" ? "예: A" : "e.g., A"
-                      }
-                      className="w-full px-2 py-2 rounded-md text-sm min-h-[36px] focus:outline-none transition-all"
-                      style={{
-                        backgroundColor: COLORS.white,
-                        border: `1px solid ${COLORS.border}`,
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label
-                      className="block text-[11px] font-medium mb-1.5"
-                      style={{ color: COLORS.textSecondary }}
-                    >
-                      {currentLanguage === "ko"
-                        ? "호실"
-                        : currentLanguage === "vi"
-                          ? "Phòng"
-                          : "Room"}
-                      <span style={{ color: COLORS.error }} className="ml-1">
-                        *
-                      </span>
-                    </label>
-                    <input
-                      type="text"
-                      value={roomNumber}
-                      onChange={(e) => setRoomNumber(e.target.value)}
-                      placeholder={
-                        currentLanguage === "ko" ? "예: 101" : "e.g., 101"
-                      }
-                      className="w-full px-2 py-2 rounded-md text-sm min-h-[36px] focus:outline-none transition-all"
-                      style={{
-                        backgroundColor: COLORS.white,
-                        border: `1px solid ${COLORS.border}`,
-                      }}
-                    />
-                  </div>
-                </div>
-                <p
-                  className="text-[10px] mt-2 flex items-start gap-1"
-                  style={{ color: COLORS.textSecondary }}
-                >
-                  <span style={{ color: COLORS.primary }}>i</span>
-                  <span>
-                    {currentLanguage === "ko"
-                      ? "동호수는 예약 완료 후 임차인에게만 표시됩니다."
-                      : currentLanguage === "vi"
-                        ? "Số phòng chỉ hiển thị cho người thuê sau khi đặt chỗ."
-                        : "Unit number shown to tenants after booking."}
-                  </span>
-                </p>
-              </div>
-            </section>
-
-            {/* 임대 희망 날짜 */}
-            <section
-              className="p-5 rounded-2xl"
-              style={{
-                backgroundColor: COLORS.surface,
-                border: `1.5px dashed ${COLORS.border}`,
+              onCityChange={(cityId) => {
+                setSelectedCityId(cityId);
+                setSelectedDistrictId("");
               }}
-            >
-              <h2
-                className="text-sm font-bold mb-3"
-                style={{ color: COLORS.text }}
-              >
-                {currentLanguage === "ko"
-                  ? "임대 희망 날짜"
-                  : currentLanguage === "vi"
-                    ? "Ngày cho thuê mong muốn"
-                  : currentLanguage === "ja"
-                    ? "賃貸希望日"
-                  : currentLanguage === "zh"
-                    ? "租赁希望日期"
-                    : "Desired Rental Dates"}
-                <span style={{ color: COLORS.error }} className="ml-1">
-                  *
-                </span>
-              </h2>
-              <div className="grid grid-cols-2 gap-2">
-                {/* 체크인 날짜 */}
-                <button
-                  type="button"
-                  onClick={openCheckInCalendar}
-                  className="flex items-center px-3 py-2 rounded-md transition-colors"
-                  style={{
-                    backgroundColor: COLORS.white,
-                    border: `1px solid ${COLORS.border}`,
-                  }}
-                >
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-gray-600" />
-                    <div className="text-left">
-                      <div className="text-xs text-gray-500">
-                        {currentLanguage === "ko"
-                          ? "시작일"
-                          : currentLanguage === "vi"
-                            ? "Ngày bắt đầu"
-                            : "Start Date"}
-                      </div>
-                      <div className="text-sm font-medium text-gray-900">
-                        {checkInDate
-                          ? (() => {
-                              try {
-                                let date: Date | null = null;
-                                if (checkInDate instanceof Date) {
-                                  date = checkInDate;
-                                } else if (typeof checkInDate === "string") {
-                                  date = new Date(checkInDate);
-                                }
-                                if (!date || isNaN(date.getTime())) {
-                                  return currentLanguage === "ko"
-                                    ? "날짜 선택"
-                                    : currentLanguage === "vi"
-                                      ? "Chọn ngày"
-                                      : "Select date";
-                                }
-                                const month = date.getMonth() + 1;
-                                const day = date.getDate();
-                                if (isNaN(month) || isNaN(day)) {
-                                  return currentLanguage === "ko"
-                                    ? "날짜 선택"
-                                    : currentLanguage === "vi"
-                                      ? "Chọn ngày"
-                                      : "Select date";
-                                }
-                                return date.toLocaleDateString(
-                                  currentLanguage === "ko"
-                                    ? "ko-KR"
-                                    : currentLanguage === "vi"
-                                      ? "vi-VN"
-                                      : "en-US",
-                                  {
-                                    month: "short",
-                                    day: "numeric",
-                                  },
-                                );
-                              } catch {
-                                return currentLanguage === "ko"
-                                  ? "날짜 선택"
-                                  : currentLanguage === "vi"
-                                    ? "Chọn ngày"
-                                    : "Select date";
-                              }
-                            })()
-                          : currentLanguage === "ko"
-                            ? "날짜 선택"
-                            : currentLanguage === "vi"
-                              ? "Chọn ngày"
-                              : "Select date"}
-                      </div>
-                    </div>
-                  </div>
-                </button>
+              onDistrictChange={setSelectedDistrictId}
+              onBuildingNumberChange={setBuildingNumber}
+              onRoomNumberChange={setRoomNumber}
+            />
 
-                {/* 체크아웃 날짜 */}
-                <button
-                  type="button"
-                  onClick={openCheckOutCalendar}
-                  className="flex items-center px-3 py-2 rounded-md transition-colors"
-                  style={{
-                    backgroundColor: COLORS.white,
-                    border: `1px solid ${COLORS.border}`,
-                  }}
-                >
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-gray-600" />
-                    <div className="text-left">
-                      <div className="text-xs text-gray-500">
-                        {currentLanguage === "ko"
-                          ? "종료일"
-                          : currentLanguage === "vi"
-                            ? "Ngày kết thúc"
-                            : "End Date"}
-                      </div>
-                      <div className="text-sm font-medium text-gray-900">
-                        {checkOutDate
-                          ? (() => {
-                              try {
-                                let date: Date | null = null;
-                                if (checkOutDate instanceof Date) {
-                                  date = checkOutDate;
-                                } else if (typeof checkOutDate === "string") {
-                                  date = new Date(checkOutDate);
-                                }
-                                if (!date || isNaN(date.getTime())) {
-                                  return currentLanguage === "ko"
-                                    ? "날짜 선택"
-                                    : currentLanguage === "vi"
-                                      ? "Chọn ngày"
-                                      : "Select date";
-                                }
-                                const month = date.getMonth() + 1;
-                                const day = date.getDate();
-                                if (isNaN(month) || isNaN(day)) {
-                                  return currentLanguage === "ko"
-                                    ? "날짜 선택"
-                                    : currentLanguage === "vi"
-                                      ? "Chọn ngày"
-                                      : "Select date";
-                                }
-                                return date.toLocaleDateString(
-                                  currentLanguage === "ko"
-                                    ? "ko-KR"
-                                    : currentLanguage === "vi"
-                                      ? "vi-VN"
-                                      : "en-US",
-                                  {
-                                    month: "short",
-                                    day: "numeric",
-                                  },
-                                );
-                              } catch {
-                                return currentLanguage === "ko"
-                                  ? "날짜 선택"
-                                  : currentLanguage === "vi"
-                                    ? "Chọn ngày"
-                                    : "Select date";
-                              }
-                            })()
-                          : currentLanguage === "ko"
-                            ? "날짜 선택"
-                            : currentLanguage === "vi"
-                              ? "Chọn ngày"
-                              : "Select date"}
-                      </div>
-                    </div>
-                  </div>
-                </button>
-              </div>
-            </section>
-
-            {/* 1주일 임대료 */}
-            <section
-              className="p-5 rounded-2xl"
-              style={{
-                backgroundColor: COLORS.surface,
-                border: `1.5px dashed ${COLORS.border}`,
-              }}
-            >
-              <h2
-                className="text-sm font-bold mb-1"
-                style={{ color: COLORS.text }}
-              >
-                {currentLanguage === "ko"
-                  ? "1주일 임대료"
-                  : currentLanguage === "vi"
-                    ? "Giá thuê 1 tuần"
-                  : currentLanguage === "ja"
-                    ? "1週間賃貸料"
-                  : currentLanguage === "zh"
-                    ? "1周租金"
-                    : "Weekly Rent"}
-                <span style={{ color: COLORS.error }} className="ml-1">
-                  *
-                </span>
-              </h2>
-              <p
-                className="text-[11px] mb-3"
-                style={{ color: COLORS.textSecondary }}
-              >
-                {currentLanguage === "ko"
-                  ? "공과금/관리비 포함"
-                  : currentLanguage === "vi"
-                    ? "Bao gồm phí dịch vụ/quản lý"
-                    : "Utilities/Management fees included"}
-              </p>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={
-                    weeklyRent
-                      ? parseInt(
-                          weeklyRent.replace(/\D/g, "") || "0",
-                          10,
-                        ).toLocaleString()
-                      : ""
-                  }
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, "");
-                    setWeeklyRent(value);
-                  }}
-                  placeholder="0"
-                  className="flex-1 px-3 py-2 rounded-md text-sm min-h-[36px] focus:outline-none transition-all"
-                  style={{
-                    backgroundColor: COLORS.white,
-                    border: `1px solid ${COLORS.border}`,
-                  }}
-                  required
-                />
-                <span
-                  className="text-sm font-medium"
-                  style={{ color: COLORS.textSecondary }}
-                >
-                  VND
-                </span>
-              </div>
-            </section>
+            <AddPropertyRentalSection
+              currentLanguage={currentLanguage}
+              colors={COLORS}
+              checkInDate={checkInDate}
+              checkOutDate={checkOutDate}
+              weeklyRent={weeklyRent}
+              onOpenCheckInCalendar={openCheckInCalendar}
+              onOpenCheckOutCalendar={openCheckOutCalendar}
+              onWeeklyRentChange={setWeeklyRent}
+            />
 
             <AddPropertyPolicySection
               currentLanguage={currentLanguage}
