@@ -1,6 +1,6 @@
 // Firebase Client SDK 초기화
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth, RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
+import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
+import { getAuth, RecaptchaVerifier, signInWithPhoneNumber, type Auth } from 'firebase/auth';
 import { firebaseConfig } from './config';
 
 const PHONE_AUTH_DEBUG = process.env.NEXT_PUBLIC_PHONE_AUTH_DEBUG === 'true';
@@ -34,11 +34,28 @@ const phoneAuthDebugAlert = (message: string) => {
   window.alert(message);
 };
 
-// Firebase 앱 초기화 (싱글톤 패턴)
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+let app: FirebaseApp | null = null;
+let authInstance: Auth | null = null;
 
-// Firebase Auth 인스턴스
-export const auth = getAuth(app);
+const getFirebaseAuthOrThrow = (): Auth => {
+  // Prevent Next.js prerender from initializing Firebase Auth on the server.
+  if (typeof window === 'undefined') {
+    throw new Error('Firebase phone auth is only available in browser runtime.');
+  }
+
+  if (!firebaseConfig.apiKey) {
+    throw new Error('Missing NEXT_PUBLIC_FIREBASE_API_KEY for Firebase phone auth.');
+  }
+
+  if (!app) {
+    app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+  }
+  if (!authInstance) {
+    authInstance = getAuth(app);
+  }
+
+  return authInstance;
+};
 
 // RecaptchaVerifier 생성 함수
 export const createRecaptchaVerifier = (containerId: string) => {
@@ -47,7 +64,7 @@ export const createRecaptchaVerifier = (containerId: string) => {
     return window.__phoneAuthRecaptchaVerifier;
   }
 
-  const verifier = new RecaptchaVerifier(auth, containerId, {
+  const verifier = new RecaptchaVerifier(getFirebaseAuthOrThrow(), containerId, {
     size: 'invisible',
     callback: () => {
       // reCAPTCHA solved, allow signInWithPhoneNumber.
@@ -87,7 +104,7 @@ export const sendPhoneVerificationCode = async (
     phoneAuthDebugAlert('문자 발송 시도: before signInWithPhoneNumber');
     phoneAuthDebugLog('[phone-auth] before signInWithPhoneNumber', { phoneNumber });
     const confirmationResult = await signInWithPhoneNumber(
-      auth,
+      getFirebaseAuthOrThrow(),
       phoneNumber,
       recaptchaVerifier
     );
@@ -127,5 +144,3 @@ export const verifyPhoneCode = async (
     phoneAuthDebugLog('[phone-auth] 인증 프로세스 종료', { phase: 'verifyPhoneCode' });
   }
 };
-
-export default app;

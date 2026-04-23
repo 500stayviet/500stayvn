@@ -16,7 +16,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { getCurrentUserData } from '@/lib/api/auth';
 import InternationalPhoneInput from '@/components/auth/InternationalPhoneInput';
 import { 
-  auth, 
   createRecaptchaVerifier, 
   sendPhoneVerificationCode,
   verifyPhoneCode 
