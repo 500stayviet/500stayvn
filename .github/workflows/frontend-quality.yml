@@ -77,7 +77,7 @@ jobs:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: windows-latest
     env:
-      NIGHTLY_E2E_WEBHOOK_URL: ${{ secrets.E2E_NIGHTLY_WEBHOOK_URL }}
+      NIGHTLY_E2E_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
     defaults:
       run:
         working-directory: frontend
@@ -118,12 +118,14 @@ jobs:
           path: frontend/test-results
           if-no-files-found: ignore
 
-      - name: Notify nightly E2E failure webhook
-        if: failure() && env.NIGHTLY_E2E_WEBHOOK_URL != ''
+      - name: Notify nightly E2E result to Slack
+        if: always() && env.NIGHTLY_E2E_WEBHOOK_URL != ''
         shell: pwsh
         run: |
+          $status = "${{ job.status }}"
+          $icon = if ($status -eq "success") { ":white_check_mark:" } else { ":x:" }
           $runUrl = "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           $payload = @{
-            text = "Nightly E2E failed for ${{ github.repository }} on ref ${{ github.ref_name }}. Details: $runUrl"
+            text = "$icon Nightly E2E *$status* for `${{ github.repository }}` on `${{ github.ref_name }}`. Details: $runUrl"
           } | ConvertTo-Json -Compress
           Invoke-RestMethod -Method Post -Uri $env:NIGHTLY_E2E_WEBHOOK_URL -ContentType "application/json" -Body $payload

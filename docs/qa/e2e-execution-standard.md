@@ -71,15 +71,16 @@ PR 차단선:
 
 ---
 
-## 6) 야간 실패 알림(옵션)
+## 6) 야간 결과 알림(옵션)
 
-nightly 실패를 즉시 알기 위해 webhook 알림을 사용할 수 있다.
+nightly 테스트 결과를 즉시 알기 위해 webhook 알림을 사용할 수 있다.
 
 - GitHub Actions secret 이름:
-  - `E2E_NIGHTLY_WEBHOOK_URL`
+  - `SLACK_WEBHOOK_URL`
 - 동작 조건:
-  - `e2e-nightly-full` 잡 실패 시
+  - `e2e-nightly-full` 잡 종료 시(성공/실패)
   - secret 값이 설정되어 있을 때만 전송
 - 알림 내용:
+  - 성공/실패 상태
   - 저장소/브랜치
-  - 실패한 Actions run 링크
+  - Actions run 링크
