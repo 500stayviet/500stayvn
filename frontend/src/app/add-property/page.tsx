@@ -4,34 +4,21 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { addProperty } from "@/lib/api/properties";
 import { LISTING_MAX_SUPPLY_DAYS } from "@/lib/constants/listingCalendar";
 import { getUIText } from "@/utils/i18n";
 import {
-  Camera,
   MapPin,
   Loader2,
   X,
-  Maximize2,
-  ArrowLeft,
   Check,
   Calendar,
   ChevronDown,
   ChevronUp,
-  Sparkles,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import Image from "next/image";
 import TopBar from "@/components/TopBar";
 import CalendarComponent from "@/components/CalendarComponent";
 import AddressVerificationModal from "@/components/AddressVerificationModal";
-import {
-  FACILITY_OPTIONS,
-  FACILITY_CATEGORIES,
-  FULL_OPTION_KITCHEN_IDS,
-  FULL_FURNITURE_IDS,
-  FULL_ELECTRONICS_IDS,
-} from "@/lib/constants/facilities";
 import {
   getDistrictsByCityId,
   searchRegions,
@@ -41,31 +28,11 @@ import { usePropertyImageManager } from "./hooks/usePropertyImageManager";
 import { useAddPropertyAccess } from "./hooks/useAddPropertyAccess";
 import { useAddPropertyFormRules } from "./hooks/useAddPropertyFormRules";
 import { useAddPropertyCalendarIcal } from "./hooks/useAddPropertyCalendarIcal";
-import {
-  buildUnitNumber,
-  ensureAddPropertyKycReady,
-  getAddPropertyErrorMessage,
-  uploadPropertyImages,
-  validateAddPropertyInput,
-} from "./utils/addPropertySubmit";
+import { useAddPropertySubmit } from "./hooks/useAddPropertySubmit";
+import { AddPropertyImageSection } from "./components/AddPropertyImageSection";
+import { AddPropertyPolicySection } from "./components/AddPropertyPolicySection";
+import { ADD_PROPERTY_COLORS as COLORS } from "./constants/addPropertyColors";
 
-// 베트남 스타일 컬러: Coral Red + Golden Orange + Sunshine Yellow
-const COLORS = {
-  primary: "#E63946", // Coral Red - 메인 컬러
-  primaryLight: "#FF6B6B", // Light Coral
-  secondary: "#FF6B35", // Golden Orange - 보조 컬러
-  accent: "#FFB627", // Sunshine Yellow - 강조
-  success: "#10B981", // Emerald Green - 성공/완료
-  error: "#DC2626", // Red - 에러
-  white: "#FFFFFF",
-  background: "#FFF8F0", // 따뜻한 크림색 배경
-  surface: "#FFFFFF", // 카드 배경
-  border: "#FED7AA", // 따뜻한 오렌지 테두리
-  borderFocus: "#E63946", // 포커스 테두리
-  text: "#1F2937", // 메인 텍스트
-  textSecondary: "#6B7280", // 보조 텍스트
-  textMuted: "#9CA3AF", // 희미한 텍스트
-};
 
 export default function AddPropertyPage() {
   const router = useRouter();
@@ -213,115 +180,45 @@ export default function AddPropertyPage() {
     setSelectedCityId(cityMatch ? cityMatch.id : "");
   };
 
-  // 폼 제출
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const validationMessage = validateAddPropertyInput({
+  const { handleSubmit } = useAddPropertySubmit({
+    currentLanguage,
+    user: user ? { uid: user.uid } : null,
+    router: { push: (path) => router.push(path) },
+    setLoading,
+    onSuccess: () => setShowSuccessModal(true),
+    formState: {
       address,
       coordinates,
       selectedCityId,
       selectedDistrictId,
-      imagePreviewsLength: imagePreviews.length,
+      images,
+      imagePreviews,
       weeklyRent,
       propertyType,
       title,
-      hasUser: Boolean(user),
+      propertyDescription,
       checkInDate,
       checkOutDate,
       todayOnly,
       maxRentalDay,
-      currentLanguage,
-    });
-    if (validationMessage) {
-      alert(validationMessage);
-      return;
-    }
-    if (!coordinates) {
-      return;
-    }
-
-    setLoading(true);
-    try {
-      if (!user) {
-        alert(
-          currentLanguage === "ko"
-            ? "로그인이 필요합니다."
-            : currentLanguage === "vi"
-              ? "Cần đăng nhập."
-              : "Please login.",
-        );
-        return;
-      }
-
-      const kycState = await ensureAddPropertyKycReady(user.uid, currentLanguage);
-      if (!kycState.ok) {
-        alert(kycState.message);
-        router.push("/kyc");
-        return;
-      }
-
-      const uploadResult = await uploadPropertyImages(images, currentLanguage);
-      if (!uploadResult.ok) {
-        alert(uploadResult.message);
-        return;
-      }
-
-      await addProperty({
-        title: title.trim(),
-        original_description: propertyDescription, // 매물 설명 (빈 문자열 허용)
-        translated_description: "", // 나중에 번역 서비스로 채움
-        price: parseInt(weeklyRent.replace(/\D/g, "")),
-        priceUnit: "vnd",
-        area: 0, // 나중에 추가 가능
-        bedrooms: bedrooms,
-        bathrooms: bathrooms,
-        coordinates: coordinates, // 좌표는 필수 (위에서 검증됨)
-        address: address, // 동호수 제외
-        images: uploadResult.imageUrls,
-        amenities: selectedFacilities,
-        unitNumber: buildUnitNumber(buildingNumber, roomNumber), // 동호수 (예약 완료 후에만 표시, 비공개)
-        propertyType,
-        cleaningPerWeek: selectedFacilities.includes("cleaning")
-          ? cleaningPerWeek
-          : 0,
-        petAllowed,
-        ...(petAllowed && { maxPets }),
-        ...(petAllowed &&
-          petFeeAmount.trim() && {
-            petFee: parseInt(petFeeAmount.replace(/\D/g, ""), 10) || undefined,
-          }),
-        ownerId: user.uid, // 임대인 사용자 ID 저장
-        checkInDate: checkInDate || undefined,
-        checkOutDate: checkOutDate || undefined,
-        checkInTime: checkInTime,
-        checkOutTime: checkOutTime,
-        maxAdults: maxAdults,
-        maxChildren: maxChildren,
-        status: "active",
-        ...(icalPlatform && { icalPlatform }),
-        ...(icalCalendarName.trim() && {
-          icalCalendarName: icalCalendarName.trim(),
-        }),
-        ...(icalUrl.trim() && { icalUrl: icalUrl.trim() }),
-        // 도시와 구 정보 저장
-        ...(selectedCityId && { cityId: selectedCityId }),
-        ...(selectedDistrictId && { districtId: selectedDistrictId }),
-      });
-
-      setShowSuccessModal(true);
-    } catch (error: unknown) {
-      // 중복 등록 등 예상된 비즈니스 로직 에러는 콘솔 에러를 남기지 않음 (개발 오버레이 방지)
-      const knownErrors = ["OverlapDetected", "AlreadyBooked"];
-      const message = error instanceof Error ? error.message : undefined;
-      if (!message || !knownErrors.includes(message)) {
-        console.error("매물 등록 중 예기치 못한 패:", error);
-      }
-      alert(getAddPropertyErrorMessage(currentLanguage, message));
-    } finally {
-      setLoading(false);
-    }
-  };
+      bedrooms,
+      bathrooms,
+      selectedFacilities,
+      buildingNumber,
+      roomNumber,
+      cleaningPerWeek,
+      petAllowed,
+      maxPets,
+      petFeeAmount,
+      checkInTime,
+      checkOutTime,
+      maxAdults,
+      maxChildren,
+      icalPlatform,
+      icalCalendarName,
+      icalUrl,
+    },
+  });
 
   // 접근 권한 확인 중
   if (checkingAccess || authLoading) {
@@ -387,312 +284,33 @@ export default function AddPropertyPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* 이미지 업로드 */}
-            <section
-              className="p-5 rounded-2xl"
-              style={{
-                backgroundColor: COLORS.surface,
-                border: `1.5px dashed ${COLORS.border}`,
-              }}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <h2
-                  className="text-sm font-bold"
-                  style={{ color: COLORS.text }}
-                >
-                  {currentLanguage === "ko"
-                    ? "사진 등록"
-                    : currentLanguage === "vi"
-                      ? "Đăng ảnh"
-                    : currentLanguage === "ja"
-                      ? "写真登録"
-                    : currentLanguage === "zh"
-                      ? "照片上传"
-                      : "Upload Photos"}
-                  <span style={{ color: COLORS.error }} className="ml-1">
-                    *
-                  </span>
-                </h2>
-                <span className="text-xs" style={{ color: COLORS.textMuted }}>
-                  {images.length}/5
-                </span>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                {imagePreviews.map((preview, index) => (
-                  <div
-                    key={index}
-                    className="relative aspect-square rounded-xl overflow-hidden border-2 border-gray-200"
-                  >
-                    <Image
-                      src={preview}
-                      alt={`Preview ${index + 1}`}
-                      fill
-                      unoptimized
-                      className="object-cover"
-                      sizes="(max-width: 430px) 33vw, 140px"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleImageRemove(index)}
-                      className="property-register-icon-btn property-register-icon-btn--photo absolute top-1 right-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-                {images.length < 5 && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={handleAddImageClick}
-                      className="aspect-square rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors"
-                    >
-                      <Camera className="w-8 h-8 text-gray-400 mb-1" />
-                      <span className="text-xs text-gray-500">
-                        {currentLanguage === "ko"
-                          ? "추가"
-                          : currentLanguage === "vi"
-                            ? "Thêm"
-                            : "Add"}
-                      </span>
-                    </button>
-
-                    {/* 숨겨진 input들 */}
-                    <input
-                      ref={photoLibraryInputRef}
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={handlePhotoLibrarySelect}
-                      className="hidden"
-                    />
-                    <input
-                      ref={cameraInputRef}
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      onChange={handleCameraCapture}
-                      className="hidden"
-                    />
-                  </>
-                )}
-              </div>
-
-              {/* 이미지 소스 선택 메뉴 */}
-              {showImageSourceMenu && (
-                <div
-                  className="fixed inset-0 bg-black/50 flex items-end justify-center z-50"
-                  onClick={closeImageSourceMenu}
-                >
-                  <div
-                    className="w-full bg-white rounded-t-2xl p-6 max-w-[430px]"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">
-                      {currentLanguage === "ko"
-                        ? "사진 추가 방법 선택"
-                        : currentLanguage === "vi"
-                          ? "Chọn cách thêm ảnh"
-                        : currentLanguage === "ja"
-                          ? "写真追加方法の選択"
-                        : currentLanguage === "zh"
-                          ? "选择照片添加方式"
-                        : "Select Photo Source"}
-                    </h3>
-                    <div className="space-y-3">
-                      <button
-                        type="button"
-                        onClick={handleSelectFromLibrary}
-                        className="w-full py-4 px-4 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-3"
-                      >
-                        <Camera className="w-5 h-5" />
-                        <span>
-                          {currentLanguage === "ko"
-                            ? "사진첩에서 선택"
-                            : currentLanguage === "vi"
-                              ? "Chọn từ thư viện ảnh"
-                            : currentLanguage === "ja"
-                              ? "写真ライブラリから選択"
-                            : currentLanguage === "zh"
-                              ? "从照片库选择"
-                            : "Select from Photo Library"}
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleTakePhoto}
-                        className="w-full py-4 px-4 bg-gray-100 text-gray-900 rounded-xl font-medium hover:bg-gray-200 transition-colors flex items-center justify-center gap-3"
-                      >
-                        <Camera className="w-5 h-5" />
-                        <span>
-                          {currentLanguage === "ko"
-                            ? "카메라로 촬영"
-                            : currentLanguage === "vi"
-                              ? "Chụp ảnh"
-                            : currentLanguage === "ja"
-                              ? "カメラで撮影"
-                            : currentLanguage === "zh"
-                              ? "用相机拍摄"
-                            : "Take Photo"}
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={closeImageSourceMenu}
-                        className="w-full py-3 px-4 text-gray-600 rounded-xl font-medium hover:bg-gray-100 transition-colors"
-                      >
-                        {currentLanguage === "ko"
-                          ? "취소"
-                          : currentLanguage === "vi"
-                            ? "Hủy"
-                          : currentLanguage === "ja"
-                            ? "キャンセル"
-                          : currentLanguage === "zh"
-                            ? "取消"
-                          : "Cancel"}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* 사진첩 모달 (카톡 스타일) */}
-              {showPhotoLibrary && (
-                <div className="fixed inset-0 bg-white z-50 flex flex-col">
-                  {/* 헤더 */}
-                  <div className="flex items-center justify-between p-4 border-b border-gray-200">
-                    <button
-                      type="button"
-                      onClick={closePhotoLibrary}
-                      className="text-gray-700"
-                    >
-                      <X className="w-6 h-6" />
-                    </button>
-                    <h2 className="text-lg font-semibold text-gray-900">
-                      {currentLanguage === "ko"
-                        ? "사진 선택"
-                        : currentLanguage === "vi"
-                          ? "Chọn ảnh"
-                        : currentLanguage === "ja"
-                          ? "写真選択"
-                        : currentLanguage === "zh"
-                          ? "选择照片"
-                        : "Select Photos"}
-                    </h2>
-                    <div className="w-6" /> {/* 공간 맞춤 */}
-                  </div>
-
-                  {/* 사진 그리드 */}
-                  <div className="flex-1 overflow-y-auto p-2">
-                    <div className="grid grid-cols-4 gap-1">
-                      {photoLibraryPreviews.map((preview, index) => {
-                        const isSelected = selectedLibraryIndices.has(index);
-                        return (
-                          <div
-                            key={index}
-                            className="relative aspect-square"
-                            onClick={() => togglePhotoSelection(index)}
-                          >
-                            <Image
-                              src={preview}
-                              alt={`Photo ${index + 1}`}
-                              fill
-                              unoptimized
-                              className={`object-cover rounded ${
-                                isSelected ? "opacity-50" : ""
-                              }`}
-                              sizes="(max-width: 430px) 25vw, 110px"
-                            />
-                            {isSelected && (
-                              <div className="absolute inset-0 flex items-center justify-center bg-blue-500/30 rounded">
-                                <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
-                                  <Check className="w-4 h-4 text-white" />
-                                </div>
-                              </div>
-                            )}
-                            {/* 전체화면 보기 버튼 (우측 하단) */}
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleViewFullScreen(index);
-                              }}
-                              className="property-register-icon-btn property-register-icon-btn--library absolute bottom-1 right-1 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors"
-                            >
-                              <Maximize2 className="w-3 h-3" />
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* 하단 버튼 */}
-                  <div className="p-4 border-t border-gray-200">
-                    <button
-                      type="button"
-                      onClick={handleConfirmPhotoSelection}
-                      disabled={selectedLibraryIndices.size === 0}
-                      className="w-full py-3 px-4 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {currentLanguage === "ko"
-                        ? `선택한 ${selectedLibraryIndices.size}장 추가`
-                        : currentLanguage === "vi"
-                          ? `Thêm ${selectedLibraryIndices.size} ảnh đã chọn`
-                        : currentLanguage === "ja"
-                          ? `選択した ${selectedLibraryIndices.size}枚を追加`
-                        : currentLanguage === "zh"
-                          ? `添加选中的 ${selectedLibraryIndices.size}张`
-                        : `Add ${selectedLibraryIndices.size} selected`}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* 전체화면 이미지 보기 */}
-              {fullScreenImageIndex !== null && (
-                <div className="fixed inset-0 bg-black z-[60] flex items-center justify-center">
-                  <div className="relative w-full h-full">
-                    <Image
-                      src={photoLibraryPreviews[fullScreenImageIndex]}
-                      alt={`Full screen ${fullScreenImageIndex + 1}`}
-                      fill
-                      unoptimized
-                      className="object-contain"
-                      sizes="100vw"
-                    />
-                  </div>
-                  {/* 우측 하단: 사진첩으로 돌아가기 버튼 */}
-                  <button
-                    type="button"
-                    onClick={handleBackToLibrary}
-                    className="absolute bottom-6 right-6 bg-white/90 text-gray-900 rounded-full p-4 hover:bg-white transition-colors shadow-lg flex items-center gap-2"
-                  >
-                    <ArrowLeft className="w-5 h-5" />
-                    <span className="font-medium">
-                      {currentLanguage === "ko"
-                        ? "사진첩"
-                        : currentLanguage === "vi"
-                          ? "Thư viện ảnh"
-                        : currentLanguage === "ja"
-                          ? "写真ライブラリ"
-                        : currentLanguage === "zh"
-                          ? "照片库"
-                        : "Library"}
-                    </span>
-                  </button>
-                  {/* 닫기 버튼 (좌측 상단) */}
-                  <button
-                    type="button"
-                    onClick={handleBackToLibrary}
-                    className="property-register-icon-btn property-register-icon-btn--fullscreen absolute top-6 left-6 bg-white/90 text-gray-900 rounded-full hover:bg-white transition-colors"
-                  >
-                    <X className="w-6 h-6" />
-                  </button>
-                </div>
-              )}
-            </section>
+            <AddPropertyImageSection
+              currentLanguage={currentLanguage}
+              colors={COLORS}
+              images={images}
+              imagePreviews={imagePreviews}
+              showImageSourceMenu={showImageSourceMenu}
+              showPhotoLibrary={showPhotoLibrary}
+              photoLibraryPreviews={photoLibraryPreviews}
+              selectedLibraryIndices={selectedLibraryIndices}
+              fullScreenImageIndex={fullScreenImageIndex}
+              showGuidelinePopup={showGuidelinePopup}
+              photoLibraryInputRef={photoLibraryInputRef}
+              cameraInputRef={cameraInputRef}
+              onRemoveImage={handleImageRemove}
+              onAddImageClick={handleAddImageClick}
+              onPhotoLibrarySelect={handlePhotoLibrarySelect}
+              onCameraCapture={handleCameraCapture}
+              onCloseImageSourceMenu={closeImageSourceMenu}
+              onSelectFromLibrary={handleSelectFromLibrary}
+              onTakePhoto={handleTakePhoto}
+              onClosePhotoLibrary={closePhotoLibrary}
+              onTogglePhotoSelection={togglePhotoSelection}
+              onViewFullScreen={handleViewFullScreen}
+              onConfirmPhotoSelection={handleConfirmPhotoSelection}
+              onBackToLibrary={handleBackToLibrary}
+              onGuidelinePopupClick={handleGuidelinePopupClick}
+            />
 
             {/* 매물 종류 / 방 개수 / 화장실 수 */}
             <section
@@ -1473,230 +1091,19 @@ export default function AddPropertyPage() {
               </div>
             </section>
 
-            {/* 숙소시설 및 정책 — 편지지: 상단 제목, 하단 내용, 왼쪽 정렬 */}
-            <section
-              className="p-5 rounded-2xl text-left"
-              style={{
-                backgroundColor: `${COLORS.border}20`,
-                border: `1.5px dashed ${COLORS.border}`,
-              }}
-            >
-              <h2
-                className="text-sm font-bold mb-4 text-left"
-                style={{ color: COLORS.text }}
-              >
-                {currentLanguage === "ko"
-                  ? "숙소시설 및 정책"
-                  : currentLanguage === "vi"
-                    ? "Tiện ích và chính sách"
-                  : currentLanguage === "ja"
-                    ? "施設とポリシー"
-                  : currentLanguage === "zh"
-                    ? "设施与政策"
-                    : "Facilities & Policy"}
-              </h2>
-              <div className="space-y-6 text-left">
-                {FACILITY_CATEGORIES.map((cat) => {
-                  const isBadgeCategory = ["furniture", "electronics", "kitchen"].includes(cat.id);
-                  const fullFurniture =
-                    cat.id === "furniture" &&
-                    FULL_FURNITURE_IDS.every((id) =>
-                      selectedFacilities.includes(id),
-                    );
-                  const fullElectronics =
-                    cat.id === "electronics" &&
-                    FULL_ELECTRONICS_IDS.every((id) =>
-                      selectedFacilities.includes(id),
-                    );
-                  const fullOptionKitchen =
-                    cat.id === "kitchen" &&
-                    FULL_OPTION_KITCHEN_IDS.every((id) =>
-                      selectedFacilities.includes(id),
-                    );
-                  return (
-                    <div
-                      key={cat.id}
-                      className="pt-4 pb-2 text-left"
-                      style={{
-                        borderTop: `1.5px dashed ${COLORS.border}`,
-                      }}
-                    >
-                      <div className="flex items-center gap-2 mb-2 justify-start text-left">
-                        <p className="text-xs font-bold text-gray-500 text-left">
-                          {getLocalizedLabel(cat.label)}
-                        </p>
-                        {/* 뱃지 획득 안내 문구 추가 */}
-                        {isBadgeCategory && (
-                          <div className="flex items-center gap-1 bg-orange-50 px-2 py-0.5 rounded-full">
-                            <Sparkles className="w-3 h-3 text-orange-500" />
-                            <p className="text-[10px] text-orange-600 font-medium">모든 선택 시 뱃지 획득</p>
-                          </div>
-                        )}
-                      </div>
-                      
-                      {/* 시설 아이콘 그리드 — 왼쪽 정렬 */}
-                      <div className="grid grid-cols-4 gap-3 justify-items-start">
-                        {FACILITY_OPTIONS.filter(o => o.category === cat.id).map(opt => {
-                          const Icon = opt.icon;
-                          const isSelected = selectedFacilities.includes(opt.id);
-                          const label = getLocalizedLabel(opt.label);
-                          return (
-                            <div key={opt.id} className="flex flex-col items-center gap-1.5 text-left">
-                              <button
-                                type="button"
-                                onClick={() => toggleFacility(opt.id)}
-                                className="w-14 h-14 rounded-2xl flex items-center justify-center border transition-all"
-                                style={{
-                                  backgroundColor: isSelected ? COLORS.primary : COLORS.white,
-                                  borderColor: isSelected ? COLORS.primary : COLORS.border,
-                                }}
-                              >
-                                <Icon className={`w-6 h-6 ${isSelected ? 'text-white' : 'text-gray-400'}`} />
-                              </button>
-                              <span className="text-[10px] text-gray-600 font-medium leading-tight text-center">
-                                {label}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* pet/cleaning 상세 입력은 그리드 셀 밖으로 빼서(레이아웃 겹침 방지) */}
-                      {cat.id === "policy" && selectedFacilities.includes("pet") && (
-                        <div className="mt-3">
-                          <div className="grid grid-cols-2 gap-3 items-start">
-                            <div className="flex flex-col gap-1">
-                              <span className="text-[11px] font-medium" style={{ color: COLORS.textSecondary }}>
-                                {currentLanguage === "ko"
-                                  ? "최대 마리수"
-                                  : currentLanguage === "vi"
-                                    ? "Số con tối đa"
-                                    : "Max pets"}
-                              </span>
-                              <select
-                                value={maxPets}
-                                onChange={(e) => setMaxPets(Number(e.target.value))}
-                                className="w-[72px] px-2 py-2 text-xs rounded-lg focus:outline-none"
-                                style={{
-                                  backgroundColor: COLORS.white,
-                                  border: `1px solid ${COLORS.border}`,
-                                  color: COLORS.text,
-                                }}
-                              >
-                                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-                                  <option key={n} value={n}>
-                                    {n}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-
-                            <div className="flex flex-col gap-1">
-                              <span className="text-[11px] font-medium" style={{ color: COLORS.textSecondary }}>
-                                {currentLanguage === "ko"
-                                  ? "펫 수수료 (마리당)"
-                                  : currentLanguage === "vi"
-                                    ? "Phí thú cưng (mỗi con)"
-                                    : "Pet fee (per pet)"}
-                              </span>
-                              <div className="flex items-center gap-2">
-                                <input
-                                  type="text"
-                                  value={
-                                    petFeeAmount
-                                      ? parseInt(petFeeAmount.replace(/\D/g, ""), 10).toLocaleString()
-                                      : ""
-                                  }
-                                  onChange={(e) =>
-                                    setPetFeeAmount(e.target.value.replace(/\D/g, ""))
-                                  }
-                                  placeholder="0"
-                                  className="w-[88px] px-2 py-2 text-xs rounded-lg focus:outline-none"
-                                  style={{
-                                    backgroundColor: COLORS.white,
-                                    border: `1px solid ${COLORS.border}`,
-                                    color: COLORS.text,
-                                  }}
-                                />
-                                <span className="text-xs font-medium shrink-0" style={{ color: COLORS.textSecondary }}>
-                                  VND
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {cat.id === "policy" && selectedFacilities.includes("cleaning") && (
-                        <div className="mt-3">
-                          <div className="flex flex-col gap-1">
-                            <span className="text-[11px] font-medium" style={{ color: COLORS.textSecondary }}>
-                              {currentLanguage === "ko"
-                                ? "주당 청소 횟수"
-                                : currentLanguage === "vi"
-                                  ? "Số lần dọn dẹp/tuần"
-                                  : "Cleaning per week"}
-                            </span>
-                            <select
-                              value={cleaningPerWeek}
-                              onChange={(e) => setCleaningPerWeek(Number(e.target.value))}
-                              className="w-full px-3 py-2 text-xs rounded-lg focus:outline-none"
-                              style={{
-                                backgroundColor: COLORS.white,
-                                border: `1px solid ${COLORS.border}`,
-                                color: COLORS.text,
-                              }}
-                            >
-                              {[1, 2, 3, 4, 5, 6, 7].map((n) => (
-                                <option key={n} value={n}>
-                                  {n}
-                                  {currentLanguage === "ko"
-                                    ? "회"
-                                    : currentLanguage === "vi"
-                                      ? " lần"
-                                      : "x"}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-                      )}
-
-                      {fullFurniture && (
-                        <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 text-green-800 text-[10px] font-bold border border-green-300">
-                          <Sparkles className="w-3.5 h-3.5" />
-                          {currentLanguage === "ko"
-                            ? "풀 가구"
-                            : currentLanguage === "vi"
-                              ? "Nội thất đầy đủ"
-                              : "Full Furniture"}
-                        </div>
-                      )}
-                      {fullElectronics && (
-                        <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 text-green-800 text-[10px] font-bold border border-green-300">
-                          <Sparkles className="w-3.5 h-3.5" />
-                          {currentLanguage === "ko"
-                            ? "풀 가전"
-                            : currentLanguage === "vi"
-                              ? "Điện tử đầy đủ"
-                              : "Full Electronics"}
-                        </div>
-                      )}
-                      {fullOptionKitchen && (
-                        <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 text-green-800 text-[10px] font-bold border border-green-300">
-                          <Sparkles className="w-3.5 h-3.5" />
-                          {currentLanguage === "ko"
-                            ? "풀옵션 주방"
-                            : currentLanguage === "vi"
-                              ? "Bếp đầy đủ"
-                              : "Full Kitchen"}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
+            <AddPropertyPolicySection
+              currentLanguage={currentLanguage}
+              colors={COLORS}
+              selectedFacilities={selectedFacilities}
+              maxPets={maxPets}
+              petFeeAmount={petFeeAmount}
+              cleaningPerWeek={cleaningPerWeek}
+              onToggleFacility={toggleFacility}
+              onMaxPetsChange={setMaxPets}
+              onPetFeeAmountChange={setPetFeeAmount}
+              onCleaningPerWeekChange={setCleaningPerWeek}
+              getLocalizedLabel={getLocalizedLabel}
+            />
 
             {/* 체크인/체크아웃 시간 */}
             <section
@@ -2056,130 +1463,6 @@ export default function AddPropertyPage() {
               isOwnerMode={true}
             />
           </div>
-        </div>
-      )}
-
-      {/* 가이드라인 팝업 */}
-      {showGuidelinePopup && (
-        <div
-          className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
-          onClick={handleGuidelinePopupClick}
-        >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-lg font-bold text-gray-900 mb-4 text-center">
-              {currentLanguage === "ko"
-                ? "📸 추천 사진 가이드라인"
-                : currentLanguage === "vi"
-                  ? "📸 Hướng dẫn ảnh đề xuất"
-                : currentLanguage === "ja"
-                  ? "📸 おすすめ写真ガイドライン"
-                : currentLanguage === "zh"
-                  ? "📸 推荐照片指南"
-                : "📸 Recommended Photo Guidelines"}
-            </h3>
-            <div className="space-y-3 mb-4">
-              <div className="flex items-center gap-2 text-sm text-gray-700">
-                <span className="text-2xl">🛏️</span>
-                <span>
-                  {currentLanguage === "ko"
-                    ? "침실"
-                    : currentLanguage === "vi"
-                      ? "Phòng ngủ"
-                    : currentLanguage === "ja"
-                      ? "寝室"
-                    : currentLanguage === "zh"
-                      ? "卧室"
-                    : "Bedroom"}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-gray-700">
-                <span className="text-2xl">🍳</span>
-                <span>
-                  {currentLanguage === "ko"
-                    ? "주방"
-                    : currentLanguage === "vi"
-                      ? "Bếp"
-                    : currentLanguage === "ja"
-                      ? "キッチン"
-                    : currentLanguage === "zh"
-                      ? "厨房"
-                    : "Kitchen"}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-gray-700">
-                <span className="text-2xl">🛋️</span>
-                <span>
-                  {currentLanguage === "ko"
-                    ? "거실"
-                    : currentLanguage === "vi"
-                      ? "Phòng khách"
-                    : currentLanguage === "ja"
-                      ? "リビングルーム"
-                    : currentLanguage === "zh"
-                      ? "客厅"
-                    : "Living Room"}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-gray-700">
-                <span className="text-2xl">🚿</span>
-                <span>
-                  {currentLanguage === "ko"
-                    ? "화장실"
-                    : currentLanguage === "vi"
-                      ? "Phòng tắm"
-                    : currentLanguage === "ja"
-                      ? "バスルーム"
-                    : currentLanguage === "zh"
-                      ? "浴室"
-                    : "Bathroom"}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-gray-700">
-                <span className="text-2xl">🪟</span>
-                <span>
-                  {currentLanguage === "ko"
-                    ? "창문뷰"
-                    : currentLanguage === "vi"
-                      ? "Cửa sổ"
-                    : currentLanguage === "ja"
-                      ? "窓の景色"
-                    : currentLanguage === "zh"
-                      ? "窗户景观"
-                    : "Window View"}
-                </span>
-              </div>
-            </div>
-            <p className="text-xs text-gray-500 text-center mb-4">
-              {currentLanguage === "ko"
-                ? "아무 곳이나 터치하여 카메라를 시작하세요"
-                : currentLanguage === "vi"
-                  ? "Chạm vào bất kỳ đâu để bắt đầu camera"
-                : currentLanguage === "ja"
-                  ? "どこかをタップしてカメラを開始"
-                : currentLanguage === "zh"
-                  ? "点击任意位置开始相机"
-                : "Tap anywhere to start camera"}
-            </p>
-            <button
-              onClick={handleGuidelinePopupClick}
-              className="w-full py-3 px-4 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors"
-            >
-              {currentLanguage === "ko"
-                ? "동의"
-                : currentLanguage === "vi"
-                  ? "Đồng ý"
-                : currentLanguage === "ja"
-                  ? "同意"
-                : currentLanguage === "zh"
-                  ? "同意"
-                : "Agree"}
-            </button>
-          </motion.div>
         </div>
       )}
 
