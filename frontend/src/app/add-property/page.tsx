@@ -345,6 +345,7 @@ export default function AddPropertyPage() {
 
   return (
     <div
+      data-testid="add-property-content"
       className="min-h-screen flex justify-center"
       style={{ backgroundColor: COLORS.background }}
     >

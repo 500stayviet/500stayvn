@@ -142,6 +142,7 @@ export function SearchFiltersSection({
               <Search className="h-4 w-4" style={{ color: BRAND.muted }} />
             </div>
             <input
+              data-testid="search-input"
               type="text"
               value={searchQuery}
               onChange={handleAddressInputChange}
@@ -242,6 +243,7 @@ export function SearchFiltersSection({
                 {getUIText("labelCity", currentLanguage)}
               </label>
               <select
+                data-testid="city-select"
                 value={selectedCityId ?? ""}
                 onChange={(e) => {
                   handleCityChange(e.target.value || null);
@@ -281,6 +283,7 @@ export function SearchFiltersSection({
                 {getUIText("labelDistrict", currentLanguage)}
               </label>
               <select
+                data-testid="district-select"
                 value={selectedDistrictId ?? ""}
                 onChange={(e) => {
                   handleDistrictChange(e.target.value || null);
@@ -512,6 +515,7 @@ export function SearchFiltersSection({
             </span>
           </button>
           <button
+            data-testid="search-run-button"
             onClick={runSearch}
             className="flex-1 py-3 px-4 text-white rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2"
             style={{ backgroundColor: BRAND.primary }}

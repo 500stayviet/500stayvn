@@ -42,3 +42,16 @@ next-env.d.ts
 
 # Sentry Config File
 .env.sentry-build-plugin
+
+# PWA/runtime generated artifacts
+public/sw.js
+public/workbox-*.js
+public/icon-*.original.png
+
+# Runtime uploads (user-generated verification images)
+public/uploads/
+
+# E2E outputs
+test-results/
+playwright-report/
+blob-report/

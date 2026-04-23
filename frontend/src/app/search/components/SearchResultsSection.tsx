@@ -17,29 +17,36 @@ export function SearchResultsSection({
   onPropertyClick,
 }: SearchResultsSectionProps) {
   return (
-    <div className="p-4">
+    <div className="p-4" data-testid="search-results-section">
       {loading ? (
-        <div className="text-center py-12 text-gray-500">
+        <div className="text-center py-12 text-gray-500" data-testid="search-results-loading">
           {getUIText("searching", currentLanguage)}
         </div>
       ) : filteredProperties.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">
+        <div className="text-center py-12 text-gray-500" data-testid="search-results-empty">
           {getUIText("noResultsFound", currentLanguage)}
         </div>
       ) : (
-        <div className="space-y-4">
-          <div className="text-sm text-gray-600 mb-4">
+        <div className="space-y-4" data-testid="search-results-list">
+          <div className="text-sm text-gray-600 mb-4" data-testid="search-results-count">
             {filteredProperties.length}
             {getUIText("propertiesFound", currentLanguage)}
           </div>
           {filteredProperties.map((property) => (
-            <PropertyCard
+            <button
               key={property.id}
-              property={property}
-              isSelected={false}
+              type="button"
+              data-testid={`search-result-item-${property.id}`}
               onClick={() => onPropertyClick(property)}
-              currentLanguage={currentLanguage}
-            />
+              className="cursor-pointer"
+            >
+              <PropertyCard
+                property={property}
+                isSelected={false}
+                onClick={() => onPropertyClick(property)}
+                currentLanguage={currentLanguage}
+              />
+            </button>
           ))}
         </div>
       )}
