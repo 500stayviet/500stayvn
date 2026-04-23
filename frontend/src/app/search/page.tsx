@@ -7,7 +7,7 @@
 
 "use client";
 
-import { useState, useEffect, useRef, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLanguage } from "@/contexts/LanguageContext";
 import type { SupportedLanguage } from "@/lib/api/translation";
@@ -199,16 +199,10 @@ function SearchContent() {
           }
         }
         
-        // 매물 로드 후, URL 파라미터가 있으면 자동으로 필터링 적용
-        // 홈에서 검색 후 검색 결과 페이지로 넘어올 때 바로 필터링 적용
-        if (cityIdParam || districtIdParam || query) {
-          console.log('URL params detected, applying filters...');
-          // 즉시 필터링 적용
-          applyFilters();
-        } else {
-          // URL 파라미터가 없으면 모든 매물 표시
-          setFilteredProperties(allProperties);
-        }
+        // 초기 로드에서는 원본 목록만 반영한다.
+        // 실제 필터링 적용은 shouldAutoApplyFilters/useEffect 경로로 단일화해
+        // 의존성 경고와 중복 적용을 방지한다.
+        setFilteredProperties(allProperties);
       } catch (error) {
         console.error('Error loading properties:', error);
       } finally {
@@ -229,7 +223,7 @@ function SearchContent() {
     try {
       const result = await geocodeAddress(searchQuery, currentLanguage);
       setSearchLocation({ lat: result.lat, lng: result.lng });
-    } catch (error) {
+    } catch {
       setSearchLocation(null);
     }
   };
@@ -240,7 +234,7 @@ function SearchContent() {
     } else {
       applyFilters();
     }
-  }, [properties, filtersApplied, filterVersion]);
+  }, [properties, filtersApplied, filterVersion, applyFilters]);
 
   // properties가 로드되면 shouldAutoApplyFilters가 true이면 자동으로 필터링 적용
   useEffect(() => {
@@ -249,7 +243,7 @@ function SearchContent() {
       applyFilters();
       setShouldAutoApplyFilters(false); // 한 번만 실행
     }
-  }, [properties, shouldAutoApplyFilters]);
+  }, [properties, shouldAutoApplyFilters, applyFilters]);
 
 
   // 고급 필터 초기화 함수 (주소, 도시, 구는 유지)
