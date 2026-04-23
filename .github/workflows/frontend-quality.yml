@@ -18,6 +18,15 @@ on:
 jobs:
   test-and-typecheck:
     runs-on: ubuntu-latest
+    env:
+      # CI build uses safe placeholders for client Firebase config.
+      # Runtime values are injected in deploy environments separately.
+      NEXT_PUBLIC_FIREBASE_API_KEY: "AIzaSyAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: "dummy.firebaseapp.com"
+      NEXT_PUBLIC_FIREBASE_PROJECT_ID: "dummy-project"
+      NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: "dummy-project.appspot.com"
+      NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: "1234567890"
+      NEXT_PUBLIC_FIREBASE_APP_ID: "1:1234567890:web:abcdef123456"
     defaults:
       run:
         working-directory: frontend
