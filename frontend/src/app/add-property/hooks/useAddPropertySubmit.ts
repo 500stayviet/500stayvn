@@ -7,44 +7,80 @@ import {
   validateAddPropertyInput,
 } from "../utils/addPropertySubmit";
 
+type PropertyType =
+  | ""
+  | "studio"
+  | "one_room"
+  | "two_room"
+  | "three_plus"
+  | "detached";
+
+interface AddPropertyAddressState {
+  address: string;
+  coordinates: { lat: number; lng: number } | null;
+  selectedCityId: string;
+  selectedDistrictId: string;
+  buildingNumber: string;
+  roomNumber: string;
+}
+
+interface AddPropertyMediaState {
+  images: File[];
+  imagePreviews: string[];
+}
+
+interface AddPropertyPricingAndCapacityState {
+  weeklyRent: string;
+  propertyType: PropertyType;
+  bedrooms: number;
+  bathrooms: number;
+  maxAdults: number;
+  maxChildren: number;
+}
+
+interface AddPropertyContentState {
+  title: string;
+  propertyDescription: string;
+}
+
+interface AddPropertyScheduleState {
+  checkInDate: Date | null;
+  checkOutDate: Date | null;
+  todayOnly: Date;
+  maxRentalDay: Date;
+  checkInTime: string;
+  checkOutTime: string;
+}
+
+interface AddPropertyFacilityState {
+  selectedFacilities: string[];
+  cleaningPerWeek: number;
+  petAllowed: boolean;
+  maxPets: number;
+  petFeeAmount: string;
+}
+
+interface AddPropertyExternalCalendarState {
+  icalPlatform: string;
+  icalCalendarName: string;
+  icalUrl: string;
+}
+
+type AddPropertySubmitFormState = AddPropertyAddressState &
+  AddPropertyMediaState &
+  AddPropertyPricingAndCapacityState &
+  AddPropertyContentState &
+  AddPropertyScheduleState &
+  AddPropertyFacilityState &
+  AddPropertyExternalCalendarState;
+
 interface UseAddPropertySubmitParams {
   currentLanguage: string;
   user: { uid: string } | null;
   router: { push: (path: string) => void };
   setLoading: (value: boolean) => void;
   onSuccess: () => void;
-  formState: {
-    address: string;
-    coordinates: { lat: number; lng: number } | null;
-    selectedCityId: string;
-    selectedDistrictId: string;
-    images: File[];
-    imagePreviews: string[];
-    weeklyRent: string;
-    propertyType: "" | "studio" | "one_room" | "two_room" | "three_plus" | "detached";
-    title: string;
-    propertyDescription: string;
-    checkInDate: Date | null;
-    checkOutDate: Date | null;
-    todayOnly: Date;
-    maxRentalDay: Date;
-    bedrooms: number;
-    bathrooms: number;
-    selectedFacilities: string[];
-    buildingNumber: string;
-    roomNumber: string;
-    cleaningPerWeek: number;
-    petAllowed: boolean;
-    maxPets: number;
-    petFeeAmount: string;
-    checkInTime: string;
-    checkOutTime: string;
-    maxAdults: number;
-    maxChildren: number;
-    icalPlatform: string;
-    icalCalendarName: string;
-    icalUrl: string;
-  };
+  formState: AddPropertySubmitFormState;
 }
 
 export function useAddPropertySubmit({
