@@ -38,17 +38,28 @@
 - Provider slot switching introduced with env toggle
   - Added `NEXT_PUBLIC_USE_MOCK` based switch in provider resolver
   - Added `Payment`/`KYC`/`Bank`/`Otp` mock providers (`mockProviders.ts`) and connected to provider getters
-- CI install stability hardening applied for GitHub Actions
-  - `frontend-quality` workflow now logs latest npm debug tail and falls back to `npm install` when `npm ci` fails (`ef0eedc`)
+- Mock provider scenario flags expanded
+  - `success | fail | partial` can now be selected by env/query (`NEXT_PUBLIC_MOCK_SCENARIO`, `?mockScenario=`) for QA/E2E replay
+- CI install policy restored to strict `npm ci` only
+  - Removed `npm install` fallback in GitHub Actions and Amplify install phases (`4b46f60`)
+  - Aligned `frontend/package-lock.json` with npm `10.8.2` used in CI to prevent `npm ci` EUSAGE mismatch (`8e695ea`)
 - Amplify deploy pipeline stabilized and recovered
   - Buildspec parsing fixes + bounded npm debug logs + deploy recovery (`dc12cfb`, `25abc24`, `5f94251`)
   - Current production deploy resumed successfully (`Deploy 90`)
+- Performance re-measurement snapshot (post-provider/refactor updates)
+  - `/map` first-load JS: `143 kB` (stable)
+  - `/add-property` first-load JS: `254 kB`
+  - `/profile/my-properties` first-load JS: `215 kB`
+  - `/profile/my-properties/[id]/edit` first-load JS: `109 kB` (stable)
+  - `/profile/edit` first-load JS: `160 kB`
+  - `/kyc` first-load JS: `198 kB`
+  - `/booking` first-load JS: `179 kB`
 
 ## Next Sequence
 
-1. Run and record completion gate bundle (`npx tsc --noEmit`, `npm run build`, CI green)
-2. Add scenario flags for mock providers (success/failure/edge cases) if needed for E2E
-3. Track npm lockfile drift cause and return CI/Amp install step to strict `npm ci`-only after root cause is closed
+1. Keep strict `npm ci` green on both GitHub Actions and Amplify (monitor next deploy cycle)
+2. Add E2E cases for `mockScenario=fail|partial` critical flows
+3. Plan Node 20 deprecation 대응 for Actions runtime/tooling
 
 ## Completion Gate
 
