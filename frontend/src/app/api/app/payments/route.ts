@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { rejectAppWriteUnlessActorAllowed } from '@/lib/server/appSyncWriteGuard';
 import { appApiError } from '@/lib/server/appApiErrors';
@@ -7,6 +7,7 @@ import {
   rejectAppReadUnlessBookingParticipant,
 } from '@/lib/server/appApiReadGuard';
 import { reportApiException, reportApiSuccess } from '@/lib/server/apiMonitoring';
+import { appApiOk } from '@/lib/server/appApiResponses';
 
 export async function GET(request: NextRequest) {
   const startedAt = Date.now();
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
       userId || null
     );
     reportApiSuccess('GET /api/app/payments', 200, startedAt);
-    return NextResponse.json({ payments: rows });
+    return appApiOk({ payments: rows });
   } catch (e) {
     reportApiException('GET /api/app/payments', e, startedAt);
     console.error('GET /api/app/payments', e);
@@ -107,7 +108,7 @@ export async function POST(request: NextRequest) {
         `,
         idempotencyKey
       )) as unknown[];
-      if (existing[0]) return NextResponse.json(existing[0], { status: 200 });
+      if (existing[0]) return appApiOk({ payment: existing[0] }, 200);
     }
 
     const rows = await prisma.$queryRawUnsafe(
@@ -133,7 +134,7 @@ export async function POST(request: NextRequest) {
       body.metaJson ? JSON.stringify(body.metaJson) : null
     );
     reportApiSuccess('POST /api/app/payments', 201, startedAt);
-    return NextResponse.json((rows as unknown[])[0] || null, { status: 201 });
+    return appApiOk({ payment: (rows as unknown[])[0] || null }, 201);
   } catch (e) {
     reportApiException('POST /api/app/payments', e, startedAt);
     console.error('POST /api/app/payments', e);

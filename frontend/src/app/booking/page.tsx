@@ -11,11 +11,10 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { getProperty } from "@/lib/api/properties";
 import { PropertyData } from "@/types/property";
 import {
-  createBooking,
-  completePayment,
   toISODateString,
   BookingData,
 } from "@/lib/api/bookings";
+import { getPaymentProvider } from "@/lib/providers/currentProviders";
 import {
   ArrowLeft,
   Calendar,
@@ -109,6 +108,7 @@ function BookingContent() {
   const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
   const { currentLanguage, setCurrentLanguage } = useLanguage();
+  const paymentProvider = getPaymentProvider();
 
   const propertyId = searchParams.get("propertyId");
   const checkInParam = searchParams.get("checkIn");
@@ -239,7 +239,7 @@ function BookingContent() {
     if (!property || !checkInDate || !checkOutDate || !user) return;
     setSubmitting(true);
     try {
-      const booking = await createBooking(
+      const booking = await paymentProvider.createBooking(
         {
           propertyId: property.id!,
           guestName: guestInfo.name,
@@ -278,7 +278,7 @@ function BookingContent() {
     if (!bookingId || !selectedPaymentMethod || !property?.id) return;
     setSubmitting(true);
     try {
-      await completePayment(
+      await paymentProvider.completePayment(
         bookingId,
         selectedPaymentMethod as BookingData["paymentMethod"],
       );

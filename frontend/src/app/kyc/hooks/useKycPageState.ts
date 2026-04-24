@@ -9,6 +9,7 @@ import {
   type IdDocumentData,
   type PhoneVerificationData,
 } from "@/types/kyc.types";
+import { getKycProvider } from "@/lib/providers/currentProviders";
 
 type KYCStep = 1 | 2 | 3;
 
@@ -23,6 +24,7 @@ export function useKycPageState() {
   const [phoneData, setPhoneData] = useState<PhoneVerificationData | null>(null);
   const [idDocumentData, setIdDocumentData] = useState<IdDocumentData | null>(null);
   const [faceData, setFaceData] = useState<FaceVerificationData | null>(null);
+  const kycProvider = getKycProvider();
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -66,9 +68,8 @@ export function useKycPageState() {
     setError("");
 
     try {
-      const { savePhoneVerification } = await import("@/lib/api/kyc");
       try {
-        await savePhoneVerification(user.uid, data);
+        await kycProvider.savePhoneVerification(user.uid, data);
       } catch (apiError) {
         console.log("Test mode: Phone verification API failed, continuing anyway:", apiError);
       }
@@ -95,9 +96,8 @@ export function useKycPageState() {
     setError("");
 
     try {
-      const { saveIdDocument } = await import("@/lib/api/kyc");
       try {
-        await saveIdDocument(user.uid, data, frontImageFile, backImageFile);
+        await kycProvider.saveIdDocument(user.uid, data, frontImageFile, backImageFile);
       } catch (apiError) {
         console.log("Test mode: ID document upload API failed, continuing anyway:", apiError);
       }
@@ -144,12 +144,11 @@ export function useKycPageState() {
     };
 
     try {
-      const { saveIdDocument } = await import("@/lib/api/kyc");
       const dummyFrontFile = createDummyFile("test-id-front.jpg", "Test ID Front");
       const dummyBackFile = createDummyFile("test-id-back.jpg", "Test ID Back");
 
       try {
-        await saveIdDocument(user.uid, dummyIdData, dummyFrontFile, dummyBackFile);
+        await kycProvider.saveIdDocument(user.uid, dummyIdData, dummyFrontFile, dummyBackFile);
       } catch (apiError) {
         console.log("Test mode: ID document next API failed, continuing anyway:", apiError);
       }
@@ -176,12 +175,9 @@ export function useKycPageState() {
     setError("");
 
     try {
-      const { saveFaceVerification, completeKYCVerification } = await import(
-        "@/lib/api/kyc"
-      );
-      await saveFaceVerification(user.uid, images);
+      await kycProvider.saveFaceVerification(user.uid, images);
       setFaceData(data);
-      await completeKYCVerification(user.uid);
+      await kycProvider.completeKYCVerification(user.uid);
       router.push("/profile");
     } catch (faceError: unknown) {
       console.error("Face verification error:", faceError);

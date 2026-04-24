@@ -17,6 +17,7 @@ import type { UserData } from '@/lib/api/auth';
 import { SupportedLanguage } from '@/lib/api/translation';
 import TopBar from '@/components/TopBar';
 import { getUIText } from '@/utils/i18n';
+import { getOtpProvider } from '@/lib/providers/currentProviders';
 
 const InternationalPhoneInput = dynamic(
   () => import('@/components/auth/InternationalPhoneInput'),
@@ -63,6 +64,7 @@ export default function EditProfilePage() {
 
   // 조건부 인증 설정
   const requirePhoneVerification = process.env.NEXT_PUBLIC_REQUIRE_PHONE_VERIFICATION === 'true';
+  const otpProvider = getOtpProvider();
 
   const handleProfileImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -133,21 +135,14 @@ export default function EditProfilePage() {
     setUpdatingPhone(true);
     setUpdateError('');
     try {
-      const response = await fetch('/api/auth/send-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phoneNumber: normalizedPhone }),
-      });
-      
-      if (response.ok) {
+      const result = await otpProvider.sendOtp(normalizedPhone);
+      if (result.ok) {
         setOtpSent(true);
         setOtpError('');
         return true;
-      } else {
-        const data = await response.json();
-        setUpdateError(data.error || 'Failed to send OTP');
-        return false;
       }
+      setUpdateError(result.error || 'Failed to send OTP');
+      return false;
     } catch (err) {
       setUpdateError('System error occurred');
       return false;
@@ -161,17 +156,12 @@ export default function EditProfilePage() {
     setIsVerifyingOtp(true);
     setOtpError('');
     try {
-      const response = await fetch('/api/auth/send-otp', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phoneNumber: editPhone, code: otpCode }),
-      });
-      if (response.ok) {
+      const result = await otpProvider.verifyOtp(editPhone, otpCode);
+      if (result.ok) {
         setIsPhoneVerified(true);
         setOtpError('');
       } else {
-        const data = await response.json();
-        setOtpError(data.error || 'Invalid code');
+        setOtpError(result.error || 'Invalid code');
       }
     } catch (err) {
       setOtpError('Verification error');

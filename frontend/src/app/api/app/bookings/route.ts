@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import {
   bookingDataToUncheckedCreate,
@@ -13,6 +13,7 @@ import { getAdminFromRequest } from '@/lib/server/adminAuthServer';
 import { appApiError } from '@/lib/server/appApiErrors';
 import type { BookingData } from '@/lib/api/bookings';
 import { reportApiException, reportApiSuccess } from '@/lib/server/apiMonitoring';
+import { appApiOk } from '@/lib/server/appApiResponses';
 
 const MAX_BATCH = 5000;
 
@@ -108,7 +109,7 @@ export async function GET(request: NextRequest) {
       });
       const nextCursor = makeBookingsCursor(rows[rows.length - 1] || null);
       reportApiSuccess('GET /api/app/bookings', 200, startedAt);
-      return NextResponse.json({
+      return appApiOk({
         bookings: rows.map(prismaBookingToBookingData),
         page: {
           limit,
@@ -145,7 +146,7 @@ export async function GET(request: NextRequest) {
     });
     const nextCursor = makeBookingsCursor(rows[rows.length - 1] || null);
     reportApiSuccess('GET /api/app/bookings', 200, startedAt);
-    return NextResponse.json({
+    return appApiOk({
       bookings: rows.map(prismaBookingToBookingData),
       page: {
         limit,
@@ -158,7 +159,7 @@ export async function GET(request: NextRequest) {
   } catch (e) {
     reportApiException('GET /api/app/bookings', e, startedAt);
     console.error('GET /api/app/bookings', e);
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
+    return appApiError('database_unavailable', 503);
   }
 }
 
@@ -171,15 +172,15 @@ export async function PUT(request: NextRequest) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: 'invalid_body' }, { status: 400 });
+    return appApiError('invalid_body', 400);
   }
 
   const bookings = Array.isArray(body.bookings) ? body.bookings : [];
   if (bookings.length > MAX_BATCH) {
-    return NextResponse.json({ error: 'too_many' }, { status: 400 });
+    return appApiError('too_many', 400);
   }
   if (hasOverlappingActiveBookings(bookings)) {
-    return NextResponse.json({ error: 'duplicate_booking_overlap' }, { status: 409 });
+    return appApiError('duplicate_booking_overlap', 409);
   }
 
   try {
@@ -205,10 +206,10 @@ export async function PUT(request: NextRequest) {
     });
 
     reportApiSuccess('PUT /api/app/bookings', 200, startedAt);
-    return NextResponse.json({ ok: true });
+    return appApiOk({ synced: true });
   } catch (e) {
     reportApiException('PUT /api/app/bookings', e, startedAt);
     console.error('PUT /api/app/bookings', e);
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
+    return appApiError('database_unavailable', 503);
   }
 }

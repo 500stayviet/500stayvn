@@ -34,18 +34,12 @@ import {
 import { formatDate } from '@/lib/utils/dateUtils';
 import { useAdminDomainRefresh } from '@/lib/adminDomainEventsClient';
 import {
-  addAppBankAccount,
-  createAppWithdrawalRequest,
-  getAppBankAccounts,
-  getAppOwnerBalances,
   getAppSettlementOverlay,
-  getAppWithdrawalRequests,
-  removeAppBankAccount,
-  setAppPrimaryBankAccount,
   type ServerOwnerBalances,
   type ServerBankAccount as BankAccount,
   type ServerWithdrawalRequest as WithdrawalRequest,
 } from '@/lib/api/financeServer';
+import { getBankProvider } from '@/lib/providers/currentProviders';
 
 type TabType = 'revenue' | 'withdrawal' | 'bank';
 
@@ -91,6 +85,7 @@ export default function SettlementPage() {
   const [newAccountHolder, setNewAccountHolder] = useState('');
   const [setAsPrimaryOnCreate, setSetAsPrimaryOnCreate] = useState(true);
   const [revenueTick, setRevenueTick] = useState(0);
+  const bankProvider = getBankProvider();
 
   useAdminDomainRefresh(['booking'], () => {
     setRevenueTick((t) => t + 1);
@@ -224,11 +219,11 @@ export default function SettlementPage() {
 
   const refreshFinanceData = async () => {
     if (!user?.uid) return;
-    const accounts = await getAppBankAccounts();
-    const withdrawals = (await getAppWithdrawalRequests()).sort(
+    const accounts = await bankProvider.getBankAccounts();
+    const withdrawals = (await bankProvider.getWithdrawalRequests()).sort(
       (a, b) => new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime()
     );
-    const balances = await getAppOwnerBalances();
+    const balances = await bankProvider.getOwnerBalances();
     setBankAccounts(accounts);
     setWithdrawalHistory(withdrawals);
     setOwnerBalances(balances);
@@ -254,7 +249,7 @@ export default function SettlementPage() {
       alert(currentLanguage === 'ko' ? '계좌를 선택해주세요.' : 'Vui lòng chọn tài khoản.');
       return;
     }
-    const result = await createAppWithdrawalRequest({ amount, bankAccountId: selectedBankId });
+    const result = await bankProvider.createWithdrawalRequest({ amount, bankAccountId: selectedBankId });
     if (!result.ok) {
       alert(result.message || 'Withdrawal request failed');
       return;
@@ -270,7 +265,7 @@ export default function SettlementPage() {
       alert(currentLanguage === 'ko' ? '계좌 정보를 모두 입력해주세요.' : 'Vui lòng nhập đầy đủ thông tin tài khoản.');
       return;
     }
-    const ok = await addAppBankAccount({
+    const ok = await bankProvider.addBankAccount({
       bankName: newBankName.trim(),
       accountNumber: newAccountNumber.trim(),
       accountHolder: newAccountHolder.trim(),
@@ -621,7 +616,7 @@ export default function SettlementPage() {
                             onClick={() => {
                               if (!user?.uid) return;
                               void (async () => {
-                                await setAppPrimaryBankAccount(account.id);
+                                await bankProvider.setPrimaryBankAccount(account.id);
                                 await refreshFinanceData();
                               })();
                             }}
@@ -634,7 +629,7 @@ export default function SettlementPage() {
                           onClick={() => {
                             if (!user?.uid) return;
                             void (async () => {
-                              await removeAppBankAccount(account.id);
+                              await bankProvider.removeBankAccount(account.id);
                               await refreshFinanceData();
                             })();
                           }}

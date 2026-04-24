@@ -29,6 +29,15 @@
 - `my-properties` regression E2E expanded
   - Duplicate-live modal cancel branch (`No`) coverage added
   - Existing flow retained: tab transitions + ended edit + duplicate-live confirm (`Yes`)
+- `add-property/page.tsx` decomposition follow-up completed
+  - Page-level state/handler orchestration moved into `useAddPropertyPageState`
+  - `page.tsx` now focuses on composition wiring of section components
+- `profile/my-properties/page.tsx` decomposition phase 2 completed
+  - Dialog confirm action logic moved from page into `useMyPropertiesPageState`
+  - Added state action handlers: pending->ended confirm + duplicate-live confirm navigation
+- Provider slot switching introduced with env toggle
+  - Added `NEXT_PUBLIC_USE_MOCK` based switch in provider resolver
+  - Added `Payment`/`KYC`/`Bank`/`Otp` mock providers (`mockProviders.ts`) and connected to provider getters
 - CI install stability hardening applied for GitHub Actions
   - `frontend-quality` workflow now logs latest npm debug tail and falls back to `npm install` when `npm ci` fails (`ef0eedc`)
 - Amplify deploy pipeline stabilized and recovered
@@ -37,8 +46,8 @@
 
 ## Next Sequence
 
-1. Finalize remaining large-page refactor targets (composition-first)
-2. Keep `my-properties` regression E2E green while adding 1-2 edge cases
+1. Run and record completion gate bundle (`npx tsc --noEmit`, `npm run build`, CI green)
+2. Add scenario flags for mock providers (success/failure/edge cases) if needed for E2E
 3. Track npm lockfile drift cause and return CI/Amp install step to strict `npm ci`-only after root cause is closed
 
 ## Completion Gate

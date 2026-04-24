@@ -11,6 +11,14 @@ import { areSamePropertyValues } from "@/lib/utils/propertyDedup";
 import type { PropertyData } from "@/types/property";
 
 export type HostInventoryTab = "live" | "pending" | "ended";
+export type LiveExistsConfirmState = {
+  activeId: string;
+  shadowId: string;
+  activeLabel: string;
+  activeAddress: string;
+  activeUnit?: string;
+  returnTab: HostInventoryTab;
+};
 
 export function parseHostTab(s: string | null): HostInventoryTab {
   if (s === "pending" || s === "ended") return s;
@@ -43,14 +51,7 @@ export function useMyPropertiesPageState({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [showEndAdFromPendingConfirm, setShowEndAdFromPendingConfirm] = useState<string | null>(null);
-  const [liveExistsConfirm, setLiveExistsConfirm] = useState<{
-    activeId: string;
-    shadowId: string;
-    activeLabel: string;
-    activeAddress: string;
-    activeUnit?: string;
-    returnTab: HostInventoryTab;
-  } | null>(null);
+  const [liveExistsConfirm, setLiveExistsConfirm] = useState<LiveExistsConfirmState | null>(null);
 
   const fetchInventory = useCallback(async (): Promise<InventoryBuckets> => {
     if (!user) throw new Error("User is not authenticated");
@@ -174,6 +175,21 @@ export function useMyPropertiesPageState({
     router.push(`/profile/my-properties/${property.id}/edit?extend=1&returnTab=${rt}`);
   };
 
+  const handleConfirmPendingEnd = async (id: string) => {
+    setShowEndAdFromPendingConfirm(null);
+    await handleEndAd(id);
+  };
+
+  const handleConfirmLiveExists = (value: LiveExistsConfirmState) => {
+    setLiveExistsConfirm(null);
+    const q = new URLSearchParams({
+      extend: "1",
+      returnTab: value.returnTab,
+      dismissSiblingId: value.shadowId,
+    });
+    router.push(`/profile/my-properties/${value.activeId}/edit?${q.toString()}`);
+  };
+
   const tabCount = (t: HostInventoryTab) => {
     if (!inventory) return 0;
     switch (t) {
@@ -203,6 +219,8 @@ export function useMyPropertiesPageState({
     tabCount,
     handleDelete,
     handleEndAd,
+    handleConfirmPendingEnd,
+    handleConfirmLiveExists,
     openEditWithLiveDuplicateCheck,
   };
 }

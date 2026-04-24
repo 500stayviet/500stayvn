@@ -1,26 +1,19 @@
 "use client";
 
-import { useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { LISTING_MAX_SUPPLY_DAYS } from "@/lib/constants/listingCalendar";
 import {
   Loader2,
   Check,
 } from "lucide-react";
 import TopBar from "@/components/TopBar";
-import { searchRegions } from "@/lib/data/vietnam-regions";
-import { usePropertyImageManager } from "./hooks/usePropertyImageManager";
-import { useAddPropertyAccess } from "./hooks/useAddPropertyAccess";
-import { useAddPropertyFormRules } from "./hooks/useAddPropertyFormRules";
-import { useAddPropertyCalendarIcal } from "./hooks/useAddPropertyCalendarIcal";
-import { useAddPropertySubmit } from "./hooks/useAddPropertySubmit";
 import { AddPropertyAddressSection } from "./components/AddPropertyAddressSection";
 import { AddPropertyRentalSection } from "./components/AddPropertyRentalSection";
 import { AddPropertyTypeSection } from "./components/AddPropertyTypeSection";
 import { ADD_PROPERTY_COLORS as COLORS } from "./constants/addPropertyColors";
+import { useAddPropertyPageState } from "./hooks/useAddPropertyPageState";
 
 const AddPropertyImageSection = dynamic(
   () =>
@@ -70,186 +63,72 @@ export default function AddPropertyPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const { currentLanguage } = useLanguage();
-  const [loading, setLoading] = useState(false);
-  const { checkingAccess, hasAccess } = useAddPropertyAccess({
-    user,
-    authLoading,
-    onRedirect: (path) => router.push(path),
-  });
-
-  const todayOnly = (() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
-  })();
-  const maxRentalDay = (() => {
-    const d = new Date(todayOnly);
-    d.setDate(d.getDate() + LISTING_MAX_SUPPLY_DAYS);
-    return d;
-  })();
-  // 폼 상태
-  const [images, setImages] = useState<File[]>([]);
-  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
-  const [address, setAddress] = useState("");
-  const [buildingNumber, setBuildingNumber] = useState(""); // 동
-  const [roomNumber, setRoomNumber] = useState(""); // 호실
-  const [weeklyRent, setWeeklyRent] = useState("");
-  const [selectedFacilities, setSelectedFacilities] = useState<string[]>([]);
-  const [propertyType, setPropertyType] = useState<
-    "" | "studio" | "one_room" | "two_room" | "three_plus" | "detached"
-  >("");
-  const [cleaningPerWeek, setCleaningPerWeek] = useState(1);
-  const [maxPets, setMaxPets] = useState(1);
-  const [petFeeAmount, setPetFeeAmount] = useState("");
-  const [coordinates, setCoordinates] = useState<{
-    lat: number;
-    lng: number;
-  } | null>(null);
-  const [selectedCityId, setSelectedCityId] = useState("");
-  const [selectedDistrictId, setSelectedDistrictId] = useState("");
-  const [maxAdults, setMaxAdults] = useState(1);
-  const [maxChildren, setMaxChildren] = useState(0);
-  const [bedrooms, setBedrooms] = useState(0);
-  const [bathrooms, setBathrooms] = useState(0);
-  const [title, setTitle] = useState(""); // 매물명 (title)
-  const [propertyDescription, setPropertyDescription] = useState("");
-  // 체크인/체크아웃 시간
-  const [checkInTime, setCheckInTime] = useState("14:00");
-  const [checkOutTime, setCheckOutTime] = useState("12:00");
-
-  const { toggleFacility, petAllowed, bedroomOptions, bathroomOptions } =
-    useAddPropertyFormRules({
-      propertyType,
-      setBedrooms,
-      setBathrooms,
-      selectedCityId,
-      selectedDistrictId,
-      setSelectedDistrictId,
-      selectedFacilities,
-      setSelectedFacilities,
-    });
-
   const {
-    showCalendar,
-    calendarMode,
-    checkInDate,
-    checkOutDate,
-    icalPlatform,
-    icalCalendarName,
-    icalUrl,
-    showIcalDropdown,
+    loading,
+    checkingAccess,
+    hasAccess,
+    maxRentalDay,
+    images,
+    imagePreviews,
+    address,
+    buildingNumber,
+    roomNumber,
+    weeklyRent,
+    selectedFacilities,
+    propertyType,
+    cleaningPerWeek,
+    maxPets,
+    petFeeAmount,
+    coordinates,
+    selectedCityId,
+    selectedDistrictId,
+    maxAdults,
+    maxChildren,
+    bedrooms,
+    bathrooms,
+    title,
+    propertyDescription,
+    checkInTime,
+    checkOutTime,
+    showSuccessModal,
+    showAddressModal,
+    bedroomOptions,
+    bathroomOptions,
+    calendarState,
+    imageState,
+    handleSubmit,
+    submitDisabled,
+    getLocalizedLabel,
+    handleAddressConfirm,
+    clearAddress,
+    setShowAddressModal,
+    setShowSuccessModal,
+    setBuildingNumber,
+    setRoomNumber,
+    setWeeklyRent,
+    setPropertyType,
+    setBedrooms,
+    setBathrooms,
+    setMaxAdults,
+    setMaxChildren,
+    setSelectedCityId,
+    setSelectedDistrictId,
+    setMaxPets,
+    setPetFeeAmount,
+    setCleaningPerWeek,
+    setTitle,
+    setPropertyDescription,
+    setCheckInTime,
+    setCheckOutTime,
     setIcalPlatform,
     setIcalCalendarName,
     setIcalUrl,
-    openCheckInCalendar,
-    openCheckOutCalendar,
-    closeCalendar,
-    onCheckInSelect,
-    onCheckOutSelect,
-    onCheckInReset,
-    toggleIcalDropdown,
-  } = useAddPropertyCalendarIcal();
-
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const {
-    showPhotoLibrary,
-    photoLibraryPreviews,
-    selectedLibraryIndices,
-    fullScreenImageIndex,
-    showImageSourceMenu,
-    showGuidelinePopup,
-    photoLibraryInputRef,
-    cameraInputRef,
-    closePhotoLibrary,
-    handlePhotoLibrarySelect,
-    togglePhotoSelection,
-    handleConfirmPhotoSelection,
-    handleViewFullScreen,
-    handleBackToLibrary,
-    handleCameraCapture,
-    handleAddImageClick,
-    handleSelectFromLibrary,
-    handleTakePhoto,
-    closeImageSourceMenu,
-    handleGuidelinePopupClick,
-    handleImageRemove,
-  } = usePropertyImageManager({
-    images,
-    setImages,
-    imagePreviews,
-    setImagePreviews,
-  });
-
-  // 주소 확인 모달
-  const [showAddressModal, setShowAddressModal] = useState(false);
-
-  // 주소 확인 모달에서 주소 확정 시 (도시·구 자동 설정)
-  const getLocalizedLabel = (
-    label: { en: string; ko?: string; vi?: string; ja?: string; zh?: string },
-  ) => {
-    if (currentLanguage === "ko") return label.ko ?? label.en;
-    if (currentLanguage === "vi") return label.vi ?? label.en;
-    if (currentLanguage === "ja") return label.ja ?? label.en;
-    if (currentLanguage === "zh") return label.zh ?? label.en;
-    return label.en;
-  };
-
-  const handleAddressConfirm = (data: {
-    address: string;
-    lat: number;
-    lng: number;
-  }) => {
-    setAddress(data.address);
-    setCoordinates({ lat: data.lat, lng: data.lng });
-
-    // 요구사항:
-    // - 구(district)는 주소에 구 정보가 없어 항상 빈 값으로 두고, 사용자가 선택하게 함.
-    // - 도시(city)는 주소 텍스트에서 city 키워드가 있는 경우에만 프리필.
-    setSelectedDistrictId("");
-
-    const matches = searchRegions(data.address);
-    const cityMatch = matches.find((r) => r.type === "city");
-    setSelectedCityId(cityMatch ? cityMatch.id : "");
-  };
-
-  const { handleSubmit } = useAddPropertySubmit({
-    currentLanguage,
+    toggleFacility,
+  } = useAddPropertyPageState({
     user: user ? { uid: user.uid } : null,
-    router: { push: (path) => router.push(path) },
-    setLoading,
-    onSuccess: () => setShowSuccessModal(true),
-    formState: {
-      address,
-      coordinates,
-      selectedCityId,
-      selectedDistrictId,
-      images,
-      imagePreviews,
-      weeklyRent,
-      propertyType,
-      title,
-      propertyDescription,
-      checkInDate,
-      checkOutDate,
-      todayOnly,
-      maxRentalDay,
-      bedrooms,
-      bathrooms,
-      selectedFacilities,
-      buildingNumber,
-      roomNumber,
-      cleaningPerWeek,
-      petAllowed,
-      maxPets,
-      petFeeAmount,
-      checkInTime,
-      checkOutTime,
-      maxAdults,
-      maxChildren,
-      icalPlatform,
-      icalCalendarName,
-      icalUrl,
-    },
+    authLoading,
+    currentLanguage,
+    onPush: (path) => router.push(path),
   });
 
   // 접근 권한 확인 중
@@ -321,27 +200,27 @@ export default function AddPropertyPage() {
               colors={COLORS}
               images={images}
               imagePreviews={imagePreviews}
-              showImageSourceMenu={showImageSourceMenu}
-              showPhotoLibrary={showPhotoLibrary}
-              photoLibraryPreviews={photoLibraryPreviews}
-              selectedLibraryIndices={selectedLibraryIndices}
-              fullScreenImageIndex={fullScreenImageIndex}
-              showGuidelinePopup={showGuidelinePopup}
-              photoLibraryInputRef={photoLibraryInputRef}
-              cameraInputRef={cameraInputRef}
-              onRemoveImage={handleImageRemove}
-              onAddImageClick={handleAddImageClick}
-              onPhotoLibrarySelect={handlePhotoLibrarySelect}
-              onCameraCapture={handleCameraCapture}
-              onCloseImageSourceMenu={closeImageSourceMenu}
-              onSelectFromLibrary={handleSelectFromLibrary}
-              onTakePhoto={handleTakePhoto}
-              onClosePhotoLibrary={closePhotoLibrary}
-              onTogglePhotoSelection={togglePhotoSelection}
-              onViewFullScreen={handleViewFullScreen}
-              onConfirmPhotoSelection={handleConfirmPhotoSelection}
-              onBackToLibrary={handleBackToLibrary}
-              onGuidelinePopupClick={handleGuidelinePopupClick}
+              showImageSourceMenu={imageState.showImageSourceMenu}
+              showPhotoLibrary={imageState.showPhotoLibrary}
+              photoLibraryPreviews={imageState.photoLibraryPreviews}
+              selectedLibraryIndices={imageState.selectedLibraryIndices}
+              fullScreenImageIndex={imageState.fullScreenImageIndex}
+              showGuidelinePopup={imageState.showGuidelinePopup}
+              photoLibraryInputRef={imageState.photoLibraryInputRef}
+              cameraInputRef={imageState.cameraInputRef}
+              onRemoveImage={imageState.handleImageRemove}
+              onAddImageClick={imageState.handleAddImageClick}
+              onPhotoLibrarySelect={imageState.handlePhotoLibrarySelect}
+              onCameraCapture={imageState.handleCameraCapture}
+              onCloseImageSourceMenu={imageState.closeImageSourceMenu}
+              onSelectFromLibrary={imageState.handleSelectFromLibrary}
+              onTakePhoto={imageState.handleTakePhoto}
+              onClosePhotoLibrary={imageState.closePhotoLibrary}
+              onTogglePhotoSelection={imageState.togglePhotoSelection}
+              onViewFullScreen={imageState.handleViewFullScreen}
+              onConfirmPhotoSelection={imageState.handleConfirmPhotoSelection}
+              onBackToLibrary={imageState.handleBackToLibrary}
+              onGuidelinePopupClick={imageState.handleGuidelinePopupClick}
             />
 
             <AddPropertyTypeSection
@@ -370,12 +249,7 @@ export default function AddPropertyPage() {
               buildingNumber={buildingNumber}
               roomNumber={roomNumber}
               onOpenAddressModal={() => setShowAddressModal(true)}
-              onClearAddress={() => {
-                setAddress("");
-                setCoordinates(null);
-                setSelectedCityId("");
-                setSelectedDistrictId("");
-              }}
+              onClearAddress={clearAddress}
               onCityChange={(cityId) => {
                 setSelectedCityId(cityId);
                 setSelectedDistrictId("");
@@ -388,11 +262,11 @@ export default function AddPropertyPage() {
             <AddPropertyRentalSection
               currentLanguage={currentLanguage}
               colors={COLORS}
-              checkInDate={checkInDate}
-              checkOutDate={checkOutDate}
+              checkInDate={calendarState.checkInDate}
+              checkOutDate={calendarState.checkOutDate}
               weeklyRent={weeklyRent}
-              onOpenCheckInCalendar={openCheckInCalendar}
-              onOpenCheckOutCalendar={openCheckOutCalendar}
+              onOpenCheckInCalendar={calendarState.openCheckInCalendar}
+              onOpenCheckOutCalendar={calendarState.openCheckOutCalendar}
               onWeeklyRentChange={setWeeklyRent}
             />
 
@@ -431,11 +305,11 @@ export default function AddPropertyPage() {
             <AddPropertyExternalCalendarSection
               currentLanguage={currentLanguage}
               colors={COLORS}
-              showIcalDropdown={showIcalDropdown}
-              icalPlatform={icalPlatform}
-              icalCalendarName={icalCalendarName}
-              icalUrl={icalUrl}
-              onToggleIcalDropdown={toggleIcalDropdown}
+              showIcalDropdown={calendarState.showIcalDropdown}
+              icalPlatform={calendarState.icalPlatform}
+              icalCalendarName={calendarState.icalCalendarName}
+              icalUrl={calendarState.icalUrl}
+              onToggleIcalDropdown={calendarState.toggleIcalDropdown}
               onIcalPlatformChange={setIcalPlatform}
               onIcalCalendarNameChange={setIcalCalendarName}
               onIcalUrlChange={setIcalUrl}
@@ -444,15 +318,7 @@ export default function AddPropertyPage() {
             {/* 등록 버튼 */}
             <button
               type="submit"
-              disabled={
-                loading ||
-                imagePreviews.length === 0 ||
-                !weeklyRent ||
-                weeklyRent.replace(/\D/g, "") === "" ||
-                !propertyType ||
-                bedrooms === 0 ||
-                bathrooms === 0
-              }
+              disabled={submitDisabled}
               className="w-full py-3.5 px-6 rounded-xl font-semibold text-base disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98] flex items-center justify-center gap-2"
               style={{ backgroundColor: COLORS.primary, color: COLORS.white }}
             >
@@ -482,22 +348,22 @@ export default function AddPropertyPage() {
       </div>
 
       {/* 달력 모달 */}
-      {showCalendar && (
+      {calendarState.showCalendar && (
         <div
           className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
-          onClick={closeCalendar}
+          onClick={calendarState.closeCalendar}
         >
           <div onClick={(e) => e.stopPropagation()}>
             <CalendarComponent
-              checkInDate={checkInDate}
-              checkOutDate={checkOutDate}
+              checkInDate={calendarState.checkInDate}
+              checkOutDate={calendarState.checkOutDate}
               maxDate={maxRentalDay}
-              onCheckInSelect={onCheckInSelect}
-              onCheckOutSelect={onCheckOutSelect}
-              onCheckInReset={onCheckInReset}
+              onCheckInSelect={calendarState.onCheckInSelect}
+              onCheckOutSelect={calendarState.onCheckOutSelect}
+              onCheckInReset={calendarState.onCheckInReset}
               currentLanguage={currentLanguage}
-              onClose={closeCalendar}
-              mode={calendarMode}
+              onClose={calendarState.closeCalendar}
+              mode={calendarState.calendarMode}
               bookedRanges={[]}
               isOwnerMode={true}
             />

@@ -17,10 +17,9 @@ function MyPropertiesContent() {
   const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
   const { currentLanguage, setCurrentLanguage } = useLanguage();
-  const toSupportedLanguage = (lang: string): SupportedLanguage => {
-    if (lang === "ko" || lang === "vi" || lang === "ja" || lang === "zh") return lang;
-    return "en";
-  };
+  const toSupportedLanguage = (lang: string): SupportedLanguage =>
+    lang === "ko" || lang === "vi" || lang === "ja" || lang === "zh" ? lang : "en";
+  const uiLanguage = toSupportedLanguage(currentLanguage);
   const state = useMyPropertiesPageState({
     user: user ? { uid: user.uid } : null,
     authLoading,
@@ -45,7 +44,7 @@ function MyPropertiesContent() {
 
         <div className="px-5 py-6">
           <MyPropertiesHeaderSection
-            currentLanguage={toSupportedLanguage(currentLanguage)}
+            currentLanguage={uiLanguage}
             activeTab={state.activeTab}
             tabCount={state.tabCount}
             onGoBack={() => router.push("/profile")}
@@ -55,7 +54,7 @@ function MyPropertiesContent() {
           <MyPropertiesListSection
             properties={state.properties}
             activeTab={state.activeTab}
-            currentLanguage={toSupportedLanguage(currentLanguage)}
+            currentLanguage={uiLanguage}
             onOpenProperty={(propertyId) => router.push(`/profile/my-properties/${propertyId}`)}
             onEndAd={(propertyId) => void state.handleEndAd(propertyId)}
             onEditPending={(property) => state.openEditWithLiveDuplicateCheck(property, "pending")}
@@ -66,7 +65,7 @@ function MyPropertiesContent() {
         </div>
 
         <MyPropertiesDialogs
-          currentLanguage={toSupportedLanguage(currentLanguage)}
+          currentLanguage={uiLanguage}
           showDeleteConfirm={state.showDeleteConfirm}
           deletingId={state.deletingId}
           showEndAdFromPendingConfirm={state.showEndAdFromPendingConfirm}
@@ -74,20 +73,9 @@ function MyPropertiesContent() {
           onCloseDeleteConfirm={() => state.setShowDeleteConfirm(null)}
           onConfirmDelete={(id) => void state.handleDelete(id)}
           onClosePendingEndConfirm={() => state.setShowEndAdFromPendingConfirm(null)}
-          onConfirmPendingEnd={(id) => {
-            state.setShowEndAdFromPendingConfirm(null);
-            void state.handleEndAd(id);
-          }}
+          onConfirmPendingEnd={(id) => void state.handleConfirmPendingEnd(id)}
           onCloseLiveExistsConfirm={() => state.setLiveExistsConfirm(null)}
-          onConfirmLiveExists={(value) => {
-            state.setLiveExistsConfirm(null);
-            const q = new URLSearchParams({
-              extend: "1",
-              returnTab: value.returnTab,
-              dismissSiblingId: value.shadowId,
-            });
-            router.push(`/profile/my-properties/${value.activeId}/edit?${q.toString()}`);
-          }}
+          onConfirmLiveExists={state.handleConfirmLiveExists}
         />
       </div>
     </div>
