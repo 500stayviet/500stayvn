@@ -8,21 +8,20 @@ applications:
             # 상업 운영 표준: 재현 가능한 설치만 허용 (npm ci 실패 시 즉시 실패)
             - nvm use 20 || nvm install 20
             - |
-              if [ -f package-lock.json ]; then
-                echo "[preBuild] appRoot lockfile found at $(pwd)"
-              elif [ -f frontend/package-lock.json ]; then
-                echo "[preBuild] lockfile found in ./frontend; switching directory"
+              if [ -d frontend ] && [ -f frontend/package.json ]; then
+                echo "[preBuild] switching to ./frontend from $(pwd)"
                 cd frontend
-              else
-                echo "[preBuild] ERROR: package-lock.json not found in current path"
-                pwd
-                ls -la
-                exit 1
               fi
+              echo "[preBuild] install cwd: $(pwd)"
               npm ci --no-audit
         build:
           commands:
             - |
+              if [ -d frontend ] && [ -f frontend/package.json ]; then
+                echo "[build] switching to ./frontend from $(pwd)"
+                cd frontend
+              fi
+              echo "[build] build cwd: $(pwd)"
               cat > ./.env <<EOF
               DATABASE_URL=$DATABASE_URL
               DIRECT_URL=$DIRECT_URL
