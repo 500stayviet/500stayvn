@@ -31,6 +31,8 @@ import {
   getMockKycProvider,
   getMockOtpProvider,
   getMockPaymentProvider,
+  resolveMockScenario,
+  type MockScenario,
 } from "./mockProviders";
 
 const currentPaymentProvider: PaymentProvider = {
@@ -95,23 +97,32 @@ function useMockProviders() {
   return flag === "true" || flag === "1" || flag === "yes";
 }
 
+function getMockScenario(): MockScenario {
+  const envScenario = process.env.NEXT_PUBLIC_MOCK_SCENARIO;
+  let queryScenario: string | null = null;
+  if (typeof window !== "undefined") {
+    queryScenario = new URLSearchParams(window.location.search).get("mockScenario");
+  }
+  return resolveMockScenario(queryScenario ?? envScenario);
+}
+
 export function getPaymentProvider(): PaymentProvider {
-  if (useMockProviders()) return getMockPaymentProvider();
+  if (useMockProviders()) return getMockPaymentProvider(getMockScenario());
   return currentPaymentProvider;
 }
 
 export function getBankProvider(): BankProvider {
-  if (useMockProviders()) return getMockBankProvider();
+  if (useMockProviders()) return getMockBankProvider(getMockScenario());
   return currentBankProvider;
 }
 
 export function getOtpProvider(): OtpProvider {
-  if (useMockProviders()) return getMockOtpProvider();
+  if (useMockProviders()) return getMockOtpProvider(getMockScenario());
   return currentOtpProvider;
 }
 
 export function getKycProvider(): KycProvider {
-  if (useMockProviders()) return getMockKycProvider();
+  if (useMockProviders()) return getMockKycProvider(getMockScenario());
   return currentKycProvider;
 }
 

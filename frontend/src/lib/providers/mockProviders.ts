@@ -13,14 +13,28 @@ import type {
   ServerWithdrawalRequest,
 } from "@/lib/api/financeServer";
 
+export type MockScenario = "success" | "fail" | "partial";
+
+function shouldFail(scenario: MockScenario) {
+  return scenario === "fail";
+}
+
+function isPartial(scenario: MockScenario) {
+  return scenario === "partial";
+}
+
 const mockBookingStore = new Map<string, BookingData>();
 
 function createMockBookingId() {
   return `mock_booking_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-const mockPaymentProvider: PaymentProvider = {
+function createMockPaymentProvider(scenario: MockScenario): PaymentProvider {
+  return {
   async createBooking(data, propertyData, guestId) {
+    if (shouldFail(scenario)) {
+      throw new Error("mock_payment_create_failed");
+    }
     const checkIn = new Date(data.checkInDate);
     const checkOut = new Date(data.checkOutDate);
     const nights = Math.max(
@@ -73,16 +87,22 @@ const mockPaymentProvider: PaymentProvider = {
       updatedAt: nowIso,
     };
 
-    mockBookingStore.set(id, booking);
+    mockBookingStore.set(id, {
+      ...booking,
+      ...(isPartial(scenario) ? { status: "pending" as const } : {}),
+    });
     return booking;
   },
   async completePayment(bookingId, paymentMethod) {
+    if (shouldFail(scenario)) {
+      throw new Error("mock_payment_complete_failed");
+    }
     const booking = mockBookingStore.get(bookingId);
     if (!booking) return null;
     const updated: BookingData = {
       ...booking,
       paymentMethod,
-      paymentStatus: "paid",
+      paymentStatus: isPartial(scenario) ? "failed" : "paid",
       paymentDate: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -90,21 +110,32 @@ const mockPaymentProvider: PaymentProvider = {
     return updated;
   },
 };
+}
 
-const mockKycProvider: KycProvider = {
+function createMockKycProvider(scenario: MockScenario): KycProvider {
+  return {
   async savePhoneVerification() {
+    if (shouldFail(scenario)) throw new Error("mock_kyc_phone_failed");
     return;
   },
   async saveIdDocument() {
+    if (shouldFail(scenario) || isPartial(scenario)) {
+      throw new Error("mock_kyc_id_failed");
+    }
     return;
   },
   async saveFaceVerification() {
+    if (shouldFail(scenario) || isPartial(scenario)) {
+      throw new Error("mock_kyc_face_failed");
+    }
     return;
   },
   async completeKYCVerification() {
+    if (shouldFail(scenario)) throw new Error("mock_kyc_complete_failed");
     return;
   },
 };
+}
 
 const mockBankAccounts: ServerBankAccount[] = [
   {
@@ -120,11 +151,14 @@ const mockBankAccounts: ServerBankAccount[] = [
 
 const mockWithdrawalRequests: ServerWithdrawalRequest[] = [];
 
-const mockBankProvider: BankProvider = {
+function createMockBankProvider(scenario: MockScenario): BankProvider {
+  return {
   async getBankAccounts() {
+    if (shouldFail(scenario)) return [];
     return [...mockBankAccounts];
   },
   async addBankAccount(input) {
+    if (shouldFail(scenario)) return false;
     const next: ServerBankAccount = {
       id: `mock-bank-${Date.now()}`,
       ownerId: "mock-owner",
@@ -143,6 +177,7 @@ const mockBankProvider: BankProvider = {
     return true;
   },
   async setPrimaryBankAccount(id) {
+    if (shouldFail(scenario)) return false;
     let found = false;
     mockBankAccounts.forEach((account) => {
       const isTarget = account.id === id;
@@ -152,6 +187,7 @@ const mockBankProvider: BankProvider = {
     return found;
   },
   async removeBankAccount(id) {
+    if (shouldFail(scenario)) return false;
     const index = mockBankAccounts.findIndex((account) => account.id === id);
     if (index < 0) return false;
     const wasPrimary = mockBankAccounts[index].isPrimary;
@@ -162,9 +198,13 @@ const mockBankProvider: BankProvider = {
     return true;
   },
   async getWithdrawalRequests() {
+    if (shouldFail(scenario)) return [];
     return [...mockWithdrawalRequests];
   },
   async createWithdrawalRequest(input) {
+    if (shouldFail(scenario) || isPartial(scenario)) {
+      return { ok: false, message: "mock_withdrawal_rejected" };
+    }
     mockWithdrawalRequests.unshift({
       id: `mock-withdrawal-${Date.now()}`,
       ownerId: "mock-owner",
@@ -177,6 +217,9 @@ const mockBankProvider: BankProvider = {
     return { ok: true };
   },
   async getOwnerBalances() {
+    if (shouldFail(scenario)) {
+      return { totalApprovedRevenue: 0, pendingWithdrawal: 0, availableBalance: 0 };
+    }
     const pendingWithdrawal = mockWithdrawalRequests
       .filter((row) => row.status === "pending" || row.status === "processing")
       .reduce((sum, row) => sum + row.amount, 0);
@@ -188,32 +231,46 @@ const mockBankProvider: BankProvider = {
     return balances;
   },
 };
+}
 
-const mockOtpProvider: OtpProvider = {
+function createMockOtpProvider(scenario: MockScenario): OtpProvider {
+  return {
   async sendOtp() {
+    if (shouldFail(scenario)) {
+      return { ok: false, error: "mock_otp_send_failed" };
+    }
     return { ok: true };
   },
   async verifyOtp(_, code) {
-    if (code === "000000") {
+    if (shouldFail(scenario) || isPartial(scenario) || code === "000000") {
       return { ok: false, error: "Invalid code" };
     }
     return { ok: true };
   },
 };
-
-export function getMockPaymentProvider(): PaymentProvider {
-  return mockPaymentProvider;
 }
 
-export function getMockKycProvider(): KycProvider {
-  return mockKycProvider;
+export function getMockPaymentProvider(scenario: MockScenario): PaymentProvider {
+  return createMockPaymentProvider(scenario);
 }
 
-export function getMockBankProvider(): BankProvider {
-  return mockBankProvider;
+export function getMockKycProvider(scenario: MockScenario): KycProvider {
+  return createMockKycProvider(scenario);
 }
 
-export function getMockOtpProvider(): OtpProvider {
-  return mockOtpProvider;
+export function getMockBankProvider(scenario: MockScenario): BankProvider {
+  return createMockBankProvider(scenario);
+}
+
+export function getMockOtpProvider(scenario: MockScenario): OtpProvider {
+  return createMockOtpProvider(scenario);
+}
+
+export function resolveMockScenario(
+  raw: string | null | undefined,
+): MockScenario {
+  if (raw === "fail") return "fail";
+  if (raw === "partial") return "partial";
+  return "success";
 }
 
