@@ -1,5 +1,22 @@
+import { useEffect, useMemo, useState } from "react";
 import { Check, MapPin, X } from "lucide-react";
-import { VIETNAM_CITIES, getDistrictsByCityId } from "@/lib/data/vietnam-regions";
+
+type RegionCity = {
+  id: string;
+  name: string;
+  nameKo: string;
+  nameVi: string;
+  nameJa?: string;
+  nameZh?: string;
+};
+type RegionDistrict = {
+  id: string;
+  name: string;
+  nameKo: string;
+  nameVi: string;
+  nameJa?: string;
+  nameZh?: string;
+};
 
 interface EditPropertyAddressSectionProps {
   currentLanguage: string;
@@ -30,6 +47,53 @@ export default function EditPropertyAddressSection({
   onOpenAddressModal,
   onClearAddress,
 }: EditPropertyAddressSectionProps) {
+  const [cities, setCities] = useState<RegionCity[]>([]);
+  const [districts, setDistricts] = useState<RegionDistrict[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { VIETNAM_CITIES } = await import("@/lib/data/vietnam-regions");
+      if (!cancelled) {
+        setCities(VIETNAM_CITIES as RegionCity[]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!selectedCityId) {
+        setDistricts([]);
+        return;
+      }
+      const { getDistrictsByCityId } = await import("@/lib/data/vietnam-regions");
+      if (!cancelled) {
+        setDistricts(getDistrictsByCityId(selectedCityId) as RegionDistrict[]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedCityId]);
+
+  const selectedCityLabel = useMemo(() => {
+    if (!(address && coordinates && selectedCityId)) return null;
+    const city = cities.find((c) => c.id === selectedCityId);
+    if (!city) return "—";
+    const langMap: Record<string, string> = {
+      ko: city.nameKo,
+      vi: city.nameVi,
+      en: city.name,
+      ja: city.nameJa ?? city.name,
+      zh: city.nameZh ?? city.name,
+    };
+    return langMap[currentLanguage] ?? city.name;
+  }, [address, coordinates, selectedCityId, cities, currentLanguage]);
+
   return (
     <>
       <div>
@@ -100,19 +164,8 @@ export default function EditPropertyAddressSection({
           <div
             className={`w-full px-4 py-2.5 border-2 rounded-xl text-sm ${address && coordinates ? "bg-gray-100 border-gray-200 text-gray-700" : "bg-gray-100 border-gray-200 text-gray-400"}`}
           >
-            {address && coordinates && selectedCityId
-              ? (() => {
-                  const city = VIETNAM_CITIES.find((c) => c.id === selectedCityId);
-                  if (!city) return "—";
-                  const langMap: Record<string, string> = {
-                    ko: city.nameKo,
-                    vi: city.nameVi,
-                    en: city.name,
-                    ja: city.nameJa ?? city.name,
-                    zh: city.nameZh ?? city.name,
-                  };
-                  return langMap[currentLanguage] ?? city.name;
-                })()
+            {selectedCityLabel
+              ? selectedCityLabel
               : currentLanguage === "ko"
                 ? "주소 입력 후 자동"
                 : currentLanguage === "vi"
@@ -137,7 +190,7 @@ export default function EditPropertyAddressSection({
             <option value="">
               {currentLanguage === "ko" ? "선택" : currentLanguage === "vi" ? "Chọn" : "Select"}
             </option>
-            {getDistrictsByCityId(selectedCityId).map((d) => {
+            {districts.map((d) => {
               const langMap: Record<string, string> = {
                 ko: d.nameKo,
                 vi: d.nameVi,

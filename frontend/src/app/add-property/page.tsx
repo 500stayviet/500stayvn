@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -9,25 +10,60 @@ import {
   Loader2,
   Check,
 } from "lucide-react";
-import { motion } from "framer-motion";
 import TopBar from "@/components/TopBar";
-import CalendarComponent from "@/components/CalendarComponent";
-import AddressVerificationModal from "@/components/AddressVerificationModal";
 import { searchRegions } from "@/lib/data/vietnam-regions";
 import { usePropertyImageManager } from "./hooks/usePropertyImageManager";
 import { useAddPropertyAccess } from "./hooks/useAddPropertyAccess";
 import { useAddPropertyFormRules } from "./hooks/useAddPropertyFormRules";
 import { useAddPropertyCalendarIcal } from "./hooks/useAddPropertyCalendarIcal";
 import { useAddPropertySubmit } from "./hooks/useAddPropertySubmit";
-import { AddPropertyImageSection } from "./components/AddPropertyImageSection";
-import { AddPropertyPolicySection } from "./components/AddPropertyPolicySection";
 import { AddPropertyAddressSection } from "./components/AddPropertyAddressSection";
 import { AddPropertyRentalSection } from "./components/AddPropertyRentalSection";
 import { AddPropertyTypeSection } from "./components/AddPropertyTypeSection";
-import { AddPropertyCheckTimeSection } from "./components/AddPropertyCheckTimeSection";
-import { AddPropertyBasicInfoSection } from "./components/AddPropertyBasicInfoSection";
-import { AddPropertyExternalCalendarSection } from "./components/AddPropertyExternalCalendarSection";
 import { ADD_PROPERTY_COLORS as COLORS } from "./constants/addPropertyColors";
+
+const AddPropertyImageSection = dynamic(
+  () =>
+    import("./components/AddPropertyImageSection").then((mod) => ({
+      default: mod.AddPropertyImageSection,
+    })),
+  {
+    loading: () => (
+      <div className="w-full h-48 rounded-xl bg-gray-100 animate-pulse" />
+    ),
+  },
+);
+const AddPropertyPolicySection = dynamic(
+  () =>
+    import("./components/AddPropertyPolicySection").then((mod) => ({
+      default: mod.AddPropertyPolicySection,
+    })),
+);
+const CalendarComponent = dynamic(() => import("@/components/CalendarComponent"), {
+  ssr: false,
+});
+const AddressVerificationModal = dynamic(
+  () => import("@/components/AddressVerificationModal"),
+  { ssr: false },
+);
+const AddPropertyCheckTimeSection = dynamic(
+  () =>
+    import("./components/AddPropertyCheckTimeSection").then((mod) => ({
+      default: mod.AddPropertyCheckTimeSection,
+    })),
+);
+const AddPropertyBasicInfoSection = dynamic(
+  () =>
+    import("./components/AddPropertyBasicInfoSection").then((mod) => ({
+      default: mod.AddPropertyBasicInfoSection,
+    })),
+);
+const AddPropertyExternalCalendarSection = dynamic(
+  () =>
+    import("./components/AddPropertyExternalCalendarSection").then((mod) => ({
+      default: mod.AddPropertyExternalCalendarSection,
+    })),
+);
 
 
 export default function AddPropertyPage() {
@@ -478,10 +514,8 @@ export default function AddPropertyPage() {
             router.replace("/profile/my-properties");
           }}
         >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="w-full max-w-sm rounded-2xl p-6 shadow-xl"
+          <div
+            className="w-full max-w-sm rounded-2xl p-6 shadow-xl transition-all duration-200 ease-out scale-100 opacity-100"
             style={{
               background:
                 "linear-gradient(135deg, #FFF7ED 0%, #FFE8D6 50%, #FFD7BA 100%)",
@@ -535,18 +569,20 @@ export default function AddPropertyPage() {
                       ? "查看我的房源"
                       : "Go to My Properties"}
             </button>
-          </motion.div>
+          </div>
         </div>
       )}
 
       {/* 주소 정밀 확인 모달 */}
-      <AddressVerificationModal
-        isOpen={showAddressModal}
-        onClose={() => setShowAddressModal(false)}
-        onConfirm={handleAddressConfirm}
-        currentLanguage={currentLanguage}
-        initialAddress={address}
-      />
+      {showAddressModal ? (
+        <AddressVerificationModal
+          isOpen={showAddressModal}
+          onClose={() => setShowAddressModal(false)}
+          onConfirm={handleAddressConfirm}
+          currentLanguage={currentLanguage}
+          initialAddress={address}
+        />
+      ) : null}
 
     </div>
   );

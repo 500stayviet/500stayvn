@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import type { PropertyData } from "@/types/property";
-import { getDistrictIdForCoord, getDistrictsByCityId, searchRegions, ALL_REGIONS } from "@/lib/data/vietnam-regions";
 import { useEditPropertyLoader } from "./useEditPropertyLoader";
 import { useEditPropertyImageManager } from "./useEditPropertyImageManager";
 import { useEditPropertyCalendarRules } from "./useEditPropertyCalendarRules";
@@ -79,10 +78,18 @@ export function useEditPropertyPageState({
 
   useEffect(() => {
     if (!selectedCityId || !selectedDistrictId) return;
-    const districts = getDistrictsByCityId(selectedCityId);
-    if (!districts.some((d) => d.id === selectedDistrictId)) {
-      setSelectedDistrictId("");
-    }
+    let cancelled = false;
+    (async () => {
+      const { getDistrictsByCityId } = await import("@/lib/data/vietnam-regions");
+      if (cancelled) return;
+      const districts = getDistrictsByCityId(selectedCityId);
+      if (!districts.some((d) => d.id === selectedDistrictId)) {
+        setSelectedDistrictId("");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [selectedCityId, selectedDistrictId]);
 
   useEffect(() => {
@@ -141,10 +148,13 @@ export function useEditPropertyPageState({
     setLoadingProperty,
   });
 
-  const handleAddressConfirm = (data: { address: string; lat: number; lng: number }) => {
+  const handleAddressConfirm = async (data: { address: string; lat: number; lng: number }) => {
     setAddress(data.address);
     setCoordinates({ lat: data.lat, lng: data.lng });
 
+    const { getDistrictIdForCoord, searchRegions, ALL_REGIONS } = await import(
+      "@/lib/data/vietnam-regions"
+    );
     const districtId = getDistrictIdForCoord(data.lat, data.lng);
     if (districtId) {
       const district = ALL_REGIONS.find((r) => r.id === districtId);

@@ -1,12 +1,5 @@
 import { useEffect } from "react";
-import { getProperty } from "@/lib/api/properties";
-import { getPropertyBookings } from "@/lib/api/bookings";
 import { parseDate } from "@/lib/utils/dateUtils";
-import {
-  ALL_REGIONS,
-  getDistrictIdForCoord,
-  searchRegions,
-} from "@/lib/data/vietnam-regions";
 import type { PropertyData } from "@/types/property";
 
 type PropertyType =
@@ -115,6 +108,10 @@ export const useEditPropertyLoader = ({
 
     const loadData = async () => {
       try {
+        const [{ getProperty }, { getPropertyBookings }] = await Promise.all([
+          import("@/lib/api/properties"),
+          import("@/lib/api/bookings"),
+        ]);
         const p = await getProperty(propertyId);
         if (!p) {
           onRedirect("/profile/my-properties");
@@ -156,6 +153,8 @@ export const useEditPropertyLoader = ({
         setRoomNumber(room);
 
         if (p.coordinates) {
+          const { getDistrictIdForCoord, searchRegions, ALL_REGIONS } =
+            await import("@/lib/data/vietnam-regions");
           const districtId = getDistrictIdForCoord(
             p.coordinates.lat,
             p.coordinates.lng,

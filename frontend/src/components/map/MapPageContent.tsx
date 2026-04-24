@@ -1,10 +1,26 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import TopBar from "@/components/TopBar";
-import GrabMapComponent from "@/components/GrabMapComponent";
-import Property3DCardSlider from "@/components/Property3DCardSlider";
 import { getUIText } from "@/utils/i18n";
 import { useMapPageState } from "@/hooks/map/useMapPageState";
+
+const GrabMapComponent = dynamic(() => import("@/components/GrabMapComponent"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full min-h-[220px] bg-gray-100 animate-pulse" />
+  ),
+});
+
+const Property3DCardSlider = dynamic(
+  () => import("@/components/Property3DCardSlider"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-[220px] rounded-xl bg-gray-100 animate-pulse" />
+    ),
+  },
+);
 
 export default function MapPageContent() {
   const {

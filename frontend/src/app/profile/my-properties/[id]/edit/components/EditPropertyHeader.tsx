@@ -1,8 +1,9 @@
 import { ArrowLeft } from "lucide-react";
+import type { SupportedLanguage } from "@/lib/api/translation";
 import { getUIText } from "@/utils/i18n";
 
 interface EditPropertyHeaderProps {
-  currentLanguage: string;
+  currentLanguage: SupportedLanguage;
   textColor: string;
   textSecondaryColor: string;
   borderColor: string;

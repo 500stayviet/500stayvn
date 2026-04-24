@@ -1,11 +1,3 @@
-import { getProperty, restoreProperty, updateProperty } from "@/lib/api/properties";
-import { areSamePropertyValues } from "@/lib/utils/propertyDedup";
-import {
-  buildEditPropertyUpdates,
-  buildUnitNumber,
-  resolveEditPropertyImageUrls,
-} from "../utils/editPropertySubmit";
-
 type PropertyStatus = import("@/types/property").PropertyData["status"] | undefined;
 
 interface UseEditPropertySubmitParams {
@@ -80,6 +72,16 @@ export function useEditPropertySubmit({
     setLoading(true);
 
     try {
+      const [
+        { getProperty, restoreProperty, updateProperty },
+        { areSamePropertyValues },
+        { buildEditPropertyUpdates, buildUnitNumber, resolveEditPropertyImageUrls },
+      ] = await Promise.all([
+        import("@/lib/api/properties"),
+        import("@/lib/utils/propertyDedup"),
+        import("../utils/editPropertySubmit"),
+      ]);
+
       if (needsRentalCalendarAck && !rentalCalendarAcknowledged) {
         alert(
           currentLanguage === "ko"

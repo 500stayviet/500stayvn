@@ -1,4 +1,9 @@
 import type { NextConfig } from "next";
+import bundleAnalyzer from "@next/bundle-analyzer";
+
+const withBundleAnalyzer = bundleAnalyzer({
+  enabled: process.env.ANALYZE === "true",
+});
 
 /** 프로덕션 빌드에서만 next-pwa 적용 — 개발 시 PWA 비활성 로그·래퍼 없음 */
 const withPWA = (nextConfig: NextConfig) => {
@@ -56,5 +61,6 @@ const nextConfig: NextConfig = {
 };
 
 const isDev = process.env.NODE_ENV === "development";
+const baseConfig = isDev ? nextConfig : withPWA(nextConfig);
 
-export default isDev ? nextConfig : withPWA(nextConfig);
+export default withBundleAnalyzer(baseConfig);
