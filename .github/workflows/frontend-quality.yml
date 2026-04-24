@@ -43,17 +43,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        shell: bash
-        run: |
-          npm ci --no-audit || (
-            echo "npm ci failed; dumping latest npm debug log and falling back to npm install"
-            latest_log="$(ls -1t ~/.npm/_logs/*-debug-0.log 2>/dev/null | head -n 1)"
-            if [ -n "$latest_log" ]; then
-              echo "latest npm log: $latest_log"
-              tail -n 200 "$latest_log" || true
-            fi
-            npm install --no-audit
-          )
+        run: npm ci --no-audit
 
       - name: Run unit tests
         run: npm test
@@ -84,17 +74,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        shell: bash
-        run: |
-          npm ci --no-audit || (
-            echo "npm ci failed; dumping latest npm debug log and falling back to npm install"
-            latest_log="$(ls -1t ~/.npm/_logs/*-debug-0.log 2>/dev/null | head -n 1)"
-            if [ -n "$latest_log" ]; then
-              echo "latest npm log: $latest_log"
-              tail -n 200 "$latest_log" || true
-            fi
-            npm install --no-audit
-          )
+        run: npm ci --no-audit
 
       - name: Install Playwright Chromium
         run: npx playwright install chromium
@@ -123,17 +103,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        shell: bash
-        run: |
-          npm ci --no-audit || (
-            echo "npm ci failed; dumping latest npm debug log and falling back to npm install"
-            latest_log="$(ls -1t ~/.npm/_logs/*-debug-0.log 2>/dev/null | head -n 1)"
-            if [ -n "$latest_log" ]; then
-              echo "latest npm log: $latest_log"
-              tail -n 200 "$latest_log" || true
-            fi
-            npm install --no-audit
-          )
+        run: npm ci --no-audit
 
       - name: Install Playwright Chromium
         run: npx playwright install chromium
