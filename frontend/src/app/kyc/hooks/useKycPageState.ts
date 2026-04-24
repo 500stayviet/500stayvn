@@ -26,6 +26,11 @@ export function useKycPageState() {
   const [faceData, setFaceData] = useState<FaceVerificationData | null>(null);
   const kycProvider = getKycProvider();
 
+  const toErrorMessage = (error: unknown): string => {
+    if (error instanceof Error && error.message) return error.message;
+    return "KYC step failed";
+  };
+
   useEffect(() => {
     if (!authLoading && !user) {
       router.push("/login");
@@ -99,6 +104,11 @@ export function useKycPageState() {
       try {
         await kycProvider.saveIdDocument(user.uid, data, frontImageFile, backImageFile);
       } catch (apiError) {
+        const message = toErrorMessage(apiError);
+        if (message.includes("mock_kyc_id_failed")) {
+          setError(message);
+          return;
+        }
         console.log("Test mode: ID document upload API failed, continuing anyway:", apiError);
       }
 
@@ -150,6 +160,11 @@ export function useKycPageState() {
       try {
         await kycProvider.saveIdDocument(user.uid, dummyIdData, dummyFrontFile, dummyBackFile);
       } catch (apiError) {
+        const message = toErrorMessage(apiError);
+        if (message.includes("mock_kyc_id_failed")) {
+          setError(message);
+          return;
+        }
         console.log("Test mode: ID document next API failed, continuing anyway:", apiError);
       }
 

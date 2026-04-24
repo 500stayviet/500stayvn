@@ -4,7 +4,12 @@ const ownerId = "mock-owner-e2e";
 const guestId = "mock-guest-e2e";
 const propertyId = "mock-property-1";
 
-async function seedAuthenticatedUser(page: import("@playwright/test").Page) {
+async function seedAuthenticatedUser(
+  page: import("@playwright/test").Page,
+  options?: { kycSteps?: { step1?: boolean; step2?: boolean; step3?: boolean }; phoneNumber?: string },
+) {
+  const kycSteps = options?.kycSteps ?? { step1: true, step2: true, step3: true };
+  const phoneNumber = options?.phoneNumber ?? "+84123456789";
   await page.context().addCookies([
     {
       name: "stayviet_app_uid",
@@ -20,13 +25,14 @@ async function seedAuthenticatedUser(page: import("@playwright/test").Page) {
         email: "mock-guest@test.com",
         displayName: "Mock Guest",
         preferredLanguage: "en",
-        kyc_steps: { step1: true, step2: true, step3: true },
+        phoneNumber,
+        kyc_steps: kycSteps,
       },
     ];
     window.localStorage.setItem("users", JSON.stringify(users));
     window.localStorage.setItem("currentUser", uid);
     document.cookie = `stayviet_app_uid=${encodeURIComponent(uid)}; path=/`;
-  }, { uid: guestId });
+  }, { uid: guestId, kycSteps, phoneNumber });
 }
 
 async function mockCommonSessionApis(page: import("@playwright/test").Page) {
@@ -52,6 +58,7 @@ async function mockCommonSessionApis(page: import("@playwright/test").Page) {
             email: "mock-guest@test.com",
             displayName: "Mock Guest",
             preferredLanguage: "en",
+            phoneNumber: "+84123456789",
             kyc_steps: { step1: true, step2: true, step3: true },
           },
         ],
@@ -185,5 +192,21 @@ test("booking flow with mockScenario=partial does not reach success page", async
 
   await expect.poll(() => /\/booking-success/.test(page.url())).toBeFalsy();
   await expect(page).toHaveURL(/\/$|\/booking\?/);
+});
+
+test("kyc shows step2 failure in mockScenario=partial", async ({ page }) => {
+  await seedAuthenticatedUser(page, {
+    kycSteps: { step1: true, step2: false, step3: false },
+    phoneNumber: "+84123456789",
+  });
+  await mockCommonSessionApis(page);
+
+  await page.goto("/kyc?mockScenario=partial");
+  await page.getByRole("button", { name: /Next Step|다음 단계로/ }).click();
+  await expect(page.getByRole("heading", { name: /ID Capture|신분증 촬영/ })).toBeVisible();
+
+  await page.getByRole("button", { name: /Next \(Test Mode\)|다음 \(테스트 모드\)/ }).click();
+  await expect(page.getByText("mock_kyc_id_failed")).toBeVisible();
+  await expect(page.getByRole("heading", { name: /ID Capture|신분증 촬영/ })).toBeVisible();
 });
 
