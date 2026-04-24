@@ -80,7 +80,7 @@ jobs:
         run: npx playwright install chromium
 
       - name: Run E2E smoke suite
-        run: npx playwright test tests/e2e/access-control-blocked.spec.ts tests/e2e/search-filter-detail.spec.ts
+        run: npx playwright test tests/e2e/access-control-blocked.spec.ts tests/e2e/search-filter-detail.spec.ts tests/e2e/my-properties-regression.spec.ts
 
   e2e-nightly-full:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
