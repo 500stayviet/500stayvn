@@ -8,14 +8,8 @@ applications:
             # 상업 운영 표준: 재현 가능한 설치만 허용 (npm ci 실패 시 즉시 실패)
             - nvm use 20 || nvm install 20
             - echo "[preBuild] cwd $(pwd)"
-            - |
-              npm ci --no-audit || (
-                echo "[preBuild] npm ci failed; collecting diagnostics and falling back to npm install"
-                node -v
-                npm -v
-                npm config get cache
-                npm install --no-audit
-              )
+            # preBuild에서는 의존성만 결정적으로 설치하고, 스크립트 실행은 build 단계로 위임
+            - npm ci --no-audit --ignore-scripts
         build:
           commands:
             - |
