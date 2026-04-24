@@ -9,7 +9,14 @@ applications:
             - nvm use 20 || nvm install 20
             - echo "[preBuild] cwd $(pwd)"
             # preBuild에서는 의존성만 결정적으로 설치하고, 스크립트 실행은 build 단계로 위임
-            - npm ci --no-audit --ignore-scripts
+            - |
+              npm ci --no-audit --ignore-scripts || (
+                echo "[preBuild] npm ci failed; dumping npm logs"
+                ls -la /root/.npm/_logs || true
+                cat /root/.npm/_logs/*-debug-0.log || true
+                echo "[preBuild] fallback to npm install"
+                npm install --no-audit --ignore-scripts
+              )
         build:
           commands:
             - |
