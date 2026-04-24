@@ -10,7 +10,7 @@ applications:
             - echo "[preBuild] cwd $(pwd)"
             # preBuild에서는 의존성만 결정적으로 설치하고, 스크립트 실행은 build 단계로 위임
             - |
-              npm ci --no-audit --ignore-scripts || (
+              npm ci --no-audit --ignore-scripts || {
                 echo "[preBuild] npm ci failed; dumping npm logs"
                 ls -la /root/.npm/_logs || true
                 latest_log="$(ls -1t /root/.npm/_logs/*-debug-0.log 2>/dev/null | head -n 1)"
@@ -18,9 +18,8 @@ applications:
                   echo "[preBuild] latest npm debug log: $latest_log"
                   tail -n 200 "$latest_log" || true
                 fi
-                echo "[preBuild] fallback to npm install"
-                npm install --no-audit --ignore-scripts
-              )
+                exit 1
+              }
         build:
           commands:
             - |
