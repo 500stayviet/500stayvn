@@ -284,3 +284,222 @@ test("my-properties duplicate-live modal cancel keeps ended tab", async ({ page 
   await expect(page).toHaveURL(/\/profile\/my-properties\?tab=ended$/);
   await expect(page.getByText("Same unit is already live")).not.toBeVisible();
 });
+
+test("my-properties ended edit without live duplicate navigates directly", async ({ page }) => {
+  test.slow();
+  const ownerId = "e2e-owner-2";
+
+  await page.addInitScript((uid) => {
+    const users = [
+      {
+        uid,
+        email: "owner-e2e-2@test.com",
+        displayName: "E2E Owner 2",
+        preferredLanguage: "en",
+        kyc_steps: { step1: true, step2: true, step3: true },
+      },
+    ];
+    window.localStorage.setItem("users", JSON.stringify(users));
+    window.localStorage.setItem("currentUser", uid);
+  }, ownerId);
+
+  await page.route("**/api/app/properties**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        properties: [
+          {
+            id: "live-other-unit-e2e",
+            ownerId,
+            title: "Live Other Unit",
+            address: "99 Different Street",
+            unitNumber: "Z-999",
+            status: "active",
+            hidden: false,
+            deleted: false,
+            price: 10000000,
+            priceUnit: "vnd",
+            images: ["/icon-512x512.png"],
+          },
+          {
+            id: "ended-no-dup-e2e",
+            ownerId,
+            title: "Ended No Duplicate",
+            address: "2 E2E Street",
+            unitNumber: "B-201",
+            status: "closed",
+            hidden: false,
+            deleted: false,
+            price: 9500000,
+            priceUnit: "vnd",
+            images: ["/icon-512x512.png"],
+          },
+        ],
+        page: { hasMore: false, nextOffset: 2 },
+      }),
+    });
+  });
+
+  await page.route("**/api/auth/session**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        user: {
+          id: ownerId,
+          email: "owner-e2e-2@test.com",
+          name: "E2E Owner 2",
+        },
+        expires: "2099-12-31T23:59:59.999Z",
+      }),
+    });
+  });
+
+  await page.route("**/api/app/users**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        users: [
+          {
+            uid: ownerId,
+            email: "owner-e2e-2@test.com",
+            displayName: "E2E Owner 2",
+            preferredLanguage: "en",
+            kyc_steps: { step1: true, step2: true, step3: true },
+          },
+        ],
+        page: { hasMore: false, nextOffset: 1 },
+      }),
+    });
+  });
+
+  await page.route("**/api/app/bookings**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        reservations: [],
+        page: { hasMore: false, nextOffset: 0 },
+      }),
+    });
+  });
+  await page.route("**/api/app/chat/unread-counts**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ counts: {} }),
+    });
+  });
+
+  await page.goto("/profile/my-properties?tab=ended");
+  await expect(page.getByTestId("my-properties-content")).toBeVisible({ timeout: 20_000 });
+  await page.getByLabel("edit-ended").first().click();
+
+  const directNavigation = await page
+    .waitForURL(/\/profile\/my-properties\/ended-no-dup-e2e\/edit\?/, { timeout: 8_000 })
+    .then(() => true)
+    .catch(() => false);
+  expect(directNavigation).toBeTruthy();
+  await expect(page.getByText("Same unit is already live")).not.toBeVisible();
+});
+
+test("my-properties pending edit enters edit page with pending return tab", async ({ page }) => {
+  test.slow();
+  const ownerId = "e2e-owner-3";
+
+  await page.addInitScript((uid) => {
+    const users = [
+      {
+        uid,
+        email: "owner-e2e-3@test.com",
+        displayName: "E2E Owner 3",
+        preferredLanguage: "en",
+        kyc_steps: { step1: true, step2: true, step3: true },
+      },
+    ];
+    window.localStorage.setItem("users", JSON.stringify(users));
+    window.localStorage.setItem("currentUser", uid);
+  }, ownerId);
+
+  await page.route("**/api/app/properties**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        properties: [
+          {
+            id: "pending-only-e2e",
+            ownerId,
+            title: "Pending Unit",
+            address: "5 Pending Street",
+            unitNumber: "P-501",
+            status: "pending",
+            hidden: false,
+            deleted: false,
+            price: 8900000,
+            priceUnit: "vnd",
+            images: ["/icon-512x512.png"],
+          },
+        ],
+        page: { hasMore: false, nextOffset: 1 },
+      }),
+    });
+  });
+
+  await page.route("**/api/auth/session**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        user: { id: ownerId, email: "owner-e2e-3@test.com", name: "E2E Owner 3" },
+        expires: "2099-12-31T23:59:59.999Z",
+      }),
+    });
+  });
+
+  await page.route("**/api/app/users**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        users: [
+          {
+            uid: ownerId,
+            email: "owner-e2e-3@test.com",
+            displayName: "E2E Owner 3",
+            preferredLanguage: "en",
+            kyc_steps: { step1: true, step2: true, step3: true },
+          },
+        ],
+        page: { hasMore: false, nextOffset: 1 },
+      }),
+    });
+  });
+
+  await page.route("**/api/app/bookings**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        reservations: [],
+        page: { hasMore: false, nextOffset: 0 },
+      }),
+    });
+  });
+  await page.route("**/api/app/chat/unread-counts**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ counts: {} }),
+    });
+  });
+
+  await page.goto("/profile/my-properties?tab=pending");
+  await expect(page.getByTestId("my-properties-content")).toBeVisible({ timeout: 20_000 });
+  await page.getByLabel("edit-pending").first().click();
+
+  await expect(page).toHaveURL(/\/profile\/my-properties\/pending-only-e2e\/edit\?/);
+  await expect(page).toHaveURL(/returnTab=pending/);
+});

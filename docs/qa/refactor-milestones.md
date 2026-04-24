@@ -29,6 +29,17 @@
 - `my-properties` regression E2E expanded
   - Duplicate-live modal cancel branch (`No`) coverage added
   - Existing flow retained: tab transitions + ended edit + duplicate-live confirm (`Yes`)
+- CI install stability hardening applied for GitHub Actions
+  - `frontend-quality` workflow now logs latest npm debug tail and falls back to `npm install` when `npm ci` fails (`ef0eedc`)
+- Amplify deploy pipeline stabilized and recovered
+  - Buildspec parsing fixes + bounded npm debug logs + deploy recovery (`dc12cfb`, `25abc24`, `5f94251`)
+  - Current production deploy resumed successfully (`Deploy 90`)
+
+## Next Sequence
+
+1. Finalize remaining large-page refactor targets (composition-first)
+2. Keep `my-properties` regression E2E green while adding 1-2 edge cases
+3. Track npm lockfile drift cause and return CI/Amp install step to strict `npm ci`-only after root cause is closed
 
 ## Completion Gate
 
