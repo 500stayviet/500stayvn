@@ -9,13 +9,6 @@ import {
   type IdDocumentData,
   type PhoneVerificationData,
 } from "@/types/kyc.types";
-import {
-  completeKYCVerification,
-  saveFaceVerification,
-  saveIdDocument,
-  savePhoneVerification,
-} from "@/lib/api/kyc";
-import { getCurrentUserData } from "@/lib/api/auth";
 
 type KYCStep = 1 | 2 | 3;
 
@@ -42,6 +35,7 @@ export function useKycPageState() {
 
     const loadCompletedSteps = async () => {
       try {
+        const { getCurrentUserData } = await import("@/lib/api/auth");
         const userData = await getCurrentUserData(user.uid);
         const kycSteps = userData?.kyc_steps || {};
 
@@ -72,6 +66,7 @@ export function useKycPageState() {
     setError("");
 
     try {
+      const { savePhoneVerification } = await import("@/lib/api/kyc");
       try {
         await savePhoneVerification(user.uid, data);
       } catch (apiError) {
@@ -100,6 +95,7 @@ export function useKycPageState() {
     setError("");
 
     try {
+      const { saveIdDocument } = await import("@/lib/api/kyc");
       try {
         await saveIdDocument(user.uid, data, frontImageFile, backImageFile);
       } catch (apiError) {
@@ -148,6 +144,7 @@ export function useKycPageState() {
     };
 
     try {
+      const { saveIdDocument } = await import("@/lib/api/kyc");
       const dummyFrontFile = createDummyFile("test-id-front.jpg", "Test ID Front");
       const dummyBackFile = createDummyFile("test-id-back.jpg", "Test ID Back");
 
@@ -179,6 +176,9 @@ export function useKycPageState() {
     setError("");
 
     try {
+      const { saveFaceVerification, completeKYCVerification } = await import(
+        "@/lib/api/kyc"
+      );
       await saveFaceVerification(user.uid, images);
       setFaceData(data);
       await completeKYCVerification(user.uid);

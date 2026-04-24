@@ -8,17 +8,20 @@
 
 'use client';
 import { useState, useEffect, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
 import { User, Mail, Phone, Globe, CheckCircle2, ArrowLeft, Loader2, Camera, ChevronRight, Lock } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { getCurrentUserData, updateUserData, updateUserEmail, updateUserPhoneNumber, deleteAccount, UserData } from '@/lib/api/auth';
-import { uploadToS3 } from '@/lib/s3-client';
+import type { UserData } from '@/lib/api/auth';
 import { SupportedLanguage } from '@/lib/api/translation';
 import TopBar from '@/components/TopBar';
 import { getUIText } from '@/utils/i18n';
-import InternationalPhoneInput from '@/components/auth/InternationalPhoneInput';
+
+const InternationalPhoneInput = dynamic(
+  () => import('@/components/auth/InternationalPhoneInput'),
+  { ssr: false },
+);
 
 export default function EditProfilePage() {
   const router = useRouter();
@@ -66,9 +69,13 @@ export default function EditProfilePage() {
     if (!file || !user) return;
     setUploadingPhoto(true);
     try {
+      const [{ uploadToS3 }, authApi] = await Promise.all([
+        import('@/lib/s3-client'),
+        import('@/lib/api/auth'),
+      ]);
       const imageUrl = await uploadToS3(file, 'profile-pics');
-      await updateUserData(user.uid, { photoURL: imageUrl });
-      const updated = await getCurrentUserData(user.uid);
+      await authApi.updateUserData(user.uid, { photoURL: imageUrl });
+      const updated = await authApi.getCurrentUserData(user.uid);
       setUserData(updated);
       alert(getUIText('profileImageUpdated', currentLanguage));
     } catch (err) {
@@ -89,6 +96,7 @@ export default function EditProfilePage() {
 
       const fetchUserData = async () => {
         try {
+          const { getCurrentUserData } = await import('@/lib/api/auth');
           const data = await getCurrentUserData(user.uid);
           setUserData(data);
         } catch (error) {
@@ -184,6 +192,7 @@ export default function EditProfilePage() {
     setUpdatingPhone(true);
     setUpdateError('');
     try {
+      const { updateUserPhoneNumber, getCurrentUserData } = await import('@/lib/api/auth');
       await updateUserPhoneNumber(user.uid, editPhone);
       const updatedData = await getCurrentUserData(user.uid);
       setUserData(updatedData);
@@ -202,6 +211,7 @@ export default function EditProfilePage() {
     setUpdatingEmail(true);
     setUpdateError('');
     try {
+      const { updateUserEmail, getCurrentUserData } = await import('@/lib/api/auth');
       await updateUserEmail(user.uid, editEmail.trim());
       const updatedData = await getCurrentUserData(user.uid);
       setUserData(updatedData);
@@ -488,7 +498,7 @@ export default function EditProfilePage() {
       {/* 사진첩 동의 모달: 동의 시 사진 추가 방법 선택 (매물 등록과 동일) */}
       {showPhotoConsentModal && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
             <h3 className="text-lg font-bold text-gray-900 mb-2">{getUIText('photoSelectConsentTitle', currentLanguage)}</h3>
             <p className="text-sm text-gray-600 mb-4">{getUIText('photoSelectConsentDesc', currentLanguage)}</p>
             <div className="flex gap-3">
@@ -503,7 +513,7 @@ export default function EditProfilePage() {
                 {getUIText('agree', currentLanguage)}
               </button>
             </div>
-          </motion.div>
+          </div>
         </div>
       )}
 
@@ -546,12 +556,12 @@ export default function EditProfilePage() {
       {/* 회원탈퇴 확인 모달 */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
             <h3 className="text-lg font-bold text-gray-900 mb-2">{getUIText('confirmDeletion', currentLanguage)}</h3>
             <p className="text-sm text-gray-600 mb-4">{getUIText('deleteAccountDesc', currentLanguage)}</p>
             <div className="flex gap-3">
               <button onClick={() => setShowDeleteConfirm(false)} disabled={deleting} className="flex-1 py-2.5 px-4 bg-gray-100 text-gray-700 rounded-lg font-medium">{getUIText('cancel', currentLanguage)}</button>
-              <button onClick={async () => { if (!user) return; setDeleting(true); try { await deleteAccount(user.uid); setShowDeleteConfirm(false); setShowDeleteSuccess(true); } catch (error) { console.error(error); alert(getUIText('errorOccurred', currentLanguage)); setDeleting(false); } }} disabled={deleting} className="flex-1 py-2.5 px-4 bg-red-600 text-white rounded-lg font-medium">
+              <button onClick={async () => { if (!user) return; setDeleting(true); try { const { deleteAccount } = await import('@/lib/api/auth'); await deleteAccount(user.uid); setShowDeleteConfirm(false); setShowDeleteSuccess(true); } catch (error) { console.error(error); alert(getUIText('errorOccurred', currentLanguage)); setDeleting(false); } }} disabled={deleting} className="flex-1 py-2.5 px-4 bg-red-600 text-white rounded-lg font-medium">
                 {deleting ? 
                   (currentLanguage === 'ko' ? '처리 중...' : 
                    currentLanguage === 'vi' ? 'Đang xử lý...' : 
@@ -565,19 +575,19 @@ export default function EditProfilePage() {
                    'Delete Account')}
               </button>
             </div>
-          </motion.div>
+          </div>
         </div>
       )}
 
       {/* 회원탈퇴 성공 모달 */}
       {showDeleteSuccess && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl text-center">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl text-center">
             <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4"><CheckCircle2 className="w-8 h-8 text-red-600" /></div>
             <h3 className="text-xl font-bold text-gray-900 mb-2">{getUIText('deleteAccountSuccess', currentLanguage)}</h3>
             <p className="text-sm text-gray-600 mb-6">{getUIText('deleteAccountSuccessDesc', currentLanguage)}</p>
             <button onClick={() => { setShowDeleteSuccess(false); router.push('/'); }} className="w-full py-3 px-6 bg-blue-600 text-white rounded-xl font-semibold">{getUIText('confirm', currentLanguage)}</button>
-          </motion.div>
+          </div>
         </div>
       )}
     </div>

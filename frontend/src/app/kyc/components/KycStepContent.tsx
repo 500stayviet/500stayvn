@@ -1,15 +1,24 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
-import PhoneVerificationStep from "@/components/kyc/PhoneVerificationStep";
-import IdDocumentStep from "@/components/kyc/IdDocumentStep";
-import FaceVerificationStep from "@/components/kyc/FaceVerificationStep";
+import dynamic from "next/dynamic";
 import type {
   FaceVerificationData,
   IdDocumentData,
   PhoneVerificationData,
 } from "@/types/kyc.types";
 import type { SupportedLanguage } from "@/lib/api/translation";
+
+const PhoneVerificationStep = dynamic(
+  () => import("@/components/kyc/PhoneVerificationStep"),
+  { ssr: false },
+);
+const IdDocumentStep = dynamic(() => import("@/components/kyc/IdDocumentStep"), {
+  ssr: false,
+});
+const FaceVerificationStep = dynamic(
+  () => import("@/components/kyc/FaceVerificationStep"),
+  { ssr: false },
+);
 
 interface KycStepContentProps {
   currentStep: 1 | 2 | 3;
@@ -39,49 +48,32 @@ export default function KycStepContent({
 }: KycStepContentProps) {
   return (
     <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
-      <AnimatePresence mode="sync">
-        {currentStep === 1 && (
-          <motion.div
-            key="step1"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-          >
-            <PhoneVerificationStep
-              currentLanguage={currentLanguage}
-              onComplete={onPhoneVerificationComplete}
-              initialPhoneNumber={initialPhoneNumber}
-            />
-          </motion.div>
-        )}
-        {currentStep === 2 && (
-          <motion.div
-            key="step2"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-          >
-            <IdDocumentStep
-              currentLanguage={currentLanguage}
-              onComplete={onIdDocumentComplete}
-              onNext={onIdDocumentNext}
-            />
-          </motion.div>
-        )}
-        {currentStep === 3 && (
-          <motion.div
-            key="step3"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-          >
-            <FaceVerificationStep
-              currentLanguage={currentLanguage}
-              onComplete={onFaceVerificationComplete}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {currentStep === 1 && (
+        <div key="step1" className="transition-opacity duration-200 opacity-100">
+          <PhoneVerificationStep
+            currentLanguage={currentLanguage}
+            onComplete={onPhoneVerificationComplete}
+            initialPhoneNumber={initialPhoneNumber}
+          />
+        </div>
+      )}
+      {currentStep === 2 && (
+        <div key="step2" className="transition-opacity duration-200 opacity-100">
+          <IdDocumentStep
+            currentLanguage={currentLanguage}
+            onComplete={onIdDocumentComplete}
+            onNext={onIdDocumentNext}
+          />
+        </div>
+      )}
+      {currentStep === 3 && (
+        <div key="step3" className="transition-opacity duration-200 opacity-100">
+          <FaceVerificationStep
+            currentLanguage={currentLanguage}
+            onComplete={onFaceVerificationComplete}
+          />
+        </div>
+      )}
     </div>
   );
 }
