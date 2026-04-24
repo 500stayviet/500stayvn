@@ -22,7 +22,7 @@ export default defineConfig({
   ],
   webServer: {
     command:
-      'powershell -Command "if (Test-Path .next) { Remove-Item .next -Recurse -Force -ErrorAction SilentlyContinue }; npx next dev -p 3010"',
+      'powershell -Command "$env:NEXT_PUBLIC_USE_MOCK=\'true\'; if (Test-Path .next) { Remove-Item .next -Recurse -Force -ErrorAction SilentlyContinue }; npx next dev -p 3010"',
     url: BASE_URL,
     reuseExistingServer: false,
     timeout: 180_000,
