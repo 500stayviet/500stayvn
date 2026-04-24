@@ -7,16 +7,12 @@ applications:
           commands:
             # 상업 운영 표준: 재현 가능한 설치만 허용 (npm ci 실패 시 즉시 실패)
             - nvm use 20 || nvm install 20
-            - echo "[preBuild] start cwd: $(pwd)"
-            - cd frontend
-            - echo "[preBuild] install cwd: $(pwd)"
+            - echo "[preBuild] cwd $(pwd)"
             - npm ci --no-audit
         build:
           commands:
             - |
-              echo "[build] start cwd: $(pwd)"
-              cd frontend
-              echo "[build] build cwd: $(pwd)"
+              echo "[build] cwd $(pwd)"
               cat > ./.env <<EOF
               DATABASE_URL=$DATABASE_URL
               DIRECT_URL=$DIRECT_URL
