@@ -6,15 +6,14 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { getProperty } from "@/lib/api/properties";
-import { PropertyData } from "@/types/property";
 import TopBar from "@/components/TopBar";
 import PropertyDetailView from "@/components/PropertyDetailView";
 import type { SupportedLanguage } from "@/lib/api/translation";
+import { useMyPropertyDetailPageState } from "./hooks/useMyPropertyDetailPageState";
 
 export default function PropertyDetailPage() {
   const router = useRouter();
@@ -22,36 +21,17 @@ export default function PropertyDetailPage() {
   const propertyId = params.id as string;
   const { user, loading: authLoading } = useAuth();
   const { currentLanguage, setCurrentLanguage } = useLanguage();
-  const [property, setProperty] = useState<PropertyData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [propertyLoaded, setPropertyLoaded] = useState(false);
 
-  useEffect(() => {
-    if (propertyLoaded) return;
+  const handleRedirectToList = useCallback(() => {
+    router.push("/profile/my-properties");
+  }, [router]);
 
-    if (!authLoading && user) {
-      const fetchProperty = async () => {
-        try {
-          const data = await getProperty(propertyId);
-          if (!data) {
-            router.push("/profile/my-properties");
-            return;
-          }
-          if (data.ownerId !== user.uid) {
-            router.push("/profile/my-properties");
-            return;
-          }
-          setProperty(data);
-          setPropertyLoaded(true);
-        } catch (error) {
-          router.push("/profile/my-properties");
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchProperty();
-    }
-  }, [propertyId, user, authLoading, propertyLoaded, router]);
+  const { property, loading } = useMyPropertyDetailPageState({
+    propertyId,
+    user: user ? { uid: user.uid } : null,
+    authLoading,
+    onRedirectToList: handleRedirectToList,
+  });
 
   if (loading || authLoading) {
     return (

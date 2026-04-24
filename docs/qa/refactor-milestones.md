@@ -9,6 +9,12 @@
 - `kyc/page.tsx` composition-first migration started and expanded
   - State/effect hook + progress/modal extraction: `55a3bc5`
   - Step content renderer extraction: `f68470d`
+- `profile/my-properties/[id]/edit/page.tsx` composition-first refactor complete
+  - State/submission orchestration hooks + section components: `3ae69e5`
+- `profile/my-properties/page.tsx` 1st refactor complete
+  - State hook + header/list/dialog section split: `a3eb9f9`
+- `my-properties` regression E2E added and stabilized
+  - Tab transitions + ended edit duplicate-live guard flow: `525f51a`
 
 ## Completion Gate
 
