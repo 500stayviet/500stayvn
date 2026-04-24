@@ -55,11 +55,24 @@
   - `/kyc` first-load JS: `198 kB`
   - `/booking` first-load JS: `179 kB`
 
+## 2026-04-23 (recheck after mockScenario E2E expansion)
+
+- Performance re-measurement (`next build`) refreshed for priority routes
+  - `/add-property` first-load JS: `254 kB`
+  - `/profile/my-properties` first-load JS: `215 kB`
+  - `/profile/edit` first-load JS: `160 kB`
+  - `/kyc` first-load JS: `198 kB`
+  - `/booking` first-load JS: `179 kB`
+- UX-path regression checks (mock scenario focused)
+  - `profile/edit`: OTP fail path (`mockScenario=fail`) verifies visible error feedback
+  - `booking`: payment fail/partial branches verified (`mockScenario=fail|partial`)
+  - `kyc`: Step2 partial failure (`mock_kyc_id_failed`) now stops progression and surfaces error on screen
+
 ## Next Sequence
 
 1. Keep strict `npm ci` green on both GitHub Actions and Amplify (monitor next deploy cycle)
-2. Add E2E cases for `mockScenario=fail|partial` critical flows
-3. Plan Node 20 deprecation 대응 for Actions runtime/tooling
+2. Plan Node 20 deprecation 대응 for Actions runtime/tooling
+3. (Optional) Automate performance tracking output as CI artifact
 
 ## Completion Gate
 
