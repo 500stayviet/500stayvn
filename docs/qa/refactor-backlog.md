@@ -1,6 +1,6 @@
 # Refactor Backlog (Code-First)
 
-**Last synced:** 2026-04-27 — **P2.1(운영/로그):** `POST /api/app/property-action-logs`·`POST /api/app/moderation-audit` → `appApiOk`/`appApiError`; 클라이언트 `adminPropertyActionLogs.postAppPropertyActionLog`·`propertiesMutations.hostEndAdvertisingPropertyMutation`에서 `unwrapAppApiData`. Completion Gate: `tsc`·`build`.
+**Last synced:** 2026-04-27 — **P2.1 졸업 직전:** `frontend/src/app/api/app` 전수 grep 기준 `NextResponse.json` 0건·JSON 응답 `appApiOk`/`appApiError` 일원화; `SECURITY_APP_API_CHECKLIST.md` 봉투 가이드 반영. Gate: `build`·mock E2E.
 
 ## Objective
 
@@ -153,9 +153,10 @@ Goal:
 - Priority routes:
   - bookings, payments, properties, users, finance, auth-adjacent app routes
 - Done when:
-  - changed routes emit uniform success/failure structure
-  - client handlers no longer need per-route ad-hoc parsing
-- **진행 (2026-04-27):** finance·앱 `property-action-logs`·`moderation-audit` 봉투 정렬; `/api/app/*` 잔여 라우트는 grep으로 순차 점검.
+  - [x] `/api/app/*` JSON 핸들러가 통일된 success/failure 구조를 반환한다 (`NextResponse.json` 직접 사용 없음; SSE 등 비-JSON 스트림은 예외).
+  - [x] 우선순위 라우트·운영 로그(`property-action-logs`, `moderation-audit`)·finance·auth 인접 경로 반영.
+  - [x] 문서(`SECURITY_APP_API_CHECKLIST.md`)에 봉투 기준 및 SSE 예외 명시.
+- **졸업 직전 완료 (2026-04-27):** 전수 검색으로 잔여 `NextResponse.json` 없음 확인; `payments/[bookingId]` 미사용 import 정리. 다음 스프린트는 P2.1을 **완료 처리**하고 P3·P0 후속만 트래킹하면 된다.
 
 ## P3 - Lint Debt Guardrail
 
@@ -179,7 +180,7 @@ Goal:
 
 1. **1-1** 본 문서 유지·**§ 1-1 B 표** `현황` 갱신 (PR마다)
 2. **P2 UI** (§B 표) — `TopBar` → `AddressVerificationModal` → KYC 스텝 3종 → (선택) `useKycPageState` 내부 정리. **P1.1** `bookings`/`auth` 1차 분리는 **완료**; 심화 분할은 선택.
-3. **P2.1** API/에러 계약 통일 (트래픽 높은 `app` 라우트부터)
+3. **P2.1** API/에러 계약 통일 — **완료 (2026-04-27)**; `/api/app/*` JSON 봉투·문서·전수 grep 게이트 반영.
 4. **P0.1** 상태전이·테스트 (결제 라우트·KYC 단위 테스트 등)
 5. **P0.2** mock E2E smoke 편입 + flaky 기준 정리
 6. **1-5 게이트** `npm run build`, `npx tsc --noEmit`, 핵심 E2E, CI·Amplify green

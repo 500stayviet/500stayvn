@@ -1,5 +1,11 @@
 # App API security and error contract
 
+## AppApi envelope (JSON responses under `/api/app/*`)
+
+**운영 로그 및 모든 `/api/app/*` JSON API는 표준 봉투 규격을 준수한다:** 성공 `{ "ok": true, "data": … }` (`appApiOk`), 실패 `{ "ok": false, "error": { "code", "message" } }` (`appApiError`). 클라이언트는 가능하면 `unwrapAppApiData`로 성공 본문을 읽는다.
+
+**예외 (비-JSON):** `GET /api/app/chat/rooms/[id]/events` 는 SSE용으로 `ReadableStream` 기반 `Response`를 반환하며, JSON 봉투를 쓰지 않는다. 사전 검증 실패 시에만 `appApiError` JSON이 반환될 수 있다.
+
 ## Error JSON (mutations and guarded reads)
 
 Failures use a single shape when returned from hardened handlers:
@@ -13,10 +19,6 @@ Failures use a single shape when returned from hardened handlers:
   }
 }
 ```
-
-**Exceptions (auth compatibility):**
-
-- `POST /api/app/users` (signup) — `409` may return `{ error: { code, message } }` (legacy). Other statuses use the `AppApi` envelope when handlers are migrated.
 
 ## Client requirement: `x-app-actor-id`
 
