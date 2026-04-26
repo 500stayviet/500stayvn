@@ -46,7 +46,7 @@ export type ServerOwnerBalances = {
 export async function getAppBankAccounts(): Promise<ServerBankAccount[]> {
   const res = await fetch('/api/app/finance/bank-accounts', withAppActor({ cache: 'no-store' }));
   if (!res.ok) return [];
-  const json = (await res.json()) as { accounts?: ServerBankAccount[] };
+  const json = unwrapAppApiData<{ accounts?: ServerBankAccount[] }>(await res.json());
   return Array.isArray(json.accounts) ? json.accounts : [];
 }
 
@@ -90,7 +90,7 @@ export async function removeAppBankAccount(id: string): Promise<boolean> {
 export async function getAppWithdrawalRequests(): Promise<ServerWithdrawalRequest[]> {
   const res = await fetch('/api/app/finance/withdrawals', withAppActor({ cache: 'no-store' }));
   if (!res.ok) return [];
-  const json = (await res.json()) as { withdrawals?: ServerWithdrawalRequest[] };
+  const json = unwrapAppApiData<{ withdrawals?: ServerWithdrawalRequest[] }>(await res.json());
   return Array.isArray(json.withdrawals) ? json.withdrawals : [];
 }
 
@@ -108,8 +108,13 @@ export async function createAppWithdrawalRequest(input: {
   );
   if (res.ok) return { ok: true };
   try {
-    const json = (await res.json()) as { error?: string };
-    return { ok: false, message: json.error || 'request_failed' };
+    const raw = await res.json();
+    const err =
+      raw && typeof raw === 'object' && 'error' in raw
+        ? (raw as { error?: { code?: string; message?: string } }).error
+        : undefined;
+    const message = err?.message || err?.code || 'request_failed';
+    return { ok: false, message };
   } catch {
     return { ok: false, message: 'request_failed' };
   }

@@ -1,6 +1,6 @@
 # Refactor Backlog (Code-First)
 
-**Last synced:** 2026-04-27 — **P2.1:** 위 3경로 + `GET /api/app/finance/settlement-state`, `POST settlement-purge`, `DELETE settlement-for-booking/[id]` 봉투 정렬; `invalid_input`·`forbidden_or_missing` 기본 메시지 추가. Completion Gate: build·tsc·mock E2E.
+**Last synced:** 2026-04-27 — **P2.1:** `finance/bank-accounts`(·`[id]`)·`finance/withdrawals` 봉투 + `financeServer` unwrap·출금 실패 시 `error.message`; `missing_fields`·`unsupported_action`·`bank_account_not_found` 기본 메시지. Completion Gate: build·tsc·mock E2E.
 
 ## Objective
 
@@ -155,7 +155,7 @@ Goal:
 - Done when:
   - changed routes emit uniform success/failure structure
   - client handlers no longer need per-route ad-hoc parsing
-- **진행 (2026-04-27):** auth 로그인·finance 일부 봉투 정렬; 잔여: `bank-accounts`·`withdrawals`·`property-action-logs`·`moderation-audit` 등.
+- **진행 (2026-04-27):** finance `bank-accounts`·`withdrawals`까지 봉투 정렬; 잔여: `property-action-logs`·`moderation-audit` 등.
 
 ## P3 - Lint Debt Guardrail
 

@@ -24,6 +24,9 @@ const DEFAULT_MESSAGES: Record<string, string> = {
   'auth/email-already-in-use': 'Email already in use.',
   invalid_input: 'One or more inputs are invalid.',
   forbidden_or_missing: 'You are not allowed to modify this resource or it was not found.',
+  missing_fields: 'One or more required fields are missing.',
+  unsupported_action: 'This action is not supported for this request.',
+  bank_account_not_found: 'Bank account was not found for this owner.',
 };
 
 /**

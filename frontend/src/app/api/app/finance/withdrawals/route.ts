@@ -1,10 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { appApiError } from '@/lib/server/appApiErrors';
+import { appApiOk } from '@/lib/server/appApiResponses';
 import { getAppActorId } from '@/lib/server/appSyncWriteGuard';
 
+/** P2.1: AppApi 봉투 — 출금 요청 목록/생성. */
 export async function GET(request: NextRequest) {
   const ownerId = getAppActorId(request);
-  if (!ownerId) return NextResponse.json({ error: 'actor_required' }, { status: 401 });
+  if (!ownerId) return appApiError('actor_required', 401);
   try {
     const rows = await prisma.$queryRawUnsafe<
       Array<{
@@ -30,7 +33,7 @@ export async function GET(request: NextRequest) {
       `,
       ownerId
     );
-    return NextResponse.json({
+    return appApiOk({
       withdrawals: rows.map((r) => ({
         ...r,
         status: r.status === 'approved' ? 'processing' : r.status,
@@ -40,23 +43,23 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('GET /api/app/finance/withdrawals', error);
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
+    return appApiError('database_unavailable', 503);
   }
 }
 
 export async function POST(request: NextRequest) {
   const ownerId = getAppActorId(request);
-  if (!ownerId) return NextResponse.json({ error: 'actor_required' }, { status: 401 });
+  if (!ownerId) return appApiError('actor_required', 401);
   let body: { amount?: number; bankAccountId?: string };
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: 'invalid_body' }, { status: 400 });
+    return appApiError('invalid_body', 400);
   }
   const amount = Number(body.amount || 0);
   const bankAccountId = String(body.bankAccountId || '').trim();
   if (!Number.isFinite(amount) || amount <= 0 || !bankAccountId) {
-    return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
+    return appApiError('invalid_input', 400);
   }
   try {
     const bankRows = await prisma.$queryRawUnsafe<
@@ -72,7 +75,7 @@ export async function POST(request: NextRequest) {
       ownerId
     );
     const bank = bankRows[0];
-    if (!bank) return NextResponse.json({ error: 'bank_account_not_found' }, { status: 404 });
+    if (!bank) return appApiError('bank_account_not_found', 404);
 
     const requestId = crypto.randomUUID();
     await prisma.$transaction(async (tx) => {
@@ -106,9 +109,9 @@ export async function POST(request: NextRequest) {
       where: { id: requestId },
       data: { updatedAt: new Date() },
     });
-    return NextResponse.json({ ok: true, id: requestId }, { status: 201 });
+    return appApiOk({ id: requestId }, 201);
   } catch (error) {
     console.error('POST /api/app/finance/withdrawals', error);
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
+    return appApiError('database_unavailable', 503);
   }
 }

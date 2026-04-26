@@ -1,22 +1,25 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { appApiError } from '@/lib/server/appApiErrors';
+import { appApiOk } from '@/lib/server/appApiResponses';
 import { getAppActorId } from '@/lib/server/appSyncWriteGuard';
 
+/** P2.1: AppApi 봉투 — 대표 계좌 지정 / 계좌 삭제. */
 export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   const ownerId = getAppActorId(request);
-  if (!ownerId) return NextResponse.json({ error: 'actor_required' }, { status: 401 });
+  if (!ownerId) return appApiError('actor_required', 401);
   const { id } = await context.params;
   let body: { isPrimary?: boolean };
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: 'invalid_body' }, { status: 400 });
+    return appApiError('invalid_body', 400);
   }
   if (!body || body.isPrimary !== true) {
-    return NextResponse.json({ error: 'unsupported_action' }, { status: 400 });
+    return appApiError('unsupported_action', 400);
   }
   try {
     await prisma.$transaction(async (tx) => {
@@ -35,13 +38,13 @@ export async function PATCH(
         id
       );
     });
-    return NextResponse.json({ ok: true });
+    return appApiOk({});
   } catch (error) {
     if (error instanceof Error && error.message === 'not_found') {
-      return NextResponse.json({ error: 'not_found' }, { status: 404 });
+      return appApiError('not_found', 404);
     }
     console.error('PATCH /api/app/finance/bank-accounts/[id]', error);
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
+    return appApiError('database_unavailable', 503);
   }
 }
 
@@ -50,7 +53,7 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> }
 ) {
   const ownerId = getAppActorId(request);
-  if (!ownerId) return NextResponse.json({ error: 'actor_required' }, { status: 401 });
+  if (!ownerId) return appApiError('actor_required', 401);
   const { id } = await context.params;
   try {
     await prisma.$transaction(async (tx) => {
@@ -83,12 +86,12 @@ export async function DELETE(
         );
       }
     });
-    return NextResponse.json({ ok: true });
+    return appApiOk({});
   } catch (error) {
     if (error instanceof Error && error.message === 'not_found') {
-      return NextResponse.json({ error: 'not_found' }, { status: 404 });
+      return appApiError('not_found', 404);
     }
     console.error('DELETE /api/app/finance/bank-accounts/[id]', error);
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
+    return appApiError('database_unavailable', 503);
   }
 }
