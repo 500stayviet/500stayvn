@@ -67,6 +67,27 @@ describe("transitionBookingOnPaymentUpdate", () => {
     expect(update).not.toHaveBeenCalled();
   });
 
+  it("confirms pending booking when payment status alias is completed", async () => {
+    const { tx, update } = makeTx({
+      id: "b-2a",
+      status: "pending",
+      detailJson: { guestId: "u-2a" },
+    });
+
+    const result = await transitionBookingOnPaymentUpdate(tx as any, {
+      bookingId: "b-2a",
+      paymentStatus: "completed",
+      refundStatus: null,
+    });
+
+    expect(result).toEqual({ bookingConfirmed: true, bookingCancelled: false });
+    expect(update).toHaveBeenCalledTimes(1);
+    const payload = update.mock.calls[0]?.[0];
+    expect(payload.where.id).toBe("b-2a");
+    expect(payload.data.status).toBe("confirmed");
+    expect(payload.data.detailJson.paymentStatus).toBe("paid");
+  });
+
   it("marks pending booking as cancelled_before when refund status is refunded", async () => {
     const { tx, update } = makeTx({
       id: "b-3",
@@ -88,6 +109,31 @@ describe("transitionBookingOnPaymentUpdate", () => {
     expect(payload.data.detailJson.status).toBe("cancelled_before");
     expect(payload.data.detailJson.paymentStatus).toBe("refunded");
     expect(payload.data.detailJson.cancelReason).toBe("payment_refunded");
+  });
+
+  it("preserves existing cancelledAt and cancelReason on refunded transition", async () => {
+    const { tx, update } = makeTx({
+      id: "b-3a",
+      status: "pending",
+      detailJson: {
+        guestId: "u-3a",
+        cancelledAt: "2026-01-01T00:00:00.000Z",
+        cancelReason: "guest_request",
+      },
+    });
+
+    const result = await transitionBookingOnPaymentUpdate(tx as any, {
+      bookingId: "b-3a",
+      paymentStatus: "paid",
+      refundStatus: "refund_succeeded",
+    });
+
+    expect(result).toEqual({ bookingConfirmed: false, bookingCancelled: true });
+    expect(update).toHaveBeenCalledTimes(1);
+    const payload = update.mock.calls[0]?.[0];
+    expect(payload.data.status).toBe("cancelled_before");
+    expect(payload.data.detailJson.cancelledAt).toBe("2026-01-01T00:00:00.000Z");
+    expect(payload.data.detailJson.cancelReason).toBe("guest_request");
   });
 
   it("marks confirmed booking as cancelled_after when refund status is refunded", async () => {
@@ -126,6 +172,37 @@ describe("transitionBookingOnPaymentUpdate", () => {
       refundStatus: "refunded",
     });
 
+    expect(result).toEqual({ bookingConfirmed: false, bookingCancelled: false });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("does not reconfirm already confirmed booking on paid update", async () => {
+    const { tx, update } = makeTx({
+      id: "b-6",
+      status: "confirmed",
+      detailJson: { guestId: "u-6", paymentStatus: "paid" },
+    });
+
+    const result = await transitionBookingOnPaymentUpdate(tx as any, {
+      bookingId: "b-6",
+      paymentStatus: "paid",
+      refundStatus: null,
+    });
+
+    expect(result).toEqual({ bookingConfirmed: false, bookingCancelled: false });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("returns no-op when booking record is missing", async () => {
+    const { tx, findUnique, update } = makeTx(null);
+
+    const result = await transitionBookingOnPaymentUpdate(tx as any, {
+      bookingId: "missing",
+      paymentStatus: "paid",
+      refundStatus: null,
+    });
+
+    expect(findUnique).toHaveBeenCalledTimes(1);
     expect(result).toEqual({ bookingConfirmed: false, bookingCancelled: false });
     expect(update).not.toHaveBeenCalled();
   });

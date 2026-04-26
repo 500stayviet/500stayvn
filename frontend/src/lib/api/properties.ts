@@ -58,6 +58,13 @@ import {
   updatePropertyMutation,
 } from './propertiesMutations';
 import {
+  bootstrapPropertiesFromServerRuntime,
+  logCancelledPropertyRuntime,
+  reRegisterPropertyRuntime,
+  syncPropertiesNowRuntime,
+  type CancelledPropertyLog,
+} from './propertiesRuntime';
+import {
   buildBookedRangesForParentListingQuery,
   getBookedRangesForPropertyQuery,
   getPropertiesByOwnerQuery,
@@ -75,29 +82,12 @@ export function isDateOverlap(range1: {start: Date | string, end: Date | string}
 }
 
 async function syncPropertiesNow(snapshot: PropertyData[]): Promise<void> {
-  if (typeof window === 'undefined') return;
-  try {
-    const res = await fetchWithRetry(
-      '/api/app/properties',
-      withAppActor({
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ properties: snapshot }),
-      }),
-      { retries: 2, baseDelayMs: 300 }
-    );
-    if (!res.ok) throw new Error(String(res.status));
-  } catch (e) {
-    const code = e instanceof Error ? Number(e.message) : NaN;
-    const status = Number.isFinite(code) ? code : null;
-    console.warn('[properties] immediate PUT sync failed', e);
-    emitUserFacingSyncError({
-      area: 'properties',
-      action: 'sync',
-      message: getPropertySyncErrorMessage(status),
-    });
-    throw e;
-  }
+  return syncPropertiesNowRuntime(snapshot, {
+    fetchWithRetry,
+    withAppActor,
+    emitUserFacingSyncError,
+    getPropertySyncErrorMessage,
+  });
 }
 
 /** 부모 매물 + 동일 주소·호실 예약 구간 (pending/confirmed) — getAvailableProperties / 호스트·관리자 동기 기준 */
@@ -112,41 +102,19 @@ export function buildBookedRangesForParentListing(
 /**
  * 비즈니스 원천은 서버 DB(`/api/app/properties`) — LS는 UI 편의 전용으로만 사용합니다.
  */
-const PROPS_BOOTSTRAP_KEY = 'stayviet-properties-bootstrap-v1';
-const PROPS_BOOTSTRAP_SESSION_KEY = 'stayviet-properties-bootstrap-session-v1';
-
 /** 앱 로그인 직후: 폴백 off 면 LS 없이 서버만, readwrite 면 1회 import 후 서버와 맞춤 */
 export async function bootstrapPropertiesFromServer(): Promise<void> {
-  if (typeof window === 'undefined') return;
-  // 4단계: 비즈니스 매물 데이터는 LS를 bootstrap 소스로 쓰지 않습니다.
-  // 비로그인도 공개 API를 통해 마스킹 데이터가 내려오므로 항상 서버에서 동기화합니다.
-  await ensurePropertiesLoadedForApp();
-  markLedgerBootstrapDone(PROPS_BOOTSTRAP_KEY, PROPS_BOOTSTRAP_SESSION_KEY);
-}
-
-export interface CancelledPropertyLog {
-  id: string;
-  propertyId: string;
-  reservationId?: string;
-  cancelledAt: string;
-  ownerId: string;
+  return bootstrapPropertiesFromServerRuntime({
+    ensurePropertiesLoadedForApp,
+    markLedgerBootstrapDone,
+  });
 }
 
 /**
  * 취소된 매물 기록 저장
  */
 export async function logCancelledProperty(log: Omit<CancelledPropertyLog, 'id' | 'cancelledAt'>): Promise<void> {
-  if (typeof window === 'undefined') return;
-  try {
-    await postAppPropertyActionLog({
-      propertyId: log.propertyId,
-      actionType: 'CANCELLED',
-      reservationId: log.reservationId,
-      ownerId: log.ownerId,
-    });
-  } catch (error) {
-    console.error('Error logging cancelled property:', error);
-  }
+  return logCancelledPropertyRuntime(log, { postAppPropertyActionLog });
 }
 
 /**
@@ -154,22 +122,11 @@ export async function logCancelledProperty(log: Omit<CancelledPropertyLog, 'id' 
  */
 export async function reRegisterProperty(id: string): Promise<void> {
   try {
-    if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
-    const property = await getProperty(id);
-    if (!property) throw new Error('Property not found');
-
-    // 재등록 전 중복 체크
-    const isBooked = await isDateRangeBooked(id, property.checkInDate!, property.checkOutDate!);
-    if (isBooked) {
-      throw new Error('AlreadyBookedInPeriod');
-    }
-
-    await updateProperty(id, {
-      status: 'active',
-      deleted: false,
-      deletedAt: undefined
+    await reRegisterPropertyRuntime(id, {
+      getProperty,
+      isDateRangeBooked,
+      updateProperty,
     });
-    
     console.log('[reRegisterProperty] Property re-registered:', id);
   } catch (error) {
     console.error('Error re-registering property:', error);
@@ -468,39 +425,6 @@ export async function updateProperty(
   } catch (error) {
     console.error('Error updating property:', error);
     throw error;
-  }
-}
-
-/**
- * 매물 자동 광고종료 (임대 기간 7일 미만 남은 경우)
- * 
- * @param id - 매물 ID
- */
-async function autoExpireProperty(id: string): Promise<void> {
-  try {
-    if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
-    await hydratePropertiesMemoryIfLoggedIn();
-    const properties = readPropertiesArray();
-    const index = properties.findIndex((p) => p.id === id);
-    
-    if (index === -1) return;
-    
-    // 이미 삭제된 매물이면 스킵
-    if (properties[index].deleted) return;
-    
-    const now = new Date();
-    properties[index] = {
-      ...properties[index],
-      deleted: true,
-      deletedAt: serializeDate(now),
-      status: 'inactive',
-    };
-
-    writePropertiesArray(properties);
-    await syncPropertiesNow(properties);
-    console.log('[autoExpireProperty] Property auto-expired:', id);
-  } catch (error) {
-    console.error('Error auto-expiring property:', error);
   }
 }
 
