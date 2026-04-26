@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import {
@@ -8,6 +8,7 @@ import {
 import { getAppActorId } from '@/lib/server/appSyncWriteGuard';
 import { getAdminFromRequest } from '@/lib/server/adminAuthServer';
 import { appApiError } from '@/lib/server/appApiErrors';
+import { appApiOk } from '@/lib/server/appApiResponses';
 import type { SignUpData } from '@/lib/api/auth';
 import { reportApiException, reportApiSuccess } from '@/lib/server/apiMonitoring';
 
@@ -70,7 +71,7 @@ export async function GET(request: NextRequest) {
       const users = rows.map(prismaUserToUserData);
       const nextCursor = makeUsersCursor(rows[rows.length - 1] || null);
       reportApiSuccess('GET /api/app/users', 200, startedAt);
-      return NextResponse.json({
+      return appApiOk({
         users,
         page: {
           limit,
@@ -88,7 +89,7 @@ export async function GET(request: NextRequest) {
     });
     const users = row ? [prismaUserToUserData(row)] : [];
     reportApiSuccess('GET /api/app/users', 200, startedAt);
-    return NextResponse.json({
+    return appApiOk({
       users,
       page: {
         limit,
@@ -101,7 +102,7 @@ export async function GET(request: NextRequest) {
   } catch (e) {
     reportApiException('GET /api/app/users', e, startedAt);
     console.error('GET /api/app/users', e);
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
+    return appApiError('database_unavailable', 503);
   }
 }
 
@@ -114,22 +115,19 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: 'invalid_body' }, { status: 400 });
+    return appApiError('invalid_body', 400);
   }
 
   const email = (body.email || '').trim().toLowerCase();
   const password = body.password || '';
   if (!email || !password) {
-    return NextResponse.json({ error: 'missing_email_or_password' }, { status: 400 });
+    return appApiError('missing_email_or_password', 400);
   }
 
   try {
     const dup = await prisma.user.findUnique({ where: { email } });
     if (dup && !dup.deleted) {
-      return NextResponse.json(
-        { error: { code: 'auth/email-already-in-use', message: 'Email already in use' } },
-        { status: 409 }
-      );
+      return appApiError('auth/email-already-in-use', 409);
     }
 
     if (dup && dup.deleted) {
@@ -154,7 +152,7 @@ export async function POST(request: NextRequest) {
         },
       });
       reportApiSuccess('POST /api/app/users', 200, startedAt);
-      return NextResponse.json(prismaUserToUserData(revived), { status: 200 });
+      return appApiOk({ user: prismaUserToUserData(revived) });
     }
 
     const id = `user_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
@@ -175,10 +173,10 @@ export async function POST(request: NextRequest) {
     });
 
     reportApiSuccess('POST /api/app/users', 201, startedAt);
-    return NextResponse.json(prismaUserToUserData(created), { status: 201 });
+    return appApiOk({ user: prismaUserToUserData(created) }, 201);
   } catch (e) {
     reportApiException('POST /api/app/users', e, startedAt);
     console.error('POST /api/app/users', e);
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
+    return appApiError('database_unavailable', 503);
   }
 }

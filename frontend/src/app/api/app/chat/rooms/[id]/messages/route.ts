@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { rejectAppWriteUnlessActorAllowed } from '@/lib/server/appSyncWriteGuard';
 import { appApiError } from '@/lib/server/appApiErrors';
+import { appApiOk } from '@/lib/server/appApiResponses';
 import { rejectAppReadUnlessRoomParticipant } from '@/lib/server/appApiReadGuard'; 
 import { reportApiException, reportApiSuccess } from '@/lib/server/apiMonitoring';
 
@@ -12,7 +13,7 @@ export async function GET(
   const startedAt = Date.now();
   const { id } = await context.params;
   const roomId = (id || '').trim();
-  if (!roomId) return NextResponse.json({ error: 'invalid_room_id' }, { status: 400 });
+  if (!roomId) return appApiError('invalid_room_id', 400);
   const deniedRead = await rejectAppReadUnlessRoomParticipant(request, roomId);
   if (deniedRead) return deniedRead;
   const limitRaw = Number(request.nextUrl.searchParams.get('limit') || '200');
@@ -37,7 +38,7 @@ export async function GET(
       isRead: m.isRead,
     }));
     reportApiSuccess('GET /api/app/chat/rooms/[id]/messages', 200, startedAt);
-    return NextResponse.json({ messages });
+    return appApiOk({ messages });
   } catch (e) {
     reportApiException('GET /api/app/chat/rooms/[id]/messages', e, startedAt);
     console.error('GET /api/app/chat/rooms/[id]/messages', e);
@@ -75,14 +76,14 @@ export async function POST(
       select: { bookingId: true },
     });
     const bookingId = room?.bookingId || null;
-    if (!bookingId) return NextResponse.json({ error: 'room_not_found' }, { status: 404 });
+    if (!bookingId) return appApiError('room_not_found', 404);
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
       include: { property: { select: { ownerId: true } } },
     });
-    if (!booking) return NextResponse.json({ error: 'booking_not_found' }, { status: 404 });
+    if (!booking) return appApiError('booking_not_found', 404);
     if (senderId !== booking.guestId && senderId !== booking.property.ownerId) {
-      return NextResponse.json({ error: 'forbidden_sender' }, { status: 403 });
+      return appApiError('forbidden_sender', 403);
     }
 
     const msg = await prisma.message.create({
@@ -93,16 +94,18 @@ export async function POST(
         isRead: false,
       },
     });
-    return NextResponse.json(
+    return appApiOk(
       {
-        id: msg.id,
-        chatRoomId: msg.roomId,
-        senderId: msg.senderId,
-        content: msg.content,
-        createdAt: msg.createdAt.toISOString(),
-        isRead: msg.isRead,
+        message: {
+          id: msg.id,
+          chatRoomId: msg.roomId,
+          senderId: msg.senderId,
+          content: msg.content,
+          createdAt: msg.createdAt.toISOString(),
+          isRead: msg.isRead,
+        },
       },
-      { status: 201 }
+      201
     );
   } catch (e) {
     reportApiException('POST /api/app/chat/rooms/[id]/messages', e, startedAt);

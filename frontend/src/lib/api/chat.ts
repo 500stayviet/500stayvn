@@ -4,6 +4,32 @@
 
 import { withAppActor } from '@/lib/api/withAppActor';
 import { getCurrentUserId } from '@/lib/api/auth';
+import { unwrapAppApiData } from '@/lib/api/appApiEnvelope';
+
+function parseCreatedChatRoomPayload(
+  json: unknown
+): { id: string; bookingId: string; createdAt: string } | null {
+  const u = unwrapAppApiData<{
+    room?: { id: string; bookingId: string; createdAt: string };
+    id?: string;
+    bookingId?: string;
+    createdAt?: string;
+  }>(json);
+  if (!u || typeof u !== 'object') return null;
+  if ('room' in u && u.room) return u.room;
+  if ('id' in u && 'bookingId' in u && 'createdAt' in u) {
+    return u as { id: string; bookingId: string; createdAt: string };
+  }
+  return null;
+}
+
+function parsePostedChatMessagePayload(json: unknown): ChatMessage | null {
+  const u = unwrapAppApiData<{ message?: ChatMessage } | ChatMessage>(json);
+  if (!u || typeof u !== 'object') return null;
+  if ('message' in u && u.message) return u.message;
+  if ('id' in u && 'chatRoomId' in u) return u as ChatMessage;
+  return null;
+}
 
 // 채팅방 인터페이스
 export interface ChatRoom {
@@ -95,7 +121,7 @@ export async function getUserChatRooms(userId: string): Promise<ChatRoom[]> {
       withAppActor({ cache: 'no-store' })
     );
     if (!res.ok) throw new Error(String(res.status));
-    const data = (await res.json()) as { rooms?: ChatRoom[] };
+    const data = unwrapAppApiData<{ rooms?: ChatRoom[] }>(await res.json());
     rooms = Array.isArray(data.rooms) ? data.rooms : [];
   } catch {
     rooms = [];
@@ -119,7 +145,7 @@ export async function getChatRoomByBookingId(bookingId: string): Promise<ChatRoo
       withAppActor({ cache: 'no-store' })
     );
     if (!res.ok) return null;
-    const data = (await res.json()) as { rooms?: ChatRoom[] };
+    const data = unwrapAppApiData<{ rooms?: ChatRoom[] }>(await res.json());
     const list = Array.isArray(data.rooms) ? data.rooms : [];
     return list[0] || null;
   } catch {
@@ -178,7 +204,8 @@ export async function createChatRoom(data: {
     })
   );
   if (!res.ok) throw new Error(`create_chat_room_failed_${res.status}`);
-  const created = (await res.json()) as { id: string; bookingId: string; createdAt: string };
+  const created = parseCreatedChatRoomPayload(await res.json());
+  if (!created) throw new Error('create_chat_room_invalid_response');
   const room = await getChatRoomByBookingId(created.bookingId);
   if (room) return room;
   return {
@@ -210,7 +237,7 @@ export async function getChatMessages(chatRoomId: string, options?: GetMessagesO
       withAppActor({ cache: 'no-store' })
     );
     if (!res.ok) throw new Error(String(res.status));
-    const data = (await res.json()) as { messages?: ChatMessage[] };
+    const data = unwrapAppApiData<{ messages?: ChatMessage[] }>(await res.json());
     const messages: ChatMessage[] = Array.isArray(data.messages) ? data.messages : [];
     return messages
       .filter(msg => msg.chatRoomId === chatRoomId)
@@ -242,7 +269,8 @@ export async function sendMessage(data: {
     })
   );
   if (!res.ok) throw new Error(`send_message_failed_${res.status}`);
-  const msg = (await res.json()) as ChatMessage;
+  const msg = parsePostedChatMessagePayload(await res.json());
+  if (!msg) throw new Error('send_message_invalid_response');
   return { ...msg, senderName: data.senderName };
 }
 
@@ -308,7 +336,7 @@ export async function getUnreadCountsByRole(userId: string): Promise<{ asGuest: 
       withAppActor({ cache: 'no-store' })
     );
     if (!res.ok) throw new Error(String(res.status));
-    const data = (await res.json()) as { asGuest?: number; asOwner?: number };
+    const data = unwrapAppApiData<{ asGuest?: number; asOwner?: number }>(await res.json());
     return {
       asGuest: Number(data.asGuest || 0),
       asOwner: Number(data.asOwner || 0),

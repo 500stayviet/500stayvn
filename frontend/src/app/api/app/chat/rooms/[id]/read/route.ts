@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { rejectAppWriteUnlessActorAllowed } from '@/lib/server/appSyncWriteGuard';
 import { appApiError } from '@/lib/server/appApiErrors';
+import { appApiOk } from '@/lib/server/appApiResponses';
 
 type Body = {
   userId?: string;
@@ -31,12 +32,12 @@ export async function PATCH(
       select: { bookingId: true },
     });
     const bookingId = room?.bookingId || null;
-    if (!bookingId) return NextResponse.json({ error: 'room_not_found' }, { status: 404 });
+    if (!bookingId) return appApiError('room_not_found', 404);
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
       include: { property: { select: { ownerId: true } } },
     });
-    if (!booking) return NextResponse.json({ error: 'booking_not_found' }, { status: 404 });
+    if (!booking) return appApiError('booking_not_found', 404);
     const denied = rejectAppWriteUnlessActorAllowed(request, [booking.guestId, booking.property.ownerId]);
     if (denied) return denied;
 
@@ -48,7 +49,7 @@ export async function PATCH(
       },
       data: { isRead: true },
     });
-    return NextResponse.json({ updated: result.count });
+    return appApiOk({ updated: result.count });
   } catch (e) {
     console.error('PATCH /api/app/chat/rooms/[id]/read', e);
     return appApiError('database_unavailable', 503);

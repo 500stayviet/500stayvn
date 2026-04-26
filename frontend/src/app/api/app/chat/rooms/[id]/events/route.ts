@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAppActorId } from '@/lib/server/appSyncWriteGuard';
 import { rejectAppReadUnlessRoomParticipant } from '@/lib/server/appApiReadGuard';
+import { appApiError } from '@/lib/server/appApiErrors';
 
 /**
  * SSE: 방 메시지/읽지 않음 변화를 서버에서 폴링해 푸시 (클라이언트 폴링 대체)
@@ -13,14 +14,14 @@ export async function GET(
   const { id } = await context.params;
   const roomId = (id || '').trim();
   if (!roomId) {
-    return new Response(JSON.stringify({ error: 'invalid_room_id' }), { status: 400 });
+    return appApiError('invalid_room_id', 400);
   }
   const denied = await rejectAppReadUnlessRoomParticipant(request, roomId);
   if (denied) return denied;
 
   const actor = getAppActorId(request);
   if (!actor) {
-    return new Response(JSON.stringify({ error: 'actor_required' }), { status: 401 });
+    return appApiError('actor_required', 401);
   }
 
   const encoder = new TextEncoder();

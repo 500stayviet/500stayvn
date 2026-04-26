@@ -20,6 +20,8 @@ const DEFAULT_MESSAGES: Record<string, string> = {
   invalid_payment_actor: 'Payment userId must be the booking guest or owner.',
   invalid_id: 'Invalid resource id.',
   admin_patch_empty: 'No permitted fields for an admin user update.',
+  missing_email_or_password: 'Email and password are required.',
+  'auth/email-already-in-use': 'Email already in use.',
 };
 
 /**

@@ -23,6 +23,7 @@ import {
 } from "@/lib/runtime/networkResilience";
 import { withAppActor } from "@/lib/api/withAppActor";
 import { clearBookingsClientCache } from "@/lib/api/bookings";
+import { parseAppUsersListPayload, parseAppUserPayload } from "@/lib/api/appUserApiParse";
 
 export interface UserData {
   uid: string;
@@ -230,11 +231,8 @@ export async function refreshUsersFromServer(): Promise<boolean> {
         }
         throw new Error(String(res.status));
       }
-      const data = (await res.json()) as {
-        users?: UserData[];
-        page?: { hasMore?: boolean; nextOffset?: number };
-      };
-      const chunk = Array.isArray(data.users) ? data.users : [];
+      const data = parseAppUsersListPayload(await res.json());
+      const chunk = data.users;
       users.push(...chunk);
       const hasMore = Boolean(data.page?.hasMore);
       if (!hasMore || chunk.length === 0) break;
@@ -530,16 +528,25 @@ export async function signUpWithEmail(data: SignUpData): Promise<any> {
     }
 
     if (!res.ok) {
-      if (json?.error?.code) return { error: json.error };
+      const err = json as { error?: { code?: string; message?: string } };
+      if (err?.error?.code) return { error: err.error };
       return {
         error: {
           code: "auth/unknown",
-          message: json?.error || "Signup failed",
+          message:
+            typeof err?.error === "object" && err.error?.message
+              ? err.error.message
+              : "Signup failed",
         },
       };
     }
 
-    const user = json as UserData;
+    const user = parseAppUserPayload(json);
+    if (!user) {
+      return {
+        error: { code: "auth/unknown", message: "Invalid signup response" },
+      };
+    }
     setCurrentUser(user.uid);
     mergeAuthenticatedUserIntoCache(user);
     await getSharedAppUsersRefresh();

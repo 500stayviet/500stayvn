@@ -15,6 +15,7 @@ import {
   mergeAuthenticatedUserIntoCache,
   type UserData,
 } from "@/lib/api/auth";
+import { parseAppUserPayload } from "@/lib/api/appUserApiParse";
 
 /**
  * 파일 업로드 유틸리티 함수
@@ -90,8 +91,8 @@ async function completeKYCStep(
       }),
     );
     if (patchRes.ok) {
-      const updated = (await patchRes.json()) as import('@/lib/api/auth').UserData;
-      mergeAuthenticatedUserIntoCache(updated);
+      const updated = parseAppUserPayload(await patchRes.json());
+      if (updated) mergeAuthenticatedUserIntoCache(updated);
     }
   } catch (error) {
     logAdminSystemEvent({
@@ -244,8 +245,8 @@ export async function completeKYCVerification(uid: string): Promise<void> {
       }),
     );
     if (res.ok) {
-      const updated = (await res.json()) as UserData;
-      mergeAuthenticatedUserIntoCache(updated);
+      const updated = parseAppUserPayload(await res.json());
+      if (updated) mergeAuthenticatedUserIntoCache(updated);
       return;
     }
   } catch (error) {
@@ -272,7 +273,7 @@ export async function getVerificationStatus(
       cache: 'no-store',
     });
     if (!response.ok) return 'none';
-    const user = await response.json();
+    const user = parseAppUserPayload(await response.json());
     return user?.verification_status || 'none';
   } catch (error) {
     console.error("Error getting verification status:", error);

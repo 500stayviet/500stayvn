@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { rejectAppWriteUnlessActorAllowed } from '@/lib/server/appSyncWriteGuard';
 import { appApiError } from '@/lib/server/appApiErrors';
+import { appApiOk } from '@/lib/server/appApiResponses';
 import {
   rejectAppReadUnlessActorIsUser,
   rejectAppReadUnlessBookingParticipant,
@@ -40,6 +41,14 @@ type RoomDto = {
   lastMessageAt?: string;
   lastMessageSenderId?: string;
 };
+
+function chatRoomRowToApi(room: { id: string; bookingId: string | null; createdAt: Date }) {
+  return {
+    id: room.id,
+    bookingId: room.bookingId ?? '',
+    createdAt: room.createdAt.toISOString(),
+  };
+}
 
 function mapRoom(room: { id: string; bookingId: string | null; createdAt: Date }): RoomDto {
   return {
@@ -133,7 +142,7 @@ export async function GET(request: NextRequest) {
       return dto;
     });
     reportApiSuccess('GET /api/app/chat/rooms', 200, startedAt);
-    return NextResponse.json({ rooms: result });
+    return appApiOk({ rooms: result });
   } catch (e) {
     reportApiException('GET /api/app/chat/rooms', e, startedAt);
     console.error('GET /api/app/chat/rooms', e);
@@ -167,12 +176,12 @@ export async function POST(request: NextRequest) {
     const denied = rejectAppWriteUnlessActorAllowed(request, [booking.guestId, booking.property.ownerId]);
     if (denied) return denied;
     const existing = await prisma.chatRoom.findFirst({ where: { bookingId } });
-    if (existing) return NextResponse.json(existing);
+    if (existing) return appApiOk({ room: chatRoomRowToApi(existing) });
     const created = await prisma.chatRoom.create({
       data: { bookingId },
     });
     reportApiSuccess('POST /api/app/chat/rooms', 201, startedAt);
-    return NextResponse.json(created, { status: 201 });
+    return appApiOk({ room: chatRoomRowToApi(created) }, 201);
   } catch (e) {
     reportApiException('POST /api/app/chat/rooms', e, startedAt);
     console.error('POST /api/app/chat/rooms', e);

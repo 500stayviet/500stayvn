@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { appApiError } from '@/lib/server/appApiErrors';
+import { appApiOk } from '@/lib/server/appApiResponses';
 import { rejectAppReadUnlessActorIsUser } from '@/lib/server/appApiReadGuard';
 
 export async function GET(request: NextRequest) {
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
       if (row.role === 'guest') asGuest = Number(row.count) || 0;
       if (row.role === 'owner') asOwner = Number(row.count) || 0;
     }
-    return NextResponse.json({ asGuest, asOwner });
+    return appApiOk({ asGuest, asOwner });
   } catch (e) {
     console.error('GET /api/app/chat/unread-counts', e);
     return appApiError('database_unavailable', 503);

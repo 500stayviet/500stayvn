@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import {
   mergeProfileJson,
@@ -8,6 +8,7 @@ import {
 import { getAppActorId } from '@/lib/server/appSyncWriteGuard';
 import { getAdminFromRequest } from '@/lib/server/adminAuthServer';
 import { appApiError } from '@/lib/server/appApiErrors';
+import { appApiOk } from '@/lib/server/appApiResponses';
 import type { Prisma } from '@prisma/client';
 import type { UserData } from '@/lib/api/auth';
 
@@ -39,7 +40,7 @@ export async function GET(
       where: { id: uid, deleted: false },
     });
     if (!row) return appApiError('not_found', 404);
-    return NextResponse.json(prismaUserToUserData(row));
+    return appApiOk({ user: prismaUserToUserData(row) });
   } catch (e) {
     console.error('GET /api/app/users/[id]', e);
     return appApiError('database_unavailable', 503);
@@ -101,7 +102,7 @@ export async function PATCH(
       data,
     });
 
-    return NextResponse.json(prismaUserToUserData(updated));
+    return appApiOk({ user: prismaUserToUserData(updated) });
   } catch (e) {
     console.error('PATCH /api/app/users/[id]', e);
     return appApiError('database_unavailable', 503);
@@ -136,7 +137,7 @@ export async function DELETE(
       },
     });
 
-    return NextResponse.json(prismaUserToUserData(updated));
+    return appApiOk({ user: prismaUserToUserData(updated) });
   } catch (e) {
     console.error('DELETE /api/app/users/[id]', e);
     return appApiError('database_unavailable', 503);

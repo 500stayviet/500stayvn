@@ -15,6 +15,7 @@ import { getAdminOwnerBalances, type ServerOwnerBalances } from '@/lib/api/finan
 import { getAllBookingsForAdmin } from '@/lib/api/bookings';
 import { addSharedMemo, deleteSharedMemo, getSharedMemos } from '@/lib/api/adminMemos';
 import type { UserData } from '@/lib/api/auth';
+import { parseAppUserPayload } from '@/lib/api/appUserApiParse';
 import { setUserBlocked } from '@/lib/api/adminModeration';
 import { refreshAdminBadges } from '@/lib/adminBadgeCounts';
 import { acknowledgeNewUser } from '@/lib/adminAckState';
@@ -81,8 +82,8 @@ export default function AdminUserDetailPage() {
         credentials: 'same-origin',
       });
       if (res.ok) {
-        const u = (await res.json()) as UserData;
-        setUser(u.deleted ? null : u);
+        const u = parseAppUserPayload(await res.json());
+        setUser(u && !u.deleted ? u : null);
       } else {
         setUser(null);
       }
