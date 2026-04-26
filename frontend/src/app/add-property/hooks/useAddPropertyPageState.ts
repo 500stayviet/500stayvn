@@ -233,3 +233,4 @@ export function useAddPropertyPageState({
   };
 }
 
+export type AddPropertyPageViewModel = ReturnType<typeof useAddPropertyPageState>;
