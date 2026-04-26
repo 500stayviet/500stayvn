@@ -1,5 +1,6 @@
 'use client';
 
+import { unwrapAppApiData } from '@/lib/api/appApiEnvelope';
 import { withAppActor } from '@/lib/api/withAppActor';
 
 export type ServerBankAccount = {
@@ -198,7 +199,7 @@ export async function postAdminRefundLedgerEntry(input: {
 export async function getAppOwnerBalances(): Promise<ServerOwnerBalances> {
   const res = await fetch('/api/app/finance/balance', withAppActor({ cache: 'no-store' }));
   if (!res.ok) return { totalApprovedRevenue: 0, pendingWithdrawal: 0, availableBalance: 0 };
-  return (await res.json()) as ServerOwnerBalances;
+  return unwrapAppApiData<ServerOwnerBalances>(await res.json());
 }
 
 export type AppSettlementOverlayRow = {
@@ -210,7 +211,7 @@ export type AppSettlementOverlayRow = {
 export async function getAppSettlementOverlay(): Promise<AppSettlementOverlayRow[]> {
   const res = await fetch('/api/app/finance/settlement-overlay', withAppActor({ cache: 'no-store' }));
   if (!res.ok) return [];
-  const json = (await res.json()) as { overlays?: AppSettlementOverlayRow[] };
+  const json = unwrapAppApiData<{ overlays?: AppSettlementOverlayRow[] }>(await res.json());
   return Array.isArray(json.overlays) ? json.overlays : [];
 }
 

@@ -1,5 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { appApiError } from '@/lib/server/appApiErrors';
+import { appApiOk } from '@/lib/server/appApiResponses';
 import { getAppActorId } from '@/lib/server/appSyncWriteGuard';
 
 /**
@@ -7,7 +9,7 @@ import { getAppActorId } from '@/lib/server/appSyncWriteGuard';
  */
 export async function GET(request: NextRequest) {
   const ownerId = getAppActorId(request);
-  if (!ownerId) return NextResponse.json({ error: 'actor_required' }, { status: 401 });
+  if (!ownerId) return appApiError('actor_required', 401);
   try {
     const rows = await prisma.$queryRawUnsafe<
       Array<{
@@ -33,7 +35,7 @@ export async function GET(request: NextRequest) {
       `,
       ownerId
     );
-    return NextResponse.json({
+    return appApiOk({
       overlays: rows.map((r) => ({
         bookingId: r.bookingId,
         approvalStatus: r.approvalStatus,
@@ -42,6 +44,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('GET /api/app/finance/settlement-overlay', error);
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
+    return appApiError('database_unavailable', 503);
   }
 }

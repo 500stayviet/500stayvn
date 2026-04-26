@@ -16,8 +16,7 @@ Failures use a single shape when returned from hardened handlers:
 
 **Exceptions (auth compatibility):**
 
-- `POST /api/app/auth/login` — may return `{ error: { code, message } }` without `ok` (legacy).
-- `POST /api/app/users` (signup) — `409` may return `{ error: { code, message } }` (legacy).
+- `POST /api/app/users` (signup) — `409` may return `{ error: { code, message } }` (legacy). Other statuses use the `AppApi` envelope when handlers are migrated.
 
 ## Client requirement: `x-app-actor-id`
 

@@ -1,6 +1,6 @@
 # Refactor Backlog (Code-First)
 
-**Last synced:** 2026-04-26 — **Fixed Completion Gate(로컬)**: `npm run build`·`npx tsc --noEmit`·`mock-scenario-regression` E2E 4/4 green.
+**Last synced:** 2026-04-27 — **P2.1:** `POST /api/app/auth/login`·`GET /api/app/finance/balance`·`GET /api/app/finance/settlement-overlay` → `appApiOk`/`appApiError`; `financeServer` unwrap. Completion Gate: build·tsc·mock E2E (이번 동기화 기준).
 
 ## Objective
 
@@ -155,6 +155,7 @@ Goal:
 - Done when:
   - changed routes emit uniform success/failure structure
   - client handlers no longer need per-route ad-hoc parsing
+- **진행 (2026-04-27):** auth 로그인·finance `balance`/`settlement-overlay` 봉투 정렬; 잔여 finance·property-action-logs·moderation-audit·settlement-* 등 `NextResponse.json` grep으로 순차 마이그레이션.
 
 ## P3 - Lint Debt Guardrail
 

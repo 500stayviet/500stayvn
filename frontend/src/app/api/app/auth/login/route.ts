@@ -1,54 +1,49 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { appApiError } from '@/lib/server/appApiErrors';
+import { appApiOk } from '@/lib/server/appApiResponses';
 import { appSimpleHash, prismaUserToUserData } from '@/lib/server/appUserMapper';
 
 /**
  * 이메일/비밀번호 로그인 (앱 전용 — NextAuth OAuth와 별도)
+ * P2.1: `AppApi` 성공/실패 봉투 (`appApiOk` / `appApiError`)
  */
 export async function POST(request: NextRequest) {
   let body: { email?: string; password?: string };
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: 'invalid_body' }, { status: 400 });
+    return appApiError('invalid_body', 400);
   }
 
   const email = (body.email || '').trim().toLowerCase();
   const password = body.password || '';
   if (!email || !password) {
-    return NextResponse.json({ error: 'missing_credentials' }, { status: 400 });
+    return appApiError('missing_email_or_password', 400);
   }
 
   try {
     const u = await prisma.user.findUnique({ where: { email } });
     if (!u || u.deleted) {
-      return NextResponse.json(
-        { error: { code: 'auth/user-not-found', message: 'User not found' } },
-        { status: 401 }
-      );
+      return appApiError('auth/user-not-found', 401, 'User not found');
     }
     if (!u.passwordHash) {
-      return NextResponse.json(
-        { error: { code: 'auth/wrong-password', message: 'Use social login' } },
-        { status: 401 }
-      );
+      return appApiError('auth/wrong-password', 401, 'Use social login');
     }
     if (u.blocked) {
-      return NextResponse.json(
-        { error: { code: 'auth/user-blocked', message: 'This account is blocked by admin' } },
-        { status: 403 }
+      return appApiError(
+        'auth/user-blocked',
+        403,
+        'This account is blocked by admin',
       );
     }
     if (u.passwordHash !== appSimpleHash(password)) {
-      return NextResponse.json(
-        { error: { code: 'auth/wrong-password', message: 'Wrong password' } },
-        { status: 401 }
-      );
+      return appApiError('auth/wrong-password', 401, 'Wrong password');
     }
 
-    return NextResponse.json({ user: prismaUserToUserData(u) });
+    return appApiOk({ user: prismaUserToUserData(u) });
   } catch (e) {
     console.error('POST /api/app/auth/login', e);
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
+    return appApiError('database_unavailable', 503);
   }
 }
