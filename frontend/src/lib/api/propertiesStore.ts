@@ -13,6 +13,39 @@ let propertiesCache: PropertyData[] | null = null;
 let serverFlushTimer: ReturnType<typeof setTimeout> | null = null;
 let sharedAppPropertiesRefresh: Promise<boolean> | null = null;
 
+type PropertiesListPage = {
+  hasMore?: boolean;
+  nextOffset?: number;
+  limit?: number;
+  offset?: number;
+  nextCursor?: string | null;
+};
+
+/** `GET /api/app/properties` — supports `{ ok, data }` and legacy flat JSON (tests/mocks). */
+function parsePropertiesListPayload(raw: unknown): {
+  properties: PropertyData[];
+  page?: PropertiesListPage;
+} {
+  if (raw && typeof raw === "object" && "ok" in raw) {
+    const envelope = raw as { ok?: boolean; data?: unknown };
+    if (envelope.ok === true && envelope.data && typeof envelope.data === "object") {
+      const data = envelope.data as {
+        properties?: PropertyData[];
+        page?: PropertiesListPage;
+      };
+      return {
+        properties: Array.isArray(data.properties) ? data.properties : [],
+        page: data.page,
+      };
+    }
+  }
+  const legacy = raw as { properties?: PropertyData[]; page?: PropertiesListPage };
+  return {
+    properties: Array.isArray(legacy.properties) ? legacy.properties : [],
+    page: legacy.page,
+  };
+}
+
 export function getPropertySyncErrorMessage(status: number | null): string {
   if (status === 429) return "요청이 많습니다. 잠시 후 다시 시도해 주세요.";
   if (status === 503)
@@ -145,15 +178,12 @@ export async function refreshPropertiesFromServer(): Promise<boolean> {
         throw new Error(String(res.status));
       }
 
-      const data = (await res.json()) as {
-        properties?: PropertyData[];
-        page?: { hasMore?: boolean; nextOffset?: number };
-      };
-      const chunk = Array.isArray(data.properties) ? data.properties : [];
+      const parsed = parsePropertiesListPayload(await res.json());
+      const chunk = parsed.properties;
       list.push(...chunk);
-      const hasMore = Boolean(data.page?.hasMore);
+      const hasMore = Boolean(parsed.page?.hasMore);
       if (!hasMore || chunk.length === 0) break;
-      offset = Number(data.page?.nextOffset ?? offset + chunk.length);
+      offset = Number(parsed.page?.nextOffset ?? offset + chunk.length);
     }
 
     propertiesCache = list;
