@@ -22,6 +22,8 @@ const DEFAULT_MESSAGES: Record<string, string> = {
   admin_patch_empty: 'No permitted fields for an admin user update.',
   missing_email_or_password: 'Email and password are required.',
   'auth/email-already-in-use': 'Email already in use.',
+  invalid_input: 'One or more inputs are invalid.',
+  forbidden_or_missing: 'You are not allowed to modify this resource or it was not found.',
 };
 
 /**

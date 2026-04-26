@@ -1,11 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { bumpBookingUpdatedAtForDomainSignal } from '@/lib/server/bumpBookingDomainSignal';
+import { appApiError } from '@/lib/server/appApiErrors';
+import { appApiOk } from '@/lib/server/appApiResponses';
 import { rejectAppWriteUnlessActorAllowed } from '@/lib/server/appSyncWriteGuard';
 
 /**
  * Remove settlement queue + approval rows for a booking (ledger unchanged).
  * Allowed for the guest or the property owner.
+ * P2.1: AppApi 봉투.
  */
 export async function DELETE(
   request: NextRequest,
@@ -13,13 +16,13 @@ export async function DELETE(
 ) {
   const { bookingId: rawId } = await context.params;
   const bookingId = String(rawId || '').trim();
-  if (!bookingId) return NextResponse.json({ error: 'invalid_input' }, { status: 400 });
+  if (!bookingId) return appApiError('invalid_input', 400);
 
   const booking = await prisma.booking.findUnique({
     where: { id: bookingId },
     select: { guestId: true, propertyId: true },
   });
-  if (!booking) return NextResponse.json({ ok: true });
+  if (!booking) return appApiOk({});
 
   const property = await prisma.property.findUnique({
     where: { id: booking.propertyId },
@@ -35,9 +38,9 @@ export async function DELETE(
       await tx.$executeRawUnsafe(`DELETE FROM "AdminSettlementApproval" WHERE "bookingId" = $1`, bookingId);
     });
     await bumpBookingUpdatedAtForDomainSignal(bookingId);
-    return NextResponse.json({ ok: true });
+    return appApiOk({});
   } catch (error) {
     console.error('DELETE /api/app/finance/settlement-for-booking', error);
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
+    return appApiError('database_unavailable', 503);
   }
 }

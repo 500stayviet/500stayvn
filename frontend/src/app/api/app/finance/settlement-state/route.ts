@@ -1,5 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { appApiError } from '@/lib/server/appApiErrors';
+import { appApiOk } from '@/lib/server/appApiResponses';
 import { getAppActorId } from '@/lib/server/appSyncWriteGuard';
 
 export type AppSettlementStateRow = {
@@ -10,10 +12,11 @@ export type AppSettlementStateRow = {
 
 /**
  * Settlement approval / pending-queue flags for owner bookings (DB only).
+ * P2.1: AppApi 봉투(`appApiOk` / `appApiError`).
  */
 export async function GET(request: NextRequest) {
   const ownerId = getAppActorId(request);
-  if (!ownerId) return NextResponse.json({ error: 'actor_required' }, { status: 401 });
+  if (!ownerId) return appApiError('actor_required', 401);
 
   try {
     const rows = await prisma.$queryRawUnsafe<
@@ -46,9 +49,9 @@ export async function GET(request: NextRequest) {
       inPendingQueue: Boolean(r.inPendingQueue),
     }));
 
-    return NextResponse.json({ states });
+    return appApiOk({ states });
   } catch (error) {
     console.error('GET /api/app/finance/settlement-state', error);
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
+    return appApiError('database_unavailable', 503);
   }
 }
