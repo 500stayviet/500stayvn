@@ -1,4 +1,4 @@
-import { getCurrentUserId } from '@/lib/api/auth';
+import { getCurrentUserId } from "@/lib/api/authState";
 
 /**
  * `/api/app/*` 호출에 `x-app-actor-id` 를 붙입니다 (로그인 시).

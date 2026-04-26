@@ -1,4 +1,4 @@
-import type { UserData } from '@/lib/api/auth';
+import type { UserData } from "@/lib/api/authTypes";
 import { unwrapAppApiData } from '@/lib/api/appApiEnvelope';
 
 export function parseAppUsersListPayload(json: unknown): {

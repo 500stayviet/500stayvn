@@ -18,24 +18,54 @@ async function seedAuthenticatedUser(
     },
   ]);
 
-  await page.addInitScript(({ uid }) => {
-    const users = [
-      {
-        uid,
-        email: "mock-guest@test.com",
-        displayName: "Mock Guest",
-        preferredLanguage: "en",
-        phoneNumber,
-        kyc_steps: kycSteps,
+  await page.addInitScript(
+    ({
+      uid,
+      kyc: ks,
+      phone: tel,
+    }: {
+      uid: string;
+      kyc: { step1: boolean; step2: boolean; step3: boolean };
+      phone: string;
+    }) => {
+      const users = [
+        {
+          uid,
+          email: "mock-guest@test.com",
+          displayName: "Mock Guest",
+          preferredLanguage: "en",
+          phoneNumber: tel,
+          kyc_steps: ks,
+        },
+      ];
+      window.localStorage.setItem("users", JSON.stringify(users));
+      window.localStorage.setItem("currentUser", uid);
+      document.cookie = `stayviet_app_uid=${encodeURIComponent(uid)}; path=/`;
+    },
+    {
+      uid: guestId,
+      kyc: {
+        step1: kycSteps.step1 ?? false,
+        step2: kycSteps.step2 ?? false,
+        step3: kycSteps.step3 ?? false,
       },
-    ];
-    window.localStorage.setItem("users", JSON.stringify(users));
-    window.localStorage.setItem("currentUser", uid);
-    document.cookie = `stayviet_app_uid=${encodeURIComponent(uid)}; path=/`;
-  }, { uid: guestId, kycSteps, phoneNumber });
+      phone: phoneNumber,
+    },
+  );
 }
 
-async function mockCommonSessionApis(page: import("@playwright/test").Page) {
+async function mockCommonSessionApis(
+  page: import("@playwright/test").Page,
+  options?: {
+    /** KYC test 등: API가 LS를 덮어쓰기 전에 `loadKyc`와 맞출 것 */
+    kycStepsInApiResponse?: { step1: boolean; step2: boolean; step3: boolean };
+  },
+) {
+  const kyc_steps = options?.kycStepsInApiResponse ?? {
+    step1: true,
+    step2: true,
+    step3: true,
+  };
   await page.route("**/api/auth/session**", async (route) => {
     await route.fulfill({
       status: 200,
@@ -59,7 +89,7 @@ async function mockCommonSessionApis(page: import("@playwright/test").Page) {
             displayName: "Mock Guest",
             preferredLanguage: "en",
             phoneNumber: "+84123456789",
-            kyc_steps: { step1: true, step2: true, step3: true },
+            kyc_steps,
           },
         ],
         page: { hasMore: false, nextOffset: 1 },
@@ -94,6 +124,33 @@ async function mockCommonSessionApis(page: import("@playwright/test").Page) {
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({ counts: {} }),
+    });
+  });
+
+  // 결제/환불 PATCH가 환경에 따라 호출될 때 서버 `transition` + appApi 래퍼 형식 유지
+  await page.route("**/api/app/payments**", async (route) => {
+    const m = route.request().method();
+    if (m === "POST" || m === "PATCH") {
+      await route.fulfill({
+        status: m === "POST" ? 201 : 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ok: true,
+          data: {
+            payment: { id: "e2e-mock-payment" },
+            transition: { bookingConfirmed: true, bookingCancelled: false },
+          },
+        }),
+      });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ok: true,
+        data: { payments: [] },
+      }),
     });
   });
 }
@@ -195,18 +252,25 @@ test("booking flow with mockScenario=partial does not reach success page", async
 });
 
 test("kyc shows step2 failure in mockScenario=partial", async ({ page }) => {
+  const kyc = { step1: true, step2: false, step3: false } as const;
   await seedAuthenticatedUser(page, {
-    kycSteps: { step1: true, step2: false, step3: false },
+    kycSteps: { ...kyc },
     phoneNumber: "+84123456789",
   });
-  await mockCommonSessionApis(page);
+  await mockCommonSessionApis(page, { kycStepsInApiResponse: { ...kyc } });
 
   await page.goto("/kyc?mockScenario=partial");
-  await page.getByRole("button", { name: /Next Step|다음 단계로/ }).click();
-  await expect(page.getByRole("heading", { name: /ID Capture|신분증 촬영/ })).toBeVisible();
 
-  await page.getByRole("button", { name: /Next \(Test Mode\)|다음 \(테스트 모드\)/ }).click();
+  await expect(
+    page.getByRole("heading", { name: /ID Capture|신분증 촬영|Chụp ảnh giấy tờ/ }),
+  ).toBeVisible({ timeout: 20_000 });
+
+  await page
+    .getByRole("button", { name: /Next \(Test Mode\)|다음 \(테스트 모드\)/ })
+    .click();
   await expect(page.getByText("mock_kyc_id_failed")).toBeVisible();
-  await expect(page.getByRole("heading", { name: /ID Capture|신분증 촬영/ })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /ID Capture|신분증 촬영|Chụp ảnh giấy tờ/ }),
+  ).toBeVisible();
 });
 

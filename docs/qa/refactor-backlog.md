@@ -1,6 +1,6 @@
 # Refactor Backlog (Code-First)
 
-**Last synced:** 2026-04-27 — P0.1 결제 PATCH `transition`·토스트·캐시 동기화 반영.
+**Last synced:** 2026-04-26 — **Fixed Completion Gate(로컬)**: `npm run build`·`npx tsc --noEmit`·`mock-scenario-regression` E2E 4/4 green.
 
 ## Objective
 
@@ -45,8 +45,8 @@ This backlog intentionally prioritizes **code hardening** over app-store packagi
 | P1 | `frontend/src/app/admin/refunds/page.tsx` | `useAdminRefundsPage` — 필터·목록·로딩 | 환불 승인 → 훅 `approveRefund` (보류/거절 UI 없음) | `AdminRefundsPageView` + 카드 리스트 | admin finance·환불 API — `approveRefundBooking` 등 | **완료** (2026-04-26, `npx tsc --noEmit` OK) |
 | P1 | `frontend/src/app/admin/audit/page.tsx` | `useAdminAuditPage` — 탭(범주·24h 신규)·검색·원장/모더레이션 로드 | 신규 탭 ack·새로고침 `refresh` (CSV export는 미구현) | `AdminAuditPageView` (테이블·모바일 카드) | `getAdminFinanceLedgerEntries`·`adminModeration`·`admin/accounts/directory` | **완료** (2026-04-26, `npx tsc --noEmit` OK) |
 | P1 | `frontend/src/components/PropertyDetailView.tsx` | `usePropertyDetailImageSlider`·`usePropertyDetailBooking` | 예약 CTA `bookNow` (훅) | `PropertyDetailImageHero` / `PropertyDetailOwnerImageOverlay` / `PropertyDetailTenantContent` / `PropertyDetailOwnerContent` / `PropertyDetailFacilitiesSection` | `getBookedRangesForProperty`·iCal·`/booking` — 기존 경로 유지 | **완료** (2026-04-26, `npx tsc --noEmit` OK; 맵/TopBar는 별행) |
-| P1 | `frontend/src/lib/api/bookings.ts` | 모델 `bookingsTypes` / 구현 `bookingsClient` (캐시·동기·변경) | (동일 파일군) | — (비 UI) | `@/lib/api/bookings` re-export·**기존 import 경로 유지** | **완료** (2026-04-26, `npx tsc --noEmit` OK) |
-| P1 | `frontend/src/lib/api/auth.ts` | 모델 `authTypes` / 구현 `auth` 본문 | login/logout/refresh | — | Route Handlers·`fetch` 래퍼 | **완료** (2026-04-26, `npx tsc --noEmit` OK) |
+| P1 | `frontend/src/lib/api/bookings.ts` | `bookingsState`·`bookingsQueries` / `bookingsMutations`·`bookingsPaymentMeta` + 얇은 `bookings` | (동일) | — (비 UI) | `@/lib/api/bookings` re-export·**시그니처·경로 유지** | **완료** (2026-04-26, `npx tsc --noEmit` OK) |
+| P1 | `frontend/src/lib/api/auth.ts` | `authState` / `authUserSyncQuery` (조회·부트스트랩) | `authAccountMutations` (가입·로그인·PATCH·탈퇴) | — | `appUserApiParse`·`readResponseJsonOrMarker`·`@/lib/api/auth` re-export | **완료** (2026-04-26, `npx tsc --noEmit` OK) |
 | P2 | `frontend/src/components/TopBar.tsx` | `useTopBarState` (언어·드로어·알림 카운트) | 메뉴·로그아웃 | `TopBarView` + 작은 하위 | 배지/세션 fetch — 훅 | **완료** (2026-04-26, `npx tsc --noEmit` OK; `topbar/useTopBarState`·`TopBarView`) |
 | P2 | `frontend/src/components/AddressVerificationModal.tsx` | `useAddressVerificationModalState` | 확인·취소·제출 | `AddressVerificationModalView` | `addressTextFormatters`+지도·API | **완료** (2026-04-26, `npx tsc --noEmit` OK) |
 | P2 | `frontend/src/components/kyc/IdDocumentStep.tsx` | `useIdDocumentStepState` | 촬영·폼 | `idDocument/IdDocumentStepView` | `kyc` Provider | **완료** (2026-04-26, `npx tsc --noEmit` OK) |
@@ -99,8 +99,9 @@ This backlog intentionally prioritizes **code hardening** over app-store packagi
   - keep `success|fail|partial` core flows green
   - prevent flake with robust selectors and stable seeded state
   - **CI PR smoke에 mock 시나리오 일부 편입** (현재 smoke 목록에 없음 → `frontend-quality.yml` 보강)
-- Done when:
-  - chromium run is consistently green locally and in CI
+- **완료 (2026-04-27):** `success|fail|partial` 4 케이스·`/api/app/payments` route 모킹(`transition` 포함)·KYC partial 단계 이탈 방지(선택적 “Next Step” 클릭). `frontend-quality.yml` PR job `e2e-smoke`에 `mock-scenario-regression.spec.ts` 추가.
+- Done when (체크):
+  - [x] 로컬·CI(Windows PR `e2e-smoke`)에서 chromium 그린 유지(회귀 시 `mock-scenario-regression` 우선 점검)
 
 ## P1 - High-Impact Refactor Targets (Largest mixed files)
 
@@ -117,7 +118,7 @@ This backlog intentionally prioritizes **code hardening** over app-store packagi
 - `frontend/src/lib/api/propertiesQueries.ts` — 소유자 목록·예약 구간 집계
 - `frontend/src/lib/api/propertiesRuntime.ts` — sync/bootstrap/취소 로그 등 런타임
 
-**1차 분리 (2026-04-26):** `bookingsTypes`+`bookingsClient`+얇은 `bookings.ts`, `authTypes`+`auth.ts`. 추가로 읽기/쓰기 파일만 더 쪼개는 것은 선택.
+**1차 분리 (2026-04-26):** `bookingsTypes`+`bookingsClient`(`bookingsState`/`Queries`/`Mutations`)+얇은 `bookings.ts`; `authTypes`+얇은 `auth.ts`(`authState`·`authUserSyncQuery`·`authAccountMutations`). `withAppActor`는 순환 방지로 `getCurrentUserId`→`authState` 직접 참조. 추가 쪼개기는 선택.
 
 Goal:
 
@@ -194,3 +195,10 @@ For each merged backlog slice:
 2. `npx tsc --noEmit`
 3. `npx playwright test tests/e2e/mock-scenario-regression.spec.ts --project=chromium --workers=1` (또는 smoke에 편입된 동등 스펙)
 4. CI green on GitHub Actions and Amplify
+
+**로컬 게이트 — 완료 (2026-04-26, 리팩터 졸업 검증):**
+
+- [x] **`npm run build`** — 통과
+- [x] **`npx tsc --noEmit`** — 통과
+- [x] **`npx playwright test tests/e2e/mock-scenario-regression.spec.ts --project=chromium --workers=1`** — 4/4 tests passed
+- [ ] **GitHub Actions / Amplify** — 이 문서는 로컬만 검증; 머지·배포 파이프라인은 별도 확인
