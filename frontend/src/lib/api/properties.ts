@@ -17,9 +17,7 @@ import {
   BookingData,
   readBookingsArray,
   writeBookingsArray,
-  ensureBookingsLoadedForApp,
 } from './bookings';
-import { adminPropertyLastActivityMs } from '@/lib/adminNewUtils';
 import { hasAvailableBookingPeriod, isParentPropertyRecord } from '@/lib/utils/propertyUtils';
 import {
   markLedgerBootstrapDone,
@@ -27,16 +25,32 @@ import {
 import {
   emitUserFacingSyncError,
   fetchWithRetry,
-  isClientAuthErrorStatus,
-  USER_FACING_CLIENT_AUTH_ERROR_MESSAGE,
 } from '@/lib/runtime/networkResilience';
 import { withAppActor } from '@/lib/api/withAppActor';
-import { getCurrentUserId } from '@/lib/api/auth';
 import {
   ensureAdminPropertyActionLogsLoaded,
   getAdminPropertyActionLogsCached,
   postAppPropertyActionLog,
 } from '@/lib/api/adminPropertyActionLogs';
+import {
+  matchesAdminInventoryKeyword,
+  propertyMatchesAdminTab,
+  serializeDate,
+  sortPropsNewestFirst,
+  toDate,
+  type AdminInventoryFilter,
+} from './propertiesHelpers';
+import {
+  clearPropertiesClientCache,
+  ensurePropertiesLoadedForApp,
+  getPropertySyncErrorMessage,
+  hydratePropertiesMemoryIfLoggedIn,
+  hydratePropertyAndBookingMemoryIfLoggedIn,
+  readPropertiesArray,
+  refreshPropertiesFromServer,
+  replacePropertiesCache,
+  writePropertiesArray,
+} from './propertiesStore';
 
 /**
  * 날짜 중복 체크 (엄격한 ISO 날짜 기준)
@@ -128,173 +142,6 @@ export function buildBookedRangesForParentListing(
 const PROPS_BOOTSTRAP_KEY = 'stayviet-properties-bootstrap-v1';
 const PROPS_BOOTSTRAP_SESSION_KEY = 'stayviet-properties-bootstrap-session-v1';
 
-/** `/api/app/properties` GET 으로 채운 매물 스냅샷(탭 단위). off 모드에서는 LS 미러 없이 이 값이 기준입니다. */
-let propertiesCache: PropertyData[] | null = null;
-
-/** 공개 매물 동기화 실패를 사용자 친화 문구로 매핑합니다. */
-function getPropertySyncErrorMessage(status: number | null): string {
-  if (status === 429) return '요청이 많습니다. 잠시 후 다시 시도해 주세요.';
-  if (status === 503) return '서버가 일시적으로 불안정합니다. 잠시 후 다시 시도해 주세요.';
-  if (status === 404) return '조건에 맞는 매물이 아직 없습니다.';
-  return '오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
-}
-
-/** @public — 관리자 모더레이션 등 외부에서 동일 스냅샷 필요 시 */
-export function readPropertiesArray(): PropertyData[] {
-  const base = propertiesCache !== null ? propertiesCache : [];
-  return JSON.parse(JSON.stringify(base)) as PropertyData[];
-}
-
-let serverFlushTimer: ReturnType<typeof setTimeout> | null = null;
-
-/** 앱 액터용 매물 GET — bootstrap·getAllProperties 가 동시에 불려도 한 번만 네트워크 */
-let sharedAppPropertiesRefresh: Promise<boolean> | null = null;
-
-function getSharedAppPropertiesRefresh(): Promise<boolean> {
-  if (!sharedAppPropertiesRefresh) {
-    sharedAppPropertiesRefresh = refreshPropertiesFromServer().finally(() => {
-      sharedAppPropertiesRefresh = null;
-    });
-  }
-  return sharedAppPropertiesRefresh;
-}
-
-/**
- * 로그아웃·uid 전환 시 매물 메모리·진행 중 PUT 타이머·공유 refresh 슬롯을 비웁니다.
- * (호스트가 다른 계정으로 바뀔 때 이전 매물 목록이 잠깐 보이지 않게)
- */
-export function clearPropertiesClientCache(): void {
-  propertiesCache = null;
-  sharedAppPropertiesRefresh = null;
-  if (serverFlushTimer) {
-    clearTimeout(serverFlushTimer);
-    serverFlushTimer = null;
-  }
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('propertiesUpdated'));
-  }
-}
-
-/** 호스트/게스트: 서버에서 내 매물 목록을 메모리에 채움 (`bootstrapPropertiesFromServer` 와 동일 in-flight) */
-export async function ensurePropertiesLoadedForApp(): Promise<boolean> {
-  if (typeof window === 'undefined') return false;
-  if (!getCurrentUserId()) return false;
-  return getSharedAppPropertiesRefresh();
-}
-
-/** `readPropertiesArray` 직전: 로그인 시에만 서버에서 매물 메모리를 채움 */
-async function hydratePropertiesMemoryIfLoggedIn(): Promise<void> {
-  if (!getCurrentUserId()) return;
-  try {
-    await ensurePropertiesLoadedForApp();
-  } catch {
-    /* 네트워크 실패 시 기존 캐시로 진행 */
-  }
-}
-
-/** 가용성 계산 등: 로그인 시 매물·예약 메모리를 모두 서버와 맞춤 */
-async function hydratePropertyAndBookingMemoryIfLoggedIn(): Promise<void> {
-  if (!getCurrentUserId()) return;
-  try {
-    await ensurePropertiesLoadedForApp();
-    await ensureBookingsLoadedForApp();
-  } catch {
-    /* ignore */
-  }
-}
-
-export function writePropertiesArray(all: PropertyData[]): void {
-  propertiesCache = all;
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('propertiesUpdated'));
-  }
-  if (typeof window === 'undefined') return;
-  if (serverFlushTimer) clearTimeout(serverFlushTimer);
-  serverFlushTimer = setTimeout(() => {
-    serverFlushTimer = null;
-    const snapshot = propertiesCache;
-    if (!snapshot) return;
-    void fetchWithRetry(
-      '/api/app/properties',
-      withAppActor({
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ properties: snapshot }),
-      }),
-      { retries: 2, baseDelayMs: 300 }
-    ).catch((e) => {
-      console.warn('[properties] PUT sync failed', e);
-      emitUserFacingSyncError({
-        area: 'properties',
-        action: 'sync',
-        message: '매물 데이터 동기화가 지연되고 있습니다. 잠시 후 다시 확인해주세요.',
-      });
-    });
-  }, 500);
-}
-
-export async function refreshPropertiesFromServer(): Promise<boolean> {
-  if (typeof window === 'undefined') return false;
-  try {
-    const list: PropertyData[] = [];
-    let offset = 0;
-    const limit = 200;
-    for (let i = 0; i < 200; i += 1) {
-      const res = await fetchWithRetry(
-        `/api/app/properties?limit=${limit}&offset=${offset}`,
-        withAppActor({ cache: 'no-store' }),
-        { retries: 2, baseDelayMs: 300 }
-      );
-      if (!res.ok) {
-        if (isClientAuthErrorStatus(res.status)) {
-          emitUserFacingSyncError({
-            area: 'properties',
-            action: 'refresh',
-            message: USER_FACING_CLIENT_AUTH_ERROR_MESSAGE,
-          });
-          return false;
-        }
-        if (res.status === 404) {
-          propertiesCache = [];
-          window.dispatchEvent(new CustomEvent('propertiesUpdated'));
-          return true;
-        }
-        throw new Error(String(res.status));
-      }
-      const data = (await res.json()) as {
-        properties?: PropertyData[];
-        page?: { hasMore?: boolean; nextOffset?: number };
-      };
-      const chunk = Array.isArray(data.properties) ? data.properties : [];
-      list.push(...chunk);
-      const hasMore = Boolean(data.page?.hasMore);
-      if (!hasMore || chunk.length === 0) break;
-      offset = Number(data.page?.nextOffset ?? offset + chunk.length);
-    }
-    propertiesCache = list;
-    window.dispatchEvent(new CustomEvent('propertiesUpdated'));
-    return true;
-  } catch (e) {
-    propertiesCache = null;
-    const code = e instanceof Error ? Number(e.message) : NaN;
-    if (Number.isFinite(code) && isClientAuthErrorStatus(code)) {
-      emitUserFacingSyncError({
-        area: 'properties',
-        action: 'refresh',
-        message: USER_FACING_CLIENT_AUTH_ERROR_MESSAGE,
-      });
-      return false;
-    }
-    console.warn('[properties] refreshPropertiesFromServer failed', e);
-    emitUserFacingSyncError({
-      area: 'properties',
-      action: 'refresh',
-      message: getPropertySyncErrorMessage(Number.isFinite(code) ? code : null),
-    });
-    return false;
-  }
-}
-
 async function fetchAllPropertiesByEndpoint(
   endpoint: string,
   init: RequestInit
@@ -341,8 +188,7 @@ export async function refreshPropertiesCacheForAdmin(): Promise<boolean> {
   if (typeof window === 'undefined') return false;
   try {
     const rows = await getAllPropertiesForAdmin();
-    propertiesCache = rows;
-    window.dispatchEvent(new CustomEvent('propertiesUpdated'));
+    replacePropertiesCache(rows);
     return true;
   } catch {
     return false;
@@ -381,7 +227,7 @@ export async function bootstrapPropertiesFromServer(): Promise<void> {
   if (typeof window === 'undefined') return;
   // 4단계: 비즈니스 매물 데이터는 LS를 bootstrap 소스로 쓰지 않습니다.
   // 비로그인도 공개 API를 통해 마스킹 데이터가 내려오므로 항상 서버에서 동기화합니다.
-  await getSharedAppPropertiesRefresh();
+  await ensurePropertiesLoadedForApp();
   markLedgerBootstrapDone(PROPS_BOOTSTRAP_KEY, PROPS_BOOTSTRAP_SESSION_KEY);
 }
 
@@ -755,67 +601,12 @@ export async function recalculateAndSplitProperty(propertyId: string, bookingId?
 }
 
 /**
- * Date를 ISO 문자열로 변환 (저장용)
- */
-function toISOString(date: any): string | null {
-  if (!date) return null;
-  if (date instanceof Date) {
-    return isNaN(date.getTime()) ? null : date.toISOString();
-  }
-  if (typeof date === 'string') {
-    const d = new Date(date);
-    return isNaN(d.getTime()) ? null : d.toISOString();
-  }
-  return null;
-}
-
-/**
- * ISO 문자열을 Date로 변환
- */
-function fromISOString(iso: string | null): Date | null {
-  if (!iso) return null;
-  return new Date(iso);
-}
-
-/**
- * 날짜를 ISO 문자열로 변환 (저장용)
- */
-function serializeDate(date: any): string | undefined {
-  return toISOString(date) || undefined;
-}
-
-/**
- * ISO 문자열을 Date 객체로 변환 (로드용)
- */
-function deserializeDate(iso: string | null | undefined): Date | undefined {
-  if (!iso) return undefined;
-  const date = fromISOString(iso);
-  if (!date || isNaN(date.getTime())) return undefined;
-  return date;
-}
-
-/**
- * Date 변환 헬퍼 함수 (ISO 문자열 또는 Date 객체를 Date로 변환)
- */
-function toDate(dateInput: string | Date | undefined | null): Date | null {
-  if (!dateInput) return null;
-  if (dateInput instanceof Date) {
-    return isNaN(dateInput.getTime()) ? null : dateInput;
-  }
-  if (typeof dateInput === 'string') {
-    const date = new Date(dateInput);
-    return isNaN(date.getTime()) ? null : date;
-  }
-  return null;
-}
-
-/**
  * 모든 매물 조회(서버 원천) — 비로그인도 공개 API로 마스킹 목록을 가져옵니다.
  */
 export async function getAllProperties(): Promise<PropertyData[]> {
   try {
     if (typeof window === 'undefined') return [];
-    await getSharedAppPropertiesRefresh();
+    await refreshPropertiesFromServer();
 
     const properties = readPropertiesArray();
     // 삭제/숨김 매물 제외
@@ -849,52 +640,13 @@ export async function getAvailableProperties(): Promise<PropertyData[]> {
   }
 }
 
-export type AdminInventoryFilter = 'all' | 'new' | 'listed' | 'paused' | 'hidden';
-
-/**
- * 관리자 매물 탭: 고객 노출(listed) / 규칙상 광고종료·보존(paused) / 기타
- * getAvailableProperties로 부모 상태를 한 번 동기화한 뒤 부모 행만 반환합니다.
- */
-function sortPropsNewestFirst(arr: PropertyData[]): PropertyData[] {
-  return [...arr].sort((a, b) => {
-    const at = adminPropertyLastActivityMs(a);
-    const bt = adminPropertyLastActivityMs(b);
-    return bt - at;
-  });
-}
-
-function matchesAdminInventoryKeyword(
-  p: PropertyData,
-  keyword: string,
-  ownerEmailByUid: Map<string, string>
-): boolean {
-  if (!keyword) return true;
-  const oid = (p.ownerId || '').toLowerCase();
-  if (oid.includes(keyword)) return true;
-  const em = ownerEmailByUid.get(p.ownerId || '');
-  if (em && em.includes(keyword)) return true;
-  if ((p.id || '').toLowerCase().includes(keyword)) return true;
-  if ((p.title || '').toLowerCase().includes(keyword)) return true;
-  if ((p.address || '').toLowerCase().includes(keyword)) return true;
-  return false;
-}
-
-function propertyMatchesAdminTab(p: PropertyData, status: AdminInventoryFilter, isPropertyNew: (x: PropertyData) => boolean): boolean {
-  switch (status) {
-    case 'all':
-      return true;
-    case 'new':
-      return isPropertyNew(p);
-    case 'listed':
-      return !p.hidden && p.status === 'active';
-    case 'paused':
-      return !p.hidden && p.status === 'INACTIVE_SHORT_TERM';
-    case 'hidden':
-      return !!p.hidden;
-    default:
-      return true;
-  }
-}
+export type { AdminInventoryFilter } from './propertiesHelpers';
+export {
+  clearPropertiesClientCache,
+  ensurePropertiesLoadedForApp,
+  readPropertiesArray,
+  writePropertiesArray,
+} from './propertiesStore';
 
 /**
  * 관리자 매물 화면용: getAvailableProperties 1회로 동기화 후 탭별 행·건수 반환 (중복 호출 최소화)
