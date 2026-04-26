@@ -1,5 +1,11 @@
 # Refactor Milestones
 
+## 2026-04-26
+
+- Phase **1-1** `docs/qa/refactor-backlog.md` 전면 갱신 (실제 코드 진행과 동기화)
+  - 완료된 page·훅·뷰 구조 **§A** 요약, 잔여 타깃 **15행** **§B**에 `상태/액션/표현/API` 4축 분해 계획
+  - `P1.2`·권장 실행 순서를 잔여 작업에 맞게 정리
+
 ## 2026-04-23
 
 - `add-property` 1st refactor complete (composition-oriented page + section split)

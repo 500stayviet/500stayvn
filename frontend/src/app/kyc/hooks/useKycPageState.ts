@@ -10,6 +10,7 @@ import {
   type PhoneVerificationData,
 } from "@/types/kyc.types";
 import { getKycProvider } from "@/lib/providers/currentProviders";
+import { loadKycProgressFromUser } from "./loadKycProgressFromUser";
 
 type KYCStep = 1 | 2 | 3;
 
@@ -42,23 +43,13 @@ export function useKycPageState() {
 
     const loadCompletedSteps = async () => {
       try {
-        const { getCurrentUserData } = await import("@/lib/api/auth");
-        const userData = await getCurrentUserData(user.uid);
-        const kycSteps = userData?.kyc_steps || {};
-
-        if (kycSteps.step1) {
-          setPhoneData({ phoneNumber: userData?.phoneNumber || "" });
+        const p = await loadKycProgressFromUser(user.uid);
+        if (p.phoneData) setPhoneData(p.phoneData);
+        if (p.idDocumentData) setIdDocumentData(p.idDocumentData);
+        if (p.faceData) setFaceData(p.faceData);
+        if (p.currentStepToShow !== undefined) {
+          setCurrentStep(p.currentStepToShow);
         }
-        if (kycSteps.step2) {
-          setIdDocumentData({} as IdDocumentData);
-        }
-        if (kycSteps.step3) {
-          setFaceData({} as FaceVerificationData);
-        }
-
-        if (!kycSteps.step1) setCurrentStep(1);
-        else if (!kycSteps.step2) setCurrentStep(2);
-        else if (!kycSteps.step3) setCurrentStep(3);
       } catch (loadError) {
         console.error("Error loading completed steps:", loadError);
       }

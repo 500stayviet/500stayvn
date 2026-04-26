@@ -4,8 +4,6 @@
  * KYC 1단계 전화 인증에만 Firebase **Authentication** 클라이언트 SDK를 사용합니다.
  */
 
-import { VerificationStatus, PrivateData } from "@/types/kyc.types";
-import { SupportedLanguage } from "@/lib/api/translation";
 import {
   canReadLocalFallback,
   canWriteLocalFallback,
@@ -24,48 +22,10 @@ import {
 import { withAppActor } from "@/lib/api/withAppActor";
 import { clearBookingsClientCache } from "@/lib/api/bookings";
 import { parseAppUsersListPayload, parseAppUserPayload } from "@/lib/api/appUserApiParse";
+import type { SupportedLanguage } from "@/lib/api/translation";
+import type { UserData, SignUpData, OwnerVerificationData } from "./authTypes";
 
-export interface UserData {
-  uid: string;
-  email: string;
-  displayName?: string;
-  phoneNumber?: string;
-  photoURL?: string;
-  gender?: "male" | "female";
-  preferredLanguage?: SupportedLanguage;
-  role?: "user" | "admin" | "owner";
-  is_owner?: boolean;
-  verification_status?: VerificationStatus;
-  private_data?: PrivateData;
-  kyc_steps?: {
-    step1?: boolean;
-    step2?: boolean;
-    step3?: boolean;
-  };
-  createdAt?: string;
-  updatedAt?: string;
-  /** 폴백(로컬) 경로에서만 존재 — 서버 응답에는 포함되지 않음 */
-  password?: string;
-  deleted?: boolean;
-  deletedAt?: string;
-  blocked?: boolean;
-  blockedAt?: string;
-  blockedReason?: string;
-}
-
-export interface SignUpData {
-  email: string;
-  password: string;
-  fullName?: string;
-  phoneNumber?: string;
-  gender?: "male" | "female";
-  preferredLanguage?: SupportedLanguage;
-}
-
-export interface OwnerVerificationData {
-  fullName: string;
-  phoneNumber: string;
-}
+export type { UserData, SignUpData, OwnerVerificationData } from "./authTypes";
 
 const USERS_STORAGE_KEY = "users";
 const CURRENT_USER_KEY = "currentUser";

@@ -1,5 +1,7 @@
 # Refactor Backlog (Code-First)
 
+**Last synced:** 2026-04-26 — 라우트·훅 분해 진행과 본 문서를 맞춤. (다음 큰 PR 후에 이 날짜를 갱신할 것)
+
 ## Objective
 
 Complete the pre-corporation engineering goal first:
@@ -12,38 +14,63 @@ This backlog intentionally prioritizes **code hardening** over app-store packagi
 
 ---
 
-## 1-1 완료 기준: 상위 타깃 파일 분해 계획
+## 1-1) 리팩터 잔여 맵 (타깃 10~15 + 분해 4축)
 
-아래 **15개 파일**에 대해 `상태 · 액션 · 표현 · API/서버 연동` 네 축으로 무엇을 어디로 옮길지가 구체적으로 적혀 있으면 1-1을 만족한다.
+**1-1 완료 기준:** 아래 **§ 잔여 타깃** 표에 **최소 10행**이 `상태 / 액션 / 표현(UI) / API·서버` 네 축으로 **옮길 위치**가 **문장**으로 구체적이면 충족.  
+(이 문서는 **실제 진행**과 동기화한다 — 완료 시 표의 “현황” 열을 갱신.)
 
-우선순위는 **장애 영향도·변경 빈도·파일 크기**를 반영했다.
+### A. 이미 “조합 전용 page + 훅 + 뷰(±Suspense)” 패턴 적용된 항목 (요약)
 
-| 순위 | 파일 | 상태 (State / 훅) | 액션 (Handlers) | 표현 (UI) | API·서버 연동 | 현재 상태 |
+| 구분 | 경로(대표) | 비고 |
+| --- | --- | --- |
+| 예약/결제 흐름 | `app/booking/`, `app/booking-success/` | `useBookingPage` / `BookingPageView` 등 |
+| 호스트 | `app/host/bookings/` | `useHostBookingsPage` + `HostBookingsPageView` + Suspense |
+| 마이/프로필 | `app/my-bookings/`, `app/profile/edit/`, `app/profile/reservations/`, `app/profile/settlement/`, `app/profile/my-properties/`, `app/profile/my-properties/[id]/*` | 훅+뷰+Suspense(해당 시) — 마일스톤·코드베이스 기준 |
+| 추가 매물 | `app/add-property/` | `useAddPropertyPageState` + `AddPropertyPageView` |
+| KYC(라우트) | `app/kyc/` | `useKycPageState` + `KycPageView` |
+| 검색/지도(라우트) | `app/search/`, `app/map/` | 콘텐츠는 컴포넌트·훅으로 분리됨 (맵 `MapPageContent` 동적) |
+| 어드민(대다수) | `app/admin/users/`, `app/admin/users/[uid]/`, `app/admin/withdrawals/`, `app/admin/settlements/`, `app/admin/kyc/`, `app/admin/system-log/`, `app/admin/properties/`, `app/admin/properties/[id]/`, `app/admin/admin-accounts/` 등 | 훅+뷰+Suspense(해당 시) — 세션에서 정리 |
+| 루트 홈 | `app/page.tsx` | 이미 얇은 조합 (컴포넌트 위임) |
+
+### B. 1-1 **잔여** 타깃 — 분해 계획 (우선순위 P1=높음)
+
+`상태` = `useXxxState` / 로컬 state·`useEffect` / 도메인 틱.  
+`액션` = `useXxxActions` 또는 훅 내 `*Handler` (사용자·관리자 제스처).  
+`표현` = `*PageView` / `*Section` / 프레젠테이션 전용.  
+`API` = `fetch`/Route Handler/서버 모듈 호출(한 파일에 몰지 않기).
+
+| 우선 | 파일/범위 | 상태 (어디로) | 액션 (어디로) | 표현 (어디로) | API·서버 (어디로) | 현황·TODO |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | `frontend/src/lib/api/auth.ts` | 세션·역할·리다이렉트용 `useAuth` 파생 훅으로 분리 | 로그인·로그아웃·역할 갱신을 `authActions.ts` 등 | (클라이언트 위주면 UI 없음) | Route Handler·`fetch` 래퍼·에러 매핑 일원화 | **미분해 대형** |
-| 2 | `frontend/src/lib/api/bookings.ts` | 읽기/캐시/목록 상태를 `bookingsStore.ts` | 생성·취소·동기화를 `bookingsMutations.ts` | — | 서버 API·로컬 스토리지 경로 명시 | **미분해 대형** |
-| 3 | `frontend/src/lib/api/properties.ts` | 이미 `propertiesStore` 등으로 분리됨 | `propertiesMutations`·`Lifecycle` | — | `sync`/bootstrap은 `propertiesRuntime` | **오케스트레이션·재 export 중심. 잔여 얇게 정리** |
-| 4 | `frontend/src/components/PropertyDetailView.tsx` | `usePropertyDetailState` | `usePropertyDetailActions` | 섹션별 `components/property-detail/*` | `getProperty`·예약 구간 호출은 훅에서만 | **미분해 대형** |
-| 5 | `frontend/src/app/profile/my-properties/page.tsx` | 기존 `useMyPropertiesPageState` 확장·정리 | 탭·삭제·광고종료·중복확인 → `useMyPropertiesActions` | 리스트/모달만 컴포넌트 | `properties` API 호출은 훅 | **부분 분해, 페이지 더 얇게** |
-| 6 | `frontend/src/app/profile/edit/page.tsx` | `useProfileEditState` | OTP·저장·검증 → `useProfileEditActions` | 폼 섹션 컴포넌트 | `/api/app/users`·OTP 라우트 | **미분해 대형** |
-| 7 | `frontend/src/app/profile/settlement/page.tsx` | `useSettlementPageState` | 정산·출금 액션 훅 | 카드/테이블 컴포넌트 | finance API 일원화 | **미분해 대형** |
-| 8 | `frontend/src/components/TopBar.tsx` | 알림·역할·언어 상태 훅 | 메뉴·로그아웃 핸들러 분리 | `TopBar*` 프레젠테이션 | 배지·세션 fetch는 훅 | **미분해 대형** |
-| 9 | `frontend/src/components/AddressVerificationModal.tsx` | 모달 열림·입력·지도 상태 훅 | 확인·취소·제출 액션 훅 | 스텝 UI만 컴포넌트 | 지오코딩·저장 API | **미분해 대형** |
-| 10 | `frontend/src/app/add-property/page.tsx` | `useAddProperty*` 훅으로 이전 완료 목표 | 제출·이미지·시설은 액션 훅 | 섹션 컴포넌트만 | `addProperty` 등 | **진행 중·마감 점검** |
-| 11 | `frontend/src/app/kyc/hooks/useKycPageState.ts` | 단계·에러·mock 분기 명시 | 단계별 `handle*`는 `kycActions.ts`로 | `page.tsx`는 조합만 | Provider만 주입 | **로직 집중, 단계별 분리 여지** |
-| 12 | `frontend/src/components/kyc/IdDocumentStep.tsx` | 캡처 상태 머신 훅 | 업로드·다음 단계 액션 | 프레젠테이션만 | `kycProvider` | **미분해 대형** |
-| 13 | `frontend/src/components/kyc/PhoneVerificationStep.tsx` | OTP 입력·타이머 상태 훅 | send/verify 액션 | UI만 | OTP Provider | **미분해 대형** |
-| 14 | `frontend/src/components/kyc/FaceVerificationStep.tsx` | 촬영·재시도 상태 훅 | 완료/스킵 액션 | UI만 | KYC Provider | **미분해 대형** |
-| 15 | `frontend/src/app/host/bookings/page.tsx` | 필터·탭·선택 행 상태 훅 | 확정·취소 등은 액션 훅 | 테이블·모달 분리 | 예약·결제 API | **미분해 대형** |
+| P1 | `frontend/src/app/admin/contracts/page.tsx` | `useAdminContractsPage` — 탭·로드·선택·페이지 틱 | `approve`/`void` 등은 훅 `contractsActions` (향후; 현재는 조회+신규 ack) | `AdminContractsPageView` + 카드 리스트 섹션 | `lib/api` 계약/예약 래퍼·기존 `AdminSettlementStyleCard` 유지 | **완료** (2026-04-26, `npx tsc --noEmit` OK) |
+| P1 | `frontend/src/app/admin/refunds/page.tsx` | `useAdminRefundsPage` — 필터·목록·로딩 | 환불 승인 → 훅 `approveRefund` (보류/거절 UI 없음) | `AdminRefundsPageView` + 카드 리스트 | admin finance·환불 API — `approveRefundBooking` 등 | **완료** (2026-04-26, `npx tsc --noEmit` OK) |
+| P1 | `frontend/src/app/admin/audit/page.tsx` | `useAdminAuditPage` — 탭(범주·24h 신규)·검색·원장/모더레이션 로드 | 신규 탭 ack·새로고침 `refresh` (CSV export는 미구현) | `AdminAuditPageView` (테이블·모바일 카드) | `getAdminFinanceLedgerEntries`·`adminModeration`·`admin/accounts/directory` | **완료** (2026-04-26, `npx tsc --noEmit` OK) |
+| P1 | `frontend/src/components/PropertyDetailView.tsx` | `usePropertyDetailImageSlider`·`usePropertyDetailBooking` | 예약 CTA `bookNow` (훅) | `PropertyDetailImageHero` / `PropertyDetailOwnerImageOverlay` / `PropertyDetailTenantContent` / `PropertyDetailOwnerContent` / `PropertyDetailFacilitiesSection` | `getBookedRangesForProperty`·iCal·`/booking` — 기존 경로 유지 | **완료** (2026-04-26, `npx tsc --noEmit` OK; 맵/TopBar는 별행) |
+| P1 | `frontend/src/lib/api/bookings.ts` | 모델 `bookingsTypes` / 구현 `bookingsClient` (캐시·동기·변경) | (동일 파일군) | — (비 UI) | `@/lib/api/bookings` re-export·**기존 import 경로 유지** | **완료** (2026-04-26, `npx tsc --noEmit` OK) |
+| P1 | `frontend/src/lib/api/auth.ts` | 모델 `authTypes` / 구현 `auth` 본문 | login/logout/refresh | — | Route Handlers·`fetch` 래퍼 | **완료** (2026-04-26, `npx tsc --noEmit` OK) |
+| P2 | `frontend/src/components/TopBar.tsx` | `useTopBarState` (언어·드로어·알림 카운트) | 메뉴·로그아웃 | `TopBarView` + 작은 하위 | 배지/세션 fetch — 훅 | **완료** (2026-04-26, `npx tsc --noEmit` OK; `topbar/useTopBarState`·`TopBarView`) |
+| P2 | `frontend/src/components/AddressVerificationModal.tsx` | `useAddressVerificationModalState` | 확인·취소·제출 | `AddressVerificationModalView` | `addressTextFormatters`+지도·API | **완료** (2026-04-26, `npx tsc --noEmit` OK) |
+| P2 | `frontend/src/components/kyc/IdDocumentStep.tsx` | `useIdDocumentStepState` | 촬영·폼 | `idDocument/IdDocumentStepView` | `kyc` Provider | **완료** (2026-04-26, `npx tsc --noEmit` OK) |
+| P2 | `frontend/src/components/kyc/PhoneVerificationStep.tsx` | `usePhoneVerificationStepState` | send/verify | `PhoneVerificationStepView` | OTP Provider | **완료** (2026-04-26, `kyc/phone/*`) |
+| P2 | `frontend/src/components/kyc/FaceVerificationStep.tsx` | `useFaceVerificationStepState` | 촬영·스킵 | `face/FaceVerificationStepView` | KYC Provider | **완료** (2026-04-26, `kyc/face/*`) |
+| P2 | `frontend/src/app/kyc/hooks/useKycPageState.ts` | `loadKycProgressFromUser` | 단계 전환 | `KycPageView` 유지 | mock/real Provider | **부분** — 진행 로드 모듈 분리; 액션 파일 추가 분리는 선택 |
+| P3 | `frontend/src/app/admin/property-logs/page.tsx` | `useAdminPropertyLogsPage` — 탭·캐시 `tick` | 새로고침 `refresh` | `AdminPropertyLogsPageView` (테이블) | `adminPropertyActionLogs` 캐시 | **완료** (2026-04-26, `npx tsc --noEmit` OK) |
+| P3 | `frontend/src/hooks/map/useMapPageState.ts` + `MapPageContent.tsx` | `useMapUrlLocation` (쿼리) + `useMapPropertySelection` (목록·선택) | `useMapPageState`가 조합 | `MapPageContent` 얇게 유지 | Geocode/Grab | **완료** (2026-04-26, `mapTypes`·子 훅) — 마커 내부는 `useGrabMapMarkers` |
+
+**총 15행(위 표):** P1~P3로 잔여 작업·계획이 한눈에 보이도록 고정. 완료 시 `현황`을 `완료`로 바꾸고, 필요하면 `refactor-milestones.md`에 커밋/날짜를 추가.
+
+### C. 1-1에서 **제외(또는 사실상 완료)** — 예전 백로그 정정
+
+- **`profile/edit`**, **`host/bookings`**, **`profile/settlement`**, **`my-bookings`**, **`profile/reservations`**, **`add-property` (라우트)**: 이미 page 조합 + 훅/뷰. 추가 분해는 *내부* 품질(액션 파일 분리)만 선택.
+- **어드민 대시보드** `app/admin/page.tsx`: 짧은 조합; **1-2 “핵심” 대상 아님** (필요 시 `useAdminDashboardCards` 정도).
 
 ---
 
 ## Priority Policy
 
 1. P0: reliability and domain correctness
-2. P1: large mixed-responsibility files (page/hook/component split)
+2. P1: large mixed-responsibility files (page/hook/component split) **또는** 대형 `lib/api/*`
 3. P2: shared API/error contract normalization
-4. P3: lint debt cleanup for touched risk areas
+3. P3: lint debt cleanup for touched risk areas
 
 ## P0 - Reliability And Domain Safety
 
@@ -77,9 +104,9 @@ This backlog intentionally prioritizes **code hardening** over app-store packagi
 
 ### P1.1 API/service split targets
 
-**`properties` 도메인 (진행됨 — 시그니처 유지)**
+**`properties` 도메인 (이미 다중 파일로 쪼개짐 — 시그니처 유지)**
 
-- `frontend/src/lib/api/properties.ts` — 퍼블릭 API·얇은 래퍼·re-export
+- `frontend/src/lib/api/properties.ts` — 퍼블릭 API·얇한 래퍼·re-export
 - `frontend/src/lib/api/propertiesHelpers.ts` — 날짜·관리자 필터 유틸
 - `frontend/src/lib/api/propertiesStore.ts` — 캐시·동기화·hydration
 - `frontend/src/lib/api/propertiesAdmin.ts` — 관리자 인벤토리
@@ -88,29 +115,18 @@ This backlog intentionally prioritizes **code hardening** over app-store packagi
 - `frontend/src/lib/api/propertiesQueries.ts` — 소유자 목록·예약 구간 집계
 - `frontend/src/lib/api/propertiesRuntime.ts` — sync/bootstrap/취소 로그 등 런타임
 
-**아직 대형**
-
-- `frontend/src/lib/api/bookings.ts` (~2.7k lines)
-- `frontend/src/lib/api/auth.ts` (~3.0k lines)
+**1차 분리 (2026-04-26):** `bookingsTypes`+`bookingsClient`+얇은 `bookings.ts`, `authTypes`+`auth.ts`. 추가로 읽기/쓰기 파일만 더 쪼개는 것은 선택.
 
 Goal:
 
-- split by domain responsibility (read/write/transform/cache/bootstrap)
-- keep external API signatures stable
+- domain responsibility (모델 vs 구현) — `properties*` 다파일과 동일한 방향
+- keep external import paths/signature stable (`@/lib/api/bookings` / `auth`)
 
-### P1.2 UI domain split targets
+### P1.2 UI domain split targets (1-1 표 B절 **잔여**와 정렬)
 
-- `frontend/src/components/PropertyDetailView.tsx`
-- `frontend/src/components/AddressVerificationModal.tsx`
-- `frontend/src/components/TopBar.tsx`
-- `frontend/src/app/profile/settlement/page.tsx`
-- `frontend/src/app/profile/edit/page.tsx`
-- `frontend/src/app/profile/my-properties/page.tsx`
-- `frontend/src/app/add-property/page.tsx`
-- `frontend/src/app/host/bookings/page.tsx`
-- Goal:
-  - page/screen composition only
-  - `hooks/` for state+effects, `components/` for presentation
+- **1-1 B P2~P3 (표 기준) 주요 UI 분해:** KYC 3스텝·주소/TopBar·맵 `useMapPageState` 세분화 등 반영됨. 추가로 손댈 만한 곳: `GrabMap` 내부·E2E만 점검. (`PropertyDetailView`·`admin/property-logs`·어드민 — **완료**.)
+- **완료(추가 작업은 선택):** add-property, profile/edit, my-properties·settlement, host/bookings, booking 등 (§ A 참고).
+- Goal: page/screen composition only; `hooks/` for state+effects, `components/` for presentation.
 
 ### P1.3 KYC component decomposition follow-up
 
@@ -157,18 +173,16 @@ Goal:
 
 ## 권장 실행 순서 (총 플랜 반영)
 
-1. **1-1** 본 문서 유지·타깃 표 갱신 (이 섹션)
-2. **P2.1** API/에러 계약 통일 (트래픽 높은 `app` 라우트부터)
-3. **P1.2** 페이지 조합화 (PropertyDetailView → settlement → edit → my-properties 등)
-4. **P1.3** KYC 단계 컴포넌트·`useKycPageState` 분리
-5. **P1.1** `bookings.ts` / `auth.ts` 모듈 분해
-6. **P0.1** 상태전이·테스트 잔여 (결제 라우트·KYC 단위 테스트 등)
-7. **P0.2** mock E2E smoke 편입 + flaky 기준 정리
-8. **1-5 게이트** `npm run build`, `npx tsc --noEmit`, 핵심 E2E, CI·Amplify green
-9. **2-1** `docs/qa/ci-runtime-policy.md` + workflow 버전 정책
-10. **2-3** Sentry·알람·담당자 운영 점검
-11. **Phase 3** 앱 패키징·스토어 제출물
-12. **Phase 4** 상용 API·웹훅·실거래 검증
+1. **1-1** 본 문서 유지·**§ 1-1 B 표** `현황` 갱신 (PR마다)
+2. **P2 UI** (§B 표) — `TopBar` → `AddressVerificationModal` → KYC 스텝 3종 → (선택) `useKycPageState` 내부 정리. **P1.1** `bookings`/`auth` 1차 분리는 **완료**; 심화 분할은 선택.
+3. **P2.1** API/에러 계약 통일 (트래픽 높은 `app` 라우트부터)
+4. **P0.1** 상태전이·테스트 (결제 라우트·KYC 단위 테스트 등)
+5. **P0.2** mock E2E smoke 편입 + flaky 기준 정리
+6. **1-5 게이트** `npm run build`, `npx tsc --noEmit`, 핵심 E2E, CI·Amplify green
+7. **2-1** `docs/qa/ci-runtime-policy.md` + workflow 버전 정책
+8. **2-3** Sentry·알람·담당자 운영 점검
+9. **Phase 3** 앱 패키징·스토어 제출물
+10. **Phase 4** 상용 API·웹훅·실거래 검증
 
 ## Fixed Completion Gate
 
