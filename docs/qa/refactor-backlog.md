@@ -1,6 +1,6 @@
 # Refactor Backlog (Code-First)
 
-**Last synced:** 2026-04-27 — **P2.1 졸업 직전:** `frontend/src/app/api/app` 전수 grep 기준 `NextResponse.json` 0건·JSON 응답 `appApiOk`/`appApiError` 일원화; `SECURITY_APP_API_CHECKLIST.md` 봉투 가이드 반영. Gate: `build`·mock E2E.
+**Last synced:** 2026-04-27 — **P2.1 완료** + **P3 1차:** App API ESLint 가드(`lint:api-app`)·CI·eslint ignore 정리. Gate: `tsc`·`build`·`lint:api-app`·mock E2E.
 
 ## Objective
 
@@ -167,6 +167,12 @@ Goal:
   - block warning growth in changed modules
 - Done when:
   - no new lint/type warnings in modified files
+- **1차 (2026-04-27):**
+  - `eslint.config.mjs`: PWA 산출물(`public/sw.js`, `workbox-*.js`)·`scripts/**` 무시 — 생성물/유지보수 스크립트가 전체 `eslint .` 실패를 유발하지 않도록.
+  - `next.config.ts`: `createRequire`로 `next-pwa` 로드(`no-require-imports` 제거).
+  - `npm run lint:api-app`: `src/app/api/app/**/*.ts` 만 `--max-warnings 0` (P2.1 계약과 동일 슬라이스).
+  - CI `frontend-quality.yml`: `lint:api-app` 스텝 추가.
+  - **잔여:** 전체 `npm run lint` 그린은 별도 스프린트( `src` 전역 `no-explicit-any` 등).
 
 ## Phase 1 보완 (플랜 누락 방지)
 
@@ -195,8 +201,9 @@ For each merged backlog slice:
 
 1. `npm run build`
 2. `npx tsc --noEmit`
-3. `npx playwright test tests/e2e/mock-scenario-regression.spec.ts --project=chromium --workers=1` (또는 smoke에 편입된 동등 스펙)
-4. CI green on GitHub Actions and Amplify
+3. `npm run lint:api-app` (P3: `/api/app` Route Handler 전용 ESLint; `frontend` 디렉터리에서 실행)
+4. `npx playwright test tests/e2e/mock-scenario-regression.spec.ts --project=chromium --workers=1` (또는 smoke에 편입된 동등 스펙)
+5. CI green on GitHub Actions and Amplify
 
 **로컬 게이트 — 완료 (2026-04-26, 리팩터 졸업 검증):**
 

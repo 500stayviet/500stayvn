@@ -84,6 +84,10 @@ All `/api/admin/*` routes use **admin session cookie** (`getAdminFromRequest`). 
   - 관리자 목록 조회 전용입니다.
   - admin session cookie 기반으로만 접근 가능합니다.
 
+## Lint guardrail (P3)
+
+- CI 및 로컬에서 **`npm run lint:api-app`** (`src/app/api/app/**/*.ts`, `--max-warnings 0`)로 App BFF 라우트만 우선 게이트한다. 저장소 전체 `eslint .` 그린은 별도 정리 스프린트 대상이다.
+
 ## Rollout notes
 
 1. Deploy client changes that call `withAppActor()` before or with the server changes.

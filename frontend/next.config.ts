@@ -1,5 +1,8 @@
+import { createRequire } from "node:module";
 import type { NextConfig } from "next";
 import bundleAnalyzer from "@next/bundle-analyzer";
+
+const requirePwa = createRequire(import.meta.url);
 
 const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === "true",
@@ -15,8 +18,10 @@ const withPWA = (nextConfig: NextConfig) => {
   };
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const withPWAModule = require("next-pwa").default || require("next-pwa");
+    type PwaWrapper = (cfg: typeof pwaConfig) => (nc: NextConfig) => NextConfig;
+    const imported = requirePwa("next-pwa") as PwaWrapper | { default: PwaWrapper };
+    const withPWAModule: PwaWrapper =
+      typeof imported === "function" ? imported : imported.default;
     return withPWAModule(pwaConfig)(nextConfig);
   } catch {
     console.warn("next-pwa not found, skipping PWA configuration");

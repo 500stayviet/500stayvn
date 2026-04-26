@@ -2,7 +2,10 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { rejectAppWriteUnlessActorAllowed } from '@/lib/server/appSyncWriteGuard';
 import { appApiError } from '@/lib/server/appApiErrors';
-import { transitionBookingOnPaymentUpdate } from '@/lib/server/bookingPaymentTransition';
+import {
+  type BookingTransitionTx,
+  transitionBookingOnPaymentUpdate,
+} from '@/lib/server/bookingPaymentTransition';
 import { appApiOk } from '@/lib/server/appApiResponses';
 
 type PatchBody = {
@@ -84,12 +87,15 @@ export async function PATCH(
         body.refundAmount !== undefined ? body.refundAmount : null,
         body.metaJson !== undefined ? JSON.stringify(body.metaJson) : null
       );
-      const transition = await transitionBookingOnPaymentUpdate(tx as any, {
-        bookingId: bid,
-        paymentStatus: normalizedStatus,
-        refundStatus:
-          body.refundStatus !== undefined ? (body.refundStatus || null) : null,
-      });
+      const transition = await transitionBookingOnPaymentUpdate(
+        tx as unknown as BookingTransitionTx,
+        {
+          bookingId: bid,
+          paymentStatus: normalizedStatus,
+          refundStatus:
+            body.refundStatus !== undefined ? (body.refundStatus || null) : null,
+        },
+      );
       return {
         payment: (rows as unknown[])[0] || null,
         transition,

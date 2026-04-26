@@ -61,6 +61,9 @@ jobs:
       - name: Run TypeScript typecheck
         run: npx tsc --noEmit
 
+      - name: ESLint guard (P3 /api/app routes)
+        run: npm run lint:api-app
+
       - name: Run production build
         run: npm run build
 

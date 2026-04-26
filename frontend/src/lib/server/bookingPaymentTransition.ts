@@ -25,7 +25,8 @@ function isRefundedStatus(status: string | null | undefined): boolean {
   return REFUNDED_PAYMENT_STATUSES.has(normalizeStatus(status));
 }
 
-type BookingTransitionTx = {
+/** 결제 PATCH 트랜잭션에서 `booking`만 쓰는 최소 타입 (Prisma interactive tx와 호환). */
+export type BookingTransitionTx = {
   booking: {
     findUnique: (args: unknown) => Promise<{
       id: string;

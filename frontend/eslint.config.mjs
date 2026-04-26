@@ -12,5 +12,14 @@ const compat = new FlatCompat({
 
 export default defineConfig([
   ...compat.extends("next/core-web-vitals", "next/typescript"),
-  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts"]),
+  globalIgnores([
+    ".next/**",
+    "out/**",
+    "build/**",
+    "next-env.d.ts",
+    // P3: 생성·유지보수 스크립트·PWA 산출물 — 앱 소스 품질 게이트와 분리
+    "public/sw.js",
+    "public/workbox-*.js",
+    "scripts/**",
+  ]),
 ]);
