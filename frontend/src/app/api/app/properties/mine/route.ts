@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { prismaPropertyToPropertyData } from '@/lib/server/appPropertyMapper';
 import { getAppActorId } from '@/lib/server/appSyncWriteGuard';
 import { appApiError } from '@/lib/server/appApiErrors';
+import { appApiOk } from '@/lib/server/appApiResponses';
 import { reportApiException, reportApiSuccess } from '@/lib/server/apiMonitoring';
 
 function parsePageParams(request: NextRequest): { limit: number; offset: number } {
@@ -72,7 +73,7 @@ export async function GET(request: NextRequest) {
     const properties = rows.map(prismaPropertyToPropertyData);
     const nextCursor = makePropertiesCursor(rows[rows.length - 1] || null);
     reportApiSuccess('GET /api/app/properties/mine', 200, startedAt);
-    return NextResponse.json({
+    return appApiOk({
       properties,
       page: {
         limit,
@@ -85,6 +86,6 @@ export async function GET(request: NextRequest) {
   } catch (e) {
     reportApiException('GET /api/app/properties/mine', e, startedAt);
     console.error('GET /api/app/properties/mine', e);
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
+    return appApiError('database_unavailable', 503);
   }
 }

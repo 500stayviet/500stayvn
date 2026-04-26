@@ -1,10 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { prismaPropertyToPropertyData } from '@/lib/server/appPropertyMapper';
+import {
+  prismaPropertyToPropertyData,
+  propertyDataToUncheckedUpdate,
+} from '@/lib/server/appPropertyMapper';
 import { assertPublicCatalogGuard } from '@/lib/server/publicApiGuard';
 import { mapPropertiesToPublicDTO } from '@/lib/server/publicPropertyMask';
 import { getAppActorId, rejectAppWriteUnlessActorAllowed } from '@/lib/server/appSyncWriteGuard';
 import { appApiError } from '@/lib/server/appApiErrors';
+import { appApiOk } from '@/lib/server/appApiResponses';
+import type { PropertyData } from '@/types/property';
 
 /**
  * 단일 매물 조회 — 비로그인은 공개 활성만 마스킹 DTO, 로그인은 소유자·비삭제 매물 전체(숨김은 소유자만).
@@ -25,20 +30,67 @@ export async function GET(
       const row = await prisma.property.findFirst({
         where: { id: pid, deleted: false, hidden: false, status: 'active' },
       });
-      if (!row) return NextResponse.json({ error: 'not_found' }, { status: 404 });
+      if (!row) return appApiError('not_found', 404);
       const full = prismaPropertyToPropertyData(row);
-      return NextResponse.json({ property: mapPropertiesToPublicDTO([full])[0] });
+      return appApiOk({ property: mapPropertiesToPublicDTO([full])[0] });
     }
 
     const row = await prisma.property.findUnique({ where: { id: pid } });
-    if (!row || row.deleted) return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    if (!row || row.deleted) return appApiError('not_found', 404);
     if (row.hidden && row.ownerId !== actor) {
-      return NextResponse.json({ error: 'not_found' }, { status: 404 });
+      return appApiError('not_found', 404);
     }
-    return NextResponse.json({ property: prismaPropertyToPropertyData(row) });
+    return appApiOk({ property: prismaPropertyToPropertyData(row) });
   } catch (e) {
     console.error('GET /api/app/properties/[id]', pid, e);
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
+    return appApiError('database_unavailable', 503);
+  }
+}
+
+/**
+ * 소유자 단일 매물 수정 (앱 액터)
+ */
+export async function PUT(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const { id } = await context.params;
+  const pid = (id || '').trim();
+  if (!pid) return appApiError('invalid_id', 400);
+
+  let body: { property?: PropertyData };
+  try {
+    body = await request.json();
+  } catch {
+    return appApiError('invalid_body', 400);
+  }
+  const incoming = body.property;
+  if (!incoming || typeof incoming !== 'object' || incoming.id !== pid) {
+    return appApiError('invalid_fields', 400);
+  }
+
+  try {
+    const row = await prisma.property.findUnique({ where: { id: pid } });
+    if (!row) return appApiError('not_found', 404);
+    const denied = rejectAppWriteUnlessActorAllowed(request, [row.ownerId]);
+    if (denied) return denied;
+
+    const existing = prismaPropertyToPropertyData(row);
+    const merged: PropertyData = {
+      ...existing,
+      ...incoming,
+      id: pid,
+      ownerId: row.ownerId,
+    };
+
+    const updated = await prisma.property.update({
+      where: { id: pid },
+      data: propertyDataToUncheckedUpdate(merged),
+    });
+    return appApiOk({ property: prismaPropertyToPropertyData(updated) });
+  } catch (e) {
+    console.error('PUT /api/app/properties/[id]', pid, e);
+    return appApiError('database_unavailable', 503);
   }
 }
 
@@ -58,7 +110,7 @@ export async function DELETE(
       where: { id: pid },
       select: { ownerId: true },
     });
-    if (!row) return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    if (!row) return appApiError('not_found', 404);
     const denied = rejectAppWriteUnlessActorAllowed(request, [row.ownerId]);
     if (denied) return denied;
 
@@ -85,7 +137,7 @@ export async function DELETE(
       await tx.property.delete({ where: { id: pid } });
     });
 
-    return NextResponse.json({ ok: true });
+    return appApiOk({ deleted: true });
   } catch (e) {
     console.warn('DELETE /api/app/properties/[id]', pid, e);
     return appApiError('delete_failed', 409);

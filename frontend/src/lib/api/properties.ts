@@ -48,6 +48,8 @@ import {
   handleCancellationRelistLifecycle,
   recalculateAndSplitPropertyLifecycle,
 } from './propertiesLifecycle';
+import { putAppPropertyById } from './appPropertyApiClient';
+import { parseAppPropertyDetailPayload } from './appPropertyApiParse';
 import {
   addPropertyMutation,
   deletePropertyMutation,
@@ -324,8 +326,7 @@ export async function getProperty(id: string): Promise<PropertyData | null> {
       { retries: 2, baseDelayMs: 300 }
     );
     if (!res.ok) return null;
-    const data = (await res.json()) as { property?: PropertyData };
-    return data?.property ?? null;
+    return parseAppPropertyDetailPayload(await res.json());
   } catch (error) {
     console.error('Error getting property:', error);
     return null;
@@ -419,7 +420,7 @@ export async function updateProperty(
       hydratePropertiesMemoryIfLoggedIn,
       readPropertiesArray,
       writePropertiesArray,
-      syncPropertiesNow,
+      putAppPropertyById,
       serializeDate,
     });
   } catch (error) {

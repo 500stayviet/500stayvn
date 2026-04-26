@@ -132,8 +132,8 @@ export async function updatePropertyMutation(
   updates: Partial<PropertyData>,
   deps: Pick<
     MutationDeps,
-    "hydratePropertiesMemoryIfLoggedIn" | "readPropertiesArray" | "writePropertiesArray" | "syncPropertiesNow" | "serializeDate"
-  >,
+    "hydratePropertiesMemoryIfLoggedIn" | "readPropertiesArray" | "writePropertiesArray" | "serializeDate"
+  > & { putAppPropertyById: (p: PropertyData) => Promise<void> },
 ): Promise<void> {
   if (typeof window === "undefined" || typeof localStorage === "undefined") return;
   await deps.hydratePropertiesMemoryIfLoggedIn();
@@ -170,7 +170,7 @@ export async function updatePropertyMutation(
 
   properties[index] = updatedProperty;
   deps.writePropertiesArray(properties);
-  await deps.syncPropertiesNow(properties);
+  await deps.putAppPropertyById(updatedProperty);
 }
 
 export async function deletePropertyMutation(
