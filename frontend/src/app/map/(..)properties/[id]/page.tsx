@@ -4,12 +4,10 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { getProperty } from '@/lib/api/properties';
-import { PropertyData } from '@/types/property';
+import { usePropertyDetailLoad } from '@/hooks/usePropertyDetailLoad';
 import PropertyDetailView from '@/components/PropertyDetailView';
 import AppBox from '@/components/AppBox';
 import type { SupportedLanguage } from '@/lib/api/translation';
@@ -20,26 +18,7 @@ export default function InterceptedPropertyPage() {
   const propertyId = params.id as string;
   const { user } = useAuth();
   const { currentLanguage } = useLanguage();
-  const [property, setProperty] = useState<PropertyData | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!propertyId) {
-      setLoading(false);
-      return;
-    }
-    const fetchProperty = async () => {
-      try {
-        const data = await getProperty(propertyId);
-        setProperty(data);
-      } catch {
-        setProperty(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProperty();
-  }, [propertyId]);
+  const { property, loading } = usePropertyDetailLoad(propertyId);
 
   const handleBack = () => router.back();
   const isOwner = user && property?.ownerId === user.uid;
