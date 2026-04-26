@@ -1,6 +1,21 @@
 # Refactor Backlog (Code-First)
 
-**Last synced:** 2026-04-27 — **P3 린트 가드레일 전역 적용 완료 (졸업):** `npm run lint` = `eslint . --max-warnings 0`; CI `lint:p3-tier3`(API·server·lib·components). Gate: `tsc`·`build`·`lint`·mock E2E.
+**Last synced:** 2026-04-27 — **[Phase 1: 코드 안정화 - 전역 졸업 완료]** + P3 린트 가드레일. Gate: `npm run lint`(0) · `npx tsc --noEmit`(0) · `npm run build` · mock E2E(CI).
+
+## **[Phase 1: 코드 안정화 - 전역 졸업 완료 (2026-04-27)]**
+
+앱 라우트 **조합화·대형 훅 분해·API 파싱 통일** Phase 1을 코드베이스 기준으로 **전역 졸업** 처리한다.
+
+1. **스캔 (`properties/[id]`, `host`, `profile`):**
+   - **`page.tsx`:** 로직·마크업 50줄+ 이었던 것은 **`profile/my-properties/[id]/page.tsx`**, **`profile/my-properties/(.)[id]/page.tsx`** (나머지 라우트는 이미 얇은 조합).
+   - **관련 훅 50줄+ (도메인 로직):** `useReservationsPage`, `useSettlementPage`, `useMyPropertiesPageState` → 전부 **Data / Actions / compose** 로 분리.
+2. **리팩터 (명품 구조):**
+   - 내 매물 상세: `useMyPropertyDetailRoutePage*` + `MyPropertyDetailRouteView`; 인터셉트: `useInterceptedMyPropertyDetailPage*` + `InterceptedMyPropertyDetailView`.
+   - 예약 관리: `useReservationsPageData` / `useReservationsPageActions` / `useReservationsPage` (중복 `useEffect` 제거, `alert` → 토스트·동기화 배너).
+   - 정산·지갑: `useSettlementPageData` / `useSettlementPageActions` / `useSettlementPage` (`alert` → 토스트·배너).
+   - 내 매물 목록: `useMyPropertiesPageData` / `useMyPropertiesPageActions` / `useMyPropertiesPageState`(기존 import 경로 유지), 타입은 `useMyPropertiesPageState.types.ts`.
+3. **데이터 무결성·`/api/app`:** 매물 상세·목록·정산 오버레이·금융 API 등은 기존 **`parseAppPropertyDetailPayload` / `unwrapAppApiData`** 및 `financeServer` 봉투 파싱 경로 유지(훅 주석으로 명시).
+4. **졸업 증명 (로컬, 2026-04-27):** **`npm run lint`** — 경고 0; **`npx tsc --noEmit`** — 오류 0; **`npm run build`** — 성공.
 
 ## Objective
 
@@ -25,7 +40,7 @@ This backlog intentionally prioritizes **code hardening** over app-store packagi
 | --- | --- | --- |
 | 예약/결제 흐름 | `app/booking/`, `app/booking-success/` | `useBookingPage` / `BookingPageView` 등 |
 | 호스트 | `app/host/bookings/` | `useHostBookingsPage` + `HostBookingsPageView` + Suspense |
-| 마이/프로필 | `app/my-bookings/`, `app/profile/edit/`, `app/profile/reservations/`, `app/profile/settlement/`, `app/profile/my-properties/`, `app/profile/my-properties/[id]/*` | 훅+뷰+Suspense(해당 시) — 마일스톤·코드베이스 기준 |
+| 마이/프로필 | `app/my-bookings/`, `app/profile/edit/`, `app/profile/reservations/`, `app/profile/settlement/`, `app/profile/my-properties/`, `app/profile/my-properties/[id]/*` | 훅+뷰+Suspense; **Phase 1 졸업:** `[id]`·`(.)[id]` 라우트 + `useReservationsPage`·`useSettlementPage`·`useMyPropertiesPageState` → Data/Actions 분리 |
 | 추가 매물 | `app/add-property/` | `useAddPropertyPageState` + `AddPropertyPageView` |
 | KYC(라우트) | `app/kyc/` | `useKycPageState` + `KycPageView` |
 | 검색/지도(라우트) | `app/search/`, `app/map/` | 콘텐츠는 컴포넌트·훅으로 분리됨 (맵 `MapPageContent` 동적) |

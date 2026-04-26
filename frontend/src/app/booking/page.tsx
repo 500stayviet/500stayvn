@@ -1,7 +1,8 @@
 /**
  * Booking Page (예약 페이지)
  *
- * 로직: `useBookingPage` · UI: `BookingPageView` — 라우트는 Suspense + 조합만 담당한다.
+ * 로직: `useBookingPageData` + `useBookingPageActions` → `useBookingPage` 조합.
+ * UI: `BookingPageView` — 라우트는 Suspense + 조합만 담당한다.
  */
 
 "use client";

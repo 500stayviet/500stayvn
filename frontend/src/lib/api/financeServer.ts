@@ -1,6 +1,9 @@
 'use client';
 
-import { unwrapAppApiData } from '@/lib/api/appApiEnvelope';
+import {
+  messageFromAppApiFailureJson,
+  unwrapAppApiData,
+} from '@/lib/api/appApiEnvelope';
 import { withAppActor } from '@/lib/api/withAppActor';
 
 export type ServerBankAccount = {
@@ -64,7 +67,9 @@ export async function addAppBankAccount(input: {
       body: JSON.stringify(input),
     })
   );
-  return res.ok;
+  if (!res.ok) return false;
+  unwrapAppApiData<{ id?: string }>(await res.json());
+  return true;
 }
 
 export async function setAppPrimaryBankAccount(id: string): Promise<boolean> {
@@ -76,7 +81,9 @@ export async function setAppPrimaryBankAccount(id: string): Promise<boolean> {
       body: JSON.stringify({ isPrimary: true }),
     })
   );
-  return res.ok;
+  if (!res.ok) return false;
+  unwrapAppApiData<Record<string, unknown>>(await res.json());
+  return true;
 }
 
 export async function removeAppBankAccount(id: string): Promise<boolean> {
@@ -84,7 +91,9 @@ export async function removeAppBankAccount(id: string): Promise<boolean> {
     `/api/app/finance/bank-accounts/${encodeURIComponent(id)}`,
     withAppActor({ method: 'DELETE' })
   );
-  return res.ok;
+  if (!res.ok) return false;
+  unwrapAppApiData<Record<string, unknown>>(await res.json());
+  return true;
 }
 
 export async function getAppWithdrawalRequests(): Promise<ServerWithdrawalRequest[]> {
@@ -106,15 +115,16 @@ export async function createAppWithdrawalRequest(input: {
       body: JSON.stringify(input),
     })
   );
-  if (res.ok) return { ok: true };
+  if (res.ok) {
+    unwrapAppApiData<{ id?: string }>(await res.json());
+    return { ok: true };
+  }
   try {
     const raw = await res.json();
-    const err =
-      raw && typeof raw === 'object' && 'error' in raw
-        ? (raw as { error?: { code?: string; message?: string } }).error
-        : undefined;
-    const message = err?.message || err?.code || 'request_failed';
-    return { ok: false, message };
+    return {
+      ok: false,
+      message: messageFromAppApiFailureJson(raw) ?? 'request_failed',
+    };
   } catch {
     return { ok: false, message: 'request_failed' };
   }
@@ -229,7 +239,9 @@ export async function purgeAppSettlementForBooking(bookingId: string): Promise<b
       body: JSON.stringify({ bookingId }),
     })
   );
-  return res.ok;
+  if (!res.ok) return false;
+  unwrapAppApiData<Record<string, unknown>>(await res.json());
+  return true;
 }
 
 export async function getAdminOwnerBalances(ownerId: string): Promise<ServerOwnerBalances> {

@@ -1,4 +1,5 @@
 import type { PropertyData } from "@/types/property";
+import { unwrapAppApiData } from "@/lib/api/appApiEnvelope";
 
 export type AppPropertiesListPage = {
   hasMore?: boolean;
@@ -13,35 +14,21 @@ export function parseAppPropertiesListPayload(raw: unknown): {
   properties: PropertyData[];
   page?: AppPropertiesListPage;
 } {
-  if (raw && typeof raw === "object" && "ok" in raw) {
-    const envelope = raw as { ok?: boolean; data?: unknown };
-    if (envelope.ok === true && envelope.data && typeof envelope.data === "object") {
-      const data = envelope.data as {
-        properties?: PropertyData[];
-        page?: AppPropertiesListPage;
-      };
-      return {
-        properties: Array.isArray(data.properties) ? data.properties : [],
-        page: data.page,
-      };
-    }
-  }
-  const legacy = raw as { properties?: PropertyData[]; page?: AppPropertiesListPage };
+  const data = unwrapAppApiData<{
+    properties?: PropertyData[];
+    page?: AppPropertiesListPage;
+  }>(raw);
   return {
-    properties: Array.isArray(legacy.properties) ? legacy.properties : [],
-    page: legacy.page,
+    properties: Array.isArray(data.properties) ? data.properties : [],
+    page: data.page,
   };
 }
 
 /** `GET /api/app/properties/[id]` · `PUT` 성공 본문 — envelope + 레거시. */
 export function parseAppPropertyDetailPayload(raw: unknown): PropertyData | null {
-  if (raw && typeof raw === "object" && "ok" in raw) {
-    const envelope = raw as { ok?: boolean; data?: unknown };
-    if (envelope.ok === true && envelope.data && typeof envelope.data === "object") {
-      const data = envelope.data as { property?: PropertyData };
-      return data.property ?? null;
-    }
+  const root = unwrapAppApiData<{ property?: PropertyData }>(raw);
+  if (root && typeof root === "object" && "property" in root) {
+    return root.property ?? null;
   }
-  const legacy = raw as { property?: PropertyData };
-  return legacy.property ?? null;
+  return null;
 }

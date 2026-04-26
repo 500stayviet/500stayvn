@@ -18,7 +18,8 @@ function normalizeStatus(status: string | null | undefined): string {
     .toLowerCase();
 }
 
-function isPaidStatus(status: string | null | undefined): boolean {
+/** 결제 PATCH 등에서 “확정 확정” 여부 판별용 — 외부 모듈에서 재사용 가능 */
+export function isPaidStatus(status: string | null | undefined): boolean {
   return PAID_PAYMENT_STATUSES.has(normalizeStatus(status));
 }
 function isRefundedStatus(status: string | null | undefined): boolean {

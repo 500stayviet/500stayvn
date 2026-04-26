@@ -51,6 +51,23 @@ function generateId(): string {
   );
 }
 
+/** 동일 예약 결제 확정 PATCH 재시도 시 서버 멱등 키로 재사용 */
+function getOrCreatePaymentConfirmIdempotencyKey(bookingId: string): string {
+  const storageKey = `stayviet:payConfirmIdem:${bookingId}`;
+  try {
+    const existing = sessionStorage.getItem(storageKey);
+    if (existing) return existing;
+    const created =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${bookingId}-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+    sessionStorage.setItem(storageKey, created);
+    return created;
+  } catch {
+    return `${bookingId}-${Date.now()}`;
+  }
+}
+
 /**
  * 예약 생성
  */
@@ -189,6 +206,7 @@ export async function completePayment(
   const paymentPatch = await patchPaymentMetaByBooking(bookingId, {
     status: "paid",
     provider: paymentMethod || null,
+    idempotencyKey: getOrCreatePaymentConfirmIdempotencyKey(bookingId),
   });
   if (!paymentPatch.ok) {
     await refreshBookingsFromServer();

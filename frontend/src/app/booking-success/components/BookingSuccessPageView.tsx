@@ -5,7 +5,7 @@ import {
   Clock,
   Home,
   Loader2,
-  AlertCircle,
+  CheckCircle2,
   ArrowLeft,
   Copy,
   Check,
@@ -98,9 +98,9 @@ export function BookingSuccessPageView({ vm }: Props) {
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ delay: 0.2, type: "spring" }}
-                className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4"
+                className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4"
               >
-                <AlertCircle className="w-12 h-12 text-yellow-600" />
+                <CheckCircle2 className="w-12 h-12 text-emerald-600" strokeWidth={2} />
               </motion.div>
               <h2 className="text-xl font-bold text-gray-900 mb-2">
                 {currentLanguage === "ko"
@@ -126,7 +126,7 @@ export function BookingSuccessPageView({ vm }: Props) {
               <button
                 type="button"
                 onClick={() => setShowSuccessModal(false)}
-                className="w-full py-3 bg-yellow-500 text-white rounded-xl font-semibold hover:bg-yellow-600 transition-colors"
+                className="w-full py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-colors"
               >
                 {currentLanguage === "ko"
                   ? "확인"

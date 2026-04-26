@@ -1,6 +1,7 @@
 import {
   USER_FACING_CLIENT_AUTH_ERROR_MESSAGE,
 } from "@/lib/runtime/networkResilience";
+import { unwrapAppApiData } from "@/lib/api/appApiEnvelope";
 
 export type ParsedAppPaymentSuccess = { ok: true; data: unknown };
 
@@ -63,8 +64,8 @@ export async function parseAppPaymentResponse(
     };
   }
 
-  if (res.ok && obj.ok === true && "data" in obj) {
-    return { ok: true, data: obj.data };
+  if (res.ok) {
+    return { ok: true, data: unwrapAppApiData<unknown>(obj) };
   }
 
   if (res.status === 401 && (obj as { error?: string }).error === "unauthorized") {
@@ -86,17 +87,9 @@ export async function parseAppPaymentResponse(
     };
   }
 
-  if (!res.ok) {
-    return {
-      ok: false,
-      errorMessage: `요청 실패 (HTTP ${res.status})`,
-      status: res.status,
-    };
-  }
-
   return {
     ok: false,
-    errorMessage: "예상치 못한 응답입니다.",
+    errorMessage: `요청 실패 (HTTP ${res.status})`,
     status: res.status,
   };
 }

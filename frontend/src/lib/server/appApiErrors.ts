@@ -27,6 +27,10 @@ const DEFAULT_MESSAGES: Record<string, string> = {
   missing_fields: 'One or more required fields are missing.',
   unsupported_action: 'This action is not supported for this request.',
   bank_account_not_found: 'Bank account was not found for this owner.',
+  already_booked:
+    'This date range was just confirmed for another booking. Payment cannot complete.',
+  idempotency_conflict:
+    'This idempotency key was already used with a different payment outcome.',
 };
 
 /**

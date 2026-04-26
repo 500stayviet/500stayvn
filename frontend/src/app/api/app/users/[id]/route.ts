@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import {
+  mergeKycStepsFromLessorProfile,
   mergeProfileJson,
   prismaUserToUserData,
   userDataPatchToPrisma,
@@ -40,7 +41,18 @@ export async function GET(
       where: { id: uid, deleted: false },
     });
     if (!row) return appApiError('not_found', 404);
-    return appApiOk({ user: prismaUserToUserData(row) });
+    const lessor = await prisma.lessorProfile.findUnique({
+      where: { userId: uid },
+      select: {
+        kycStep1Completed: true,
+        kycStep2Completed: true,
+        kycStep3Completed: true,
+        phoneNumber: true,
+        phoneVerified: true,
+      },
+    });
+    const user = mergeKycStepsFromLessorProfile(prismaUserToUserData(row), lessor);
+    return appApiOk({ user });
   } catch (e) {
     console.error('GET /api/app/users/[id]', e);
     return appApiError('database_unavailable', 503);

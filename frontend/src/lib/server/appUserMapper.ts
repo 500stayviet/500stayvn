@@ -1,4 +1,4 @@
-import type { Prisma, User as PrismaUser } from '@prisma/client';
+import type { LessorProfile, Prisma, User as PrismaUser } from '@prisma/client';
 import type { UserData } from '@/lib/api/auth';
 import type { VerificationStatus } from '@/types/kyc.types';
 
@@ -17,6 +17,36 @@ type ProfileJson = {
   private_data?: UserData['private_data'];
   kyc_steps?: UserData['kyc_steps'];
 };
+
+/**
+ * User.profileJson.kyc_steps 와 동기화되지 않았을 때 LessorProfile 플래그로 KYC 재개 상태를 보강한다.
+ */
+export function mergeKycStepsFromLessorProfile(
+  user: UserData,
+  lessor: Pick<
+    LessorProfile,
+    | 'kycStep1Completed'
+    | 'kycStep2Completed'
+    | 'kycStep3Completed'
+    | 'phoneNumber'
+    | 'phoneVerified'
+  > | null,
+): UserData {
+  if (!lessor) return user;
+  const kyc = { ...(user.kyc_steps || {}) };
+  if (lessor.kycStep1Completed) kyc.step1 = true;
+  if (lessor.kycStep2Completed) kyc.step2 = true;
+  if (lessor.kycStep3Completed) kyc.step3 = true;
+  const phoneFromLessor =
+    lessor.phoneNumber && lessor.phoneVerified ? lessor.phoneNumber : undefined;
+  return {
+    ...user,
+    kyc_steps: kyc,
+    ...(user.phoneNumber || !phoneFromLessor
+      ? {}
+      : { phoneNumber: phoneFromLessor }),
+  };
+}
 
 export function prismaUserToUserData(u: PrismaUser): UserData {
   const pj = (u.profileJson || null) as ProfileJson | null;

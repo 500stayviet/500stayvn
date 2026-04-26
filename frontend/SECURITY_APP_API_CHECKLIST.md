@@ -91,6 +91,27 @@ All `/api/admin/*` routes use **admin session cookie** (`getAdminFromRequest`). 
 - 빠른 로컬만: **`npm run lint:api-app`** (앱 BFF `/api/app` 한정).
 - 상세 원칙·파이프라인 순서: `docs/qa/pipeline-principles.md`.
 
+## 중요 쓰기(POST/PATCH) API의 멱등성 설계 원칙
+
+**목표:** 네트워크 재시도·더블 탭·프록시 중복으로 **같은 의도의 요청이 두 번 이상** 도착해도 **돈·재고·원장이 한 번만** 바뀐다.
+
+1. **키 계약**  
+   - 클라이언트(또는 웹훅 게이트웨이)는 **의미 있는 범위**마다 고정 키를 쓴다. (예: “이 예약의 결제 확정 시도”당 하나의 UUID를 `sessionStorage` 등에 보존해 재시도 시 재사용.)  
+   - 서버는 키를 **원장에 저장**하고, 동일 키·동일 리소스에 대한 **재요청은 이전 성공 결과와 동등한 응답**을 돌려준다.  
+   - **같은 키로 상충하는 본문**(이미 성공한 상태를 실패로 덮으려 함 등)은 **409** 등으로 거절한다.
+
+2. **저장 위치**  
+   - `POST /api/app/payments`: 본문 `idempotencyKey` — `PaymentRecord`에 유니크 저장, 중복 생성 방지.  
+   - `PATCH /api/app/payments/[bookingId]`: 본문 `idempotencyKey` — 해당 예약의 최신 `PaymentRecord` 행에 기록되며, **이미 paid이고 키가 일치**하면 결제 UPDATE를 생략하고 **예약 전이만 멱등 재실행**하거나(복구), 이미 **confirmed**이면 **동일 성공 의미의 `transition`**만 반환한다. 구현: `paymentPatchIdempotency.ts` + 라우트 트랜잭션.
+
+3. **클라이언트 가이드 (결제 확정)**  
+   - 앱 예약 결제 완료 시 `completePayment` → `patchPaymentMetaByBooking`에 **`idempotencyKey`**를 포함한다.  
+   - 키는 예약 ID별로 **탭 세션 동안 불변**(`stayviet:payConfirmIdem:<bookingId>` in `sessionStorage`)으로 두어, 실패 후 재시도 시 **같은 키**가 서버에 전달되게 한다.
+
+4. **운영**  
+   - 로그/알람에 민감정보와 키 전체를 남기지 말 것(필요 시 해시·마스킹).  
+   - 신규 중요 POST/PATCH 추가 시 본 절을 따라 **키 스코프·충돌 코드·DB 유니크**를 설계한다.
+
 ## 상용 오픈 전 필수 체크리스트 (웹훅 · 멱등 · 대외 연동)
 
 상용 트래픽 전에 아래를 **문서·코드·운영 설정** 기준으로 점검한다. 미적용 항목은 “의도적 제외”와 담당·일정을 남긴다.

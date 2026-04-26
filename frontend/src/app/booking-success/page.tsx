@@ -1,7 +1,8 @@
 /**
  * Booking Success Page (예약 완료 페이지)
  *
- * 로직: `useBookingSuccessPage` · UI: `BookingSuccessPageView` — Suspense + 조합만.
+ * 로직: `useBookingSuccessPageData` + `useBookingSuccessPageActions` → `useBookingSuccessPage`.
+ * UI: `BookingSuccessPageView` — Suspense + 조합만.
  */
 
 "use client";

@@ -1,4 +1,5 @@
 import type { IdDocumentData, PhoneVerificationData, FaceVerificationData } from '@/types/kyc.types';
+import type { UserData } from '@/lib/api/auth';
 
 type KYCStep = 1 | 2 | 3;
 
@@ -11,11 +12,28 @@ type KycProgress = {
 };
 
 /**
- * 서버( auth userData )에 저장된 kyc_steps / 전화 기준으로 캐시·표시할 스텝 복원.
+ * 서버 GET /api/app/users + LessorProfile 병합(kyc_steps) 기준으로 재개 스텝 복원.
+ * 로컬 캐시는 네트워크 실패 시에만 폴백.
  */
 export async function loadKycProgressFromUser(userId: string): Promise<KycProgress> {
-  const { getCurrentUserData } = await import('@/lib/api/auth');
-  const userData = await getCurrentUserData(userId);
+  let userData: UserData | null = null;
+  try {
+    const { withAppActor } = await import('@/lib/api/withAppActor');
+    const { parseAppUserPayload } = await import('@/lib/api/appUserApiParse');
+    const res = await fetch(
+      `/api/app/users/${encodeURIComponent(userId)}`,
+      withAppActor({ cache: 'no-store' }),
+    );
+    if (res.ok) {
+      userData = parseAppUserPayload(await res.json());
+    }
+  } catch {
+    /* 네트워크 오류 시 로컬 폴백 */
+  }
+  if (!userData) {
+    const { getCurrentUserData } = await import('@/lib/api/auth');
+    userData = await getCurrentUserData(userId);
+  }
   const kycSteps = userData?.kyc_steps || {};
 
   let phoneData: PhoneVerificationData | null = null;
