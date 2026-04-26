@@ -1,4 +1,5 @@
 import type { PropertyData } from "@/types/property";
+import { unwrapAppApiData } from "@/lib/api/appApiEnvelope";
 
 type MutationDeps = {
   hydratePropertiesMemoryIfLoggedIn: () => Promise<void>;
@@ -221,7 +222,7 @@ export async function hostEndAdvertisingPropertyMutation(
   });
 
   try {
-    await deps.fetchWithRetry(
+    const auditRes = await deps.fetchWithRetry(
       "/api/app/moderation-audit",
       deps.withAppActor({
         method: "POST",
@@ -235,6 +236,9 @@ export async function hostEndAdvertisingPropertyMutation(
       }),
       { retries: 1, baseDelayMs: 400 },
     );
+    if (auditRes.ok) {
+      unwrapAppApiData(await auditRes.json());
+    }
   } catch {
     // Keep core flow successful even if audit write fails.
   }

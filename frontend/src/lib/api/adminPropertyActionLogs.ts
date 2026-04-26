@@ -6,6 +6,7 @@ import {
   isClientAuthErrorStatus,
   USER_FACING_CLIENT_AUTH_ERROR_MESSAGE,
 } from '@/lib/runtime/networkResilience';
+import { unwrapAppApiData } from '@/lib/api/appApiEnvelope';
 import { withAppActor } from '@/lib/api/withAppActor';
 
 export type PropertyActionType = 'DELETED' | 'CANCELLED';
@@ -118,8 +119,14 @@ export async function postAppPropertyActionLog(input: PostAppPropertyActionLogIn
       }),
       { retries: 1, baseDelayMs: 400 }
     );
-    if (res.ok) invalidateAdminPropertyActionLogsCache();
-    return res.ok;
+    if (!res.ok) return false;
+    try {
+      unwrapAppApiData(await res.json());
+    } catch {
+      return false;
+    }
+    invalidateAdminPropertyActionLogsCache();
+    return true;
   } catch {
     return false;
   }
