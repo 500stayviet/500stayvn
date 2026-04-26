@@ -35,7 +35,7 @@ export async function PUT(request: NextRequest) {
             role: updatedUser.role,
           },
         });
-      } catch (dbError: any) {
+      } catch (dbError: unknown) {
         console.error('Database error:', dbError);
         
         // 테스트 모드: DB 오류가 있어도 성공 응답 반환

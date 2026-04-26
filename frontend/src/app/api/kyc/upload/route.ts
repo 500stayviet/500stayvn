@@ -1,20 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import type { Prisma } from "@prisma/client";
+import type { AppPrismaClient } from "@/lib/prisma";
 
-// Prisma 클라이언트 동적 임포트 (타입 문제 해결)
-let prisma: any;
+// Prisma 클라이언트 동적 임포트 (번들/테스트 환경 분기)
+let prismaSingleton: AppPrismaClient | undefined;
 
-async function getPrisma() {
-  if (!prisma) {
+async function getPrisma(): Promise<AppPrismaClient | undefined> {
+  if (!prismaSingleton) {
     try {
       const { prisma: prismaClient } = await import("@/lib/prisma");
-      prisma = prismaClient;
+      prismaSingleton = prismaClient;
     } catch (error) {
       console.error("Failed to load Prisma client:", error);
-      // 테스트 모드로 계속 진행
     }
   }
-  return prisma;
+  return prismaSingleton;
 }
 
 // S3 클라이언트 초기화 (환경 변수가 있을 경우)
@@ -118,7 +119,7 @@ export async function POST(request: NextRequest) {
     }
 
     // LessorProfile 업데이트 데이터
-    const updateData: any = {};
+    const updateData: Prisma.LessorProfileUpdateInput = {};
 
     switch (fileType) {
       case "id_front":
@@ -218,7 +219,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const updateData: any = {};
+    const updateData: Prisma.LessorProfileUpdateInput = {};
 
     // 단계별 업데이트
     switch (step) {

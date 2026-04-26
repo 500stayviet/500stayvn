@@ -1,6 +1,6 @@
 # Refactor Backlog (Code-First)
 
-**Last synced:** 2026-04-27 — **P2.1 완료** + **P3 1차:** App API ESLint 가드(`lint:api-app`)·CI·eslint ignore 정리. Gate: `tsc`·`build`·`lint:api-app`·mock E2E.
+**Last synced:** 2026-04-27 — **P3 2차:** `lint:p3-tier2`(`lint:api`+`lint:server`)·CI 반영·비-app API·서버 lib 린트 정리. Gate: `tsc`·`build`·`lint:p3-tier2`·mock E2E.
 
 ## Objective
 
@@ -171,8 +171,12 @@ Goal:
   - `eslint.config.mjs`: PWA 산출물(`public/sw.js`, `workbox-*.js`)·`scripts/**` 무시 — 생성물/유지보수 스크립트가 전체 `eslint .` 실패를 유발하지 않도록.
   - `next.config.ts`: `createRequire`로 `next-pwa` 로드(`no-require-imports` 제거).
   - `npm run lint:api-app`: `src/app/api/app/**/*.ts` 만 `--max-warnings 0` (P2.1 계약과 동일 슬라이스).
-  - CI `frontend-quality.yml`: `lint:api-app` 스텝 추가.
+  - CI `frontend-quality.yml`: ESLint 스텝 추가(1차 `lint:api-app` → 2차 `lint:p3-tier2`).
   - **잔여:** 전체 `npm run lint` 그린은 별도 스프린트( `src` 전역 `no-explicit-any` 등).
+- **2차 (2026-04-27):**
+  - `lint:api`·`lint:server`·`lint:p3-tier2` 추가; CI는 `lint:p3-tier2`로 전환.
+  - `/api/auth/*`, `aws-location`, `ical/parse`, `kyc/upload` 및 `bookingPaymentTransition.test.ts`의 `any`/미사용 변수 정리; `prisma.ts`에 `AppPrismaClient` export.
+  - **잔여:** `src/components`·`src/lib`(server 외)·`src/app`(api 외) 등 전역 린트.
 
 ## Phase 1 보완 (플랜 누락 방지)
 
@@ -201,7 +205,7 @@ For each merged backlog slice:
 
 1. `npm run build`
 2. `npx tsc --noEmit`
-3. `npm run lint:api-app` (P3: `/api/app` Route Handler 전용 ESLint; `frontend` 디렉터리에서 실행)
+3. `npm run lint:p3-tier2` (P3: `src/app/api` + `src/lib/server`; `frontend` 디렉터리에서 실행)
 4. `npx playwright test tests/e2e/mock-scenario-regression.spec.ts --project=chromium --workers=1` (또는 smoke에 편입된 동등 스펙)
 5. CI green on GitHub Actions and Amplify
 

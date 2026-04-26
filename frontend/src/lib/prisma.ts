@@ -47,4 +47,7 @@ function createPrismaClient() {
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient();
 
+/** `$extends` 적용 후 클라이언트 — 동적 import 경로에서도 동일 타입을 쓰기 위함 */
+export type AppPrismaClient = typeof prisma;
+
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;

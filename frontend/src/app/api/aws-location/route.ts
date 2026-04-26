@@ -80,11 +80,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
+    const body = (await request.json()) as {
+      action?: string;
+      text?: string;
+      language?: string;
+      latitude?: number;
+      longitude?: number;
+      placeId?: string;
+    };
     const { action, text, language, latitude, longitude, placeId } = body;
 
     let url = '';
-    let requestBody: any = {};
+    let requestBody: Record<string, unknown> = {};
 
     switch (action) {
       case 'suggestions':

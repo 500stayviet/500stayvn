@@ -53,9 +53,13 @@ export async function POST(request: Request) {
         ...(process.env.NODE_ENV === 'development' && { testOtp: otpCode })
       });
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in phone authentication:', error);
-    return NextResponse.json({ error: 'Failed to process phone authentication', details: error.message }, { status: 500 });
+    const details = error instanceof Error ? error.message : String(error);
+    return NextResponse.json(
+      { error: 'Failed to process phone authentication', details },
+      { status: 500 },
+    );
   }
 }
 
@@ -80,7 +84,7 @@ export async function PUT(request: Request) {
     } else {
       return NextResponse.json({ error: 'Invalid OTP code' }, { status: 400 });
     }
-  } catch (error: any) {
+  } catch {
     return NextResponse.json({ error: 'Verification failed' }, { status: 500 });
   }
 }

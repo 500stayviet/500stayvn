@@ -15,8 +15,8 @@ function parseICS(icsText: string): { start: string; end: string }[] {
     const dtEndMatch = block.match(/DTEND(?:;.*?)?:([^\r\n]+)/i);
     if (!dtStartMatch || !dtEndMatch) continue;
 
-    let startStr = dtStartMatch[1].trim();
-    let endStr = dtEndMatch[1].trim();
+    const startStr = dtStartMatch[1].trim();
+    const endStr = dtEndMatch[1].trim();
 
     // format: 20250130T140000Z or 20250130
     const normalizeToDate = (s: string): string => {

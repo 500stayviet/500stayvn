@@ -86,7 +86,9 @@ All `/api/admin/*` routes use **admin session cookie** (`getAdminFromRequest`). 
 
 ## Lint guardrail (P3)
 
-- CI 및 로컬에서 **`npm run lint:api-app`** (`src/app/api/app/**/*.ts`, `--max-warnings 0`)로 App BFF 라우트만 우선 게이트한다. 저장소 전체 `eslint .` 그린은 별도 정리 스프린트 대상이다.
+- CI: **`npm run lint:p3-tier2`** = `lint:api` (`src/app/api/**/*.ts`) + `lint:server` (`src/lib/server/**/*.ts`), `--max-warnings 0`.
+- 빠른 로컬만: **`npm run lint:api-app`** (앱 BFF `/api/app` 한정).
+- 저장소 전체 `eslint .` 그린은 별도 정리 스프린트 대상이다.
 
 ## Rollout notes
 
