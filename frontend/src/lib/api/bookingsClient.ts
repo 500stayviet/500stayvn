@@ -16,7 +16,14 @@ import {
 } from '@/lib/runtime/networkResilience';
 import { withAppActor } from '@/lib/api/withAppActor';
 import { getCurrentUserId } from '@/lib/api/auth';
+import { parseAppPaymentResponse } from '@/lib/api/appPaymentResponse';
 import type { BookingData, CreateBookingRequest } from './bookingsTypes';
+
+const PAYMENT_DEFAULT_ERROR =
+  '결제 정보를 서버에 반영하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+
+const PAYMENT_CREATE_ERROR =
+  '결제(메타)를 등록하지 못했습니다. 예약은 생성되었으나 결제 직전에 새로고침하거나 고객센터에 문의해 주세요.';
 
 export { toISODateString };
 
@@ -127,10 +134,11 @@ export async function syncBookingsNow(snapshot: BookingData[]): Promise<void> {
   }
 }
 
-async function createPaymentMetaForBooking(booking: BookingData): Promise<void> {
-  if (typeof window === 'undefined') return;
+/** @returns false when HTTP/body says failure; 이미 emit. */
+async function createPaymentMetaForBooking(booking: BookingData): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
   try {
-    await fetch(
+    const res = await fetch(
       '/api/app/payments',
       withAppActor({
         method: 'POST',
@@ -149,18 +157,36 @@ async function createPaymentMetaForBooking(booking: BookingData): Promise<void> 
         }),
       }),
     );
+    const parsed = await parseAppPaymentResponse(res);
+    if (!parsed.ok) {
+      console.warn('[payments] create meta failed', parsed);
+      emitUserFacingSyncError({
+        area: 'bookings',
+        action: 'payment_create',
+        message: parsed.errorMessage || PAYMENT_CREATE_ERROR,
+      });
+      return false;
+    }
+    return true;
   } catch (e) {
     console.warn('[payments] create meta failed', e);
+    emitUserFacingSyncError({
+      area: 'bookings',
+      action: 'payment_create',
+      message: PAYMENT_DEFAULT_ERROR,
+    });
+    return false;
   }
 }
 
+/** @returns false when failure; emit은 여기서 처리. */
 async function patchPaymentMetaByBooking(
   bookingId: string,
   patch: Record<string, unknown>
-): Promise<void> {
-  if (typeof window === 'undefined') return;
+): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
   try {
-    await fetch(
+    const res = await fetch(
       `/api/app/payments/${encodeURIComponent(bookingId)}`,
       withAppActor({
         method: 'PATCH',
@@ -168,8 +194,25 @@ async function patchPaymentMetaByBooking(
         body: JSON.stringify(patch),
       }),
     );
+    const parsed = await parseAppPaymentResponse(res);
+    if (!parsed.ok) {
+      console.warn('[payments] patch meta failed', parsed);
+      emitUserFacingSyncError({
+        area: 'bookings',
+        action: 'payment_patch',
+        message: parsed.errorMessage || PAYMENT_DEFAULT_ERROR,
+      });
+      return false;
+    }
+    return true;
   } catch (e) {
     console.warn('[payments] patch meta failed', e);
+    emitUserFacingSyncError({
+      area: 'bookings',
+      action: 'payment_patch',
+      message: PAYMENT_DEFAULT_ERROR,
+    });
+    return false;
   }
 }
 
@@ -591,10 +634,14 @@ export async function completePayment(
 
   writeBookingsArray(bookings);
   await syncBookingsNow(bookings);
-  await patchPaymentMetaByBooking(bookingId, {
+  const paymentOk = await patchPaymentMetaByBooking(bookingId, {
     status: 'paid',
     provider: paymentMethod || null,
   });
+  if (!paymentOk) {
+    await refreshBookingsFromServer();
+    throw new Error('payment_server_sync_failed');
+  }
   return bookings[index];
 }
 
@@ -730,11 +777,15 @@ export async function approveRefundBooking(bookingId: string, adminId: string): 
   };
   writeBookingsArray(bookings);
   await syncBookingsNow(bookings);
-  await patchPaymentMetaByBooking(bookingId, {
+  const paymentOk = await patchPaymentMetaByBooking(bookingId, {
     status: 'refunded',
     refundStatus: 'approved',
     refundAmount: b.totalPrice,
   });
+  if (!paymentOk) {
+    await refreshBookingsFromServer();
+    return false;
+  }
 
   const { appendRefundLedgerEntry } = await import('@/lib/api/adminFinance');
   await appendRefundLedgerEntry({

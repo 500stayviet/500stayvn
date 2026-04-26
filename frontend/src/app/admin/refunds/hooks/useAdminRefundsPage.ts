@@ -96,8 +96,8 @@ export function useAdminRefundsPage() {
   const approveRefund = useCallback(
     async (bookingId: string) => {
       if (!admin?.username || !bookingId) return;
-      const ok = await approveRefundBooking(bookingId, admin.username);
-      if (ok) await load();
+      await approveRefundBooking(bookingId, admin.username);
+      await load();
     },
     [admin?.username, load],
   );

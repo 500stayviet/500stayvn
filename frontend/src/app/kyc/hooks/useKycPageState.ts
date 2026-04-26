@@ -43,6 +43,7 @@ export function useKycPageState() {
 
     const loadCompletedSteps = async () => {
       try {
+        setError("");
         const p = await loadKycProgressFromUser(user.uid);
         if (p.phoneData) setPhoneData(p.phoneData);
         if (p.idDocumentData) setIdDocumentData(p.idDocumentData);
@@ -52,11 +53,16 @@ export function useKycPageState() {
         }
       } catch (loadError) {
         console.error("Error loading completed steps:", loadError);
+        setError(
+          currentLanguage === "ko"
+            ? "인증 진행 상황을 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요."
+            : "Could not load KYC progress. Please refresh and try again.",
+        );
       }
     };
 
     void loadCompletedSteps();
-  }, [user]);
+  }, [user, currentLanguage]);
 
   const handlePhoneVerificationComplete = async (data: PhoneVerificationData) => {
     if (!user) return;
@@ -64,19 +70,12 @@ export function useKycPageState() {
     setError("");
 
     try {
-      try {
-        await kycProvider.savePhoneVerification(user.uid, data);
-      } catch (apiError) {
-        console.log("Test mode: Phone verification API failed, continuing anyway:", apiError);
-      }
-
+      await kycProvider.savePhoneVerification(user.uid, data);
       setPhoneData(data);
       setCurrentStep(2);
-      console.log("Phone verification step completed (test mode)");
     } catch (verifyError: unknown) {
       console.error("Phone verification error:", verifyError);
-      setPhoneData(data);
-      setCurrentStep(2);
+      setError(toErrorMessage(verifyError));
     } finally {
       setLoading(false);
     }
@@ -100,7 +99,8 @@ export function useKycPageState() {
           setError(message);
           return;
         }
-        console.log("Test mode: ID document upload API failed, continuing anyway:", apiError);
+        setError(message);
+        return;
       }
 
       setIdDocumentData(data);
@@ -108,9 +108,7 @@ export function useKycPageState() {
       setShowStep2SuccessModal(true);
     } catch (uploadError: unknown) {
       console.error("ID document upload error:", uploadError);
-      setIdDocumentData(data);
-      setCurrentStep(3);
-      console.log("Test mode: Moving to step 3 despite error");
+      setError(toErrorMessage(uploadError));
     } finally {
       setLoading(false);
     }
@@ -156,7 +154,8 @@ export function useKycPageState() {
           setError(message);
           return;
         }
-        console.log("Test mode: ID document next API failed, continuing anyway:", apiError);
+        setError(message);
+        return;
       }
 
       setIdDocumentData(dummyIdData);
@@ -164,9 +163,7 @@ export function useKycPageState() {
       setShowStep2SuccessModal(true);
     } catch (nextError: unknown) {
       console.error("ID document next error:", nextError);
-      setIdDocumentData(dummyIdData);
-      setCurrentStep(3);
-      console.log("Test mode: Moving to step 3 despite error");
+      setError(toErrorMessage(nextError));
     } finally {
       setLoading(false);
     }
@@ -187,7 +184,7 @@ export function useKycPageState() {
       router.push("/profile");
     } catch (faceError: unknown) {
       console.error("Face verification error:", faceError);
-      router.push("/profile");
+      setError(toErrorMessage(faceError));
     } finally {
       setLoading(false);
     }
