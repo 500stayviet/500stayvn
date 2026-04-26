@@ -1,7 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { assertPublicCatalogGuard } from '@/lib/server/publicApiGuard';
 import { getAppActorId } from '@/lib/server/appSyncWriteGuard';
+import { appApiError } from '@/lib/server/appApiErrors';
+import { appApiOk } from '@/lib/server/appApiResponses';
 
 /**
  * 매물별 예약 점유 구간(가용 달력용) — 게스트 PII 없이 checkIn/checkOut 만 반환.
@@ -13,7 +15,7 @@ export async function GET(
 ) {
   const { id } = await context.params;
   const pid = (id || '').trim();
-  if (!pid) return NextResponse.json({ error: 'invalid_id' }, { status: 400 });
+  if (!pid) return appApiError('invalid_id', 400);
 
   const actor = getAppActorId(request);
   if (!actor) {
@@ -23,15 +25,15 @@ export async function GET(
       where: { id: pid, deleted: false, hidden: false, status: 'active' },
       select: { id: true },
     });
-    if (!visible) return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    if (!visible) return appApiError('not_found', 404);
   } else {
     const row = await prisma.property.findUnique({
       where: { id: pid },
       select: { deleted: true, hidden: true, ownerId: true },
     });
-    if (!row || row.deleted) return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    if (!row || row.deleted) return appApiError('not_found', 404);
     if (row.hidden && row.ownerId !== actor) {
-      return NextResponse.json({ error: 'not_found' }, { status: 404 });
+      return appApiError('not_found', 404);
     }
   }
 
@@ -43,7 +45,7 @@ export async function GET(
       },
       select: { checkInDate: true, checkOutDate: true },
     });
-    return NextResponse.json({
+    return appApiOk({
       ranges: rows.map((r) => ({
         checkIn: r.checkInDate.toISOString(),
         checkOut: r.checkOutDate.toISOString(),
@@ -51,6 +53,6 @@ export async function GET(
     });
   } catch (e) {
     console.error('GET /api/app/properties/[id]/availability', pid, e);
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
+    return appApiError('database_unavailable', 503);
   }
 }

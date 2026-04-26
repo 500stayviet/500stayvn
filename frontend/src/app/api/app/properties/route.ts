@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { appApiError } from '@/lib/server/appApiErrors';
 import { appApiOk } from '@/lib/server/appApiResponses';
@@ -222,12 +222,12 @@ export async function PUT(request: NextRequest) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: 'invalid_body' }, { status: 400 });
+    return appApiError('invalid_body', 400);
   }
 
   const properties = Array.isArray(body.properties) ? body.properties : [];
   if (properties.length > MAX_BATCH) {
-    return NextResponse.json({ error: 'too_many' }, { status: 400 });
+    return appApiError('too_many', 400);
   }
 
   try {
@@ -250,10 +250,10 @@ export async function PUT(request: NextRequest) {
     });
 
     reportApiSuccess('PUT /api/app/properties', 200, startedAt);
-    return NextResponse.json({ ok: true });
+    return appApiOk({ synced: true });
   } catch (e) {
     reportApiException('PUT /api/app/properties', e, startedAt);
     console.error('PUT /api/app/properties', e);
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
+    return appApiError('database_unavailable', 503);
   }
 }
