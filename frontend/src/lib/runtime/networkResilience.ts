@@ -58,6 +58,25 @@ export function emitUserFacingSyncError(error: UserFacingSyncError): void {
   }
 }
 
+/** 결제/동기화 성공 알림(상단 토스트) — `AppToastBanner`가 구독 */
+export type UserFacingAppToast = {
+  tone: "success" | "info";
+  message: string;
+  area?: "bookings" | "generic";
+  action?: string;
+};
+
+export function emitUserFacingAppToast(toast: UserFacingAppToast): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.dispatchEvent(
+      new CustomEvent("stayviet-app-toast", { detail: toast }),
+    );
+  } catch {
+    /* ignore */
+  }
+}
+
 /** 로그인 만료·권한·액터 헤더 문제(401/403) */
 export function isClientAuthErrorStatus(status: number): boolean {
   return status === 401 || status === 403;

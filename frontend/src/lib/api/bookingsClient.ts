@@ -9,6 +9,7 @@
 import { toISODateString } from '../utils/dateUtils';
 import { markLedgerBootstrapDone } from '@/lib/runtime/localBootstrapMarkers';
 import {
+  emitUserFacingAppToast,
   emitUserFacingSyncError,
   fetchWithRetry,
   isClientAuthErrorStatus,
@@ -16,7 +17,11 @@ import {
 } from '@/lib/runtime/networkResilience';
 import { withAppActor } from '@/lib/api/withAppActor';
 import { getCurrentUserId } from '@/lib/api/auth';
-import { parseAppPaymentResponse } from '@/lib/api/appPaymentResponse';
+import {
+  parseAppPaymentResponse,
+  parsePaymentPatchData,
+  type PaymentServerTransition,
+} from '@/lib/api/appPaymentResponse';
 import type { BookingData, CreateBookingRequest } from './bookingsTypes';
 
 const PAYMENT_DEFAULT_ERROR =
@@ -24,6 +29,57 @@ const PAYMENT_DEFAULT_ERROR =
 
 const PAYMENT_CREATE_ERROR =
   '결제(메타)를 등록하지 못했습니다. 예약은 생성되었으나 결제 직전에 새로고침하거나 고객센터에 문의해 주세요.';
+
+type PatchPaymentMetaResult =
+  | { ok: false }
+  | { ok: true; transition: PaymentServerTransition };
+
+function emitPayCompleteTransitionToast(t: PaymentServerTransition) {
+  if (t.bookingCancelled) {
+    emitUserFacingAppToast({
+      tone: 'info',
+      area: 'bookings',
+      action: 'payment',
+      message:
+        '결제(환불) 반영에 따라 예약이 취소 처리되었습니다. 내 예약에서 상태를 확인해 주세요.',
+    });
+    return;
+  }
+  if (t.bookingConfirmed) {
+    emitUserFacingAppToast({
+      tone: 'success',
+      area: 'bookings',
+      action: 'payment',
+      message: '결제가 완료되어 예약이 확정되었습니다.',
+    });
+    return;
+  }
+  emitUserFacingAppToast({
+    tone: 'info',
+    area: 'bookings',
+    action: 'payment',
+    message:
+      '결제 정보가 서버에 반영되었습니다. 최신 예약 상태는 내 예약에서 확인해 주세요.',
+  });
+}
+
+function emitRefundAdminTransitionToast(t: PaymentServerTransition) {
+  if (t.bookingCancelled) {
+    emitUserFacingAppToast({
+      tone: 'success',
+      area: 'bookings',
+      action: 'refund',
+      message: '환불이 반영되어 예약이 취소(환불) 처리되었습니다.',
+    });
+    return;
+  }
+  emitUserFacingAppToast({
+    tone: 'info',
+    area: 'bookings',
+    action: 'refund',
+    message: '환불 결제 정보가 서버에 반영되었습니다.',
+  });
+}
 
 export { toISODateString };
 
@@ -179,12 +235,12 @@ async function createPaymentMetaForBooking(booking: BookingData): Promise<boolea
   }
 }
 
-/** @returns false when failure; emit은 여기서 처리. */
+/** PATCH `data.transition` 를 반환; 실패 시 `ok: false` (emit 은 여기서 처리). */
 async function patchPaymentMetaByBooking(
   bookingId: string,
   patch: Record<string, unknown>
-): Promise<boolean> {
-  if (typeof window === 'undefined') return false;
+): Promise<PatchPaymentMetaResult> {
+  if (typeof window === 'undefined') return { ok: false };
   try {
     const res = await fetch(
       `/api/app/payments/${encodeURIComponent(bookingId)}`,
@@ -202,9 +258,10 @@ async function patchPaymentMetaByBooking(
         action: 'payment_patch',
         message: parsed.errorMessage || PAYMENT_DEFAULT_ERROR,
       });
-      return false;
+      return { ok: false };
     }
-    return true;
+    const { transition } = parsePaymentPatchData(parsed.data);
+    return { ok: true, transition };
   } catch (e) {
     console.warn('[payments] patch meta failed', e);
     emitUserFacingSyncError({
@@ -212,7 +269,7 @@ async function patchPaymentMetaByBooking(
       action: 'payment_patch',
       message: PAYMENT_DEFAULT_ERROR,
     });
-    return false;
+    return { ok: false };
   }
 }
 
@@ -777,15 +834,17 @@ export async function approveRefundBooking(bookingId: string, adminId: string): 
   };
   writeBookingsArray(bookings);
   await syncBookingsNow(bookings);
-  const paymentOk = await patchPaymentMetaByBooking(bookingId, {
+  const refundPatch = await patchPaymentMetaByBooking(bookingId, {
     status: 'refunded',
     refundStatus: 'approved',
     refundAmount: b.totalPrice,
   });
-  if (!paymentOk) {
+  if (!refundPatch.ok) {
     await refreshBookingsFromServer();
     return false;
   }
+  await refreshBookingsFromServer();
+  emitRefundAdminTransitionToast(refundPatch.transition);
 
   const { appendRefundLedgerEntry } = await import('@/lib/api/adminFinance');
   await appendRefundLedgerEntry({

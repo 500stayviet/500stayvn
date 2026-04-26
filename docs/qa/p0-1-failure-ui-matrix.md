@@ -9,6 +9,7 @@
 | 결제 POST | 401(미들웨어, `{ error: "unauthorized" }`) | 로그인/액터 문제 안내(기존 `USER_FACING_CLIENT_AUTH_ERROR_MESSAGE`). | `parseAppPaymentResponse` |
 | 결제 PATCH | `paid` 반영 실패 | **“결제 반영 실패”**, 로컬·서버 불일치 시 **GET 예약으로 재동기화**, **성공 화면으로 가지 않음**. | `completePayment` → patch 실패 시 `throw` + `refreshBookingsFromServer` |
 | 결제 PATCH | 404 `not_found` (Payment row 없음) | 위와 동일(원인은 다르지만 복구 동일). | 동일 |
+| 결제 PATCH | **200 + `data.transition` (성공)** | **토스트(성공/안내)**: `bookingConfirmed`·`bookingCancelled`·무전이(정보) 분기, 직후 **GET 예약으로 캐시 정렬**. | `completePayment` / `approveRefundBooking` + `AppToastBanner` (2026-04-27) |
 | KYC | `loadKycProgressFromUser` 실패 | 스텝 옆(또는 상단) **한국어 오류** + **새로고침 권고**. | `setError` |
 | KYC | 전화 인증 **저장** 실패 | **다음 단계로 가지 않음**, 재시도 유도. | `savePhoneVerification` throw 시 stop |
 | KYC | 신분증 **저장** 실패(명시 `mock_kyc_id_failed` 등) | **같은 단계 유지**, 메시지 표시(기존). | `setError` + return |

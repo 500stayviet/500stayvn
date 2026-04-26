@@ -1,6 +1,6 @@
 # Refactor Backlog (Code-First)
 
-**Last synced:** 2026-04-26 — 라우트·훅 분해 진행과 본 문서를 맞춤. (다음 큰 PR 후에 이 날짜를 갱신할 것)
+**Last synced:** 2026-04-27 — P0.1 결제 PATCH `transition`·토스트·캐시 동기화 반영.
 
 ## Objective
 
@@ -85,9 +85,11 @@ This backlog intentionally prioritizes **code hardening** over app-store packagi
   - enforce explicit transition rules for success/fail/refund/cancel
   - keep partial/fail branches visible in UI (no silent continue)
   - add missing unit coverage for negative branches
-- Done when:
-  - transition tests pass for all critical status branches
-  - UI reflects failure paths deterministically
+- **완료 (2026-04-27):** 서버 `PATCH /api/app/payments/[bookingId]`의 `data.transition`(`bookingConfirmed` / `bookingCancelled`)를 `parsePaymentPatchData` + `bookingsClient.patchPaymentMetaByBooking`이 소비. 결제 완료 `completePayment`·관리자 환불 `approveRefundBooking` 직후 **`refreshBookingsFromServer`로 캐시=서버** 정렬, 전이에 맞는 **상단 토스트**(`emitUserFacingAppToast` + `AppToastBanner`). KYC/결제 API 실패 UX는 기존 P0.1 1~2차와 동일. (세부: `docs/qa/p0-1-*.md`)
+- Done when (체크):
+  - [x] `bookingPaymentTransition` 단위 테스트(기존)
+  - [x] UI에서 결제 PATCH 전이·실패 경로(배너/토스트/동기화) 반영
+  - [x] `parsePaymentPatchData` + 응답 파서 보조 테스트
 
 ### P0.2 Core mock regression set
 

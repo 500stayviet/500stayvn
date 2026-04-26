@@ -4,7 +4,8 @@
 **범위:** `bookingPaymentTransition` · `/api/app/payments` · `useKycPageState` / `loadKycProgressFromUser`  
 **다음 단계(2~5):** 이 문서의 [갭]·[위험] 항목을 근거로 UI 합의 → 서버/클라이언트 보강 → 실패 시나리오 테스트
 
-**2026-04-26 후속:** G1·G2·G3·G4·G5·G6에 대해 `p0-1-failure-ui-matrix.md`·`appPaymentResponse`·`bookingsClient`·`useKycPageState`·`appPaymentResponse.test.ts`로 1차 보강. `transition` 필드는 아직 **UI/상태 머신에서 소비하지 않음** (필요 시 3단계).
+**2026-04-26 후속:** G1~G6 1차 보강(실패 배너·KYC 등) — `p0-1-failure-ui-matrix.md` 참고.  
+**2026-04-27:** `PATCH` 응답 `transition` — `parsePaymentPatchData`·`emitUserFacingAppToast`·`AppToastBanner`·`completePayment`/`approveRefundBooking` + **성공 직후 `refreshBookingsFromServer`**로 UI·캐시 정합. G2(전이→UI) **닫힘**.
 
 ---
 

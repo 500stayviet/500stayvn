@@ -13,6 +13,36 @@ export type ParsedAppPaymentFailure = {
 
 export type ParsedAppPaymentResponse = ParsedAppPaymentSuccess | ParsedAppPaymentFailure;
 
+/** PATCH `/api/app/payments/[bookingId]` 의 `data.transition` (서버 `transitionBookingOnPaymentUpdate`) */
+export type PaymentServerTransition = {
+  bookingConfirmed: boolean;
+  bookingCancelled: boolean;
+};
+
+export function parsePaymentPatchData(data: unknown): {
+  transition: PaymentServerTransition;
+} {
+  const d = data && typeof data === "object" ? (data as Record<string, unknown>) : {};
+  const t = d.transition;
+  if (t && typeof t === "object") {
+    const tr = t as Record<string, unknown>;
+    return {
+      transition: {
+        bookingConfirmed: tr.bookingConfirmed === true,
+        bookingCancelled: tr.bookingCancelled === true,
+      },
+    };
+  }
+  if (process.env.NODE_ENV === "development") {
+    // eslint-disable-next-line no-console
+    console.warn(
+      "[payments] PATCH data missing transition; assuming no booking state change",
+      data,
+    );
+  }
+  return { transition: { bookingConfirmed: false, bookingCancelled: false } };
+}
+
 /**
  * `/api/app/payments` 및 미들웨어 응답을 통일 파싱.
  * - 라우트 성공: `{ ok: true, data }`

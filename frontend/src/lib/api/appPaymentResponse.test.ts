@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseAppPaymentResponse } from "./appPaymentResponse";
+import { parseAppPaymentResponse, parsePaymentPatchData } from "./appPaymentResponse";
 
 describe("parseAppPaymentResponse", () => {
   it("returns data on ok: true", async () => {
@@ -60,5 +60,20 @@ describe("parseAppPaymentResponse", () => {
     if (!p.ok) {
       expect(p.errorMessage).toMatch(/해석/);
     }
+  });
+});
+
+describe("parsePaymentPatchData", () => {
+  it("reads transition from PATCH body", () => {
+    const t = parsePaymentPatchData({
+      payment: { id: "p1" },
+      transition: { bookingConfirmed: true, bookingCancelled: false },
+    });
+    expect(t.transition).toEqual({ bookingConfirmed: true, bookingCancelled: false });
+  });
+
+  it("defaults when transition missing", () => {
+    const t = parsePaymentPatchData({ payment: null });
+    expect(t.transition).toEqual({ bookingConfirmed: false, bookingCancelled: false });
   });
 });
