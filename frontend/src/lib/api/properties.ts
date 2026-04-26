@@ -44,6 +44,10 @@ import {
   refreshPropertiesFromServer,
   writePropertiesArray,
 } from './propertiesStore';
+import {
+  handleCancellationRelistLifecycle,
+  recalculateAndSplitPropertyLifecycle,
+} from './propertiesLifecycle';
 
 /**
  * 날짜 중복 체크 (엄격한 ISO 날짜 기준)
@@ -204,312 +208,34 @@ export async function handleCancellationRelist(propertyId: string, ownerId: stri
   type: 'merged' | 'relisted' | 'limit_exceeded' | 'short_term';
   targetId?: string;
 }> {
-  if (typeof window === 'undefined') {
-    return { type: 'relisted' };
-  }
-  const property = await getProperty(propertyId);
-  if (!property) throw new Error('PropertyNotFound');
-
-  let allProperties = readPropertiesArray();
-
-  // [Gaps Logic] 자식 매물(rented) 취소 시: 자식 레코드만 삭제하면 부모의 Gap이 자동으로 회복됨
-  if (propertyId.includes('_child_')) {
-    const normalize = (s: string | undefined) => (s || '').trim().replace(/\s+/g, ' ').toLowerCase();
-    const targetAddress = normalize(property.address);
-    const targetTitle = normalize(property.title);
-    const targetUnit = normalize(property.unitNumber);
-
-    const reservations = await getReservationsByOwner(ownerId, 'all');
-    const bookedRanges = reservations
-      .filter((r) => {
-        if (r.status !== 'pending' && r.status !== 'confirmed') return false;
-        const reservedProp = allProperties.find((p) => p.id === r.propertyId);
-        if (!reservedProp) return false;
-        const bookedAddress = normalize(reservedProp.address);
-        const bookedTitle = normalize(reservedProp.title);
-        const bookedUnit = normalize(reservedProp.unitNumber);
-
-        return (
-          ((targetAddress !== '' && bookedAddress !== '' && targetAddress === bookedAddress) ||
-            (targetTitle !== '' && bookedTitle !== '' && targetTitle === bookedTitle)) &&
-          targetUnit === bookedUnit
-        );
-      })
-      .map((r) => ({
-        checkIn: new Date(toISODateString(r.checkInDate)),
-        checkOut: new Date(toISODateString(r.checkOutDate)),
-      }));
-
-    const childStart = toISODateString(property.checkInDate);
-    const childEnd = toISODateString(property.checkOutDate);
-
-    // 기존 부모(같은 ownerId + 동일 address/호수)가 있으면 해당 부모로 귀속
-    const parentCandidates = allProperties.filter(
-      (p) =>
-        !p.deleted &&
-        isParentPropertyRecord(p) &&
-        p.ownerId === ownerId &&
-        normalize(p.address) === targetAddress &&
-        normalize(p.unitNumber) === targetUnit
-    );
-
-    const pickMostRecentParent = (arr: PropertyData[]) => {
-      return [...arr].sort((a, b) => {
-        const at = new Date(a.updatedAt || a.createdAt || 0).getTime();
-        const bt = new Date(b.updatedAt || b.createdAt || 0).getTime();
-        return bt - at;
-      })[0];
-    };
-
-    const nowISO = new Date().toISOString();
-
-    // 1) 부모가 있으면: parent 범위를 늘리고(취소된 구간 포함), 상태는 pending 고정
-    if (parentCandidates.length > 0) {
-      const parent = pickMostRecentParent(parentCandidates);
-      const parentIndex = allProperties.findIndex((p) => p.id === parent.id);
-      if (parentIndex === -1) return { type: 'merged' };
-
-      const parentStart = toISODateString(parent.checkInDate);
-      const parentEnd = toISODateString(parent.checkOutDate);
-      const mergedStart = parentStart < childStart ? parentStart : childStart;
-      const mergedEnd = parentEnd > childEnd ? parentEnd : childEnd;
-      // 예약 취소로 인해 생긴 상태는 절대 자동 광고 복귀(active)가 되지 않게 pending으로 고정
-      const newStatus: PropertyData['status'] = 'pending';
-      const resultType: 'short_term' = 'short_term';
-
-      allProperties[parentIndex] = {
-        ...allProperties[parentIndex],
-        checkInDate: mergedStart,
-        checkOutDate: mergedEnd,
-        status: newStatus,
-        updatedAt: nowISO,
-        history: [
-          ...(allProperties[parentIndex].history || []),
-          {
-            action: 'RESERVATION_CANCEL_PENDING',
-            timestamp: nowISO,
-            details: `Attached cancelled child (${propertyId}) to existing parent (${parent.id})`,
-          },
-        ],
-      };
-
-      const finalProperties = allProperties.filter((p) => p.id !== propertyId);
-      writePropertiesArray(finalProperties);
-      return {
-        type: resultType,
-        targetId: parent.id,
-      };
-    }
-
-    // 2) 부모가 없으면: 취소된 구간만으로 새 부모를 생성
-    // 예약 취소로 인해 생긴 상태는 절대 자동 광고 복귀(active)가 되지 않게 pending으로 고정
-    const newStatus: PropertyData['status'] = 'pending';
-    const resultType: 'short_term' = 'short_term';
-
-    const newParentId = `prop_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
-
-    const newParent: PropertyData = {
-      ...property,
-      id: newParentId,
-      checkInDate: childStart,
-      checkOutDate: childEnd,
-      status: newStatus,
-      deleted: false,
-      deletedAt: undefined,
-      hidden: false,
-      createdAt: property.createdAt || nowISO,
-      updatedAt: nowISO,
-      history: [
-        ...(property.history || []),
-        {
-          action: 'RESERVATION_CANCEL_PENDING',
-          timestamp: nowISO,
-          details: `Promoted cancelled child (${propertyId}) to a parent listing`,
-        },
-      ],
-    };
-
-    const finalProperties = allProperties
-      .filter((p) => p.id !== propertyId)
-      .concat(newParent);
-
-    writePropertiesArray(finalProperties);
-
-    return { type: resultType, targetId: newParentId };
-  }
-
-  // 2. 부모/독립 매물 취소 처리: 병합 대상 확인 (기존 로직 유지)
-  const mergeTargetIndex = allProperties.findIndex(p => 
-    !p.deleted && 
-    p.id !== propertyId &&
-    p.ownerId === ownerId &&
-    (p.status === 'active' || p.status === 'pending') &&
-    (p.address === property.address || p.title === property.title) &&
-    p.unitNumber === property.unitNumber
-  );
-
-  if (mergeTargetIndex !== -1) {
-    const target = allProperties[mergeTargetIndex];
-    const range1 = { start: toISODateString(property.checkInDate!), end: toISODateString(property.checkOutDate!) };
-    const range2 = { start: toISODateString(target.checkInDate!), end: toISODateString(target.checkOutDate!) };
-
-    if (!isDateOverlap(range1, range2)) {
-      const isBooked = await isDateRangeBooked(propertyId, range1.start, range1.end);
-      
-      if (!isBooked) {
-        // 2-1. 최신 정보 우선 정책 (Rule 4)
-        const propUpdateDate = new Date(property.updatedAt || property.createdAt).getTime();
-        const targetUpdateDate = new Date(target.updatedAt || target.createdAt).getTime();
-
-        if (propUpdateDate > targetUpdateDate) {
-          target.price = property.price;
-          target.amenities = property.amenities;
-          target.images = property.images;
-          target.title = property.title;
-          target.updatedAt = property.updatedAt;
-        }
-
-        // 2-2. 기간 병합
-        const newStart = range1.start < range2.start ? range1.start : range2.start;
-        const newEnd = range1.end > range2.end ? range1.end : range2.end;
-        target.checkInDate = newStart;
-        target.checkOutDate = newEnd;
-        target.status = 'pending';
-
-        target.history = [
-          ...(target.history || []),
-          {
-            action: 'MERGE_FROM_CANCELLED',
-            timestamp: new Date().toISOString(),
-            details: `Merged with cancelled property. New range: ${newStart}~${newEnd}`
-          }
-        ];
-
-        const finalProperties = allProperties.filter(p => p.id !== propertyId);
-        writePropertiesArray(finalProperties);
-        return { type: 'short_term', targetId: target.id };
-      }
-    }
-  }
-
-  // 3. 병합 불가 시 단독 재등록 검토
-  const reservations = await getReservationsByOwner(ownerId, 'all');
-  
-  const normalize = (s: string | undefined) => (s || '').trim().replace(/\s+/g, ' ').toLowerCase();
-  const targetAddress = normalize(property.address);
-  const targetTitle = normalize(property.title);
-  const targetUnit = normalize(property.unitNumber);
-
-  const bookedRanges = reservations
-    .filter(r => {
-      if (r.status !== 'pending' && r.status !== 'confirmed') return false;
-      
-      // 직접 ID 매칭 또는 물리적 매칭
-      if (r.propertyId === propertyId) return true;
-      
-      const reservedProp = allProperties.find(p => p.id === r.propertyId);
-      if (reservedProp) {
-        const bookedAddress = normalize(reservedProp.address);
-        const bookedTitle = normalize(reservedProp.title);
-        const bookedUnit = normalize(reservedProp.unitNumber);
-
-        return (
-          (targetAddress !== '' && bookedAddress !== '' && targetAddress === bookedAddress) || 
-          (targetTitle !== '' && bookedTitle !== '' && targetTitle === bookedTitle)
-        ) && (targetUnit === bookedUnit);
-      }
-      return false;
-    })
-    .map(r => ({ checkIn: new Date(toISODateString(r.checkInDate)), checkOut: new Date(toISODateString(r.checkOutDate)) }));
-
-  // 기존 자동 승격(active/closed) 흐름을 끊고, 취소 결과는 항상 pending으로 고정
-  await updateProperty(propertyId, {
-    status: 'pending',
-    history: [
-      ...(property.history || []),
-      {
-        action: 'RESERVATION_CANCEL_PENDING',
-        timestamp: new Date().toISOString(),
-        details: 'Reservation cancelled — pending relist required',
-      },
-    ],
+  return handleCancellationRelistLifecycle(propertyId, ownerId, {
+    getProperty,
+    readPropertiesArray,
+    writePropertiesArray,
+    getReservationsByOwner,
+    toISODateString,
+    isParentPropertyRecord,
+    isDateOverlap,
+    isDateRangeBooked,
+    updateProperty,
   });
-  return { type: 'short_term' };
 }
 
 /**
  * 예약 확정/결제 시 가용 기간을 재계산하고 세그먼트를 분리 (Gaps Logic)
  */
 export async function recalculateAndSplitProperty(propertyId: string, bookingId?: string): Promise<void> {
-  if (typeof window === 'undefined') return;
-  const property = await getProperty(propertyId);
-  if (!property || property.deleted) return;
-  if (propertyId.includes('_child_')) return;
-
-  // 예약 정보 가져오기
-  let booking: BookingData | undefined | null;
-  if (bookingId) {
-    const { getBooking } = await import('./bookings');
-    booking = await getBooking(bookingId);
-  }
-  
-  if (!booking) {
-    // 만약 bookingId가 없거나 못 찾으면, 가장 최근의 해당 매물 예약을 찾음
-    const allBookings = await getAllBookings();
-    booking = allBookings
-      .filter(b => b.propertyId === propertyId && (b.paymentStatus === 'paid' || b.status === 'confirmed'))
-      .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())[0];
-  }
-
-  if (!booking) {
-    console.error('[recalculateAndSplitProperty] No valid booking found for property:', propertyId);
-    return;
-  }
-
-  const validBooking = booking as any;
-  const bookedStart = toISODateString(validBooking.checkInDate);
-  const bookedEnd = toISODateString(validBooking.checkOutDate);
-
-  // 자식 매물(rented) 생성
-  const childId = `prop_child_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-  const { id: _, history: __, status: ___, checkInDate: ____, checkOutDate: _____, ...baseData } = property;
-  
-  const childProp: PropertyData = {
-    ...baseData,
-    id: childId,
-    checkInDate: bookedStart,
-    checkOutDate: bookedEnd,
-    status: 'rented',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    history: [{
-      action: 'CHILD_CREATED_RENTED',
-      timestamp: new Date().toISOString(),
-      details: `Created from parent ${propertyId} for period ${bookedStart}~${bookedEnd}`
-    }]
-  };
-
-  const allProps = readPropertiesArray();
-  allProps.push(childProp);
-  writePropertiesArray(allProps);
-
-  // 참조 업데이트 (bookings / reservations 캐시·정책과 동일 경로)
-  const bookings = readBookingsArray();
-  const bIndex = bookings.findIndex((b) => b.id === booking.id);
-  if (bIndex !== -1) {
-    bookings[bIndex] = { ...bookings[bIndex], propertyId: childId };
-    writeBookingsArray(bookings);
-  }
-
-  await updateProperty(propertyId, {
-    history: [
-      ...(property.history || []),
-      {
-        action: 'PARENT_PARTIAL_RENTED',
-        timestamp: new Date().toISOString(),
-        details: `Partially rented (${bookedStart}~${bookedEnd}). Child: ${childId}`
-      }
-    ]
+  const { getBooking } = await import('./bookings');
+  return recalculateAndSplitPropertyLifecycle(propertyId, bookingId, {
+    getProperty,
+    getBooking,
+    getAllBookings,
+    readPropertiesArray,
+    writePropertiesArray,
+    readBookingsArray,
+    writeBookingsArray,
+    updateProperty,
+    toISODateString,
   });
 }
 
