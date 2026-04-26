@@ -10,7 +10,7 @@ import {
   getReservationsByOwner,
   ReservationData,
 } from './reservations';
-import { parseDate, toISODateString } from '@/lib/utils/dateUtils';
+import { toISODateString } from '@/lib/utils/dateUtils';
 import {
   isDateRangeBooked,
   getAllBookings,
@@ -18,7 +18,7 @@ import {
   readBookingsArray,
   writeBookingsArray,
 } from './bookings';
-import { hasAvailableBookingPeriod, isParentPropertyRecord } from '@/lib/utils/propertyUtils';
+import { isParentPropertyRecord } from '@/lib/utils/propertyUtils';
 import {
   markLedgerBootstrapDone,
 } from '@/lib/runtime/localBootstrapMarkers';
@@ -57,28 +57,22 @@ import {
   restorePropertyMutation,
   updatePropertyMutation,
 } from './propertiesMutations';
+import {
+  buildBookedRangesForParentListingQuery,
+  getBookedRangesForPropertyQuery,
+  getPropertiesByOwnerQuery,
+  getPropertyCountByOwnerQuery,
+  isDateOverlapQuery,
+  type PropertiesByOwnerResult,
+  type PropertyDateRange,
+} from './propertiesQueries';
 
 /**
  * 날짜 중복 체크 (엄격한 ISO 날짜 기준)
  */
 export function isDateOverlap(range1: {start: Date | string, end: Date | string}, range2: {start: Date | string, end: Date | string}): boolean {
-  const s1 = toISODateString(range1.start);
-  const e1 = toISODateString(range1.end);
-  const s2 = toISODateString(range2.start);
-  const e2 = toISODateString(range2.end);
-  
-  return s1 < e2 && s2 < e1;
+  return isDateOverlapQuery(range1, range2);
 }
-
-export interface PropertyDateRange {
-  checkIn: Date;
-  checkOut: Date;
-}
-
-export type PropertiesByOwnerResult = {
-  properties: PropertyData[];
-  bookedDateRanges: Map<string, PropertyDateRange[]>;
-};
 
 async function syncPropertiesNow(snapshot: PropertyData[]): Promise<void> {
   if (typeof window === 'undefined') return;
@@ -112,34 +106,7 @@ export function buildBookedRangesForParentListing(
   allProps: PropertyData[],
   reservations: ReservationData[]
 ): PropertyDateRange[] {
-  const normalize = (s: string | undefined) => (s || '').trim().replace(/\s+/g, ' ').toLowerCase();
-  const targetAddress = normalize(property.address);
-  const targetTitle = normalize(property.title);
-  const targetUnit = normalize(property.unitNumber);
-
-  return reservations
-    .filter((r) => {
-      if (r.status !== 'pending' && r.status !== 'confirmed') return false;
-      const targetProp = allProps.find((p) => p.id === r.propertyId);
-      if (targetProp) {
-        const bookedAddress = normalize(targetProp.address);
-        const bookedTitle = normalize(targetProp.title);
-        const bookedUnit = normalize(targetProp.unitNumber);
-
-        return (
-          ((targetAddress !== '' && bookedAddress !== '' && targetAddress === bookedAddress) ||
-            (targetTitle !== '' && bookedTitle !== '' && targetTitle === bookedTitle)) &&
-          targetUnit === bookedUnit
-        );
-      }
-      return false;
-    })
-    .map((r) => {
-      const checkIn = parseDate(r.checkInDate);
-      const checkOut = parseDate(r.checkOutDate);
-      return checkIn && checkOut ? { checkIn, checkOut } : null;
-    })
-    .filter((r): r is PropertyDateRange => r != null);
+  return buildBookedRangesForParentListingQuery(property, allProps, reservations);
 }
 
 /**
@@ -294,6 +261,10 @@ export {
   readPropertiesArray,
   writePropertiesArray,
 } from './propertiesStore';
+export type {
+  PropertiesByOwnerResult,
+  PropertyDateRange,
+} from './propertiesQueries';
 export type { AdminInventoryFilter } from './propertiesHelpers';
 export {
   ensurePropertiesCacheForAdmin,
@@ -354,38 +325,12 @@ export function subscribeToProperties(
 export async function getBookedRangesForProperty(
   propertyId: string
 ): Promise<PropertyDateRange[]> {
-  const property = await getProperty(propertyId);
-  if (!property || !property.ownerId) return [];
-
-  const allReservations = await getReservationsByOwner(property.ownerId, 'all');
-  await hydratePropertiesMemoryIfLoggedIn();
-  const allProps = readPropertiesArray();
-  const normalize = (s: string | undefined) => (s || '').trim().replace(/\s+/g, ' ').toLowerCase();
-  const targetAddress = normalize(property.address);
-  const targetTitle = normalize(property.title);
-  const targetUnit = normalize(property.unitNumber);
-
-  const related = allReservations.filter((r) => {
-    if (r.status !== 'pending' && r.status !== 'confirmed') return false;
-    if (r.propertyId === propertyId) return true;
-    const reservedProp = allProps.find((p) => p.id === r.propertyId);
-    if (!reservedProp) return false;
-    const bookedAddress = normalize(reservedProp.address);
-    const bookedTitle = normalize(reservedProp.title);
-    const bookedUnit = normalize(reservedProp.unitNumber);
-    return (
-      (targetAddress && bookedAddress && targetAddress === bookedAddress) ||
-      (targetTitle && bookedTitle && targetTitle === bookedTitle)
-    ) && targetUnit === bookedUnit;
+  return getBookedRangesForPropertyQuery(propertyId, {
+    getProperty,
+    hydratePropertiesMemoryIfLoggedIn,
+    readPropertiesArray,
+    getReservationsByOwner,
   });
-
-  return related
-    .map((r) => {
-      const checkIn = parseDate(r.checkInDate);
-      const checkOut = parseDate(r.checkOutDate);
-      return checkIn && checkOut ? { checkIn, checkOut } : null;
-    })
-    .filter((r): r is PropertyDateRange => r != null);
 }
 
 /**
@@ -437,24 +382,13 @@ export async function getProperty(id: string): Promise<PropertyData | null> {
  * @returns 매물 수 (삭제되지 않은 매물만)
  */
 export async function getPropertyCountByOwner(ownerId: string): Promise<number> {
-  // PropertyData, PropertyDateRange를 가져와야 함
   try {
-    const { properties, bookedDateRanges } = await getPropertiesByOwner(ownerId, false); // 삭제되지 않은 매물만 가져옴
-    console.log('[getPropertyCountByOwner] properties:', properties);
-    console.log('[getPropertyCountByOwner] bookedDateRanges:', bookedDateRanges);
-
-    let count = 0;
-    for (const property of properties) {
-      if (!property.id || !isParentPropertyRecord(property)) continue;
-      if (
-        property.status === 'active' &&
-        hasAvailableBookingPeriod(property, bookedDateRanges.get(property.id!) || [])
-      ) {
-        count++;
-      }
-    }
-    console.log(`[getPropertyCountByOwner] Owner ${ownerId} has ${count} available properties.`);
-    return count;
+    return await getPropertyCountByOwnerQuery(ownerId, {
+      hydratePropertiesMemoryIfLoggedIn,
+      readPropertiesArray,
+      getReservationsByOwner,
+      toDate,
+    });
   } catch (error) {
     console.error('Error getting property count:', error);
     return 0; // 에러 발생 시 0 반환
@@ -470,84 +404,12 @@ export async function getPropertyCountByOwner(ownerId: string): Promise<number> 
  */
 export async function getPropertiesByOwner(ownerId: string, includeDeleted: boolean = false): Promise<PropertiesByOwnerResult> {
   try {
-    // 브라우저 환경 확인
-    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
-      return { properties: [], bookedDateRanges: new Map() };
-    }
-
-    await hydratePropertiesMemoryIfLoggedIn();
-    const allProperties = readPropertiesArray();
-
-    // 필터링: ownerId 일치 + deleted 상태에 따라
-    let filtered = allProperties.filter((p) => {
-      // ownerId가 일치하지 않으면 제외
-      if (p.ownerId !== ownerId) return false;
-      
-      // deleted 필드가 undefined이면 false로 간주 (삭제되지 않음)
-      const isDeleted = p.deleted === true;
-      
-      // includeDeleted가 false면 삭제된 매물 제외
-      if (!includeDeleted && isDeleted) return false;
-      
-      // includeDeleted가 true면 삭제되지 않은 매물 제외
-      if (includeDeleted && !isDeleted) return false;
-      
-      return true;
+    return await getPropertiesByOwnerQuery(ownerId, includeDeleted, {
+      hydratePropertiesMemoryIfLoggedIn,
+      readPropertiesArray,
+      getReservationsByOwner,
+      toDate,
     });
-
-    // 예약 분리 자식(prop_child_)은 호스트 '내 매물'에서 제외 — 부모만 관리
-    filtered = filtered.filter((p) => isParentPropertyRecord(p));
-    
-    // 클라이언트 측에서 정렬 (updatedAt 우선, 없으면 createdAt 기준)
-    filtered.sort((a, b) => {
-      // updatedAt 기준으로 정렬 (재등록 시 최신순으로 정렬)
-      const aUpdatedTime = toDate(a.updatedAt)?.getTime() || toDate(a.createdAt)?.getTime() || 0;
-      const bUpdatedTime = toDate(b.updatedAt)?.getTime() || toDate(b.createdAt)?.getTime() || 0;
-      return bUpdatedTime - aUpdatedTime; // 내림차순 (최신순)
-    });
-    
-    // 예약 정보 가져오기 및 bookedDateRanges 생성 (Gaps Logic: 물리적 매물 기준 통합)
-    const allReservations: ReservationData[] = await getReservationsByOwner(ownerId, 'all');
-    const bookedDateRanges = new Map<string, PropertyDateRange[]>();
-
-    filtered.forEach(property => {
-      // 각 매물(부모)에 대해, 동일한 집과 관련된 모든 예약을 합산하여 Gap 계산에 반영
-      const normalize = (s: string | undefined) => (s || '').trim().replace(/\s+/g, ' ').toLowerCase();
-      const targetAddress = normalize(property.address);
-      const targetTitle = normalize(property.title);
-      const targetUnit = normalize(property.unitNumber);
-
-      const relatedReservations = allReservations.filter(r => {
-        if (r.status !== 'pending' && r.status !== 'confirmed') return false;
-        const reservedProp = allProperties.find(p => p.id === r.propertyId);
-        if (reservedProp) {
-          const bookedAddress = normalize(reservedProp.address);
-          const bookedTitle = normalize(reservedProp.title);
-          const bookedUnit = normalize(reservedProp.unitNumber);
-
-          return (
-            (targetAddress !== '' && bookedAddress !== '' && targetAddress === bookedAddress) || 
-            (targetTitle !== '' && bookedTitle !== '' && targetTitle === bookedTitle)
-          ) && (targetUnit === bookedUnit);
-        }
-        return false;
-      });
-
-      const ranges: PropertyDateRange[] = [];
-      relatedReservations.forEach(r => {
-        const checkIn = parseDate(r.checkInDate);
-        const checkOut = parseDate(r.checkOutDate);
-        if (checkIn && checkOut) {
-          ranges.push({ checkIn, checkOut });
-        }
-      });
-      bookedDateRanges.set(property.id!, ranges);
-    });
-
-    return {
-      properties: filtered,
-      bookedDateRanges,
-    };
   } catch (error) {
     console.error('Error getting properties by owner:', error);
     return { properties: [], bookedDateRanges: new Map() };
