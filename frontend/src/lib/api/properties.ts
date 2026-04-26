@@ -48,6 +48,15 @@ import {
   handleCancellationRelistLifecycle,
   recalculateAndSplitPropertyLifecycle,
 } from './propertiesLifecycle';
+import {
+  addPropertyMutation,
+  deletePropertyMutation,
+  hostDeletePropertySoftMutation,
+  hostEndAdvertisingPropertyMutation,
+  permanentlyDeletePropertyMutation,
+  restorePropertyMutation,
+  updatePropertyMutation,
+} from './propertiesMutations';
 
 /**
  * 날짜 중복 체크 (엄격한 ISO 날짜 기준)
@@ -555,119 +564,21 @@ export async function addProperty(
   property: Omit<PropertyData, 'id' | 'createdAt' | 'updatedAt'>
 ): Promise<string> {
   try {
-    // 브라우저 환경 확인
-    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
-      return '';
-    }
-    
-    const payload = { ...property }; // title = 매물명 (임차인 비공개)
-
-    // 필수 필드 검증
-    if (!payload.ownerId) {
-      throw new Error('ownerId is required');
-    }
-    if (!property.coordinates || !property.coordinates.lat || !property.coordinates.lng) {
-      throw new Error('coordinates are required');
-    }
-
-    await hydratePropertiesMemoryIfLoggedIn();
-    let properties = readPropertiesArray();
-
-    // 동일 매물 확인 (임대인 ID, 주소, 호수 일치 여부)
-    // 요구사항: "동일 주소 + 호수" 기준 중복 등록 방지
-    const normalize = (s?: string) => (s || '').trim().replace(/\s+/g, ' ').toLowerCase();
-    const existingIndex = properties.findIndex(
-      (p) =>
-        !p.deleted &&
-        p.ownerId === payload.ownerId &&
-        normalize(p.address) === normalize(payload.address) &&
-        normalize(p.unitNumber) === normalize(payload.unitNumber)
-    );
-
-    const now = new Date();
-    const nowISO = now.toISOString();
-    
-    if (existingIndex !== -1) {
-      const existingProp = properties[existingIndex];
-      
-      // 1. 날짜 중복 체크 (Overlap Check)
-      const newRange = {
-        start: toISODateString(payload.checkInDate!),
-        end: toISODateString(payload.checkOutDate!)
-      };
-      const existingRange = {
-        start: toISODateString(existingProp.checkInDate!),
-        end: toISODateString(existingProp.checkOutDate!)
-      };
-
-      if (isDateOverlap(newRange, existingRange)) {
-        throw new Error('OverlapDetected'); // 중복 발생 시 에러 발생
-      }
-
-      // 1-1. 신규 추가하려는 기간이 이미 해당 매물의 '확정된 예약'과 겹치는지 체크
-      const isBooked = await isDateRangeBooked(existingProp.id!, newRange.start, newRange.end);
-      if (isBooked) {
-        throw new Error('AlreadyBooked');
-      }
-
-      // 2. 병합 (Merge) - 최신 정보 우선 및 가용 기간 확장
-      console.log('[addProperty] Existing property found, merging data...', existingProp.id);
-      
-      // 가용 기간 확장 (원본 기간과 새 기간을 모두 포함하도록)
-      const mergedStart = newRange.start < existingRange.start ? newRange.start : existingRange.start;
-      const mergedEnd = newRange.end > existingRange.end ? newRange.end : existingRange.end;
-
-      const updatedProp: PropertyData = {
-        ...existingProp, // 기존 정보 기반
-        ...payload,      // 새 정보로 덮어쓰기 (최신화)
-        id: existingProp.id,
-        checkInDate: mergedStart,
-        checkOutDate: mergedEnd,
-        updatedAt: nowISO,
-        status: 'active',
-        deleted: false,
-        history: [
-          ...(existingProp.history || []),
-          {
-            action: 'MERGE_UPDATE',
-            timestamp: nowISO,
-            details: `Property range expanded: ${mergedStart} ~ ${mergedEnd} (Added: ${newRange.start} ~ ${newRange.end})`
-          }
-        ]
-      };
-      
-      properties[existingIndex] = updatedProp;
-      writePropertiesArray(properties);
-      await syncPropertiesNow(properties);
-      return existingProp.id!;
-    }
-
-    // 신규 등록 로직 (히스토리 추가)
-    const id = `prop_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const newProperty: PropertyData = {
-      ...payload,
-      id,
-      checkInDate: serializeDate(payload.checkInDate),
-      checkOutDate: serializeDate(payload.checkOutDate),
-      createdAt: serializeDate(now),
-      updatedAt: serializeDate(now),
-      status: payload.status || 'active',
-      deleted: false,
-      history: [{
-        action: 'CREATE',
-        timestamp: nowISO,
-        details: 'Initial property registration'
-      }]
-    };
-
-    console.log('[addProperty] New property object before saving:', newProperty);
-
-    properties.push(newProperty);
-
-    writePropertiesArray(properties);
-    await syncPropertiesNow(properties);
-
-    return id;
+    return addPropertyMutation(property, {
+      hydratePropertiesMemoryIfLoggedIn,
+      readPropertiesArray,
+      writePropertiesArray,
+      syncPropertiesNow,
+      serializeDate,
+      toISODateString,
+      isDateOverlap,
+      isDateRangeBooked,
+      getProperty,
+      updateProperty,
+      fetchWithRetry,
+      withAppActor,
+      postAppPropertyActionLog,
+    });
   } catch (error) {
     console.error('Error adding property:', error);
     throw error;
@@ -685,53 +596,13 @@ export async function updateProperty(
   updates: Partial<PropertyData>
 ): Promise<void> {
   try {
-    if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
-    await hydratePropertiesMemoryIfLoggedIn();
-    const properties = readPropertiesArray();
-    const index = properties.findIndex((p) => p.id === id);
-    
-    if (index === -1) {
-      throw new Error(`Property with id ${id} not found`);
-    }
-    
-    const now = new Date();
-    
-    // 날짜 처리: Date 객체를 ISO 문자열로 변환하여 저장
-    let checkInDateValue = properties[index].checkInDate;
-    if ('checkInDate' in updates) {
-      if (updates.checkInDate === undefined || updates.checkInDate === null) {
-        checkInDateValue = undefined;
-      } else {
-        checkInDateValue = serializeDate(updates.checkInDate);
-      }
-    }
-    
-    let checkOutDateValue = properties[index].checkOutDate;
-    if ('checkOutDate' in updates) {
-      if (updates.checkOutDate === undefined || updates.checkOutDate === null) {
-        checkOutDateValue = undefined;
-      } else {
-        checkOutDateValue = serializeDate(updates.checkOutDate);
-      }
-    }
-    
-    // updates에서 날짜 필드를 제거 (별도로 처리했으므로)
-    const { checkInDate: _, checkOutDate: __, ...otherUpdates } = updates;
-    
-    const updatedProperty: PropertyData = {
-      ...properties[index],
-      ...otherUpdates,
-      id,
-      checkInDate: checkInDateValue,
-      checkOutDate: checkOutDateValue,
-      updatedAt: serializeDate(now),
-    };
-    
-    properties[index] = updatedProperty;
-    writePropertiesArray(properties);
-    await syncPropertiesNow(properties);
-
-    console.log('[updateProperty] Property updated:', id, 'status:', updatedProperty.status);
+    await updatePropertyMutation(id, updates, {
+      hydratePropertiesMemoryIfLoggedIn,
+      readPropertiesArray,
+      writePropertiesArray,
+      syncPropertiesNow,
+      serializeDate,
+    });
   } catch (error) {
     console.error('Error updating property:', error);
     throw error;
@@ -778,24 +649,12 @@ async function autoExpireProperty(id: string): Promise<void> {
  */
 export async function deleteProperty(id: string): Promise<void> {
   try {
-    if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
-    await hydratePropertiesMemoryIfLoggedIn();
-    const properties = readPropertiesArray();
-    const index = properties.findIndex((p) => p.id === id);
-    
-    if (index === -1) {
-      throw new Error(`Property with id ${id} not found`);
-    }
-    
-    const now = new Date();
-    properties[index] = {
-      ...properties[index],
-      deleted: true,
-      deletedAt: serializeDate(now),
-      status: 'inactive',
-    };
-
-    writePropertiesArray(properties);
+    await deletePropertyMutation(id, {
+      hydratePropertiesMemoryIfLoggedIn,
+      readPropertiesArray,
+      writePropertiesArray,
+      serializeDate,
+    });
   } catch (error) {
     console.error('Error deleting property:', error);
     throw error;
@@ -811,44 +670,13 @@ export async function hostEndAdvertisingProperty(
   ownerId: string,
   reason?: string
 ): Promise<void> {
-  const property = await getProperty(propertyId);
-  if (!property) throw new Error('PropertyNotFound');
-  if (property.deleted) return;
-
-  const nowISO = new Date().toISOString();
-  const history = property.history || [];
-
-  await updateProperty(propertyId, {
-    status: 'INACTIVE_SHORT_TERM',
-    hidden: false,
-    history: [
-      ...history,
-      {
-        action: 'HOST_MANUAL_END_AD',
-        timestamp: nowISO,
-        details: reason ? `Host ended: ${reason}` : 'Host ended advertisement',
-      },
-    ],
+  void ownerId;
+  return hostEndAdvertisingPropertyMutation(propertyId, reason, {
+    getProperty,
+    updateProperty,
+    fetchWithRetry,
+    withAppActor,
   });
-
-  try {
-    await fetchWithRetry(
-      '/api/app/moderation-audit',
-      withAppActor({
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'property_ad_ended_by_host',
-          targetType: 'property',
-          targetId: propertyId,
-          reason: reason ?? undefined,
-        }),
-      }),
-      { retries: 1, baseDelayMs: 400 }
-    );
-  } catch {
-    /* 감사 기록 실패는 광고종료 흐름을 막지 않음 */
-  }
 }
 
 /**
@@ -859,19 +687,12 @@ export async function hostDeletePropertySoft(
   ownerId: string,
   reason?: string
 ): Promise<void> {
-  const property = await getProperty(propertyId);
-  if (!property) throw new Error('PropertyNotFound');
-  if (property.deleted) return;
-
-  await deleteProperty(propertyId);
-  // 다른 화면 즉시 반영용
-  try {
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('propertiesUpdated'));
-    }
-  } catch {
-    // ignore
-  }
+  void ownerId;
+  void reason;
+  return hostDeletePropertySoftMutation(propertyId, {
+    getProperty,
+    deleteProperty,
+  });
 }
 
 /**
@@ -881,23 +702,11 @@ export async function hostDeletePropertySoft(
  */
 export async function restoreProperty(id: string): Promise<void> {
   try {
-    if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
-    await hydratePropertiesMemoryIfLoggedIn();
-    const properties = readPropertiesArray();
-    const index = properties.findIndex((p) => p.id === id);
-    
-    if (index === -1) {
-      throw new Error(`Property with id ${id} not found`);
-    }
-    
-    properties[index] = {
-      ...properties[index],
-      deleted: false,
-      deletedAt: undefined,
-      status: 'active',
-    };
-
-    writePropertiesArray(properties);
+    await restorePropertyMutation(id, {
+      hydratePropertiesMemoryIfLoggedIn,
+      readPropertiesArray,
+      writePropertiesArray,
+    });
   } catch (error) {
     console.error('Error restoring property:', error);
     throw error;
@@ -912,34 +721,13 @@ export async function restoreProperty(id: string): Promise<void> {
  */
 export async function permanentlyDeleteProperty(id: string, deletedBy?: string): Promise<void> {
   try {
-    if (typeof window === 'undefined') return;
-    await hydratePropertiesMemoryIfLoggedIn();
-    const properties = readPropertiesArray();
-    const propertyIndex = properties.findIndex((p) => p.id === id);
-    
-    if (propertyIndex === -1) {
-      throw new Error(`Property with id ${id} not found`);
-    }
-    
-    const deletedProperty = properties[propertyIndex];
-
-    const logged = await postAppPropertyActionLog({
-      propertyId: id,
-      actionType: 'DELETED',
-      snapshot: deletedProperty,
-      ownerId: deletedProperty.ownerId,
-      reason: deletedBy ? `deletedBy:${deletedBy}` : undefined,
+    await permanentlyDeletePropertyMutation(id, deletedBy, {
+      hydratePropertiesMemoryIfLoggedIn,
+      readPropertiesArray,
+      writePropertiesArray,
+      postAppPropertyActionLog,
+      withAppActor,
     });
-    if (!logged) {
-      console.warn('[permanentlyDeleteProperty] server action log failed; continuing delete');
-    }
-    
-    const filtered = properties.filter((p) => p.id !== id);
-    writePropertiesArray(filtered);
-    void fetch(
-      `/api/app/properties/${encodeURIComponent(id)}`,
-      withAppActor({ method: 'DELETE' })
-    ).catch(() => {});
   } catch (error) {
     console.error('Error permanently deleting property:', error);
     throw error;
