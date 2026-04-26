@@ -126,6 +126,7 @@ export function useAdminSettlementsPage() {
       if ((i as SettlementCandidate & { inPendingQueue?: boolean }).inPendingQueue) pending.push(i);
       else request.push(i);
     }
+    void queueVersion;
     return { requestList: request, needApproval: pending };
   }, [items, queueVersion]);
 
@@ -149,7 +150,11 @@ export function useAdminSettlementsPage() {
     [activeList, searchQuery, emailMap],
   );
 
-  const nowForUrgency = useMemo(() => new Date(), [items, urgencyTick]);
+  const nowForUrgency = useMemo(() => {
+    void items;
+    void urgencyTick;
+    return new Date();
+  }, [items, urgencyTick]);
 
   const displayList = useMemo(() => {
     if (tab !== "request" && tab !== "pending") return filteredList;

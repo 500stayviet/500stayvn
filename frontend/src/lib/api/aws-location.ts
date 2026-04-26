@@ -9,6 +9,57 @@ import { SupportedLanguage } from './translation';
 
 const API_BASE_URL = '/api/aws-location';
 
+/** Geometry returned by AWS Location place search */
+export type AwsPlaceGeometry = {
+  Point?: [number, number];
+};
+
+export type AwsPlace = {
+  Country?: string;
+  Address?: { Country?: string };
+  Label?: string;
+  PlaceId?: string;
+  placeId?: string;
+  Geometry?: AwsPlaceGeometry;
+};
+
+export type AwsPlaceSearchResult = {
+  Place?: AwsPlace;
+  Label?: string;
+  Country?: string;
+};
+
+/** Suggestion row after normalizing Text/label fields */
+export type AwsSuggestionItem = AwsPlaceSearchResult & {
+  Text: string;
+  text: string;
+  label: string;
+  Label?: string;
+  PlaceId?: string;
+  placeId?: string;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function normalizeSuggestionItem(raw: unknown): AwsSuggestionItem {
+  const item = isRecord(raw) ? raw : {};
+  const text =
+    (typeof item.Text === 'string' ? item.Text : undefined) ||
+    (typeof item.text === 'string' ? item.text : undefined) ||
+    (typeof item.Label === 'string' ? item.Label : undefined) ||
+    (typeof item.label === 'string' ? item.label : undefined) ||
+    '';
+  return {
+    ...(item as AwsPlaceSearchResult),
+    Text: text,
+    text: text,
+    label: text,
+    Label: text,
+  };
+}
+
 /**
  * 주소 검색 (SearchPlaceIndexForText)
  * REST API를 사용한 구현
@@ -21,7 +72,7 @@ const API_BASE_URL = '/api/aws-location';
 export async function searchPlaceIndexForText(
   text: string,
   language: SupportedLanguage = 'vi'
-): Promise<any[]> {
+): Promise<AwsPlaceSearchResult[]> {
   try {
     if (!text || text.trim().length === 0) {
       return [];
@@ -29,7 +80,7 @@ export async function searchPlaceIndexForText(
 
     const locationLanguage = getLocationServiceLanguage(language);
 
-    const requestBody: any = {
+    const requestBody = {
       action: 'search',
       text: text.trim(),
       language: locationLanguage,
@@ -55,8 +106,8 @@ export async function searchPlaceIndexForText(
       throw new Error(`AWS Location Service API error: ${response.status} - ${errorData.error || errorData.details || 'Unknown error'}`);
     }
 
-    const data = await response.json();
-    return data.Results || [];
+    const data = (await response.json()) as { Results?: AwsPlaceSearchResult[] };
+    return data.Results ?? [];
   } catch (error) {
     // 네트워크 오류 등 예외 상황 시 빈 배열 반환
     console.warn('AWS Location Service 연결 오류:', error instanceof Error ? error.message : String(error));
@@ -76,7 +127,7 @@ export async function searchPlaceIndexForSuggestions(
   text: string,
   language: SupportedLanguage = 'vi',
   biasPosition?: { lat: number; lng: number }
-): Promise<any[]> {
+): Promise<AwsSuggestionItem[]> {
   try {
     if (!text || text.trim().length === 0) {
       return [];
@@ -84,7 +135,13 @@ export async function searchPlaceIndexForSuggestions(
 
     const locationLanguage = getLocationServiceLanguage(language);
 
-    const requestBody: any = {
+    const requestBody: {
+      action: string;
+      text: string;
+      language: string;
+      latitude?: number;
+      longitude?: number;
+    } = {
       action: 'suggestions',
       text: text.trim(),
       language: locationLanguage,
@@ -127,20 +184,17 @@ export async function searchPlaceIndexForSuggestions(
       throw new Error(`AWS Location Service API error: ${response.status} - ${errorData.error || errorData.details || errorText || 'Unknown error'}`);
     }
 
-    const data = await response.json();
+    const data = (await response.json()) as {
+      Suggestions?: unknown[];
+      Results?: unknown[];
+    };
     const rawData = data.Suggestions || data.Results || [];
-    
-    return rawData.map((item: any) => {
+
+    return rawData.map((item: unknown) => {
       // 디버깅: 원본 API 응답 데이터 로그
       console.log('🔍 Raw Place Data:', JSON.stringify(item, null, 2));
-      
-      const text = item.Text || item.text || item.Label || item.label || '';
-      return {
-        ...item,
-        Text: text,
-        text: text,
-        label: text,
-      };
+
+      return normalizeSuggestionItem(item);
     });
   } catch (error) {
     // 네트워크 오류 등 예외 상황 시 빈 배열 반환
@@ -164,7 +218,7 @@ export async function searchPlaceIndexForPosition(
   latitude: number,
   longitude: number,
   language: SupportedLanguage = 'vi'
-): Promise<any[]> {
+): Promise<AwsPlaceSearchResult[]> {
   try {
     const response = await fetch(API_BASE_URL, {
       method: 'POST',
@@ -175,7 +229,7 @@ export async function searchPlaceIndexForPosition(
         action: 'position',
         latitude,
         longitude,
-        language,
+        language: getLocationServiceLanguage(language),
       }),
     });
 
@@ -184,8 +238,8 @@ export async function searchPlaceIndexForPosition(
       throw new Error(`AWS Location Service API error: ${response.status} - ${errorData.error || errorData.details || 'Unknown error'}`);
     }
 
-    const data = await response.json();
-    return data.Results || [];
+    const data = (await response.json()) as { Results?: AwsPlaceSearchResult[] };
+    return data.Results ?? [];
   } catch (error) {
     console.error('Error reverse geocoding:', error);
     throw error;
@@ -203,7 +257,7 @@ export async function searchPlaceIndexForPosition(
 export async function getPlaceById(
   placeId: string,
   language: SupportedLanguage = 'vi'
-): Promise<any | null> {
+): Promise<AwsPlace | null> {
   try {
     if (!placeId || placeId.trim().length === 0) {
       return null;
@@ -219,7 +273,7 @@ export async function getPlaceById(
       body: JSON.stringify({
         action: 'getPlace',
         placeId: placeId.trim(),
-        language,
+        language: getLocationServiceLanguage(language),
       }),
     });
 
@@ -228,7 +282,10 @@ export async function getPlaceById(
       throw new Error(`AWS Location Service API error: ${response.status} - ${errorData.error || errorData.details || 'Unknown error'}`);
     }
 
-    const data = await response.json();
+    const data = (await response.json()) as {
+      Place?: AwsPlace;
+      Result?: AwsPlace;
+    };
     return data.Place || data.Result || null;
   } catch (error) {
     console.error('Error getting place by ID:', error);

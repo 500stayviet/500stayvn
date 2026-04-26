@@ -10,7 +10,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { subscribeToProperties, getAvailableProperties } from '@/lib/api/properties';
+import { subscribeToProperties } from '@/lib/api/properties';
 import { PropertyData } from '@/types/property';
 
 /**

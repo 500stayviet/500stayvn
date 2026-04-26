@@ -15,7 +15,6 @@ import { Home, Plus, Building, MessageCircle, User, Map, Calendar, Heart } from 
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getCurrentUserData, getCurrentUserId } from '@/lib/api/auth';
-import { getUIText } from '@/utils/i18n';
 
 interface BottomNavigationProps {
   hideOnPaths?: string[];
@@ -302,8 +301,7 @@ export default function BottomNavigation({ hideOnPaths = [] }: BottomNavigationP
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
-          const isAddButton = item.id === 'add';
-          
+
           return (
             <button
               key={item.id}

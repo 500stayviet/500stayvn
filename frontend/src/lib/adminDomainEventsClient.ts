@@ -37,5 +37,5 @@ export function useAdminDomainRefresh(
     window.addEventListener(ADMIN_DOMAIN_EVENT, handler as EventListener);
     return () =>
       window.removeEventListener(ADMIN_DOMAIN_EVENT, handler as EventListener);
-  }, [key]);
+  }, [key, resources]);
 }

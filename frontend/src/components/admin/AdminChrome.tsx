@@ -144,8 +144,9 @@ export default function AdminChrome({ children }: { children: React.ReactNode })
   }, [router]);
 
   const onNavItemClick = useCallback(
-    (href: string) => {
+    (_href: string) => {
       if (typeof window === 'undefined') return;
+      void _href;
       // 배지 제거는 각 페이지의 확인 탭 진입 시에만 처리한다.
     },
     []

@@ -40,8 +40,8 @@ export default function HeroSection({ currentLanguage }: HeroSectionProps) {
   const router = useRouter();
   const [searchValue, setSearchValue] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [selectedCityId, setSelectedCityId] = useState<string | null>(null);
-  const [selectedDistrictId, setSelectedDistrictId] = useState<string | null>(null);
+  const [selectedCityId] = useState<string | null>(null);
+  const [selectedDistrictId] = useState<string | null>(null);
   const [showLocationPermissionModal, setShowLocationPermissionModal] = useState(false);
   const [requestingLocation, setRequestingLocation] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);

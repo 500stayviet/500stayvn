@@ -153,7 +153,8 @@ export function BookingPageView({ vm }: Props) {
               <div className="space-y-4">
                 <InternationalPhoneInput
                   currentLanguage={currentLanguage}
-                  onPhoneChange={(normalized, _isComplete) => {
+                  onPhoneChange={(normalized, isComplete) => {
+                    void isComplete;
                     setPhoneNumber(normalized);
                   }}
                   initialValue={""}

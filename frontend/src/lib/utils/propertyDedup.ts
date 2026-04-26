@@ -16,7 +16,6 @@ export function normalizeAddressPart(value?: string | null): string {
   const noDiacritics = trimmed.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
   // 알파벳/숫자/유니코드 문자만 남기기 (구분자/기호 제거)
-  // eslint-disable-next-line no-control-regex
   return noDiacritics.replace(/[^\p{L}\p{N}]+/gu, "");
 }
 

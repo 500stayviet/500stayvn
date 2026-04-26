@@ -70,7 +70,8 @@ export function readReservationsArray(): ReservationData[] {
 /**
  * 레거시 호환: 원장은 bookings만 갱신합니다. UI 이벤트만 발생시킵니다.
  */
-export function saveReservationsSnapshot(_all?: ReservationData[]): void {
+export function saveReservationsSnapshot(all?: ReservationData[]): void {
+  void all;
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('reservationsUpdated'));
   }
@@ -127,8 +128,9 @@ export async function getReservationsByOwner(
  * @deprecated 예약 생성은 `createBooking`만 사용하세요.
  */
 export async function createReservation(
-  _reservation: Omit<ReservationData, 'id' | 'createdAt'>
+  reservation: Omit<ReservationData, 'id' | 'createdAt'>
 ): Promise<ReservationData> {
+  void reservation;
   throw new Error(
     'createReservation is deprecated; use createBooking from @/lib/api/bookings'
   );

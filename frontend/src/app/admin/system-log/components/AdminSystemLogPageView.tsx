@@ -47,7 +47,7 @@ export function AdminSystemLogPageView({ vm }: Props) {
   const {
     filter,
     setFilter,
-    page,
+    page: _page,
     setPage,
     filtered,
     pageRows,
@@ -59,6 +59,8 @@ export function AdminSystemLogPageView({ vm }: Props) {
     clearEphemeral,
     clearPersistent,
   } = vm;
+
+  void _page;
 
   return (
     <AdminRouteGuard>

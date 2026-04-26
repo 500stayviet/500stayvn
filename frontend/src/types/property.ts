@@ -27,8 +27,8 @@ export interface PropertyData {
   checkOutDate?: string | Date; // 임대 희대 희망 종료일 (ISO 문자열 또는 Date 객체)
   checkInTime?: string; // 체크인 가능 시간 (예: "14:00")
   checkOutTime?: string; // 체크아웃 시간 (예: "12:00")
-  createdAt?: any; // 생성 시간 (Date 또는 Timestamp-like 객체)
-  updatedAt?: any; // 수정 시간 (Date 또는 Timestamp-like 객체)
+  createdAt?: string | Date; // 생성 시간
+  updatedAt?: string | Date; // 수정 시간
   status?: 'active' | 'pending' | 'sold' | 'rented' | 'inactive' | 'INACTIVE_SHORT_TERM' | 'closed'; // 상태
   hidden?: boolean; // 관리자 숨김 여부 (복구 가능)
   deleted?: boolean; // 삭제 여부

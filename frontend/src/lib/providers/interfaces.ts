@@ -1,6 +1,5 @@
 import type { BookingData, CreateBookingRequest } from "@/lib/api/bookings";
 import type {
-  FaceVerificationData,
   IdDocumentData,
   PhoneVerificationData,
 } from "@/types/kyc.types";

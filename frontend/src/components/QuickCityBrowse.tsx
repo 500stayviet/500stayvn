@@ -85,6 +85,8 @@ export default function QuickCityBrowse({ currentLanguage }: QuickCityBrowseProp
             className="flex-shrink-0 group"
           >
             <div className="relative w-20 h-20 rounded-2xl overflow-hidden shadow-sm">
+              {/* 외부 도시 썸네일 URL — next/image 도메인 설정 없이 유지 */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={CITY_IMAGES[city.id] || ''}
                 alt={getCityDisplayName(city, currentLanguage)}

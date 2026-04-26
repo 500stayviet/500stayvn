@@ -18,6 +18,26 @@ import {
   LISTING_MIN_STAY_DAYS,
 } from '@/lib/constants/listingCalendar';
 
+function normalizeCalendarDate(value: unknown): Date | null {
+  if (value == null) return null;
+  if (value instanceof Date) return value;
+  if (typeof value === 'string') {
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  if (typeof value === 'object') {
+    const o = value as { toDate?: () => Date; seconds?: number };
+    if (typeof o.toDate === 'function') return o.toDate();
+    if (typeof o.seconds === 'number') return new Date(o.seconds * 1000);
+  }
+  return null;
+}
+
+function calendarDateToDateString(value: unknown): string {
+  const d = normalizeCalendarDate(value);
+  return d ? d.toDateString() : '';
+}
+
 interface CalendarComponentProps {
   checkInDate: Date | null;
   checkOutDate: Date | null;
@@ -61,7 +81,7 @@ export default function CalendarComponent({
 
   // 체크인 날짜가 변경되면 해당 월로 이동
   useEffect(() => {
-    const checkIn = getCheckInDateAsDate();
+    const checkIn = normalizeCalendarDate(checkInDate);
     if (checkIn) {
       setCurrentMonth(new Date(checkIn.getFullYear(), checkIn.getMonth(), 1));
     }
@@ -71,24 +91,8 @@ export default function CalendarComponent({
   today.setHours(0, 0, 0, 0);
 
   // checkInDate를 Date 객체로 변환
-  const getCheckInDateAsDate = (): Date | null => {
-    if (!checkInDate) return null;
-    try {
-      if (checkInDate instanceof Date) {
-        return checkInDate;
-      } else if (checkInDate && typeof (checkInDate as any).toDate === 'function') {
-        return (checkInDate as any).toDate();
-      } else if ((checkInDate as any).seconds) {
-        return new Date((checkInDate as any).seconds * 1000);
-      } else if (typeof checkInDate === 'string') {
-        const d = new Date(checkInDate);
-        return isNaN(d.getTime()) ? null : d;
-      }
-    } catch {
-      return null;
-    }
-    return null;
-  };
+  const getCheckInDateAsDate = (): Date | null =>
+    normalizeCalendarDate(checkInDate);
 
   // 현재 달의 첫 날과 마지막 날
   const firstDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
@@ -414,33 +418,8 @@ export default function CalendarComponent({
       return 'text-red-300 cursor-pointer';
     }
 
-    // checkInDate가 Date 객체인지 확인
-    let checkInDateStr = '';
-    if (checkInDate) {
-      if (checkInDate instanceof Date) {
-        checkInDateStr = checkInDate.toDateString();
-      } else if (typeof (checkInDate as any).toDate === 'function') {
-        checkInDateStr = (checkInDate as any).toDate().toDateString();
-      } else if ((checkInDate as any).seconds) {
-        checkInDateStr = new Date((checkInDate as any).seconds * 1000).toDateString();
-      } else if (typeof checkInDate === 'string') {
-        checkInDateStr = new Date(checkInDate).toDateString();
-      }
-    }
-    
-    // checkOutDate가 Date 객체인지 확인
-    let checkOutDateStr = '';
-    if (checkOutDate) {
-      if (checkOutDate instanceof Date) {
-        checkOutDateStr = checkOutDate.toDateString();
-      } else if (typeof (checkOutDate as any).toDate === 'function') {
-        checkOutDateStr = (checkOutDate as any).toDate().toDateString();
-      } else if ((checkOutDate as any).seconds) {
-        checkOutDateStr = new Date((checkOutDate as any).seconds * 1000).toDateString();
-      } else if (typeof checkOutDate === 'string') {
-        checkOutDateStr = new Date(checkOutDate).toDateString();
-      }
-    }
+    const checkInDateStr = calendarDateToDateString(checkInDate);
+    const checkOutDateStr = calendarDateToDateString(checkOutDate);
 
     if (checkInDateStr && dateStr === checkInDateStr) {
       return 'bg-blue-600 text-white rounded-full font-semibold cursor-pointer';

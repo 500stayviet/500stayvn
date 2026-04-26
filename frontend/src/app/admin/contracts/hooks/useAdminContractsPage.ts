@@ -58,7 +58,11 @@ export function useAdminContractsPage() {
     };
   }, []);
 
-  const now = useMemo(() => new Date(), [bookings, nowTick]);
+  const now = useMemo(() => {
+    void bookings;
+    void nowTick;
+    return new Date();
+  }, [bookings, nowTick]);
 
   const sealedList = useMemo(
     () => bookings.filter((b) => isContractSealedTab(b, now)),

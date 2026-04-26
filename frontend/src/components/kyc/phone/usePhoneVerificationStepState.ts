@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { FirebaseError } from 'firebase/app';
+import type { ConfirmationResult } from 'firebase/auth';
 import { PhoneVerificationData } from '@/types/kyc.types';
 import { useAuth } from '@/hooks/useAuth';
 import { getCurrentUserData } from '@/lib/api/auth';
@@ -13,6 +15,16 @@ import { phoneAuthDebugLog } from './phoneAuthDebug';
 import type { PhoneVerificationStepProps } from './types';
 
 const recaptchaContainerId = 'recaptcha-container';
+
+function readFirebaseErr(err: unknown): { code?: string; message: string } {
+  if (err instanceof FirebaseError) {
+    return { code: err.code, message: err.message };
+  }
+  if (err instanceof Error) {
+    return { message: err.message };
+  }
+  return { message: String(err) };
+}
 
 export function usePhoneVerificationStepState({
   currentLanguage,
@@ -31,7 +43,7 @@ export function usePhoneVerificationStepState({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [checkingUser, setCheckingUser] = useState(true);
-  const [confirmationResult, setConfirmationResult] = useState<unknown>(null);
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const recaptchaVerifierRef = useRef<ReturnType<typeof createRecaptchaVerifier> | null>(null); // ApplicationVerifier
 
   useEffect(() => {
@@ -127,23 +139,24 @@ export function usePhoneVerificationStepState({
 
       console.log('Verification code sent via Firebase');
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const { code, message } = readFirebaseErr(err);
       console.error('Firebase phone auth error:', {
-        code: err?.code,
-        message: err?.message,
-        stack: err?.stack,
+        code,
+        message,
+        stack: err instanceof Error ? err.stack : undefined,
         error: err,
       });
 
       let errorMessage = 'Failed to send verification code';
 
-      if (err.code === 'auth/invalid-phone-number') {
+      if (code === 'auth/invalid-phone-number') {
         errorMessage = 'Invalid phone number format';
-      } else if (err.code === 'auth/too-many-requests') {
+      } else if (code === 'auth/too-many-requests') {
         errorMessage = 'Too many requests. Please try again later';
-      } else if (err.code === 'auth/quota-exceeded') {
+      } else if (code === 'auth/quota-exceeded') {
         errorMessage = 'SMS quota exceeded. Please try again later';
-      } else if (err.message.includes('reCAPTCHA')) {
+      } else if (message.includes('reCAPTCHA')) {
         errorMessage = 'reCAPTCHA verification failed. Please refresh the page';
       }
 
@@ -162,7 +175,7 @@ export function usePhoneVerificationStepState({
     setOtpError('');
 
     try {
-      const result = await verifyPhoneCode(confirmationResult as any, otpCode);
+      const result = await verifyPhoneCode(confirmationResult, otpCode);
       phoneAuthDebugLog('[phone-auth] OTP verify success', {
         firebaseUid: result?.user?.uid,
       });
@@ -181,19 +194,20 @@ export function usePhoneVerificationStepState({
       onComplete(verificationData);
 
       console.log('Phone verification successful:', verifiedPhoneNumber);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const { code } = readFirebaseErr(err);
       console.error('Firebase verification error:', {
-        code: err?.code,
-        message: err?.message,
-        stack: err?.stack,
+        code,
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
         error: err,
       });
 
       let errorMessage = 'Invalid verification code';
 
-      if (err.code === 'auth/invalid-verification-code') {
+      if (code === 'auth/invalid-verification-code') {
         errorMessage = 'Invalid code. Please check and try again';
-      } else if (err.code === 'auth/code-expired') {
+      } else if (code === 'auth/code-expired') {
         errorMessage = 'Code expired. Please request a new code';
       }
 

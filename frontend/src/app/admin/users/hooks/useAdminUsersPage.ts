@@ -6,7 +6,6 @@ import {
   acknowledgeNewUser,
   countUnseenNewUsers,
   fetchUserAcknowledgedAtMap,
-  isAdminUserNewUnseen,
 } from "@/lib/adminAckState";
 import { refreshAdminBadges } from "@/lib/adminBadgeCounts";
 import { useAdminAckHydrationTick } from "@/hooks/useAdminAckHydration";
@@ -44,6 +43,7 @@ export function useAdminUsersPage() {
   }, [tick]);
 
   const { rows, nAll, nNew, nActive, nBlocked } = useMemo(() => {
+    void tick;
     const all = getAdminUsers(query, "all");
     const newRowsRaw = getAdminUsers(query, "new");
     const newRowsFiltered =
@@ -73,10 +73,12 @@ export function useAdminUsersPage() {
     [rows, page],
   );
 
-  const unseenNew = useMemo(
-    () => countUnseenNewUsers(userAckAt),
-    [tick, filter, ackTick, userAckAt],
-  );
+  const unseenNew = useMemo(() => {
+    void tick;
+    void filter;
+    void ackTick;
+    return countUnseenNewUsers(userAckAt);
+  }, [tick, filter, ackTick, userAckAt]);
 
   useEffect(() => {
     setPage(1);

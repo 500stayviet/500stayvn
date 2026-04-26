@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { MapPin, ChevronLeft, ChevronRight, Heart, Zap } from "lucide-react";
@@ -86,19 +86,6 @@ export default function Property3DCardSlider({
     }
 
     return result;
-  };
-
-  // 주소에서 'Vietnam' 제거하고 구 정보만 추출
-  const getDistrictName = (address?: string): string => {
-    if (!address) return "";
-
-    // 'Vietnam' 제거
-    let cleaned = address.replace(/Vietnam/gi, "").trim();
-
-    // 마지막 쉼표나 점 제거
-    cleaned = cleaned.replace(/[,.]\s*$/, "").trim();
-
-    return cleaned;
   };
 
   if (!properties.length) {

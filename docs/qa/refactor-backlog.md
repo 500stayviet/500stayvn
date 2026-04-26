@@ -1,6 +1,6 @@
 # Refactor Backlog (Code-First)
 
-**Last synced:** 2026-04-27 — **P3 2차:** `lint:p3-tier2`(`lint:api`+`lint:server`)·CI 반영·비-app API·서버 lib 린트 정리. Gate: `tsc`·`build`·`lint:p3-tier2`·mock E2E.
+**Last synced:** 2026-04-27 — **P3 린트 가드레일 전역 적용 완료 (졸업):** `npm run lint` = `eslint . --max-warnings 0`; CI `lint:p3-tier3`(API·server·lib·components). Gate: `tsc`·`build`·`lint`·mock E2E.
 
 ## Objective
 
@@ -171,16 +171,17 @@ Goal:
   - `eslint.config.mjs`: PWA 산출물(`public/sw.js`, `workbox-*.js`)·`scripts/**` 무시 — 생성물/유지보수 스크립트가 전체 `eslint .` 실패를 유발하지 않도록.
   - `next.config.ts`: `createRequire`로 `next-pwa` 로드(`no-require-imports` 제거).
   - `npm run lint:api-app`: `src/app/api/app/**/*.ts` 만 `--max-warnings 0` (P2.1 계약과 동일 슬라이스).
-  - CI `frontend-quality.yml`: ESLint 스텝 추가(1차 `lint:api-app` → 2차 `lint:p3-tier2`).
-  - **잔여:** 전체 `npm run lint` 그린은 별도 스프린트( `src` 전역 `no-explicit-any` 등).
+  - CI `frontend-quality.yml`: ESLint 스텝 추가(1차 `lint:api-app` → 2차 `lint:p3-tier2` → 3차 `lint:p3-tier3`).
+  - ~~**잔여:** 전체 `npm run lint` 그린~~ → **졸업(3차)에서 해소.**
 - **2차 (2026-04-27):**
-  - `lint:api`·`lint:server`·`lint:p3-tier2` 추가; CI는 `lint:p3-tier2`로 전환.
+  - `lint:api`·`lint:server`·`lint:p3-tier2` 추가; 이후 CI는 `lint:p3-tier3`로 강화.
   - `/api/auth/*`, `aws-location`, `ical/parse`, `kyc/upload` 및 `bookingPaymentTransition.test.ts`의 `any`/미사용 변수 정리; `prisma.ts`에 `AppPrismaClient` export.
-  - **잔여:** `src/components`·`src/lib`(server 외)·`src/app`(api 외) 등 전역 린트.
+- **3차 — 졸업 (2026-04-27):**
+  - **`P3 린트 가드레일 전역 적용 완료 (졸업).** `package.json`의 `lint`를 `eslint . --max-warnings 0`로 고정; `src/app`(페이지)·공유 훅/컨텍스트 등 잔여 경고 0. CI ESLint 스텝은 `npm run lint:p3-tier3`로 서버·공통 모듈·컴포넌트 슬라이스를 게이트.
 
 ## Phase 1 보완 (플랜 누락 방지)
 
-- **Amplify + GitHub Actions**: 동일한 품질 게이트 원칙을 문서에 명시 (배포만 다른 파이프라인).
+- **Amplify + GitHub Actions**: 동일한 품질 게이트 원칙 — **`docs/qa/pipeline-principles.md`** (Lint 0 · 타입 · 단테 · `lint:p3-tier3` · 빌드 · PR E2E). `amplify.yml` 빌드 단계 정렬 반영.
 - **Prisma / DB 마이그레이션**: 로컬·CI·운영 DB 적용 규칙을 `docs/qa`에 추가 권장.
 - **웹훅·idempotency·서명 검증**: 상용 전에 코드 “자리”와 정책 초안 점검 (Phase 4 전제).
 
@@ -194,7 +195,7 @@ Goal:
 4. **P0.1** 상태전이·테스트 (결제 라우트·KYC 단위 테스트 등)
 5. **P0.2** mock E2E smoke 편입 + flaky 기준 정리
 6. **1-5 게이트** `npm run build`, `npx tsc --noEmit`, 핵심 E2E, CI·Amplify green
-7. **2-1** `docs/qa/ci-runtime-policy.md` + workflow 버전 정책
+7. **2-1** `docs/qa/pipeline-principles.md`(완료) · `docs/qa/ci-runtime-policy.md` + workflow 버전 정책
 8. **2-3** Sentry·알람·담당자 운영 점검
 9. **Phase 3** 앱 패키징·스토어 제출물
 10. **Phase 4** 상용 API·웹훅·실거래 검증
@@ -205,13 +206,14 @@ For each merged backlog slice:
 
 1. `npm run build`
 2. `npx tsc --noEmit`
-3. `npm run lint:p3-tier2` (P3: `src/app/api` + `src/lib/server`; `frontend` 디렉터리에서 실행)
+3. `npm run lint` (`eslint . --max-warnings 0`; `frontend` 디렉터리). CI 동등 슬라이스: `npm run lint:p3-tier3`.
 4. `npx playwright test tests/e2e/mock-scenario-regression.spec.ts --project=chromium --workers=1` (또는 smoke에 편입된 동등 스펙)
 5. CI green on GitHub Actions and Amplify
 
-**로컬 게이트 — 완료 (2026-04-26, 리팩터 졸업 검증):**
+**로컬 게이트 — 완료 (2026-04-27, P3 린트 졸업 검증):**
 
 - [x] **`npm run build`** — 통과
 - [x] **`npx tsc --noEmit`** — 통과
+- [x] **`npm run lint`** — 통과 (`--max-warnings 0`)
 - [x] **`npx playwright test tests/e2e/mock-scenario-regression.spec.ts --project=chromium --workers=1`** — 4/4 tests passed
 - [ ] **GitHub Actions / Amplify** — 이 문서는 로컬만 검증; 머지·배포 파이프라인은 별도 확인

@@ -49,13 +49,20 @@ export function useAdminSystemLogPage() {
     };
   }, [bump]);
 
-  const merged = useMemo(() => getMergedAdminLogsForView(), [tick]);
+  const merged = useMemo(() => {
+    void tick;
+    return getMergedAdminLogsForView();
+  }, [tick]);
   const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
   const newRows = useMemo(
     () => merged.filter((e) => Number.isFinite(e.ts) && e.ts >= dayAgo),
     [merged, dayAgo],
   );
-  const unseenNew = useMemo(() => getUnseenNewSystemLogCount(), [tick, filter]);
+  const unseenNew = useMemo(() => {
+    void tick;
+    void filter;
+    return getUnseenNewSystemLogCount();
+  }, [tick, filter]);
 
   const filtered = useMemo(() => {
     if (filter === "new") return newRows;

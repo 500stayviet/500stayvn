@@ -42,7 +42,7 @@ type Props = { vm: AdminPropertyDetailPageViewModel };
 export function AdminPropertyDetailPageView({ vm }: Props) {
   const {
     phase,
-    id,
+    id: _propertyId,
     property,
     memos,
     memoInput,
@@ -53,6 +53,8 @@ export function AdminPropertyDetailPageView({ vm }: Props) {
     unhideProperty,
     hideProperty,
   } = vm;
+
+  void _propertyId;
 
   if (phase === "no-id") {
     return (

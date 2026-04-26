@@ -76,7 +76,9 @@ export function getSettlementPendingQueueIds(): Set<string> {
 }
 
 /** @deprecated 서버 `PATCH .../settlements` 사용. */
-export function moveBookingToSettlementPendingQueue(_bookingId: string): void {}
+export function moveBookingToSettlementPendingQueue(bookingId: string): void {
+  void bookingId;
+}
 
 /** 로컬 큐 정리 — 서버 큐는 DB에서 관리. */
 export async function reconcileSettlementPendingQueueWithBookings(): Promise<void> {}
@@ -168,9 +170,10 @@ export async function getSettlementPendingApprovalCandidates(): Promise<Settleme
 /** 레거시: 서버 `PATCH /api/admin/finance/settlements` 와 동일(원장은 서버에서 기록). */
 export async function holdPendingSettlement(
   candidate: SettlementCandidate,
-  _adminId: string,
+  adminId: string,
   reason?: string
 ): Promise<boolean> {
+  void adminId;
   return patchSettlementServer({
     action: 'hold_pending',
     bookingId: candidate.bookingId,
@@ -182,8 +185,9 @@ export async function holdPendingSettlement(
 
 export async function approveSettlement(
   candidate: SettlementCandidate,
-  _adminId: string
+  adminId: string
 ): Promise<boolean> {
+  void adminId;
   return patchSettlementServer({
     action: 'approve',
     bookingId: candidate.bookingId,
@@ -200,10 +204,12 @@ export async function holdSettlement(bookingId: string, _adminId: string, reason
   });
 }
 
-export async function resumeSettlement(bookingId: string, _adminId: string): Promise<boolean> {
+export async function resumeSettlement(bookingId: string, adminId: string): Promise<boolean> {
+  void adminId;
   return patchSettlementServer({ action: 'resume_pending', bookingId });
 }
 
-export async function resumeSettlementToRequest(bookingId: string, _adminId: string): Promise<boolean> {
+export async function resumeSettlementToRequest(bookingId: string, adminId: string): Promise<boolean> {
+  void adminId;
   return patchSettlementServer({ action: 'resume_request', bookingId });
 }

@@ -27,9 +27,7 @@ export function useHostBookingsPage() {
 
   const [bookings, setBookings] = useState<BookingData[]>([]);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
-  const [totalUnreadChatCount, setTotalUnreadChatCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [processingId, setProcessingId] = useState<string | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [selectedBookingForCancel, setSelectedBookingForCancel] =
     useState<BookingData | null>(null);
@@ -110,13 +108,11 @@ export function useHostBookingsPage() {
     const roomIds = bookings.map((b) => b.chatRoomId || "").filter(Boolean);
     const loadUnreadCounts = async () => {
       const snap = await refreshChatUnreadSnapshot(user.uid, roomIds);
-      setTotalUnreadChatCount(snap.asOwner);
       setUnreadCounts(snap.byRoom);
     };
     void loadUnreadCounts();
     const unsub = subscribeChatUnreadUpdates(user.uid, (snapshot) => {
       if (snapshot) {
-        setTotalUnreadChatCount(snapshot.asOwner);
         setUnreadCounts(snapshot.byRoom);
         return;
       }
@@ -148,7 +144,6 @@ export function useHostBookingsPage() {
   };
 
   const handleConfirm = async (bookingId: string) => {
-    setProcessingId(bookingId);
     try {
       await confirmBooking(bookingId);
       const booking = bookings.find((b) => b.id === bookingId);
@@ -189,8 +184,6 @@ export function useHostBookingsPage() {
           ? "예약 확정에 실패했습니다."
           : "Xác nhận thất bại.",
       );
-    } finally {
-      setProcessingId(null);
     }
   };
 
@@ -199,7 +192,6 @@ export function useHostBookingsPage() {
       setActiveChatRoomId(booking.chatRoomId);
       return;
     }
-    setProcessingId(booking.id!);
     try {
       const { createChatRoom } = await import("@/lib/api/chat");
       const room = await createChatRoom({
@@ -224,8 +216,6 @@ export function useHostBookingsPage() {
           ? "채팅방을 열 수 없습니다."
           : "Không thể mở phòng chat.",
       );
-    } finally {
-      setProcessingId(null);
     }
   };
 
@@ -238,7 +228,6 @@ export function useHostBookingsPage() {
       );
       return;
     }
-    setProcessingId(bookingId);
     try {
       const { relistResult } = await cancelBooking(
         bookingId,
@@ -260,21 +249,16 @@ export function useHostBookingsPage() {
       setShowCancelModal(false);
     } catch {
       alert("실패");
-    } finally {
-      setProcessingId(null);
     }
   };
 
   const handleDelete = async (bookingId: string) => {
     if (!confirm("삭제하시겠습니까?")) return;
-    setProcessingId(bookingId);
     try {
       await deleteBooking(bookingId);
       setBookings((prev) => prev.filter((b) => b.id !== bookingId));
     } catch {
       alert("실패");
-    } finally {
-      setProcessingId(null);
     }
   };
 

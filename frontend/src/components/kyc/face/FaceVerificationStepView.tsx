@@ -346,14 +346,19 @@ export function FaceVerificationStepView(p: Vm) {
                       const dir = faceDirections.find(
                         (d) => d.key === img.direction,
                       );
-                      return dir?.text
-                        ? (dir.text as any)[currentLanguage] ||
-                            dir.text.ko ||
-                            img.direction
-                        : img.direction;
+                      if (!dir?.text) return img.direction;
+                      const t = dir.text;
+                      const localized =
+                        currentLanguage === 'ko' ||
+                        currentLanguage === 'vi' ||
+                        currentLanguage === 'en'
+                          ? t[currentLanguage as keyof typeof t]
+                          : undefined;
+                      return localized ?? t.en ?? img.direction;
                     })()}
                   </p>
                   <div className="relative bg-gray-100 rounded-xl overflow-hidden aspect-square">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- blob: URL */}
                     <img
                       src={img.imageUrl}
                       alt={`Face ${img.direction}`}

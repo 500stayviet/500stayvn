@@ -7,14 +7,10 @@
 import {
   PhoneVerificationData,
   IdDocumentData,
-  FaceVerificationData,
 } from "@/types/kyc.types";
 import { logAdminSystemEvent } from "@/lib/adminSystemLog";
 import { withAppActor } from "@/lib/api/withAppActor";
-import {
-  mergeAuthenticatedUserIntoCache,
-  type UserData,
-} from "@/lib/api/auth";
+import { mergeAuthenticatedUserIntoCache } from "@/lib/api/auth";
 import { parseAppUserPayload } from "@/lib/api/appUserApiParse";
 
 /**
@@ -50,7 +46,7 @@ async function uploadFile(
 async function completeKYCStep(
   userId: string,
   step: number,
-  idData?: any
+  idData?: PhoneVerificationData | IdDocumentData | Record<string, unknown>,
 ): Promise<{ success: boolean; testModeMessage: string }> {
   const response = await fetch('/api/kyc/upload', {
     method: 'PUT',
@@ -144,12 +140,11 @@ export async function saveIdDocument(
     // 현재는 테스트 모드로 파일 저장만 수행
 
     // 신분증 앞면 업로드
-    const frontImagePath = await uploadFile(uid, 'id_front', frontImageFile);
-    
+    void (await uploadFile(uid, 'id_front', frontImageFile));
+
     // 신분증 뒷면 업로드 (있는 경우)
-    let backImagePath: string | undefined;
     if (backImageFile) {
-      backImagePath = await uploadFile(uid, 'id_back', backImageFile);
+      void (await uploadFile(uid, 'id_back', backImageFile));
     }
 
     // 여권인 경우 여권 이미지 업로드

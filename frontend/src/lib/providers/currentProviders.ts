@@ -92,7 +92,7 @@ const currentKycProvider: KycProvider = {
   completeKYCVerification,
 };
 
-function useMockProviders() {
+function isMockProvidersEnabled() {
   const flag = process.env.NEXT_PUBLIC_USE_MOCK;
   return flag === "true" || flag === "1" || flag === "yes";
 }
@@ -107,22 +107,22 @@ function getMockScenario(): MockScenario {
 }
 
 export function getPaymentProvider(): PaymentProvider {
-  if (useMockProviders()) return getMockPaymentProvider(getMockScenario());
+  if (isMockProvidersEnabled()) return getMockPaymentProvider(getMockScenario());
   return currentPaymentProvider;
 }
 
 export function getBankProvider(): BankProvider {
-  if (useMockProviders()) return getMockBankProvider(getMockScenario());
+  if (isMockProvidersEnabled()) return getMockBankProvider(getMockScenario());
   return currentBankProvider;
 }
 
 export function getOtpProvider(): OtpProvider {
-  if (useMockProviders()) return getMockOtpProvider(getMockScenario());
+  if (isMockProvidersEnabled()) return getMockOtpProvider(getMockScenario());
   return currentOtpProvider;
 }
 
 export function getKycProvider(): KycProvider {
-  if (useMockProviders()) return getMockKycProvider(getMockScenario());
+  if (isMockProvidersEnabled()) return getMockKycProvider(getMockScenario());
   return currentKycProvider;
 }
 

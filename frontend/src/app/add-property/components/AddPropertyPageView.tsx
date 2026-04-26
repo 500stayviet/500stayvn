@@ -129,6 +129,8 @@ export function AddPropertyPageView({
     toggleFacility,
   } = vm;
 
+  void maxChildren;
+
   if (checkingAccess || authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">

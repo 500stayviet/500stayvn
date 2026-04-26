@@ -45,18 +45,19 @@ export function useCamera(options: UseCameraOptions = {}) {
         videoRef.current.srcObject = mediaStream;
         await videoRef.current.play();
       }
-    } catch (err: any) {
-      const error = err as Error;
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error(String(err));
       setError(error);
       onError?.(error);
-      
+      const name = err instanceof Error ? err.name : '';
+      const message = err instanceof Error ? err.message : String(err);
       // 권한 거부 에러 처리
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+      if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
         setError(new Error('카메라 권한이 거부되었습니다. 설정에서 카메라 권한을 허용해주세요.'));
-      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+      } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
         setError(new Error('카메라를 찾을 수 없습니다.'));
       } else {
-        setError(new Error(`카메라 오류: ${err.message}`));
+        setError(new Error(`카메라 오류: ${message}`));
       }
     } finally {
       setIsLoading(false);
@@ -114,17 +115,18 @@ export function useCamera(options: UseCameraOptions = {}) {
         videoRef.current.srcObject = mediaStream;
         await videoRef.current.play();
       }
-    } catch (err: any) {
-      const error = err as Error;
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error(String(err));
       setError(error);
       onError?.(error);
-      
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+      const name = err instanceof Error ? err.name : '';
+      const message = err instanceof Error ? err.message : String(err);
+      if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
         setError(new Error('카메라 권한이 거부되었습니다. 설정에서 카메라 권한을 허용해주세요.'));
-      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+      } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
         setError(new Error('카메라를 찾을 수 없습니다.'));
       } else {
-        setError(new Error(`카메라 오류: ${err.message}`));
+        setError(new Error(`카메라 오류: ${message}`));
       }
     } finally {
       setIsLoading(false);

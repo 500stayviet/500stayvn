@@ -71,7 +71,7 @@ describe("mock kyc provider", () => {
           idNumber: "123",
           fullName: "Tester",
           dateOfBirth: "1990-01-01",
-        } as any,
+        },
         new File([new Blob(["x"], { type: "image/jpeg" })], "front.jpg"),
       ),
     ).rejects.toThrow("mock_kyc_id_failed");

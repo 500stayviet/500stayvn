@@ -46,11 +46,22 @@ applications:
               AWS_MAP_NAME=$NEXT_PUBLIC_AWS_MAP_NAME
               AWS_PLACE_INDEX_NAME=$NEXT_PUBLIC_AWS_PLACE_INDEX_NAME
               EOF
-            # 빌드 중에는 Prisma Client만 생성하고, DB 마이그레이션은 릴리즈 절차에서 별도 실행
+            # preBuild 가 --ignore-scripts 이므로, 타입체크·테스트 전에 Prisma Client 생성 필요
             - npx prisma generate --schema=./prisma/schema.prisma
+            # GitHub Actions test-and-typecheck 와 동일 품질 게이트 (Lint 0 · 타입 · 단테 후 빌드)
+            - npm test
+            - npx tsc --noEmit
+            - npm run lint:p3-tier3
             - npm run build
           env:
             NODE_ENV: production
+            # next build / 클라이언트 번들이 참조하는 공개 Firebase 키 — CI와 동일 플레이스홀더(콘솔에서 덮어쓰기 가능)
+            NEXT_PUBLIC_FIREBASE_API_KEY: "AIzaSyAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: "dummy.firebaseapp.com"
+            NEXT_PUBLIC_FIREBASE_PROJECT_ID: "dummy-project"
+            NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: "dummy-project.appspot.com"
+            NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: "1234567890"
+            NEXT_PUBLIC_FIREBASE_APP_ID: "1:1234567890:web:abcdef123456"
             NEXTAUTH_URL: $NEXTAUTH_URL
             NEXTAUTH_SECRET: $NEXTAUTH_SECRET
             ADMIN_SESSION_SECRET: $ADMIN_SESSION_SECRET

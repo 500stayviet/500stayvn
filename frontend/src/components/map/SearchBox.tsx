@@ -4,7 +4,7 @@ import { useRef, useEffect } from 'react';
 import { Search, X } from 'lucide-react';
 import { getUIText } from '@/utils/i18n';
 import { cleanDisplayName, cleanSubAddress } from '@/hooks/useLocationSearch';
-import { Suggestion, getResultType } from '@/types/map';
+import { Suggestion } from '@/types/map';
 import { SupportedLanguage } from '@/lib/api/translation';
 
 interface SearchBoxProps {

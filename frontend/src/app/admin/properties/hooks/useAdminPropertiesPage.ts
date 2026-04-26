@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { acknowledgeNewProperty, countUnseenNewProperties, isAdminPropertyNewUnseen } from "@/lib/adminAckState";
+import { acknowledgeNewProperty, countUnseenNewProperties } from "@/lib/adminAckState";
 import { refreshAdminBadges } from "@/lib/adminBadgeCounts";
 import { useAdminAckHydrationTick } from "@/hooks/useAdminAckHydration";
 import { isPropertyNew, localCalendarDayStartMs } from "@/lib/adminNewUtils";
@@ -68,10 +68,12 @@ export function useAdminPropertiesPage() {
     [rows, page],
   );
 
-  const unseenNew = useMemo(
-    () => countUnseenNewProperties(propertyAckAt),
-    [tick, filter, ackTick, propertyAckAt],
-  );
+  const unseenNew = useMemo(() => {
+    void tick;
+    void filter;
+    void ackTick;
+    return countUnseenNewProperties(propertyAckAt);
+  }, [tick, filter, ackTick, propertyAckAt]);
 
   useEffect(() => {
     setPage(1);

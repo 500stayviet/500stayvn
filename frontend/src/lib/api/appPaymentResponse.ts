@@ -34,7 +34,6 @@ export function parsePaymentPatchData(data: unknown): {
     };
   }
   if (process.env.NODE_ENV === "development") {
-    // eslint-disable-next-line no-console
     console.warn(
       "[payments] PATCH data missing transition; assuming no booking state change",
       data,

@@ -64,7 +64,7 @@ export function usePropertyDetailImageSlider(property: PropertyData) {
         setImageIndex(target);
       }
     },
-    [imageIndex, N],
+    [imageIndex, SLIDER_MID, SLIDER_MAX],
   );
 
   const goToPrevSlide = useCallback(() => {

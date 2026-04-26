@@ -1,5 +1,5 @@
 import { PropertyData } from '@/types/property';
-import { toISODateString, parseDate } from './dateUtils';
+import { toISODateString } from './dateUtils';
 import { getDistrictIdForCoord } from '@/lib/data/vietnam-regions';
 import { ALL_REGIONS, VIETNAM_CITIES } from '@/lib/data/vietnam-regions';
 
@@ -65,7 +65,7 @@ export const getCityName = (address?: string): string => {
  * 매물에 예약 가능한 기간이 7일 이상 남아있는지 확인하는 헬퍼 함수
  * (my-properties/page.tsx에서 이동)
  */
-export const hasAvailableBookingPeriod = (property: any, bookedRanges: PropertyDateRange[]): boolean => {
+export const hasAvailableBookingPeriod = (property: PropertyData, bookedRanges: PropertyDateRange[]): boolean => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -102,7 +102,7 @@ export const hasAvailableBookingPeriod = (property: any, bookedRanges: PropertyD
 
     if (!isBookedOnCurrentDate) {
       let consecutiveAvailableDays = 0;
-      let tempDate = new Date(currentCheckDate);
+      const tempDate = new Date(currentCheckDate);
       
       while (toISODateString(tempDate) < propCheckOut && consecutiveAvailableDays < minBookingDays) {
         const tempDateStr = toISODateString(tempDate);

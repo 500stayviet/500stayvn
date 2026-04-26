@@ -32,6 +32,7 @@ export function PropertyDetailOwnerImageOverlay({
           className="relative w-full max-w-4xl h-[80vh] mx-4 flex items-center justify-center overflow-hidden rounded-xl"
           style={{ transformStyle: "preserve-3d" }}
         >
+          {/* eslint-disable-next-line @next/next/no-img-element -- 전체화면 blob/외부 URL */}
           <img
             key={fullScreenImageIndex}
             src={propertyImages[fullScreenImageIndex]}

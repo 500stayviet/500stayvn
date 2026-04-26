@@ -92,11 +92,6 @@ export default function BookingDetailsModal({ booking, onClose }: BookingDetails
 
   // 결제 상세 계산
   const weeks = Math.ceil(booking.nights / 7);
-  const pricePerWeek = booking.totalPrice / weeks;
-
-  // 수수료 및 부가세 계산 (UI 표시용)
-  const serviceFee = 0; // 0% 수수료
-  const vat = 0; // 0% 부가세
   const basePrice = booking.totalPrice;
 
   const paymentMethodLabels: Record<string, Record<SupportedLanguage, string>> = {
@@ -109,7 +104,7 @@ export default function BookingDetailsModal({ booking, onClose }: BookingDetails
   const getPaymentMethodLabel = (method?: string) => {
     if (!method) return '-';
     const label = paymentMethodLabels[method];
-    return label ? ((label as any)[currentLanguage] || label.en) : method;
+    return label ? label[currentLanguage] ?? label.en : method;
   };
 
   return (

@@ -39,7 +39,7 @@ export function useLoginPage() {
 
     try {
       const result = await signInWithEmail(formData.email, formData.password);
-      if (result.error) {
+      if ("error" in result) {
         const errorCode = result.error.code;
         setError(
           errorCode === "auth/account-deleted"

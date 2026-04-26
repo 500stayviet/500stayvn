@@ -7,7 +7,6 @@
 import {
   searchPlaceIndexForText,
   searchPlaceIndexForPosition,
-  getLocationServiceLanguage,
 } from "./aws-location";
 import { SupportedLanguage } from "./translation";
 
@@ -30,11 +29,7 @@ export async function geocodeAddress(
   language: SupportedLanguage = "vi",
 ): Promise<GeocodingResult> {
   try {
-    const locationLanguage = getLocationServiceLanguage(language);
-    const results = await searchPlaceIndexForText(
-      address,
-      locationLanguage as any,
-    );
+    const results = await searchPlaceIndexForText(address, language);
 
     if (results.length > 0) {
       const result = results[0];
@@ -70,12 +65,7 @@ export async function reverseGeocode(
   language: SupportedLanguage = "vi",
 ): Promise<string> {
   try {
-    const locationLanguage = getLocationServiceLanguage(language);
-    const results = await searchPlaceIndexForPosition(
-      lat,
-      lng,
-      locationLanguage as any,
-    );
+    const results = await searchPlaceIndexForPosition(lat, lng, language);
 
     if (results.length > 0) {
       return results[0].Place?.Label || "";

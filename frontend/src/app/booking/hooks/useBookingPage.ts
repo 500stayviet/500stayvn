@@ -24,7 +24,6 @@ export function useBookingPage() {
   const checkOutParam = searchParams.get("checkOut");
   const guestsParam = searchParams.get("guests");
   const petsParam = searchParams.get("pets");
-  const guestsCount = Math.max(1, parseInt(guestsParam || "1", 10) || 1);
   const petsCount = Math.max(0, parseInt(petsParam || "0", 10) || 0);
 
   const [property, setProperty] = useState<PropertyData | null>(null);
@@ -119,7 +118,6 @@ export function useBookingPage() {
 
   const {
     nights,
-    weeks,
     accommodationTotal,
     petTotal,
     serviceFee,

@@ -11,11 +11,10 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { MapPin, ChevronLeft, ChevronRight, Calendar, Bed, Bath, Users } from 'lucide-react';
+import { MapPin, ChevronLeft, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
 import { SupportedLanguage } from '@/lib/api/translation';
 import { useProperties } from '@/hooks/useProperties';
-import { useAuth } from '@/hooks/useAuth';
 import { getUIText } from '@/utils/i18n';
 import { PropertyData } from '@/types/property';
 import { 
@@ -33,7 +32,6 @@ interface PopularStaysProps {
 
 export default function PopularStays({ currentLanguage }: PopularStaysProps) {
   const router = useRouter();
-  const { user } = useAuth();
   const { properties, loading } = useProperties();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [currentIndex, setCurrentIndex] = useState(0);

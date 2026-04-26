@@ -67,6 +67,7 @@ export default function EditPropertyImageSection({
             key={index}
             className="relative aspect-square rounded-xl overflow-hidden border-2 border-gray-200"
           >
+            {/* eslint-disable-next-line @next/next/no-img-element -- 로컬 미리보기 */}
             <img src={preview} alt="" className="w-full h-full object-cover" />
             <button
               type="button"

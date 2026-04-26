@@ -17,7 +17,9 @@ export interface SettlementAuditEntry {
 }
 
 /** no-op — 서버 원장만 사용 */
-export function recordSettlementAudit(_entry: Omit<SettlementAuditEntry, 'recordedAt'>): void {}
+export function recordSettlementAudit(entry: Omit<SettlementAuditEntry, 'recordedAt'>): void {
+  void entry;
+}
 
 /** 로컬 감사 로그는 사용하지 않음 */
 export function getSettlementAuditLog(): SettlementAuditEntry[] {

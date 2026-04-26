@@ -1,10 +1,11 @@
+import type { LucideIcon } from 'lucide-react';
 import { Wifi, Snowflake, Sun, Refrigerator, Wind, Bed, Dumbbell, Waves, Car, Building, Dog } from 'lucide-react';
 import { SupportedLanguage } from '../api/translation';
 
 export interface AmenityOption {
   id: string;
   label: Record<SupportedLanguage, string>;
-  icon: any;
+  icon: LucideIcon;
 }
 
 export const AMENITY_OPTIONS: AmenityOption[] = [

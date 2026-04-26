@@ -130,13 +130,6 @@ export const useTranslationToggle = (
     }
   }, [text, sourceLanguage, targetLanguage, cacheKey]);
   
-  // 자동 번역
-  useEffect(() => {
-    if (autoTranslate && state.hasConsent && state.hasLanguagePackConsent && text.trim()) {
-      handleTranslate();
-    }
-  }, [autoTranslate, state.hasConsent, state.hasLanguagePackConsent, text]);
-  
   // 동의 저장
   const saveConsent = useCallback((consent: boolean, isLanguagePack = false) => {
     if (typeof window === 'undefined') return;
@@ -247,6 +240,13 @@ export const useTranslationToggle = (
     state.translatedText,
     translationContext,
   ]);
+
+  // 자동 번역 (handleTranslate 정의 이후에 등록)
+  useEffect(() => {
+    if (autoTranslate && state.hasConsent && state.hasLanguagePackConsent && text.trim()) {
+      void handleTranslate();
+    }
+  }, [autoTranslate, state.hasConsent, state.hasLanguagePackConsent, text, handleTranslate]);
   
   // 토글 함수
   const toggleTranslation = useCallback(async () => {

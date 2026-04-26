@@ -1,6 +1,12 @@
 // Firebase Client SDK 초기화
-import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
-import { getAuth, RecaptchaVerifier, signInWithPhoneNumber, type Auth } from 'firebase/auth';
+import { FirebaseError, initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
+import {
+  getAuth,
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
+  type Auth,
+  type ConfirmationResult,
+} from 'firebase/auth';
 import { firebaseConfig } from './config';
 
 const PHONE_AUTH_DEBUG = process.env.NEXT_PUBLIC_PHONE_AUTH_DEBUG === 'true';
@@ -33,6 +39,20 @@ const phoneAuthDebugAlert = (message: string) => {
   if (!PHONE_AUTH_DEBUG || typeof window === 'undefined') return;
   window.alert(message);
 };
+
+function firebaseErrorFields(error: unknown): {
+  code?: string;
+  message?: string;
+  stack?: string;
+} {
+  if (error instanceof FirebaseError) {
+    return { code: error.code, message: error.message, stack: error.stack };
+  }
+  if (error instanceof Error) {
+    return { message: error.message, stack: error.stack };
+  }
+  return {};
+}
 
 let app: FirebaseApp | null = null;
 let authInstance: Auth | null = null;
@@ -79,12 +99,10 @@ export const createRecaptchaVerifier = (containerId: string) => {
     .then((widgetId) => {
       phoneAuthDebugLog('[phone-auth] recaptcha render completed', { containerId, widgetId });
     })
-    .catch((error) => {
+    .catch((error: unknown) => {
       phoneAuthDebugWarn('[phone-auth] recaptcha render failed', {
         containerId,
-        code: (error as any)?.code,
-        message: (error as any)?.message,
-        stack: (error as any)?.stack,
+        ...firebaseErrorFields(error),
       });
     });
 
@@ -111,11 +129,9 @@ export const sendPhoneVerificationCode = async (
     phoneAuthDebugAlert('문자 발송 시도: after signInWithPhoneNumber');
     phoneAuthDebugLog('[phone-auth] after signInWithPhoneNumber', { phoneNumber });
     return confirmationResult;
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error sending verification code:', {
-      code: (error as any)?.code,
-      message: (error as any)?.message,
-      stack: (error as any)?.stack,
+      ...firebaseErrorFields(error),
       error,
     });
     throw error;
@@ -126,17 +142,15 @@ export const sendPhoneVerificationCode = async (
 
 // 인증 코드 확인 함수
 export const verifyPhoneCode = async (
-  confirmationResult: any,
+  confirmationResult: ConfirmationResult,
   verificationCode: string
 ) => {
   try {
     const result = await confirmationResult.confirm(verificationCode);
     return result;
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error verifying code:', {
-      code: (error as any)?.code,
-      message: (error as any)?.message,
-      stack: (error as any)?.stack,
+      ...firebaseErrorFields(error),
       error,
     });
     throw error;

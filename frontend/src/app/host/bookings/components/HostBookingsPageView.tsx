@@ -96,6 +96,8 @@ export function HostBookingsPageView({ vm }: Props) {
     handleDelete,
   } = vm;
 
+  void handleDelete;
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">

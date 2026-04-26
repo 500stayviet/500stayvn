@@ -44,7 +44,10 @@ export default function ProfileHeaderCard({
         </div>
         <div className="flex-shrink-0 w-11 h-11 rounded-lg bg-white/20 flex items-center justify-center overflow-hidden ring-1 ring-white/30">
           {photoURL ? (
-            <img src={photoURL} alt="" className="w-full h-full object-cover" />
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element -- 프로필 URL */}
+              <img src={photoURL} alt="" className="w-full h-full object-cover" />
+            </>
           ) : (
             <User className="w-5 h-5 text-white" />
           )}

@@ -194,12 +194,10 @@ export async function handleCancellationRelistLifecycle(
         range1.end,
       );
       if (!isBooked) {
-        const propUpdateDate = new Date(
-          property.updatedAt || property.createdAt,
-        ).getTime();
-        const targetUpdateDate = new Date(
-          target.updatedAt || target.createdAt,
-        ).getTime();
+        const propTs = property.updatedAt ?? property.createdAt ?? 0;
+        const targetTs = target.updatedAt ?? target.createdAt ?? 0;
+        const propUpdateDate = new Date(propTs).getTime();
+        const targetUpdateDate = new Date(targetTs).getTime();
 
         if (propUpdateDate > targetUpdateDate) {
           target.price = property.price;
@@ -282,20 +280,24 @@ export async function recalculateAndSplitPropertyLifecycle(
     return;
   }
 
-  const validBooking = booking as any;
-  const bookedStart = deps.toISODateString(validBooking.checkInDate);
-  const bookedEnd = deps.toISODateString(validBooking.checkOutDate);
+  const bookedStart = deps.toISODateString(booking.checkInDate);
+  const bookedEnd = deps.toISODateString(booking.checkOutDate);
   const childId = `prop_child_${Date.now()}_${Math.random()
     .toString(36)
     .substr(2, 5)}`;
   const {
-    id: _,
-    history: __,
-    status: ___,
-    checkInDate: ____,
-    checkOutDate: _____,
+    id: stripId,
+    history: stripHistory,
+    status: stripStatus,
+    checkInDate: stripCheckIn,
+    checkOutDate: stripCheckOut,
     ...baseData
   } = property;
+  void stripId;
+  void stripHistory;
+  void stripStatus;
+  void stripCheckIn;
+  void stripCheckOut;
 
   const childProp: PropertyData = {
     ...baseData,

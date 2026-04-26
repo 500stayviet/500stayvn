@@ -1,10 +1,9 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Languages, Loader2, AlertCircle, User, MessageCircle } from 'lucide-react';
+import { Languages, Loader2, AlertCircle, User } from 'lucide-react';
 import { useTranslationToggle } from '@/hooks/useTranslationToggle';
 import { TranslationConsentModal } from './TranslationConsentModal';
-import { useTranslation } from '@/contexts/TranslationProvider';
 
 interface ChatMessageProps {
   // 메시지 내용
@@ -46,9 +45,6 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [showLanguagePackModal, setShowLanguagePackModal] = useState(false);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
-  
-  // 번역 컨텍스트
-  const translationContext = useTranslation();
   
   // 번역 토글 훅
   const {
@@ -323,7 +319,9 @@ export const ChatMessageExample: React.FC = () => {
           <li>• 각 메시지 우측 하단에 번역 버튼이 있습니다.</li>
           <li>• 베트남어 메시지는 한국어로 번역됩니다.</li>
           <li>• 한국어 메시지는 베트남어로 번역됩니다.</li>
-          <li>• 번역 후 "원문 보기" 버튼으로 토글 가능합니다.</li>
+          <li>
+            • 번역 후 {'"'}원문 보기{'"'} 버튼으로 토글 가능합니다.
+          </li>
           <li>• 번역된 내용은 캐시되어 재사용됩니다.</li>
         </ul>
       </div>

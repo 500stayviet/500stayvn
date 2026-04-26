@@ -228,7 +228,7 @@ export function useReservationsPage() {
       }
 
       await reloadReservations();
-    } catch (error) {
+    } catch {
       alert(
         currentLanguage === 'ko'
           ? '예약 상태 업데이트 중 오류가 발생했습니다.'
@@ -254,7 +254,7 @@ export function useReservationsPage() {
     try {
       await deleteReservation(reservationId);
       await reloadReservations();
-    } catch (error) {
+    } catch {
       alert(currentLanguage === 'ko' ? '기록 삭제 중 오류가 발생했습니다.' : 'Error deleting record.');
     } finally {
       setUpdatingId(null);

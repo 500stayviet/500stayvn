@@ -50,6 +50,8 @@ export function useFaceVerificationStepState({ currentLanguage, onComplete }: Fa
         }
       };
     }
+    // handleAutoCapture는 매 렌더마다 갱신되며, 타이머는 countdown/방향 전환에만 의존
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, countdown, currentDirectionIndex, autoCapture]);
 
   // 카운트다운 시작

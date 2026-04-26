@@ -7,7 +7,7 @@ import {
   getAdminPropertyActionLogsCached,
   invalidateAdminPropertyActionLogsCache,
 } from "@/lib/api/adminPropertyActionLogs";
-import type { AdminPropertyActionLogRow, PropertyActionType } from "@/lib/api/adminPropertyActionLogs";
+import type { PropertyActionType } from "@/lib/api/adminPropertyActionLogs";
 
 /**
  * 관리자 매물 삭제/취소 로그: 캐시 로드, 탭 필터, 도메인 갱신 시 재동기화.

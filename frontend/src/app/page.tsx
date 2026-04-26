@@ -15,7 +15,7 @@ export default function HomePage() {
   const { user, loading: authLoading } = useAuth();
   const { currentLanguage, setCurrentLanguage, loading: languageLoading } = useLanguage();
   const [userPreferredLanguage, setUserPreferredLanguage] = useState<SupportedLanguage | null>(null);
-  const [loadingUserData, setLoadingUserData] = useState(false);
+  const [, setLoadingUserData] = useState(false);
 
   useEffect(() => {
     const loadUserLanguage = async () => {
@@ -30,7 +30,7 @@ export default function HomePage() {
           } else {
             setUserPreferredLanguage(null);
           }
-        } catch (error) {
+        } catch {
           // Silent fail
         } finally {
           setLoadingUserData(false);

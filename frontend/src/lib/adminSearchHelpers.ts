@@ -34,7 +34,11 @@ export function useOwnerEmailMap(listRevision: unknown): Map<string, string> {
       window.removeEventListener('storage', onStorage);
     };
   }, []);
-  return useMemo(() => getOwnerEmailMap(), [listRevision, tick]);
+  return useMemo(() => {
+    void listRevision;
+    void tick;
+    return getOwnerEmailMap();
+  }, [listRevision, tick]);
 }
 
 /** UID·이메일을 먼저 매칭, 그다음 매물·예약 관련 필드 */

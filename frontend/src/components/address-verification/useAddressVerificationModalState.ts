@@ -3,7 +3,13 @@
 import { useState, useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { getPlaceById, searchPlaceIndexForPosition, searchPlaceIndexForSuggestions } from '@/lib/api/aws-location';
+import {
+  getPlaceById,
+  searchPlaceIndexForPosition,
+  searchPlaceIndexForSuggestions,
+  type AwsPlaceSearchResult,
+  type AwsSuggestionItem,
+} from '@/lib/api/aws-location';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { formatAddress } from '@/components/address-verification/addressTextFormatters';
 import type { AddressVerificationModalProps } from './types';
@@ -19,7 +25,7 @@ export function useAddressVerificationModalState({
   const languageContext = useLanguage();
   const currentLanguage = propCurrentLanguage ?? languageContext.currentLanguage;
   const [searchText, setSearchText] = useState(initialAddress);
-  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [suggestions, setSuggestions] = useState<AwsSuggestionItem[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState<string>('');
   const [detailedAddress, setDetailedAddress] = useState<{ 
@@ -159,7 +165,7 @@ export function useAddressVerificationModalState({
     // 아이콘 오류 방어: 누락된 이미지 조용히 처리 (Grab Maps 최적화)
     // Image "building_11" could not be loaded 같은 경고 완전 무시
     // 콘솔 경고를 완전히 차단하는 강력한 처리
-    map.on('styleimagemissing', (e: any) => {
+    map.on('styleimagemissing', (e: { preventDefault?: () => void; id?: string }) => {
       // 이미지 로딩 경고 완전 무시
       if (e && typeof e.preventDefault === 'function') {
         e.preventDefault(); // 콘솔 경고 삭제 처리
@@ -174,8 +180,8 @@ export function useAddressVerificationModalState({
         const context = canvas.getContext('2d');
         if (context) {
           context.clearRect(0, 0, 1, 1);
-          const imageData = canvas.toDataURL();
-          
+          void canvas.toDataURL();
+
           // 누락된 이미지를 빈 이미지로 대체
           if (e && e.id) {
             map.addImage(e.id, {
@@ -185,7 +191,7 @@ export function useAddressVerificationModalState({
             });
           }
         }
-      } catch (error) {
+      } catch {
         // 이미지 추가 실패 시 조용히 무시
       }
     });
@@ -195,9 +201,10 @@ export function useAddressVerificationModalState({
     const originalConsoleError = console.error;
     
     // MapLibre GL JS 관련 경고 필터링
-    const mapConsoleFilter = (args: any[]) => {
-      const message = args[0] || '';
-      if (typeof message === 'string') {
+    const mapConsoleFilter = (args: unknown[]) => {
+      const first = args[0];
+      const message = typeof first === 'string' ? first : '';
+      if (message) {
         // MapLibre GL 이미지 로드 오류 메시지 필터링
         if (message.includes('Image "') && message.includes('" could not be loaded')) {
           return true; // 이 메시지는 표시하지 않음
@@ -210,13 +217,13 @@ export function useAddressVerificationModalState({
     };
     
     // 콘솔 오버라이드
-    console.warn = (...args: any[]) => {
+    console.warn = (...args: unknown[]) => {
       if (!mapConsoleFilter(args)) {
         originalConsoleWarn.apply(console, args);
       }
     };
     
-    console.error = (...args: any[]) => {
+    console.error = (...args: unknown[]) => {
       if (!mapConsoleFilter(args)) {
         originalConsoleError.apply(console, args);
       }
@@ -229,9 +236,12 @@ export function useAddressVerificationModalState({
     };
 
     // 지도 스타일 로드 에러 처리 (null 값 에러 완전 무시)
-    map.on('error', (e: any) => {
+    map.on('error', (e: { error?: { message?: string; toString?: () => string } }) => {
       // null 값 관련 에러는 조용히 무시 (스타일 필터 문제)
-      const errorMessage = e.error?.message || e.error?.toString() || '';
+      const errObj = e.error;
+      const errorMessage =
+        (errObj && typeof errObj.message === 'string' ? errObj.message : '') ||
+        (errObj != null ? String(errObj) : '');
       if (errorMessage.includes('null') || 
           errorMessage.includes('Expected value to be of type number') ||
           errorMessage.includes('Image could not be loaded') ||
@@ -323,7 +333,7 @@ export function useAddressVerificationModalState({
               setCoordinates({ lat: safeLat, lng: safeLng });
             }
           }
-        } catch (error) {
+        } catch {
           // 좌표 업데이트 오류는 조용히 무시
         }
       });
@@ -336,7 +346,7 @@ export function useAddressVerificationModalState({
           if (Math.abs(currentZoom - 17) > 0.01) {
             map.setZoom(17);
           }
-        } catch (error) {
+        } catch {
           // 줌 설정 오류는 조용히 무시
         }
       });
@@ -427,7 +437,7 @@ export function useAddressVerificationModalState({
               const reverseResults = await searchPlaceIndexForPosition(lat, lng, language);
               
               // 베트남(VNM) 내 지역만 필터링
-              const vietnamResults = reverseResults.filter((item: any) => {
+              const vietnamResults = reverseResults.filter((item: AwsPlaceSearchResult) => {
                 const country = item.Place?.Country || item.Place?.Address?.Country || item.Country || '';
                 return country === 'VNM';
               });
@@ -516,13 +526,14 @@ export function useAddressVerificationModalState({
               console.error('Error reverse geocoding:', error);
             }
           })(); // 즉시 실행 (디바운스 제거)
-        } catch (error) {
+        } catch {
           // 좌표 업데이트 오류는 조용히 무시
         }
       });
     });
 
     return () => {
+      restoreConsole();
       // 전역 오류 핸들러 복원
       window.onerror = originalWindowError;
       
@@ -535,7 +546,7 @@ export function useAddressVerificationModalState({
       if (mapRef.current) {
         try {
           mapRef.current.remove();
-        } catch (error) {
+        } catch {
           // 지도 제거 오류는 조용히 무시
         }
         mapRef.current = null;
@@ -543,6 +554,7 @@ export function useAddressVerificationModalState({
     };
     // 의존성 배열 크기 유지 (React 요구사항: 배열 크기는 일정해야 함)
     // 지도가 이미 초기화되어 있으면 재초기화하지 않도록 내부에서 가드 처리
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- map 단일 초기화; 좌표는 이벤트 핸들러에서만 읽음
   }, [isOpen, isMapVisible, mapCenter]);
 
   // 주소 검색 (디바운싱) - 새 주소 입력 시 suggestions 표시
@@ -578,21 +590,9 @@ export function useAddressVerificationModalState({
           'vi',
         );
 
-        // suggestions API는 Text/Label/PlaceId를 포함하는 형태로 내려오지만,
-        // 안전을 위해 Text 필드를 확실히 통일합니다.
-        const normalizedResults = (results || []).map((item: any) => {
-          const text =
-            item?.Text || item?.text || item?.Label || item?.label || '';
-          return {
-            ...item,
-            Text: text,
-            text,
-            label: text,
-            Label: text,
-          };
-        });
+        const normalizedResults: AwsSuggestionItem[] = results || [];
 
-        const validResults = normalizedResults.filter((item: any) => {
+        const validResults = normalizedResults.filter((item) => {
           const text = item.Text || '';
           return text && text.trim().length > 0;
         });
@@ -621,7 +621,7 @@ export function useAddressVerificationModalState({
   }, [searchText, selectedAddress]);
 
   // 주소 선택 및 지도 이동 (PlaceId 기반 - Grab 앱 방식)
-  const handleSelectSuggestion = async (suggestion: any) => {
+  const handleSelectSuggestion = async (suggestion: AwsSuggestionItem) => {
     const text =
       suggestion.Text || suggestion.text || suggestion.Label || suggestion.label || '';
     const placeId =
@@ -754,7 +754,7 @@ export function useAddressVerificationModalState({
             zoom: 17,
             duration: 1000, // 1초 동안 부드럽게 이동
           });
-        } catch (error) {
+        } catch {
           // flyTo 오류는 조용히 무시
         }
       }
@@ -876,13 +876,8 @@ export function useAddressVerificationModalState({
 
   // 언어 변경 시 suggestions 재포맷팅 (제목/부제목이 언어에 따라 변경되도록)
   useEffect(() => {
-    // suggestions가 있고 모달이 열려있으면 재포맷팅을 위해 강제 리렌더링
-    // formatAddress는 렌더링 시 호출되므로 자동으로 최신 currentLanguage 사용
-    if (isOpen && suggestions.length > 0) {
-      // suggestions 상태를 업데이트하여 재렌더링 트리거
-      // 실제 데이터는 그대로 두고, 포맷팅만 다시 적용되도록 함
-      setSuggestions([...suggestions]);
-    }
+    if (!isOpen) return;
+    setSuggestions((prev) => (prev.length > 0 ? [...prev] : prev));
   }, [currentLanguage, isOpen]);
 
 

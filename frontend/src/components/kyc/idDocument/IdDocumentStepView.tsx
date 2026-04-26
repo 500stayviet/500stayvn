@@ -36,6 +36,8 @@ export function IdDocumentStepView(p: Vm) {
     handlePreviewSecondary,
   } = p;
 
+  void stopCamera;
+
   return (
     <div className="w-full">
       <AnimatePresence mode="sync">
@@ -279,6 +281,7 @@ export function IdDocumentStepView(p: Vm) {
                   {currentLanguage === 'ko' ? '앞면' : 'Mặt trước'}
                 </p>
                 <div className="relative bg-gray-100 rounded-2xl overflow-hidden aspect-[16/10]">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- blob: URL */}
                   <img src={frontImage} alt="Front ID" className="w-full h-full object-contain" />
                   <button
                     type="button"
@@ -297,6 +300,7 @@ export function IdDocumentStepView(p: Vm) {
                   {currentLanguage === 'ko' ? '뒷면' : 'Mặt sau'}
                 </p>
                 <div className="relative bg-gray-100 rounded-2xl overflow-hidden aspect-[16/10]">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- blob: URL */}
                   <img src={backImage} alt="Back ID" className="w-full h-full object-contain" />
                   <button
                     type="button"

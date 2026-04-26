@@ -116,6 +116,7 @@ export function LoginPageView({ vm }: Props) {
               onClick={() => void handleSocialLogin("google")}
               className="w-full border-2 border-gray-200 py-3 rounded-full text-sm font-bold flex items-center justify-center gap-3 hover:bg-gray-50 transition-all"
             >
+              {/* eslint-disable-next-line @next/next/no-img-element -- 외부 정적 아이콘 */}
               <img
                 src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
                 className="w-5 h-5"
@@ -128,6 +129,7 @@ export function LoginPageView({ vm }: Props) {
               onClick={() => void handleSocialLogin("facebook")}
               className="w-full bg-[#1877F2] text-white py-3 rounded-full text-sm font-bold flex items-center justify-center gap-3 hover:bg-blue-700 transition-all"
             >
+              {/* eslint-disable-next-line @next/next/no-img-element -- 외부 정적 아이콘 */}
               <img
                 src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/facebook.svg"
                 className="w-5 h-5"

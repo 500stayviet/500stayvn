@@ -103,7 +103,10 @@ export function EditProfilePageView({ vm }: Props) {
               {uploadingPhoto ? (
                 <Loader2 className="w-6 h-6 text-white animate-spin" />
               ) : userData?.photoURL ? (
-                <img src={userData.photoURL} alt="" className="w-full h-full object-cover" />
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- 프로필 URL */}
+                  <img src={userData.photoURL} alt="" className="w-full h-full object-cover" />
+                </>
               ) : (
                 <User className="w-6 h-6 text-white" />
               )}

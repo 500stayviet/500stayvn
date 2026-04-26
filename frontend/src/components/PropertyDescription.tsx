@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { Languages, Loader2, AlertCircle } from 'lucide-react';
 import { useTranslationToggle } from '@/hooks/useTranslationToggle';
 import { TranslationConsentModal } from './TranslationConsentModal';
-import { useTranslation } from '@/contexts/TranslationProvider';
 
 interface PropertyDescriptionProps {
   // 매물 설명 (베트남어 원문)
@@ -34,9 +33,6 @@ export const PropertyDescription: React.FC<PropertyDescriptionProps> = ({
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [showLanguagePackModal, setShowLanguagePackModal] = useState(false);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
-  
-  // 번역 컨텍스트
-  const translationContext = useTranslation();
   
   // 번역 토글 훅
   const {
@@ -238,10 +234,14 @@ export const PropertyDescriptionExample: React.FC = () => {
         <h3 className="text-lg font-semibold mb-2">사용 방법</h3>
         <ul className="text-sm text-gray-600 space-y-1">
           <li>• 기본적으로 베트남어 원문이 표시됩니다.</li>
-          <li>• "번역 보기" 버튼을 클릭하면 번역됩니다.</li>
+          <li>
+            • {'"'}번역 보기{'"'} 버튼을 클릭하면 번역됩니다.
+          </li>
           <li>• 최초 실행 시 동의 모달이 표시됩니다.</li>
           <li>• 네이티브 앱 환경에서는 언어 팩 다운로드 동의가 필요합니다.</li>
-          <li>• 번역 후 "원문 보기" 버튼으로 토글 가능합니다.</li>
+          <li>
+            • 번역 후 {'"'}원문 보기{'"'} 버튼으로 토글 가능합니다.
+          </li>
         </ul>
       </div>
     </div>

@@ -20,6 +20,29 @@ function isLocalFallbackDisabled(): boolean {
   return getLocalFallbackMode() === "off";
 }
 
+type AuthErrorShape = { code: string; message: string };
+
+type SignUpSuccessUser = {
+  uid: string;
+  email: string;
+  displayName: string | null;
+  updateProfile: (profile: { displayName?: string }) => Promise<void>;
+};
+
+export type SignUpWithEmailResult =
+  | { user: SignUpSuccessUser }
+  | { error: AuthErrorShape };
+
+export type SignInWithEmailResult =
+  | {
+      user: {
+        uid: string;
+        email: string;
+        displayName: string | null;
+      };
+    }
+  | { error: AuthErrorShape };
+
 function simpleHash(password: string): string {
   let hash = 0;
   for (let i = 0; i < password.length; i += 1) {
@@ -71,7 +94,9 @@ function signUpLocalFallback(data: SignUpData) {
   };
 }
 
-export async function signUpWithEmail(data: SignUpData): Promise<any> {
+export async function signUpWithEmail(
+  data: SignUpData,
+): Promise<SignUpWithEmailResult> {
   try {
     const res = await fetch("/api/app/users", {
       method: "POST",
@@ -105,7 +130,14 @@ export async function signUpWithEmail(data: SignUpData): Promise<any> {
 
     if (!res.ok) {
       const err = json as { error?: { code?: string; message?: string } };
-      if (err?.error?.code) return { error: err.error };
+      if (err?.error?.code) {
+        return {
+          error: {
+            code: err.error.code,
+            message: err.error.message ?? "",
+          },
+        };
+      }
       return {
         error: {
           code: "auth/unknown",
@@ -182,7 +214,7 @@ function signInLocalFallback(email: string, password: string) {
 export async function signInWithEmail(
   email: string,
   password: string,
-): Promise<any> {
+): Promise<SignInWithEmailResult> {
   try {
     const res = await fetch("/api/app/auth/login", {
       method: "POST",
@@ -216,7 +248,14 @@ export async function signInWithEmail(
 
     if (!res.ok) {
       const err = json as { error?: { code?: string; message?: string } };
-      if (err?.error?.code) return { error: err.error };
+      if (err?.error?.code) {
+        return {
+          error: {
+            code: err.error.code,
+            message: err.error.message ?? "",
+          },
+        };
+      }
       return {
         error: {
           code: "auth/unknown",
@@ -266,7 +305,7 @@ export async function signInWithGoogle(): Promise<unknown> {
   );
 }
 
-export async function signInWithFacebook(): Promise<any> {
+export async function signInWithFacebook(): Promise<never> {
   throw new Error(
     "Facebook 로그인은 현재 사용할 수 없습니다. 이메일/비밀번호로 로그인해주세요.",
   );

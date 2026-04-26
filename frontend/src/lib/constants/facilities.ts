@@ -19,13 +19,14 @@ import {
   Sofa,
   Archive,
   Tv,
+  type LucideIcon,
 } from "lucide-react";
 import type { SupportedLanguage } from "@/lib/api/translation";
 
 export interface FacilityOption {
   id: string;
   label: Record<SupportedLanguage, string>;
-  icon: any;
+  icon: LucideIcon;
   category: "basic" | "furniture" | "electronics" | "kitchen" | "amenities" | "policy";
 }
 

@@ -159,7 +159,9 @@ export async function updatePropertyMutation(
         : deps.serializeDate(updates.checkOutDate);
   }
 
-  const { checkInDate: _, checkOutDate: __, ...otherUpdates } = updates;
+  const { checkInDate: stripIn, checkOutDate: stripOut, ...otherUpdates } = updates;
+  void stripIn;
+  void stripOut;
   const updatedProperty: PropertyData = {
     ...properties[index],
     ...otherUpdates,

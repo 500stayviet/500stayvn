@@ -83,8 +83,8 @@ export function useIdDocumentStepState({ currentLanguage, onComplete, onNext }: 
         setStep('preview');
         stopCamera();
       }
-    } catch (err: any) {
-      setError(err.message || '촬영에 실패했습니다');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : '촬영에 실패했습니다');
     } finally {
       setCapturing(false);
     }

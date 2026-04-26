@@ -180,7 +180,7 @@ export function useSignupPage() {
 
       const result = await signUpWithEmail(signUpData);
 
-      if (result.error) {
+      if ("error" in result) {
         setError(result.error.message || "Signup failed");
         return;
       }

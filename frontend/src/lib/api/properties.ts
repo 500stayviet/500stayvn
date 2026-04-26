@@ -14,7 +14,6 @@ import { toISODateString } from '@/lib/utils/dateUtils';
 import {
   isDateRangeBooked,
   getAllBookings,
-  BookingData,
   readBookingsArray,
   writeBookingsArray,
 } from './bookings';
@@ -35,11 +34,9 @@ import {
   toDate,
 } from './propertiesHelpers';
 import {
-  clearPropertiesClientCache,
   ensurePropertiesLoadedForApp,
   getPropertySyncErrorMessage,
   hydratePropertiesMemoryIfLoggedIn,
-  hydratePropertyAndBookingMemoryIfLoggedIn,
   readPropertiesArray,
   refreshPropertiesFromServer,
   writePropertiesArray,

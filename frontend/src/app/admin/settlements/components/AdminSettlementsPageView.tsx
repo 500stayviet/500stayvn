@@ -36,13 +36,15 @@ export function AdminSettlementsPageView({ vm }: Props) {
     approvedActive,
     heldRows,
     displayList,
-    filteredList,
+    filteredList: _filteredList,
     emptyMsg,
     listEmptyMsg,
     emailMap,
     unseenRequest,
     unseenPending,
   } = vm;
+
+  void _filteredList;
 
   const column = (list: SettlementCandidate[], body: ReactNode, emptyOverride?: string) => (
     <div className="flex min-h-0 max-h-[min(75vh,920px)] flex-col overflow-y-auto rounded-lg border border-slate-200 bg-slate-50/40">

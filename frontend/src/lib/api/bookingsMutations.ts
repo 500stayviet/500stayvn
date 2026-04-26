@@ -233,7 +233,13 @@ export async function confirmBooking(
 export async function cancelBooking(
   bookingId: string,
   reason?: string,
-): Promise<{ booking: BookingData | null; relistResult?: any }> {
+): Promise<{
+  booking: BookingData | null;
+  relistResult?: {
+    type: "merged" | "relisted" | "limit_exceeded" | "short_term";
+    targetId?: string;
+  };
+}> {
   if (typeof window === "undefined") return { booking: null };
   const bookings = await getAllBookings();
   const index = bookings.findIndex((b) => b.id === bookingId);

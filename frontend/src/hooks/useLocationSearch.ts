@@ -59,7 +59,7 @@ export const cleanDisplayName = (text: string): string => {
   return result.replace(/\s+/g, ' ').trim().replace(/^[-–,\s]+/, '').replace(/[-–,\s]+$/, '');
 };
 
-export const cleanSubAddress = (text: string, language?: string): string => {
+export const cleanSubAddress = (text: string): string => {
   let result = text;
   result = result.replace(/^TP\.\s*/gi, '');
   result = result.replace(/^Tp\s+/gi, '');

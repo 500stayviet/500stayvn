@@ -21,7 +21,7 @@ import {
 } from '@/lib/api/chat';
 import { ChatMessage } from '@/components/ChatMessage';
 import { detectMessageLanguage } from '@/lib/utils/languageDetection';
-import { X, Send, Loader2, Home, MessageSquare, AlertCircle } from 'lucide-react';
+import { X, Send, Loader2, Home, MessageSquare } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
