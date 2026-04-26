@@ -238,3 +238,5 @@ export function useKycPageState() {
     handleFaceVerificationComplete,
   };
 }
+
+export type KycPageViewModel = ReturnType<typeof useKycPageState>;
