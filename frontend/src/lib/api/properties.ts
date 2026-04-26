@@ -28,17 +28,11 @@ import {
 } from '@/lib/runtime/networkResilience';
 import { withAppActor } from '@/lib/api/withAppActor';
 import {
-  ensureAdminPropertyActionLogsLoaded,
-  getAdminPropertyActionLogsCached,
   postAppPropertyActionLog,
 } from '@/lib/api/adminPropertyActionLogs';
 import {
-  matchesAdminInventoryKeyword,
-  propertyMatchesAdminTab,
   serializeDate,
-  sortPropsNewestFirst,
   toDate,
-  type AdminInventoryFilter,
 } from './propertiesHelpers';
 import {
   clearPropertiesClientCache,
@@ -48,7 +42,6 @@ import {
   hydratePropertyAndBookingMemoryIfLoggedIn,
   readPropertiesArray,
   refreshPropertiesFromServer,
-  replacePropertiesCache,
   writePropertiesArray,
 } from './propertiesStore';
 
@@ -141,86 +134,6 @@ export function buildBookedRangesForParentListing(
  */
 const PROPS_BOOTSTRAP_KEY = 'stayviet-properties-bootstrap-v1';
 const PROPS_BOOTSTRAP_SESSION_KEY = 'stayviet-properties-bootstrap-session-v1';
-
-async function fetchAllPropertiesByEndpoint(
-  endpoint: string,
-  init: RequestInit
-): Promise<PropertyData[]> {
-  const list: PropertyData[] = [];
-  let offset = 0;
-  const limit = 200;
-  for (let i = 0; i < 200; i += 1) {
-    const sep = endpoint.includes('?') ? '&' : '?';
-    const res = await fetchWithRetry(
-      `${endpoint}${sep}limit=${limit}&offset=${offset}`,
-      init,
-      { retries: 2, baseDelayMs: 300 }
-    );
-    if (!res.ok) throw new Error(String(res.status));
-    const data = (await res.json()) as {
-      properties?: PropertyData[];
-      page?: { hasMore?: boolean; nextOffset?: number };
-    };
-    const chunk = Array.isArray(data.properties) ? data.properties : [];
-    list.push(...chunk);
-    if (!data.page?.hasMore || chunk.length === 0) break;
-    offset = Number(data.page?.nextOffset ?? offset + chunk.length);
-  }
-  return list;
-}
-
-/** 관리자 세션에서 전체 매물 목록 조회 (`/api/admin/properties`) */
-export async function getAllPropertiesForAdmin(): Promise<PropertyData[]> {
-  if (typeof window === 'undefined') return [];
-  try {
-    return await fetchAllPropertiesByEndpoint('/api/admin/properties', {
-      cache: 'no-store',
-      credentials: 'same-origin',
-    });
-  } catch (error) {
-    console.error('admin properties load failed:', error);
-    return [];
-  }
-}
-
-/** 관리자 세션으로 전체 매물 목록을 로컬 캐시에 동기화 */
-export async function refreshPropertiesCacheForAdmin(): Promise<boolean> {
-  if (typeof window === 'undefined') return false;
-  try {
-    const rows = await getAllPropertiesForAdmin();
-    replacePropertiesCache(rows);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-let propertiesAdminLoadInFlight: Promise<boolean> | null = null;
-
-/** 관리자 화면용: 전체 매물 캐시를 서버에서 채웁니다. 동시 호출은 한 번의 로드로 합칩니다. */
-export async function ensurePropertiesCacheForAdmin(): Promise<boolean> {
-  if (typeof window === 'undefined') return false;
-  if (propertiesAdminLoadInFlight) return propertiesAdminLoadInFlight;
-  propertiesAdminLoadInFlight = refreshPropertiesCacheForAdmin().finally(() => {
-    propertiesAdminLoadInFlight = null;
-  });
-  return propertiesAdminLoadInFlight;
-}
-
-/** 관리자 세션에서 단건 매물 조회 (`/api/admin/properties/[id]`) */
-export async function getPropertyForAdmin(id: string): Promise<PropertyData | null> {
-  if (typeof window === 'undefined' || !id) return null;
-  try {
-    const res = await fetch(`/api/admin/properties/${encodeURIComponent(id)}`, {
-      cache: 'no-store',
-      credentials: 'same-origin',
-    });
-    if (!res.ok) return null;
-    return (await res.json()) as PropertyData;
-  } catch {
-    return null;
-  }
-}
 
 /** 앱 로그인 직후: 폴백 off 면 LS 없이 서버만, readwrite 면 1회 import 후 서버와 맞춤 */
 export async function bootstrapPropertiesFromServer(): Promise<void> {
@@ -640,71 +553,23 @@ export async function getAvailableProperties(): Promise<PropertyData[]> {
   }
 }
 
-export type { AdminInventoryFilter } from './propertiesHelpers';
 export {
   clearPropertiesClientCache,
   ensurePropertiesLoadedForApp,
   readPropertiesArray,
   writePropertiesArray,
 } from './propertiesStore';
-
-/**
- * 관리자 매물 화면용: getAvailableProperties 1회로 동기화 후 탭별 행·건수 반환 (중복 호출 최소화)
- */
-export async function loadAdminInventoryPage(
-  search = '',
-  filter: AdminInventoryFilter = 'all'
-): Promise<{
-  rows: PropertyData[];
-  nAll: number;
-  nNew: number;
-  nListed: number;
-  nPaused: number;
-  nHidden: number;
-  /** 신규 탭 알림(미확인·수정 재알림)용 서버 확인 시각 */
-  propertyAckAt: Map<string, Date>;
-}> {
-  if (typeof window === 'undefined') {
-    return { rows: [], nAll: 0, nNew: 0, nListed: 0, nPaused: 0, nHidden: 0, propertyAckAt: new Map() };
-  }
-  const rows = await getAllPropertiesForAdmin();
-  const { isPropertyNew, shouldShowPropertyInAdminNewTab } = await import('@/lib/adminNewUtils');
-  const { fetchPropertyAcknowledgedAtMap } = await import('@/lib/adminAckState');
-  const propertyAckAt = await fetchPropertyAcknowledgedAtMap();
-  const matchesAdminNewTab = (p: PropertyData) => shouldShowPropertyInAdminNewTab(p, propertyAckAt);
-
-  const keyword = search.trim().toLowerCase();
-
-  const ownerEmailByUid = new Map<string, string>();
-  if (keyword) {
-    const { getUsers } = await import('@/lib/api/auth');
-    getUsers().forEach((u) => {
-      if (u.uid && !u.deleted) ownerEmailByUid.set(u.uid, (u.email || '').toLowerCase());
-    });
-  }
-
-  const base = rows.filter((p) => !p.deleted && isParentPropertyRecord(p));
-  const keywordMatched = base.filter((p) => matchesAdminInventoryKeyword(p, keyword, ownerEmailByUid));
-
-  const nAll = keywordMatched.length;
-  const nNew = keywordMatched.filter((p) => matchesAdminNewTab(p)).length;
-  const nListed = keywordMatched.filter((p) => propertyMatchesAdminTab(p, 'listed', isPropertyNew)).length;
-  const nPaused = keywordMatched.filter((p) => propertyMatchesAdminTab(p, 'paused', isPropertyNew)).length;
-  const nHidden = keywordMatched.filter((p) => propertyMatchesAdminTab(p, 'hidden', isPropertyNew)).length;
-
-  const tabRows = keywordMatched.filter((p) =>
-    filter === 'new' ? matchesAdminNewTab(p) : propertyMatchesAdminTab(p, filter, isPropertyNew)
-  );
-  return {
-    rows: sortPropsNewestFirst(tabRows),
-    nAll,
-    nNew,
-    nListed,
-    nPaused,
-    nHidden,
-    propertyAckAt: new Map(propertyAckAt),
-  };
-}
+export type { AdminInventoryFilter } from './propertiesHelpers';
+export {
+  ensurePropertiesCacheForAdmin,
+  exportDeletedPropertiesToCSV,
+  getAllPropertiesForAdmin,
+  getDeletedPropertyLogs,
+  getPropertyForAdmin,
+  loadAdminInventoryPage,
+  refreshPropertiesCacheForAdmin,
+  type DeletedPropertyLog,
+} from './propertiesAdmin';
 
 /**
  * 실시간 매물 리스너 (서버 폴링 + 커스텀 이벤트)
@@ -1314,16 +1179,6 @@ export async function restoreProperty(id: string): Promise<void> {
 }
 
 /**
- * 삭제 기록 인터페이스
- */
-export interface DeletedPropertyLog {
-  id: string;
-  property: PropertyData;
-  deletedAt: string; // 영구 삭제 시간 (ISO 문자열)
-  deletedBy?: string; // 삭제한 사용자 ID
-}
-
-/**
  * 매물 영구 삭제 (완전 삭제 + 삭제 기록 저장)
  * 
  * @param id - 매물 ID
@@ -1361,97 +1216,6 @@ export async function permanentlyDeleteProperty(id: string, deletedBy?: string):
     ).catch(() => {});
   } catch (error) {
     console.error('Error permanently deleting property:', error);
-    throw error;
-  }
-}
-
-/**
- * 삭제된 매물 기록 조회 (관리자용)
- * 
- * @returns 삭제된 매물 기록 배열
- */
-export async function getDeletedPropertyLogs(): Promise<DeletedPropertyLog[]> {
-  try {
-    if (typeof window === 'undefined') return [];
-    await ensureAdminPropertyActionLogsLoaded();
-    const rows = getAdminPropertyActionLogsCached().filter((r) => r.actionType === 'DELETED');
-    const out: DeletedPropertyLog[] = rows.map((r) => {
-      const snap =
-        r.snapshotJson && typeof r.snapshotJson === 'object' && !Array.isArray(r.snapshotJson)
-          ? (r.snapshotJson as PropertyData)
-          : ({ id: r.propertyId } as PropertyData);
-      return {
-        id: r.id,
-        property: snap,
-        deletedAt:
-          typeof r.createdAt === 'string' ? r.createdAt : new Date(r.createdAt).toISOString(),
-        deletedBy: r.adminId ?? undefined,
-      };
-    });
-    return out.sort((a, b) => new Date(b.deletedAt).getTime() - new Date(a.deletedAt).getTime());
-  } catch (error) {
-    console.error('Error getting deleted property logs:', error);
-    return [];
-  }
-}
-
-/**
- * 삭제된 매물 기록을 CSV로 변환 (엑셀 다운로드용)
- * 
- * @returns CSV 문자열
- */
-export async function exportDeletedPropertiesToCSV(): Promise<string> {
-  try {
-    const logs = await getDeletedPropertyLogs();
-    
-    if (logs.length === 0) {
-      return 'No deleted properties found.';
-    }
-    
-    // CSV 헤더
-    const headers = [
-      'ID',
-      'Title',
-      'Address',
-      'Price (VND)',
-      'Area (m²)',
-      'Bedrooms',
-      'Bathrooms',
-      'Owner ID',
-      'Deleted At',
-      'Deleted By',
-      'Status',
-      'Created At',
-    ];
-    
-    // CSV 데이터 행
-    const rows = logs.map((log) => {
-      const prop = log.property;
-      return [
-        prop.id || '',
-        prop.title || '',
-        prop.address || '',
-        prop.price?.toString() || '',
-        prop.area?.toString() || '',
-        prop.bedrooms?.toString() || '',
-        prop.bathrooms?.toString() || '',
-        prop.ownerId || '',
-        log.deletedAt,
-        log.deletedBy || '',
-        prop.status || '',
-        prop.createdAt ? (typeof prop.createdAt === 'string' ? prop.createdAt : new Date(prop.createdAt).toISOString()) : '',
-      ];
-    });
-    
-    // CSV 생성 (BOM 추가로 한글 깨짐 방지)
-    const csvContent = [
-      '\uFEFF' + headers.join(','),
-      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-    ].join('\n');
-    
-    return csvContent;
-  } catch (error) {
-    console.error('Error exporting deleted properties to CSV:', error);
     throw error;
   }
 }
