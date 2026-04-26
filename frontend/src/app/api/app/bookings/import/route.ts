@@ -1,10 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import {
   bookingDataToUncheckedCreate,
   prismaBookingToBookingData,
 } from '@/lib/server/appBookingMapper';
 import { rejectAppWriteUnlessSyncSecret } from '@/lib/server/appSyncWriteGuard';
+import { appApiError } from '@/lib/server/appApiErrors';
+import { appApiOk } from '@/lib/server/appApiResponses';
 import type { BookingData } from '@/lib/api/bookings';
 
 const MAX_IMPORT = 5000;
@@ -17,17 +19,19 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: 'invalid_body' }, { status: 400 });
+    return appApiError('invalid_body', 400);
   }
 
   const bookings = Array.isArray(body.bookings) ? body.bookings : [];
-  if (bookings.length === 0) return NextResponse.json({ error: 'empty' }, { status: 400 });
-  if (bookings.length > MAX_IMPORT) return NextResponse.json({ error: 'too_many' }, { status: 400 });
+  if (bookings.length === 0) {
+    return appApiError('empty', 400, 'bookings array is empty.');
+  }
+  if (bookings.length > MAX_IMPORT) return appApiError('too_many', 400);
 
   try {
     const n = await prisma.booking.count();
     if (n > 0) {
-      return NextResponse.json({ ok: true, skipped: true, reason: 'database_not_empty' });
+      return appApiOk({ skipped: true, reason: 'database_not_empty' as const });
     }
 
     const users = await prisma.user.findMany({ select: { id: true } });
@@ -48,13 +52,12 @@ export async function POST(request: NextRequest) {
     }
 
     const rows = await prisma.booking.findMany({ orderBy: { updatedAt: 'desc' } });
-    return NextResponse.json({
-      ok: true,
+    return appApiOk({
       imported,
       bookings: rows.map(prismaBookingToBookingData),
     });
   } catch (e) {
     console.error('POST /api/app/bookings/import', e);
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
+    return appApiError('database_unavailable', 503);
   }
 }

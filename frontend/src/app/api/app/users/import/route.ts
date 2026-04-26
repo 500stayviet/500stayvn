@@ -1,10 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import {
   localStorageUserToPrismaUncheckedCreate,
   prismaUserToUserData,
 } from '@/lib/server/appUserMapper';
 import { rejectAppWriteUnlessSyncSecret } from '@/lib/server/appSyncWriteGuard';
+import { appApiError } from '@/lib/server/appApiErrors';
+import { appApiOk } from '@/lib/server/appApiResponses';
 import type { UserData } from '@/lib/api/auth';
 
 const MAX_IMPORT = 2000;
@@ -20,21 +22,21 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: 'invalid_body' }, { status: 400 });
+    return appApiError('invalid_body', 400);
   }
 
   const users = Array.isArray(body.users) ? body.users : [];
   if (users.length === 0) {
-    return NextResponse.json({ error: 'empty' }, { status: 400 });
+    return appApiError('empty', 400, 'users array is empty.');
   }
   if (users.length > MAX_IMPORT) {
-    return NextResponse.json({ error: 'too_many' }, { status: 400 });
+    return appApiError('too_many', 400);
   }
 
   try {
     const n = await prisma.user.count();
     if (n > 0) {
-      return NextResponse.json({ ok: true, skipped: true, reason: 'database_not_empty' });
+      return appApiOk({ skipped: true, reason: 'database_not_empty' as const });
     }
 
     let imported = 0;
@@ -51,13 +53,12 @@ export async function POST(request: NextRequest) {
     }
 
     const rows = await prisma.user.findMany({ where: { deleted: false } });
-    return NextResponse.json({
-      ok: true,
+    return appApiOk({
       imported,
       users: rows.map(prismaUserToUserData),
     });
   } catch (e) {
     console.error('POST /api/app/users/import', e);
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 });
+    return appApiError('database_unavailable', 503);
   }
 }
