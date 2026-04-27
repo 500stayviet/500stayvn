@@ -8,10 +8,13 @@ applications:
             # 상업 운영 표준: 재현 가능한 설치만 허용 (npm ci 실패 시 즉시 실패)
             - nvm use 20 || nvm install 20
             - echo "[preBuild] cwd $(pwd)"
+            # Amplify 콘솔 등에서 NODE_ENV=production 이 잡혀 있으면 `npm ci` 가 devDependencies 를 생략한다.
+            # → vitest·eslint·@next/bundle-analyzer 미설치로 test/lint/build 가 연쇄 실패. 설치 단계만 development 로 고정.
+            - echo "[preBuild] npm ci (devDependencies 포함; NODE_ENV=development 일회 적용)"
             # --ignore-scripts 금지: Next.js transitive `sharp` 가 install 스크립트로 Linux용 바이너리를
             # 내려받는다. 무시하면 CodeBuild(Linux)에서 next build 단계가 실패할 수 있음(로컬 Windows와 불일치).
             - |
-              npm ci --no-audit || {
+              NODE_ENV=development npm ci --no-audit || {
                 echo "[preBuild] npm ci failed; dumping npm logs"
                 ls -la /root/.npm/_logs || true
                 latest_log="$(ls -1t /root/.npm/_logs/*-debug-0.log 2>/dev/null | head -n 1)"
@@ -21,6 +24,7 @@ applications:
                 fi
                 exit 1
               }
+            - echo "[preBuild] npm ci OK"
         build:
           commands:
             - |
@@ -49,13 +53,20 @@ applications:
               NEXT_PUBLIC_STAYVIET_PRODUCTION_HOST=$NEXT_PUBLIC_STAYVIET_PRODUCTION_HOST
               EOF
             # Prisma Client (postinstall 이 이미 돌았어도 빌드 단계에서 한 번 더 고정)
+            - echo "[build] prisma generate"
             - npx prisma generate --schema=./prisma/schema.prisma
             # GitHub Actions test-and-typecheck 와 동일 품질 게이트 (Lint 0 · 타입 · 단테 후 빌드)
+            - echo "[build] npm test"
             - npm test
+            - echo "[build] check:banned-terms"
             - npm run check:banned-terms
+            - echo "[build] tsc"
             - npx tsc --noEmit
+            - echo "[build] lint:p3-tier3"
             - npm run lint:p3-tier3
+            - echo "[build] next build"
             - npm run build
+            - echo "[build] --- done ---"
           env:
             NODE_ENV: production
             # next build / 클라이언트 번들이 참조하는 공개 Firebase 키 — CI와 동일 플레이스홀더(콘솔에서 덮어쓰기 가능)

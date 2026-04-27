@@ -42,13 +42,14 @@
 
 **앱 루트:** `frontend`
 
-**의도적 정렬:** `build` 단계에서 GitHub `test-and-typecheck`와 **동일한 증거**를 남긴다. Amplify `preBuild`는 `npm ci --ignore-scripts`이므로 **`prisma generate`를 타입체크·테스트보다 먼저** 실행한다.
+**의도적 정렬:** `build` 단계에서 GitHub `test-and-typecheck`와 **동일한 증거**를 남긴다. `preBuild`의 `npm ci`는 **`NODE_ENV=development`로 한 번만 실행**한다 — Amplify 콘솔 등에서 `NODE_ENV=production`이 잡혀 있으면 npm이 **devDependencies**(vitest·eslint·`@next/bundle-analyzer` 등)를 생략해 테스트·린트·빌드가 연쇄 실패한다. `npm ci`에는 **`--ignore-scripts`를 쓰지 않는다**(Next transitive `sharp`가 Linux용 바이너리를 install 스크립트로 받음). 따라서 **`prisma generate`는 `build` 단계에서** 타입체크·테스트보다 먼저 실행한다.
 
 1. `npx prisma generate --schema=./prisma/schema.prisma`
 2. `npm test`
-3. `npx tsc --noEmit`
-4. `npm run lint:p3-tier3`
-5. `npm run build` (내부에서 Prisma generate가 한 번 더 호출될 수 있음 — 무해)
+3. `npm run check:banned-terms`
+4. `npx tsc --noEmit`
+5. `npm run lint:p3-tier3`
+6. `npm run build` (내부에서 Prisma generate가 한 번 더 호출될 수 있음 — 무해)
 
 이렀로 Amplify만 통과하고 GitHub에서 린트가 깨지는 **이분법**을 줄인다. Amplify 콘솔에 설정한 **환경 변수**(DB, OAuth, AWS Location 등)는 기존과 같이 필요하며, Next 빌드 시 필요한 `NEXT_PUBLIC_*` 누락은 빌드 로그로 즉시 드러난다.
 
