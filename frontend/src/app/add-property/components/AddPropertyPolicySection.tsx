@@ -8,10 +8,12 @@ import {
   FULL_FURNITURE_IDS,
   FULL_OPTION_KITCHEN_IDS,
 } from "@/lib/constants/facilities";
+import type { SupportedLanguage } from "@/lib/api/translation";
+import { getUIText } from "@/utils/i18n";
 import type { AddPropertyColors } from "../constants/addPropertyColors";
 
 interface AddPropertyPolicySectionProps {
-  currentLanguage: string;
+  currentLanguage: SupportedLanguage;
   colors: AddPropertyColors;
   selectedFacilities: string[];
   maxPets: number;
@@ -39,6 +41,7 @@ export function AddPropertyPolicySection({
   onCleaningPerWeekChange,
   getLocalizedLabel,
 }: AddPropertyPolicySectionProps) {
+  const lang = currentLanguage;
   return (
     <section
       className="p-5 rounded-2xl text-left"
@@ -48,15 +51,7 @@ export function AddPropertyPolicySection({
       }}
     >
       <h2 className="text-sm font-bold mb-4 text-left" style={{ color: colors.text }}>
-        {currentLanguage === "ko"
-          ? "숙소시설 및 정책"
-          : currentLanguage === "vi"
-            ? "Tiện ích và chính sách"
-            : currentLanguage === "ja"
-              ? "施設とポリシー"
-              : currentLanguage === "zh"
-                ? "设施与政策"
-                : "Facilities & Policy"}
+        {getUIText("listingPolicyFacilitiesTitle", lang)}
       </h2>
       <div className="space-y-6 text-left">
         {FACILITY_CATEGORIES.map((cat) => {
@@ -85,7 +80,7 @@ export function AddPropertyPolicySection({
                   <div className="flex items-center gap-1 bg-orange-50 px-2 py-0.5 rounded-full">
                     <Sparkles className="w-3 h-3 text-orange-500" />
                     <p className="text-[10px] text-orange-600 font-medium">
-                      모든 선택 시 뱃지 획득
+                      {getUIText("listingBadgeAllFacilities", lang)}
                     </p>
                   </div>
                 )}
@@ -124,11 +119,7 @@ export function AddPropertyPolicySection({
                   <div className="grid grid-cols-2 gap-3 items-start">
                     <div className="flex flex-col gap-1">
                       <span className="text-[11px] font-medium" style={{ color: colors.textSecondary }}>
-                        {currentLanguage === "ko"
-                          ? "최대 마리수"
-                          : currentLanguage === "vi"
-                            ? "Số con tối đa"
-                            : "Max pets"}
+                        {getUIText("listingMaxPets", lang)}
                       </span>
                       <select
                         value={maxPets}
@@ -150,11 +141,7 @@ export function AddPropertyPolicySection({
 
                     <div className="flex flex-col gap-1">
                       <span className="text-[11px] font-medium" style={{ color: colors.textSecondary }}>
-                        {currentLanguage === "ko"
-                          ? "펫 수수료 (마리당)"
-                          : currentLanguage === "vi"
-                            ? "Phí thú cưng (mỗi con)"
-                            : "Pet fee (per pet)"}
+                        {getUIText("listingPetFeePerHead", lang)}
                       </span>
                       <div className="flex items-center gap-2">
                         <input
@@ -174,7 +161,7 @@ export function AddPropertyPolicySection({
                           }}
                         />
                         <span className="text-xs font-medium shrink-0" style={{ color: colors.textSecondary }}>
-                          VND
+                          {getUIText("curVnd", lang)}
                         </span>
                       </div>
                     </div>
@@ -186,11 +173,7 @@ export function AddPropertyPolicySection({
                 <div className="mt-3">
                   <div className="flex flex-col gap-1">
                     <span className="text-[11px] font-medium" style={{ color: colors.textSecondary }}>
-                      {currentLanguage === "ko"
-                        ? "주당 청소 횟수"
-                        : currentLanguage === "vi"
-                          ? "Số lần dọn dẹp/tuần"
-                          : "Cleaning per week"}
+                      {getUIText("listingCleansPerWeek", lang)}
                     </span>
                     <select
                       value={cleaningPerWeek}
@@ -205,11 +188,7 @@ export function AddPropertyPolicySection({
                       {[1, 2, 3, 4, 5, 6, 7].map((n) => (
                         <option key={n} value={n}>
                           {n}
-                          {currentLanguage === "ko"
-                            ? "회"
-                            : currentLanguage === "vi"
-                              ? " lần"
-                              : "x"}
+                          {getUIText("listingCleanSuffixTimes", lang)}
                         </option>
                       ))}
                     </select>
@@ -220,31 +199,19 @@ export function AddPropertyPolicySection({
               {fullFurniture && (
                 <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 text-green-800 text-[10px] font-bold border border-green-300">
                   <Sparkles className="w-3.5 h-3.5" />
-                  {currentLanguage === "ko"
-                    ? "풀 가구"
-                    : currentLanguage === "vi"
-                      ? "Nội thất đầy đủ"
-                      : "Full Furniture"}
+                  {getUIText("fullFurniture", lang)}
                 </div>
               )}
               {fullElectronics && (
                 <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 text-green-800 text-[10px] font-bold border border-green-300">
                   <Sparkles className="w-3.5 h-3.5" />
-                  {currentLanguage === "ko"
-                    ? "풀 가전"
-                    : currentLanguage === "vi"
-                      ? "Điện tử đầy đủ"
-                      : "Full Electronics"}
+                  {getUIText("fullElectronics", lang)}
                 </div>
               )}
               {fullOptionKitchen && (
                 <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 text-green-800 text-[10px] font-bold border border-green-300">
                   <Sparkles className="w-3.5 h-3.5" />
-                  {currentLanguage === "ko"
-                    ? "풀옵션 주방"
-                    : currentLanguage === "vi"
-                      ? "Bếp đầy đủ"
-                      : "Full Kitchen"}
+                  {getUIText("fullKitchen", lang)}
                 </div>
               )}
             </div>

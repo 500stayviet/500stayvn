@@ -1,31 +1,36 @@
-'use client';
+"use client";
 
-import { useRouter } from 'next/navigation';
-import AdminRouteGuard from '@/components/admin/AdminRouteGuard';
-import { useAdminMe } from '@/contexts/AdminMeContext';
-import { logoutAdmin } from '@/lib/api/adminAuth';
+import { useRouter } from "next/navigation";
+import AdminRouteGuard from "@/components/admin/AdminRouteGuard";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useAdminMe } from "@/contexts/AdminMeContext";
+import { logoutAdmin } from "@/lib/api/adminAuth";
+import { getUIText } from "@/utils/i18n";
 
 export default function AdminNoAccessPage() {
   const { me } = useAdminMe();
   const router = useRouter();
+  const { currentLanguage } = useLanguage();
 
   const onLogout = async () => {
     await logoutAdmin();
-    router.replace('/admin/login');
+    router.replace("/admin/login");
   };
 
   return (
     <AdminRouteGuard>
       <div className="mx-auto max-w-lg text-center">
-        <h1 className="text-lg font-bold text-slate-900">접근 가능한 메뉴가 없습니다</h1>
+        <h1 className="text-lg font-bold text-slate-900">{getUIText("adminNoAccessTitle", currentLanguage)}</h1>
         <p className="mt-2 text-sm text-slate-600">
           {me?.username ? (
             <>
-              계정 <span className="font-medium">{me.username}</span> 에 부여된 권한이 없습니다. 슈퍼
-              관리자에게 메뉴 권한을 요청하세요.
+              {getUIText("adminNoAccessBodyWithUser", currentLanguage).replace(
+                "{{username}}",
+                me.username,
+              )}
             </>
           ) : (
-            '슈퍼 관리자에게 메뉴 권한을 요청하세요.'
+            getUIText("adminNoAccessBodyGeneric", currentLanguage)
           )}
         </p>
         <button
@@ -33,7 +38,7 @@ export default function AdminNoAccessPage() {
           onClick={() => void onLogout()}
           className="mt-6 text-sm font-medium text-slate-700 underline underline-offset-2 hover:text-slate-900"
         >
-          로그아웃 후 다른 계정으로 로그인
+          {getUIText("adminNoAccessLogout", currentLanguage)}
         </button>
       </div>
     </AdminRouteGuard>

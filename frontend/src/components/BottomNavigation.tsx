@@ -1,10 +1,5 @@
 /**
- * BottomNavigation 컴포넌트
- * 
- * 모바일 앱 스타일의 하단 네비게이션 바
- * - 임대인 모드: 홈 / 매물 등록 / 매물관리 / 채팅 / 프로필
- * - 임차인 모드: 홈 / 지도로 검색 / 예약 / 찜 / 프로필
- * - KYC 1~3단계 완료 여부에 따라 임대인 모드 활성화
+ * Mobile-style bottom navigation (host vs guest items based on KYC / role).
  */
 
 'use client';
@@ -32,10 +27,8 @@ export default function BottomNavigation({ hideOnPaths = [] }: BottomNavigationP
   const [isOwnerMode, setIsOwnerMode] = useState(false);
   const [checkingOwnerStatus, setCheckingOwnerStatus] = useState(true);
 
-  // KYC 상태 확인 및 임대인 모드 설정 (캐싱 및 안전성 강화)
   useEffect(() => {
     const checkOwnerStatus = async () => {
-      // 사용자가 없으면 임차인 모드로 설정
       if (!user) {
         setIsOwnerMode(false);
         setCheckingOwnerStatus(false);
@@ -43,21 +36,16 @@ export default function BottomNavigation({ hideOnPaths = [] }: BottomNavigationP
       }
 
       try {
-        // 사용자 데이터 가져오기
         const userData = await getCurrentUserData(user.uid);
-        
+
         if (!userData) {
-          // 사용자 데이터가 없으면 임차인 모드
           setIsOwnerMode(false);
           setCheckingOwnerStatus(false);
           return;
         }
 
-        // KYC 1~3단계 토큰이 모두 있어야 임대인 모드 활성화
-        // 사용자 요구사항: "코인3개가 되면 다 사용가능한거야"
         const kycSteps = userData.kyc_steps || {};
-        
-        // 안전한 boolean 검증 (null/undefined 방지)
+
         const step1Completed = Boolean(kycSteps.step1);
         const step2Completed = Boolean(kycSteps.step2);
         const step3Completed = Boolean(kycSteps.step3);
@@ -75,7 +63,6 @@ export default function BottomNavigation({ hideOnPaths = [] }: BottomNavigationP
         }
       } catch (error) {
         console.error('Failed to check owner status:', error);
-        // 에러 발생 시 안전하게 임차인 모드로 설정
         setIsOwnerMode(false);
       } finally {
         setCheckingOwnerStatus(false);
@@ -100,9 +87,7 @@ export default function BottomNavigation({ hideOnPaths = [] }: BottomNavigationP
     };
   }, [user]);
 
-  // 현재 경로에 따라 활성 탭 설정
   useEffect(() => {
-    // 경로에 따라 활성 탭 설정
     if (pathname === '/') {
       setActiveTab('home');
     } else if (pathname.startsWith('/search') || pathname.startsWith('/map')) {
@@ -124,10 +109,8 @@ export default function BottomNavigation({ hideOnPaths = [] }: BottomNavigationP
     setIsVisible(!shouldHide);
   }, [pathname, hideOnPaths]);
 
-  /** useAuth user와 무관하게 로컬 액터 uid가 있으면 로그인된 것으로 간주(캐시·hydration 레이스 완화) */
   const isAppLoggedIn = Boolean(user || (typeof window !== 'undefined' && getCurrentUserId()));
 
-  // 네비게이션 아이템 클릭 핸들러
   const handleNavigation = (tab: string) => {
     setActiveTab(tab);
     
@@ -136,11 +119,9 @@ export default function BottomNavigation({ hideOnPaths = [] }: BottomNavigationP
         router.push('/');
         break;
       case 'search':
-        // 지도 검색 페이지로 이동
         router.push('/map');
         break;
       case 'add':
-        // 로그인 확인 후 숙소 등록 페이지로 이동
         if (isAppLoggedIn) {
           router.push('/add-property');
         } else {
@@ -148,7 +129,6 @@ export default function BottomNavigation({ hideOnPaths = [] }: BottomNavigationP
         }
         break;
       case 'manage':
-        // 로그인 확인 후 매물 관리 페이지로 이동
         if (isAppLoggedIn) {
           router.push('/profile/my-properties');
         } else {
@@ -156,9 +136,7 @@ export default function BottomNavigation({ hideOnPaths = [] }: BottomNavigationP
         }
         break;
       case 'chat':
-        // 로그인 확인 후 채팅/예약 페이지로 이동
         if (isAppLoggedIn) {
-          // 사용자 역할에 따라 다른 페이지로 이동
           if (isOwnerMode) {
             router.push('/host/bookings');
           } else {
@@ -169,7 +147,6 @@ export default function BottomNavigation({ hideOnPaths = [] }: BottomNavigationP
         }
         break;
       case 'wishlist':
-        // 로그인 확인 후 찜 목록 페이지로 이동
         if (isAppLoggedIn) {
           router.push('/wishlist');
         } else {
@@ -177,7 +154,6 @@ export default function BottomNavigation({ hideOnPaths = [] }: BottomNavigationP
         }
         break;
       case 'profile':
-        // 로그인 확인 후 프로필 페이지로 이동
         if (isAppLoggedIn) {
           router.push('/profile');
         } else {
@@ -187,7 +163,6 @@ export default function BottomNavigation({ hideOnPaths = [] }: BottomNavigationP
     }
   };
 
-  // 네비게이션 숨김 여부 확인
   if (!isVisible || checkingOwnerStatus || authLoading) {
     return null;
   }
@@ -229,7 +204,6 @@ export default function BottomNavigation({ hideOnPaths = [] }: BottomNavigationP
     }
   ];
 
-  // 임차인 모드 네비게이션 아이템 (add-property 페이지와 동일한 라벨)
   const guestNavItems = [
     {
       id: 'home',
@@ -275,6 +249,7 @@ export default function BottomNavigation({ hideOnPaths = [] }: BottomNavigationP
 
           return (
             <button
+              type="button"
               key={item.id}
               onClick={() => handleNavigation(item.id)}
               className="flex flex-col items-center justify-center gap-0.5 px-2 py-1.5 min-h-[44px] min-w-[44px] rounded-lg transition-all duration-200 flex-1"

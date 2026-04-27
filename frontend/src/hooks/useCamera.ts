@@ -1,16 +1,31 @@
 /**
- * 카메라 훅
- * 
- * getUserMedia를 사용한 실시간 카메라 스트림 관리
+ * Camera hook — getUserMedia stream management
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { readStoredUiLanguage } from '@/lib/uiLanguageStorage';
+import { getUIText } from '@/utils/i18n';
 
 export type CameraFacingMode = 'user' | 'environment';
 
 interface UseCameraOptions {
   facingMode?: CameraFacingMode;
   onError?: (error: Error) => void;
+}
+
+function mapCameraError(err: unknown): Error {
+  const lang = readStoredUiLanguage();
+  const name = err instanceof Error ? err.name : '';
+  const message = err instanceof Error ? err.message : String(err);
+  if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+    return new Error(getUIText('cameraErrPermissionDenied', lang));
+  }
+  if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+    return new Error(getUIText('cameraErrNotFound', lang));
+  }
+  return new Error(
+    getUIText('cameraErrGeneric', lang).replace(/\{\{detail\}\}/g, message),
+  );
 }
 
 export function useCamera(options: UseCameraOptions = {}) {
@@ -21,7 +36,6 @@ export function useCamera(options: UseCameraOptions = {}) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  // 카메라 시작
   const startCamera = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -40,31 +54,19 @@ export function useCamera(options: UseCameraOptions = {}) {
       streamRef.current = mediaStream;
       setStream(mediaStream);
 
-      // 비디오 요소에 스트림 연결
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
         await videoRef.current.play();
       }
     } catch (err: unknown) {
-      const error = err instanceof Error ? err : new Error(String(err));
-      setError(error);
-      onError?.(error);
-      const name = err instanceof Error ? err.name : '';
-      const message = err instanceof Error ? err.message : String(err);
-      // 권한 거부 에러 처리
-      if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
-        setError(new Error('카메라 권한이 거부되었습니다. 설정에서 카메라 권한을 허용해주세요.'));
-      } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
-        setError(new Error('카메라를 찾을 수 없습니다.'));
-      } else {
-        setError(new Error(`카메라 오류: ${message}`));
-      }
+      const mapped = mapCameraError(err);
+      setError(mapped);
+      onError?.(mapped);
     } finally {
       setIsLoading(false);
     }
   }, [facingMode, onError]);
 
-  // 카메라 중지
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => {
@@ -79,61 +81,52 @@ export function useCamera(options: UseCameraOptions = {}) {
     }
   }, []);
 
-  // 카메라 전환 (전면/후면)
-  const switchCamera = useCallback(async (newFacingMode: CameraFacingMode) => {
-    // 기존 스트림 정리
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => {
-        track.stop();
-      });
-      streamRef.current = null;
-    }
-
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 100)); // 짧은 지연
-    
-    const constraints: MediaStreamConstraints = {
-      video: {
-        facingMode: newFacingMode,
-        width: { ideal: 1920 },
-        height: { ideal: 1080 },
-      },
-      audio: false,
-    };
-
-    try {
-      setIsLoading(true);
-      setError(null);
-      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
-      streamRef.current = mediaStream;
-      setStream(mediaStream);
+  const switchCamera = useCallback(
+    async (newFacingMode: CameraFacingMode) => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => {
+          track.stop();
+        });
+        streamRef.current = null;
+      }
 
       if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-        await videoRef.current.play();
+        videoRef.current.srcObject = null;
       }
-    } catch (err: unknown) {
-      const error = err instanceof Error ? err : new Error(String(err));
-      setError(error);
-      onError?.(error);
-      const name = err instanceof Error ? err.name : '';
-      const message = err instanceof Error ? err.message : String(err);
-      if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
-        setError(new Error('카메라 권한이 거부되었습니다. 설정에서 카메라 권한을 허용해주세요.'));
-      } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
-        setError(new Error('카메라를 찾을 수 없습니다.'));
-      } else {
-        setError(new Error(`카메라 오류: ${message}`));
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  }, [onError]);
 
-  // 비디오에서 캔버스로 캡처
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      const constraints: MediaStreamConstraints = {
+        video: {
+          facingMode: newFacingMode,
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
+        audio: false,
+      };
+
+      try {
+        setIsLoading(true);
+        setError(null);
+        const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+        streamRef.current = mediaStream;
+        setStream(mediaStream);
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = mediaStream;
+          await videoRef.current.play();
+        }
+      } catch (err: unknown) {
+        const mapped = mapCameraError(err);
+        setError(mapped);
+        onError?.(mapped);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [onError],
+  );
+
   const captureFrame = useCallback((): HTMLCanvasElement | null => {
     if (!videoRef.current || !stream) {
       return null;
@@ -153,7 +146,6 @@ export function useCamera(options: UseCameraOptions = {}) {
     return canvas;
   }, [stream]);
 
-  // 컴포넌트 언마운트 시 정리
   useEffect(() => {
     return () => {
       stopCamera();

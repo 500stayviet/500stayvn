@@ -48,7 +48,7 @@ export interface BankProvider {
   createWithdrawalRequest(input: {
     amount: number;
     bankAccountId: string;
-  }): Promise<{ ok: boolean; message?: string }>;
+  }): Promise<{ ok: boolean; message?: string; appErrorCode?: string }>;
   getOwnerBalances(): Promise<ServerOwnerBalances>;
 }
 

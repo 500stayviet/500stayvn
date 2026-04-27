@@ -6,6 +6,8 @@ import {
   FULL_FURNITURE_IDS,
   FULL_OPTION_KITCHEN_IDS,
 } from "@/lib/constants/facilities";
+import type { SupportedLanguage } from "@/lib/api/translation";
+import { getUIText } from "@/utils/i18n";
 
 interface EditPropertyPolicySectionProps {
   currentLanguage: string;
@@ -30,17 +32,14 @@ export default function EditPropertyPolicySection({
   setPetFeeAmount,
   setCleaningPerWeek,
 }: EditPropertyPolicySectionProps) {
-  const getLocalizedLabel = (label: { en: string } & Record<string, string>) =>
-    label[currentLanguage] || label.en;
+  const lang = currentLanguage as SupportedLanguage;
+  const getLocalizedLabel = (label: { en: string; ko?: string; vi?: string; ja?: string; zh?: string }) =>
+    label[lang] ?? label.en;
 
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-3">
-        {currentLanguage === "ko"
-          ? "숙소시설 및 정책"
-          : currentLanguage === "vi"
-            ? "Tiện ích và chính sách"
-            : "Facilities & Policy"}
+        {getUIText("listingPolicyFacilitiesTitle", lang)}
       </label>
       <div className="space-y-4">
         {FACILITY_CATEGORIES.map((cat) => {
@@ -63,13 +62,7 @@ export default function EditPropertyPolicySection({
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <p className="text-xs font-medium text-gray-500">{catLabel}</p>
                 {isBadgeCategory && (
-                  <p className="text-[10px] text-gray-500">
-                    {currentLanguage === "ko"
-                      ? "모든 아이콘 선택시 뱃지 획득"
-                      : currentLanguage === "vi"
-                        ? "Chọn đủ tất cả để nhận huy hiệu"
-                        : "Select all to earn badge"}
-                  </p>
+                  <p className="text-[10px] text-gray-500">{getUIText("listingBadgeAllFacilities", lang)}</p>
                 )}
               </div>
               <div className="grid grid-cols-3 gap-2">
@@ -86,9 +79,7 @@ export default function EditPropertyPolicySection({
                         type="button"
                         onClick={() =>
                           setSelectedAmenities((prev) =>
-                            prev.includes(opt.id)
-                              ? prev.filter((x) => x !== opt.id)
-                              : [...prev, opt.id],
+                            prev.includes(opt.id) ? prev.filter((x) => x !== opt.id) : [...prev, opt.id],
                           )
                         }
                         className={`w-full flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border-2 transition-all ${
@@ -104,13 +95,7 @@ export default function EditPropertyPolicySection({
                       {isPet && isSelected && (
                         <div className="w-full space-y-1">
                           <div className="flex items-center gap-1">
-                            <span className="text-[9px] text-gray-600 shrink-0">
-                              {currentLanguage === "ko"
-                                ? "최대 마리수"
-                                : currentLanguage === "vi"
-                                  ? "Số con tối đa"
-                                  : "Max pets"}
-                            </span>
+                            <span className="text-[9px] text-gray-600 shrink-0">{getUIText("listingMaxPets", lang)}</span>
                             <select
                               value={maxPets}
                               onChange={(e) => setMaxPets(Number(e.target.value))}
@@ -135,7 +120,7 @@ export default function EditPropertyPolicySection({
                               placeholder="0"
                               className="w-14 px-1.5 py-0.5 text-[10px] border border-gray-200 rounded focus:ring-1 focus:ring-blue-500"
                             />
-                            <span className="text-[9px] text-gray-600 font-medium shrink-0">VND</span>
+                            <span className="text-[9px] text-gray-600 font-medium shrink-0">{getUIText("curVnd", lang)}</span>
                           </div>
                         </div>
                       )}
@@ -150,7 +135,7 @@ export default function EditPropertyPolicySection({
                             {[1, 2, 3, 4, 5, 6, 7].map((n) => (
                               <option key={n} value={n}>
                                 {n}
-                                {currentLanguage === "ko" ? "회" : currentLanguage === "vi" ? " lần" : "x"}
+                                {getUIText("listingCleanSuffixTimes", lang)}
                               </option>
                             ))}
                           </select>
@@ -164,31 +149,19 @@ export default function EditPropertyPolicySection({
               {fullFurniture && (
                 <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 text-green-800 text-[10px] font-bold border border-green-300">
                   <Sparkles className="w-3.5 h-3.5" />
-                  {currentLanguage === "ko"
-                    ? "풀 가구"
-                    : currentLanguage === "vi"
-                      ? "Nội thất đầy đủ"
-                      : "Full Furniture"}
+                  {getUIText("fullFurniture", lang)}
                 </div>
               )}
               {fullElectronics && (
                 <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 text-green-800 text-[10px] font-bold border border-green-300">
                   <Sparkles className="w-3.5 h-3.5" />
-                  {currentLanguage === "ko"
-                    ? "풀 가전"
-                    : currentLanguage === "vi"
-                      ? "Điện tử đầy đủ"
-                      : "Full Electronics"}
+                  {getUIText("fullElectronics", lang)}
                 </div>
               )}
               {fullOptionKitchen && (
                 <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 text-green-800 text-[10px] font-bold border border-green-300">
                   <Sparkles className="w-3.5 h-3.5" />
-                  {currentLanguage === "ko"
-                    ? "풀옵션 주방"
-                    : currentLanguage === "vi"
-                      ? "Bếp đầy đủ"
-                      : "Full Kitchen"}
+                  {getUIText("fullKitchen", lang)}
                 </div>
               )}
             </div>

@@ -6,8 +6,11 @@ import {
   normalizePermissionMap,
   type AdminPermissionMap,
 } from "@/lib/adminPermissions";
+import { formatAppApiErrorMessage } from "@/lib/api/formatAppApiError";
 import { useAdminMe } from "@/contexts/AdminMeContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useAdminDomainRefresh } from "@/lib/adminDomainEventsClient";
+import { getUIText } from "@/utils/i18n";
 
 export type AdminAccountRow = {
   id: string;
@@ -24,6 +27,7 @@ export type AdminAccountRow = {
  */
 export function useAdminAccountsPage() {
   const { me, refresh } = useAdminMe();
+  const { currentLanguage } = useLanguage();
   const [list, setList] = useState<AdminAccountRow[]>([]);
   const [loadErr, setLoadErr] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -56,7 +60,7 @@ export function useAdminAccountsPage() {
         permissions: normalizePermissionMap(a.permissions),
       })),
     );
-  }, []);
+  }, [currentLanguage]);
 
   useEffect(() => {
     void load();
@@ -115,7 +119,12 @@ export function useAdminAccountsPage() {
       });
       if (!r.ok) {
         const e = await r.json().catch(() => ({}));
-        setLoadErr((e as { error?: string }).error || "저장 실패");
+        const raw = (e as { error?: string }).error;
+        setLoadErr(
+          raw
+            ? formatAppApiErrorMessage(raw, currentLanguage)
+            : getUIText("adminAccountsSaveFailed", currentLanguage),
+        );
         return;
       }
       setEditNewPassword("");
@@ -139,7 +148,12 @@ export function useAdminAccountsPage() {
       });
       if (!r.ok) {
         const e = await r.json().catch(() => ({}));
-        setLoadErr((e as { error?: string }).error || "저장 실패");
+        const raw = (e as { error?: string }).error;
+        setLoadErr(
+          raw
+            ? formatAppApiErrorMessage(raw, currentLanguage)
+            : getUIText("adminAccountsSaveFailed", currentLanguage),
+        );
         return;
       }
       await load();
@@ -167,7 +181,12 @@ export function useAdminAccountsPage() {
     });
     if (!r.ok) {
       const err = await r.json().catch(() => ({}));
-      setLoadErr((err as { error?: string }).error || "생성 실패");
+      const raw = (err as { error?: string }).error;
+      setLoadErr(
+        raw
+          ? formatAppApiErrorMessage(raw, currentLanguage)
+          : getUIText("adminAccountsCreateFailed", currentLanguage),
+      );
       return;
     }
     setShowCreate(false);
@@ -191,7 +210,12 @@ export function useAdminAccountsPage() {
       });
       if (!r.ok) {
         const err = await r.json().catch(() => ({}));
-        setLoadErr((err as { error?: string }).error || "변경 실패");
+        const raw = (err as { error?: string }).error;
+        setLoadErr(
+          raw
+            ? formatAppApiErrorMessage(raw, currentLanguage)
+            : getUIText("adminAccountsToggleFailed", currentLanguage),
+        );
         return;
       }
       await load();

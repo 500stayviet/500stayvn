@@ -1,9 +1,6 @@
 'use client';
 
-import {
-  messageFromAppApiFailureJson,
-  unwrapAppApiData,
-} from '@/lib/api/appApiEnvelope';
+import { unwrapAppApiData } from '@/lib/api/appApiEnvelope';
 import { withAppActor } from '@/lib/api/withAppActor';
 
 export type ServerBankAccount = {
@@ -106,7 +103,7 @@ export async function getAppWithdrawalRequests(): Promise<ServerWithdrawalReques
 export async function createAppWithdrawalRequest(input: {
   amount: number;
   bankAccountId: string;
-}): Promise<{ ok: boolean; message?: string }> {
+}): Promise<{ ok: boolean; message?: string; appErrorCode?: string }> {
   const res = await fetch(
     '/api/app/finance/withdrawals',
     withAppActor({
@@ -120,13 +117,21 @@ export async function createAppWithdrawalRequest(input: {
     return { ok: true };
   }
   try {
-    const raw = await res.json();
+    const raw = (await res.json()) as {
+      ok?: boolean;
+      error?: { code?: string; message?: string };
+    };
+    const code =
+      raw && typeof raw === "object" && raw.ok === false && typeof raw.error?.code === "string"
+        ? raw.error.code
+        : undefined;
     return {
       ok: false,
-      message: messageFromAppApiFailureJson(raw) ?? 'request_failed',
+      message: code ?? "request_failed",
+      appErrorCode: code,
     };
   } catch {
-    return { ok: false, message: 'request_failed' };
+    return { ok: false, message: "request_failed" };
   }
 }
 

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import type { SupportedLanguage } from "@/lib/api/translation";
 import { searchRegions } from "@/lib/data/vietnam-regions";
 import { LISTING_MAX_SUPPLY_DAYS } from "@/lib/constants/listingCalendar";
 import { useAddPropertyAccess } from "./useAddPropertyAccess";
@@ -132,15 +133,14 @@ export function useAddPropertyPageState({
     },
   });
 
-  const getLocalizedLabel = (
-    label: { en: string; ko?: string; vi?: string; ja?: string; zh?: string },
-  ) => {
-    if (currentLanguage === "ko") return label.ko ?? label.en;
-    if (currentLanguage === "vi") return label.vi ?? label.en;
-    if (currentLanguage === "ja") return label.ja ?? label.en;
-    if (currentLanguage === "zh") return label.zh ?? label.en;
-    return label.en;
-  };
+  const lang = currentLanguage as SupportedLanguage;
+  const getLocalizedLabel = (label: {
+    en: string;
+    ko?: string;
+    vi?: string;
+    ja?: string;
+    zh?: string;
+  }) => (label[lang] ?? label.en) as string;
 
   const clearAddress = () => {
     setAddress("");

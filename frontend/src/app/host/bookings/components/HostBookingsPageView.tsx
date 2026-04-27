@@ -18,52 +18,44 @@ const STATUS_COLORS = {
   completed: "bg-gray-100 text-gray-700 border border-gray-300",
 };
 
-const STATUS_LABELS: Record<
-  "pending" | "confirmed" | "cancelled_before" | "cancelled_after" | "completed",
-  Record<SupportedLanguage, string>
-> = {
-  pending: {
-    ko: "예약 요청",
-    vi: "Yêu cầu đặt phòng",
-    en: "Booking Request",
-    ja: "予約リクエスト",
-    zh: "预订请求",
-  },
-  confirmed: {
-    ko: "예약 확정",
-    vi: "Đặt phòng đã xác nhận",
-    en: "Booking Confirmed",
-    ja: "予約確定",
-    zh: "预订确认",
-  },
-  cancelled_before: {
-    ko: "요청 취소",
-    vi: "Yêu cầu đã hủy",
-    en: "Request Cancelled",
-    ja: "リクエストキャンセル",
-    zh: "请求取消",
-  },
-  cancelled_after: {
-    ko: "예약 취소",
-    vi: "Đặt phòng đã hủy",
-    en: "Booking Cancelled",
-    ja: "予約キャンセル",
-    zh: "预订取消",
-  },
-  completed: {
-    ko: "완료됨",
-    vi: "Hoàn thành",
-    en: "Completed",
-    ja: "完了済み",
-    zh: "已完成",
-  },
-};
-
-const getCancellationType = (
+function getHostBookingCardPresentation(
   booking: BookingData,
-): "cancelled_before" | "cancelled_after" => {
-  return booking.confirmedAt ? "cancelled_after" : "cancelled_before";
-};
+  currentLanguage: SupportedLanguage,
+): { colorClass: string; statusLabel: string } {
+  if (booking.status === "pending") {
+    return {
+      colorClass: STATUS_COLORS.pending,
+      statusLabel: getUIText("hostBookingCardStatusPending", currentLanguage),
+    };
+  }
+  if (booking.status === "confirmed") {
+    return {
+      colorClass: STATUS_COLORS.confirmed,
+      statusLabel: getUIText("hostBookingCardStatusConfirmed", currentLanguage),
+    };
+  }
+  if (booking.status === "cancelled") {
+    const cancellationType = booking.confirmedAt
+      ? "cancelled_after"
+      : "cancelled_before";
+    return {
+      colorClass: STATUS_COLORS[cancellationType],
+      statusLabel: booking.confirmedAt
+        ? getUIText("hostBookingCardStatusBookingCancelled", currentLanguage)
+        : getUIText("hostBookingCardStatusRequestCancelled", currentLanguage),
+    };
+  }
+  if (booking.status === "completed") {
+    return {
+      colorClass: STATUS_COLORS.completed,
+      statusLabel: getUIText("completed", currentLanguage),
+    };
+  }
+  return {
+    colorClass: "bg-gray-100 text-gray-700",
+    statusLabel: booking.status,
+  };
+}
 
 type Props = { vm: HostBookingsPageViewModel };
 
@@ -117,6 +109,7 @@ export function HostBookingsPageView({ vm }: Props) {
         />
         <div className="px-4 py-4 border-b border-gray-200">
           <button
+            type="button"
             onClick={() => router.push("/profile")}
             className="flex items-center gap-2 text-gray-600 mb-3"
           >
@@ -132,6 +125,7 @@ export function HostBookingsPageView({ vm }: Props) {
           {[{ id: "active" as const }, { id: "closed" as const }].map((tab) => (
             <button
               key={tab.id}
+              type="button"
               onClick={() => setFilter(tab.id)}
               className={`px-3 py-2 rounded-full text-sm font-medium ${filter === tab.id ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600"}`}
             >
@@ -144,26 +138,10 @@ export function HostBookingsPageView({ vm }: Props) {
 
         <div className="p-4 space-y-4">
           {filteredBookings.map((booking) => {
-            let statusColorClass = "";
-            let statusLabel = "";
-
-            if (booking.status === "pending") {
-              statusColorClass = STATUS_COLORS.pending;
-              statusLabel = STATUS_LABELS.pending[currentLanguage];
-            } else if (booking.status === "confirmed") {
-              statusColorClass = STATUS_COLORS.confirmed;
-              statusLabel = STATUS_LABELS.confirmed[currentLanguage];
-            } else if (booking.status === "cancelled") {
-              const cancellationType = getCancellationType(booking);
-              statusColorClass = STATUS_COLORS[cancellationType];
-              statusLabel = STATUS_LABELS[cancellationType][currentLanguage];
-            } else if (booking.status === "completed") {
-              statusColorClass = STATUS_COLORS.completed;
-              statusLabel = STATUS_LABELS.completed[currentLanguage];
-            } else {
-              statusColorClass = "bg-gray-100 text-gray-700";
-              statusLabel = booking.status;
-            }
+            const { colorClass, statusLabel } = getHostBookingCardPresentation(
+              booking,
+              currentLanguage,
+            );
 
             return (
               <div
@@ -173,7 +151,7 @@ export function HostBookingsPageView({ vm }: Props) {
               >
                 <div className="flex justify-between items-center mb-3">
                   <span
-                    className={`text-[10px] px-2 py-1 rounded-full font-bold ${statusColorClass}`}
+                    className={`text-[10px] px-2 py-1 rounded-full font-bold ${colorClass}`}
                   >
                     {statusLabel}
                   </span>
@@ -210,6 +188,7 @@ export function HostBookingsPageView({ vm }: Props) {
                   {booking.status === "pending" && (
                     <>
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           void handleConfirm(booking.id!);
@@ -219,6 +198,7 @@ export function HostBookingsPageView({ vm }: Props) {
                         {getUIText("hostApproveBooking", currentLanguage)}
                       </button>
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           openCancelModal(booking);
@@ -233,6 +213,7 @@ export function HostBookingsPageView({ vm }: Props) {
                   {booking.status === "confirmed" && (
                     <>
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           void handleChat(booking);
@@ -249,6 +230,7 @@ export function HostBookingsPageView({ vm }: Props) {
                           )}
                       </button>
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           openCancelModal(booking);
@@ -262,6 +244,7 @@ export function HostBookingsPageView({ vm }: Props) {
 
                   {booking.status === "completed" && (
                     <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         void handleChat(booking);
@@ -286,27 +269,35 @@ export function HostBookingsPageView({ vm }: Props) {
         {showCancelModal && selectedBookingForCancel && (
           <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4">
             <div className="bg-white p-6 rounded-2xl w-full max-w-sm">
-              <h3 className="text-lg font-bold mb-4">취소 확인</h3>
+              <h3 className="text-lg font-bold mb-4">
+                {getUIText("hostCancelModalTitle", currentLanguage)}
+              </h3>
               <label className="flex items-center gap-2 mb-6">
                 <input
                   type="checkbox"
                   checked={cancelAgreed}
                   onChange={(e) => setCancelCancelAgreed(e.target.checked)}
                 />
-                <span className="text-xs">내용을 확인했습니다.</span>
+                <span className="text-xs">
+                  {getUIText("hostCancelModalAckLabel", currentLanguage)}
+                </span>
               </label>
               <div className="flex gap-3">
                 <button
+                  type="button"
                   onClick={() => closeCancelModal()}
                   className="flex-1 py-3 bg-gray-100 rounded-xl"
                 >
-                  닫기
+                  {getUIText("close", currentLanguage)}
                 </button>
                 <button
-                  onClick={() => void handleReject(selectedBookingForCancel.id!)}
+                  type="button"
+                  onClick={() =>
+                    void handleReject(selectedBookingForCancel.id!)
+                  }
                   className="flex-1 py-3 bg-red-600 text-white rounded-xl"
                 >
-                  확인
+                  {getUIText("confirm", currentLanguage)}
                 </button>
               </div>
             </div>

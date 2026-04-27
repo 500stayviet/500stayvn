@@ -39,7 +39,7 @@ export default function InterceptedPropertyPage() {
       <div className="fixed inset-0 z-[90] bg-black/50 flex items-center justify-center p-4" onClick={handleBack}>
         <div className="bg-white rounded-2xl p-6 max-w-[430px] text-center" onClick={(e) => e.stopPropagation()}>
           <p className="text-gray-500 mb-4">
-            {currentLanguage === 'ko' ? '매물을 찾을 수 없습니다.' : currentLanguage === 'vi' ? 'Không tìm thấy.' : 'Not found.'}
+            {getUIText('propertyNotFound', currentLanguage)}
           </p>
           <button onClick={handleBack} className="px-4 py-2 rounded-lg text-white" style={{ backgroundColor: '#E63946' }}>
             {getUIText('back', currentLanguage)}

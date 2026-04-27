@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 import { User, Mail, Phone, Globe, CheckCircle2, ArrowLeft, Loader2, Camera, ChevronRight, Lock } from 'lucide-react';
 import TopBar from '@/components/TopBar';
-import { getUIText } from '@/utils/i18n';
+import { getUIText, getLanguageEndonym } from '@/utils/i18n';
 import { SupportedLanguage } from '@/lib/api/translation';
 import type { EditProfilePageViewModel } from '../hooks/useEditProfilePage';
 
@@ -221,7 +221,7 @@ export function EditProfilePageView({ vm }: Props) {
                               maxLength={6}
                               value={otpCode}
                               onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                              placeholder="6-digit code"
+                              placeholder={getUIText('otpCodePlaceholder', currentLanguage)}
                               className="w-full pl-10 pr-4 py-2 text-sm border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-400 outline-none"
                             />
                           </div>
@@ -242,7 +242,7 @@ export function EditProfilePageView({ vm }: Props) {
                         {isPhoneVerified && (
                           <div className="flex items-center gap-2 text-green-600 text-sm font-bold bg-green-50 p-3 rounded-xl border border-green-100">
                             <CheckCircle2 className="w-4 h-4" />
-                            <span>{currentLanguage === 'ko' ? '인증 완료' : 'Đã xác minh'}</span>
+                            <span>{getUIText('phoneVerificationComplete', currentLanguage)}</span>
                           </div>
                         )}
                         <div className="flex gap-2">
@@ -277,15 +277,7 @@ export function EditProfilePageView({ vm }: Props) {
                     <div className="text-left">
                       <p className="text-sm font-semibold text-gray-900">{getUIText('preferredLanguage', currentLanguage)}</p>
                       <p className="text-xs text-gray-600 mt-0.5">
-                        {currentLanguage === 'ko'
-                          ? '한국어'
-                          : currentLanguage === 'vi'
-                            ? 'Tiếng Việt'
-                            : currentLanguage === 'ja'
-                              ? '日本語'
-                              : currentLanguage === 'zh'
-                                ? '中文'
-                                : 'English'}
+                        {getLanguageEndonym(currentLanguage)}
                       </p>
                     </div>
                   </div>
@@ -294,23 +286,25 @@ export function EditProfilePageView({ vm }: Props) {
                 {isLanguageMenuOpen && (
                   <div className="relative mt-2" ref={languageMenuRef}>
                     <div className="rounded-xl bg-white shadow-lg border border-gray-100 py-2 z-10">
-                      {[
-                        { code: 'ko', name: '한국어', flag: '🇰🇷' },
-                        { code: 'vi', name: 'Tiếng Việt', flag: '🇻🇳' },
-                        { code: 'en', name: 'English', flag: '🇺🇸' },
-                        { code: 'ja', name: '日本語', flag: '🇯🇵' },
-                        { code: 'zh', name: '中文', flag: '🇨🇳' },
-                      ].map((lang) => (
+                      {(
+                        [
+                          { code: 'ko' as const, flag: '🇰🇷' },
+                          { code: 'vi' as const, flag: '🇻🇳' },
+                          { code: 'en' as const, flag: '🇺🇸' },
+                          { code: 'ja' as const, flag: '🇯🇵' },
+                          { code: 'zh' as const, flag: '🇨🇳' },
+                        ] as const
+                      ).map((lang) => (
                         <button
                           key={lang.code}
                           type="button"
-                          onClick={() => handleLanguageChange(lang.code as SupportedLanguage)}
+                          onClick={() => handleLanguageChange(lang.code)}
                           className={`w-full text-left px-3 py-2.5 text-sm flex items-center gap-2 rounded-lg mx-1 ${
                             currentLanguage === lang.code ? 'bg-indigo-50 text-indigo-600 font-semibold' : 'hover:bg-gray-50 text-gray-700'
                           }`}
                         >
                           <span className="text-lg">{lang.flag}</span>
-                          <span className="font-medium">{lang.name}</span>
+                          <span className="font-medium">{getLanguageEndonym(lang.code)}</span>
                         </button>
                       ))}
                     </div>
@@ -338,15 +332,7 @@ export function EditProfilePageView({ vm }: Props) {
               onClick={() => setShowDeleteConfirm(true)}
               className="w-full py-3 px-6 rounded-xl font-medium text-sm flex items-center justify-center gap-2 bg-[#E63946] text-white hover:opacity-90 transition-opacity"
             >
-              {currentLanguage === 'ko'
-                ? '회원탈퇴'
-                : currentLanguage === 'vi'
-                  ? 'Rút tài khoản'
-                  : currentLanguage === 'ja'
-                    ? 'アカウント退会'
-                    : currentLanguage === 'zh'
-                      ? '账户注销'
-                      : 'Delete Account'}
+              {getUIText('deleteAccountButton', currentLanguage)}
             </button>
           </div>
         </div>
@@ -422,24 +408,8 @@ export function EditProfilePageView({ vm }: Props) {
               </button>
               <button type="button" onClick={() => void handleDeleteAccount()} disabled={deleting} className="flex-1 py-2.5 px-4 bg-red-600 text-white rounded-lg font-medium">
                 {deleting
-                  ? currentLanguage === 'ko'
-                    ? '처리 중...'
-                    : currentLanguage === 'vi'
-                      ? 'Đang xử lý...'
-                      : currentLanguage === 'ja'
-                        ? '処理中...'
-                        : currentLanguage === 'zh'
-                          ? '处理中...'
-                          : 'Processing...'
-                  : currentLanguage === 'ko'
-                    ? '회원탈퇴'
-                    : currentLanguage === 'vi'
-                      ? 'Xóa tài khoản'
-                      : currentLanguage === 'ja'
-                        ? 'アカウント削除'
-                        : currentLanguage === 'zh'
-                          ? '删除账户'
-                          : 'Delete Account'}
+                  ? getUIText('deleteAccountExecuting', currentLanguage)
+                  : getUIText('deleteAccountButton', currentLanguage)}
               </button>
             </div>
           </div>

@@ -15,7 +15,7 @@ import {
   User,
   Wallet,
 } from "lucide-react";
-import { getUIText } from "@/utils/i18n";
+import { getUIText, getLanguageEndonym } from "@/utils/i18n";
 import type { SupportedLanguage } from "@/lib/api/translation";
 import type { VerificationStatus } from "@/types/kyc.types";
 import type { ProfileListButtonConfig } from "../hooks/useProfileButtonConfig";
@@ -81,15 +81,10 @@ export default function ProfileMainSections({
             ) : (
               <div className="flex items-center gap-1 px-2 py-1 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <span className="text-[10px] font-bold text-yellow-700 uppercase tracking-tight">
-                  {currentLanguage === "ko"
-                    ? `코인 ${kycCount}/3`
-                    : currentLanguage === "vi"
-                      ? `Coin ${kycCount}/3`
-                      : currentLanguage === "ja"
-                        ? `コイン ${kycCount}/3`
-                        : currentLanguage === "zh"
-                          ? `硬币 ${kycCount}/3`
-                          : `Coins ${kycCount}/3`}
+                  {getUIText("profileKycCoinsProgress", currentLanguage).replace(
+                    "{n}",
+                    String(kycCount),
+                  )}
                 </span>
               </div>
             )}
@@ -163,15 +158,10 @@ export default function ProfileMainSections({
           {!allStepsCompleted && (
             <div className="px-4 py-2.5 bg-gray-50 rounded-xl">
               <p className="text-xs text-gray-500 text-center">
-                {currentLanguage === "ko"
-                  ? `KYC 인증을 완료하여 코인 3개를 모으세요! (현재 ${kycCount}/3)`
-                  : currentLanguage === "vi"
-                    ? `Hoàn thành xác thực KYC để thu thập 3 coin! (Hiện tại ${kycCount}/3)`
-                    : currentLanguage === "ja"
-                      ? `KYC認証を完了してコイン3枚を集めましょう！ (現在 ${kycCount}/3)`
-                      : currentLanguage === "zh"
-                        ? `完成KYC认证收集3个硬币！ (当前 ${kycCount}/3)`
-                        : `Complete KYC verification to collect 3 coins! (Current ${kycCount}/3)`}
+                {getUIText("profileKycEncourageWithCount", currentLanguage).replace(
+                  "{n}",
+                  String(kycCount),
+                )}
               </p>
             </div>
           )}
@@ -253,15 +243,7 @@ export default function ProfileMainSections({
                     {getUIText("languageChange", currentLanguage)}
                   </p>
                   <p className="text-xs text-gray-600 mt-0.5">
-                    {currentLanguage === "ko"
-                      ? "한국어"
-                      : currentLanguage === "vi"
-                        ? "Tiếng Việt"
-                        : currentLanguage === "ja"
-                          ? "日本語"
-                          : currentLanguage === "zh"
-                            ? "中文"
-                            : "English"}
+                    {getLanguageEndonym(currentLanguage)}
                   </p>
                 </div>
               </div>

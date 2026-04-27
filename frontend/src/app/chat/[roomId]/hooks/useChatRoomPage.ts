@@ -85,7 +85,7 @@ export function useChatRoomPage() {
 
         setChatRoom(room);
       } catch (error) {
-        console.error('채팅방 로드 실패:', error);
+        console.error('Chat room load failed:', error);
         router.push('/my-bookings');
       } finally {
         setLoading(false);
@@ -170,7 +170,7 @@ export function useChatRoomPage() {
       setNewMessage('');
       inputRef.current?.focus();
     } catch (error) {
-      console.error('메시지 전송 실패:', error);
+      console.error('Chat message send failed:', error);
       alert(getUIText('chatSendFailed', currentLanguage));
     } finally {
       setSending(false);

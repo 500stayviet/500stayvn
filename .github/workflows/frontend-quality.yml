@@ -58,6 +58,9 @@ jobs:
       - name: Run unit tests
         run: npm test
 
+      - name: Banned terms (broker / 中介 / 중개 / môi giới)
+        run: npm run check:banned-terms
+
       - name: Run TypeScript typecheck
         run: npx tsc --noEmit
 
@@ -103,7 +106,7 @@ jobs:
         run: npx playwright install chromium
 
       - name: Run E2E smoke suite
-        run: npx playwright test tests/e2e/access-control-blocked.spec.ts tests/e2e/search-filter-detail.spec.ts tests/e2e/my-properties-regression.spec.ts tests/e2e/mock-scenario-regression.spec.ts
+        run: npx playwright test tests/e2e/access-control-blocked.spec.ts tests/e2e/search-filter-detail.spec.ts tests/e2e/my-properties-regression.spec.ts tests/e2e/mock-scenario-regression.spec.ts tests/e2e/admin-smoke.spec.ts
 
   e2e-nightly-full:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'

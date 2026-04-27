@@ -11,6 +11,8 @@ import { refreshAdminBadges } from "@/lib/adminBadgeCounts";
 import { useAdminAckHydrationTick } from "@/hooks/useAdminAckHydration";
 import { isUserNew, localCalendarDayStartMs, shouldShowUserInAdminNewTab } from "@/lib/adminNewUtils";
 import { useAdminMe } from "@/contexts/AdminMeContext";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { getUIText } from "@/utils/i18n";
 import type { UserData } from "@/lib/api/auth";
 import type { AdminUserFilter } from "@/lib/api/adminModeration";
 import { getAdminUsers, setUserBlocked } from "@/lib/api/adminModeration";
@@ -23,6 +25,7 @@ export const ADMIN_USERS_PAGE_SIZE = 20;
  * 관리자 계정 목록: 캐시 기반 조회, 필터·검색, 페이지, 신규 배지, 차단/복구.
  */
 export function useAdminUsersPage() {
+  const { currentLanguage } = useLanguage();
   const router = useRouter();
   const { me: admin } = useAdminMe();
   const ackTick = useAdminAckHydrationTick();
@@ -134,12 +137,16 @@ export function useAdminUsersPage() {
   const blockUser = useCallback(
     async (uid: string) => {
       if (!admin?.username) return;
-      const reason = window.prompt("차단 사유를 입력하세요.", "관리자 차단") || "관리자 차단";
+      const reason =
+        window.prompt(
+          getUIText("adminUserBlockPrompt", currentLanguage),
+          getUIText("adminUserBlockDefaultReason", currentLanguage),
+        ) || getUIText("adminUserBlockDefaultReason", currentLanguage);
       await setUserBlocked(uid, true, admin.username, reason);
       setTick((v) => v + 1);
       refreshAdminBadges();
     },
-    [admin?.username],
+    [admin?.username, currentLanguage],
   );
 
   return {

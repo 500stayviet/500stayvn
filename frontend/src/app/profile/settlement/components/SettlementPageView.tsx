@@ -3,6 +3,7 @@
 import { Wallet, CreditCard, TrendingUp, ArrowUpRight, CheckCircle2, ChevronLeft } from 'lucide-react';
 import TopBar from '@/components/TopBar';
 import { getUIText } from '@/utils/i18n';
+import type { SupportedLanguage } from '@/lib/api/translation';
 import { formatDate } from '@/lib/utils/dateUtils';
 import type { SettlementPageViewModel } from '../hooks/useSettlementPage';
 
@@ -43,6 +44,10 @@ export function SettlementPageView({ vm }: Props) {
     handleAddBankAccount,
   } = vm;
 
+  const lang = currentLanguage as SupportedLanguage;
+  const formatVndAmount = (amount: number) =>
+    `${amount.toLocaleString('vi-VN')} ${getUIText('curVnd', lang)}`;
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -69,11 +74,7 @@ export function SettlementPageView({ vm }: Props) {
               {getUIText('systemMaintenance', currentLanguage)}
             </p>
             <p className="text-xs text-gray-500 text-center">
-              {currentLanguage === 'ko'
-                ? '정산 프로세스를 중단했습니다. 잠시 후 다시 시도해 주세요.'
-                : currentLanguage === 'vi'
-                  ? 'Đã tạm dừng quy trình thanh toán. Vui lòng thử lại sau.'
-                  : 'Settlement process halted. Please try again later.'}
+              {getUIText('settlementProcessHaltedDetail', lang)}
             </p>
           </div>
         </div>
@@ -101,7 +102,7 @@ export function SettlementPageView({ vm }: Props) {
             <div className="flex justify-between items-start mb-2">
               <div>
                 <p className="text-sm opacity-90">{getUIText('availableBalance', currentLanguage)}</p>
-                <p className="text-3xl font-bold mt-1">{availableBalance.toLocaleString()} ₫</p>
+                <p className="text-3xl font-bold mt-1">{formatVndAmount(availableBalance)}</p>
               </div>
               <div className="p-2 bg-white/20 rounded-lg">
                 <TrendingUp className="w-6 h-6" />
@@ -114,7 +115,7 @@ export function SettlementPageView({ vm }: Props) {
               </div>
               <div>
                 <p className="opacity-80">{getUIText('pendingWithdrawal', currentLanguage)}</p>
-                <p className="font-semibold">{withdrawalPendingAmount.toLocaleString()} ₫</p>
+                <p className="font-semibold">{formatVndAmount(withdrawalPendingAmount)}</p>
               </div>
             </div>
           </div>
@@ -168,11 +169,7 @@ export function SettlementPageView({ vm }: Props) {
                 <p className="text-gray-500 py-4">{getUIText('loading', currentLanguage)}</p>
               ) : revenueEntries.length === 0 ? (
                 <p className="text-gray-500 py-4">
-                  {currentLanguage === 'ko'
-                    ? '체크인 시각이 지난 결제 완료 예약이 없습니다.'
-                    : currentLanguage === 'vi'
-                      ? 'Chưa có đặt phòng đã thanh toán sau thời gian nhận phòng.'
-                      : 'No paid bookings past check-in time yet.'}
+                  {getUIText('settlementEmptyRevenueList', lang)}
                 </p>
               ) : (
                 revenueEntries.map((entry) => (
@@ -210,7 +207,7 @@ export function SettlementPageView({ vm }: Props) {
                       <div className="text-right shrink-0 ml-2">
                         <div className="flex items-center gap-1 text-green-600">
                           <ArrowUpRight className="w-4 h-4" />
-                          <p className="font-bold">{entry.amount.toLocaleString()} ₫</p>
+                          <p className="font-bold">{formatVndAmount(entry.amount)}</p>
                         </div>
                         <p className="text-xs text-gray-500 mt-1">{getUIText('rentalIncome', currentLanguage)}</p>
                       </div>
@@ -239,12 +236,12 @@ export function SettlementPageView({ vm }: Props) {
                         placeholder="0"
                       />
                       <div className="absolute right-3 top-3">
-                        <span className="text-gray-500">₫</span>
+                        <span className="text-gray-500">{getUIText('curVnd', lang)}</span>
                       </div>
                     </div>
                     <p className="text-sm text-gray-500 mt-2">
                       {getUIText('availableForWithdrawal', currentLanguage)}:{' '}
-                      <span className="font-semibold">{availableBalance.toLocaleString()} ₫</span>
+                      <span className="font-semibold">{formatVndAmount(availableBalance)}</span>
                     </p>
                   </div>
                   <div>
@@ -278,11 +275,7 @@ export function SettlementPageView({ vm }: Props) {
                 <h3 className="text-lg font-bold text-gray-900 mb-4">{getUIText('withdrawalHistory', currentLanguage)}</h3>
                 {withdrawalHistory.length === 0 ? (
                   <p className="text-gray-500 py-4 text-sm">
-                    {currentLanguage === 'ko'
-                      ? '출금 내역이 없습니다.'
-                      : currentLanguage === 'vi'
-                        ? 'Chưa có lịch sử rút tiền.'
-                        : 'No withdrawal history yet.'}
+                    {getUIText('settlementNoWithdrawalHistory', lang)}
                   </p>
                 ) : (
                   withdrawalHistory.map((item) => (
@@ -290,7 +283,7 @@ export function SettlementPageView({ vm }: Props) {
                       <div className="flex justify-between items-start">
                         <div>
                           <div className="flex items-center gap-2">
-                            <p className="font-semibold text-gray-900">{item.amount.toLocaleString()} ₫</p>
+                            <p className="font-semibold text-gray-900">{formatVndAmount(item.amount)}</p>
                             <span
                               className={`px-2 py-1 text-xs rounded-full ${
                                 item.status === 'completed'
@@ -303,24 +296,14 @@ export function SettlementPageView({ vm }: Props) {
                               }`}
                             >
                               {item.status === 'completed'
-                                ? getUIText('completed', currentLanguage)
+                                ? getUIText('completed', lang)
                                 : item.status === 'pending'
-                                  ? getUIText('pending', currentLanguage)
+                                  ? getUIText('pending', lang)
                                   : item.status === 'processing' || item.status === 'approved'
-                                    ? currentLanguage === 'ko'
-                                      ? '처리중'
-                                      : currentLanguage === 'vi'
-                                        ? 'Đang xử lý'
-                                        : 'Processing'
+                                    ? getUIText('processing', lang)
                                     : item.status === 'held'
-                                      ? currentLanguage === 'ko'
-                                        ? '보류'
-                                        : currentLanguage === 'vi'
-                                          ? 'Tạm giữ'
-                                          : 'On hold'
-                                      : currentLanguage === 'ko'
-                                        ? '반려'
-                                        : 'Rejected'}
+                                      ? getUIText('withdrawalStatusHeld', lang)
+                                      : getUIText('withdrawalStatusRejected', lang)}
                             </span>
                           </div>
                           <p className="text-sm text-gray-500 mt-1">{new Date(item.requestedAt).toLocaleString()}</p>
@@ -346,11 +329,7 @@ export function SettlementPageView({ vm }: Props) {
                 </div>
                 {bankAccounts.length === 0 && (
                   <p className="text-gray-500 py-2 text-sm mb-2">
-                    {currentLanguage === 'ko'
-                      ? '등록된 계좌가 없습니다.'
-                      : currentLanguage === 'vi'
-                        ? 'Chưa có tài khoản đăng ký.'
-                        : 'No accounts registered.'}
+                    {getUIText('settlementNoBankAccounts', lang)}
                   </p>
                 )}
                 {bankAccounts.map((account) => (

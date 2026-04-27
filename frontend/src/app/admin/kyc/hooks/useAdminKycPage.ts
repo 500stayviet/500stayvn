@@ -10,6 +10,8 @@ import { ADMIN_NEW_MS } from "@/lib/adminNewUtils";
 import { logAdminSystemEvent } from "@/lib/adminSystemLog";
 import { useAdminDomainRefresh } from "@/lib/adminDomainEventsClient";
 import { ensureUsersCacheForAdmin } from "@/lib/api/auth";
+import type { SupportedLanguage } from "@/lib/api/translation";
+import { getUIText } from "@/utils/i18n";
 
 export type AdminKycTab = "new" | "all" | "verified" | "unverified";
 
@@ -28,43 +30,16 @@ export function useAdminKycPage() {
   const [unseenNew, setUnseenNew] = useState(0);
 
   const t = useMemo(() => {
-    const ko = currentLanguage === "ko";
-    const vi = currentLanguage === "vi";
-    const ja = currentLanguage === "ja";
-    const zh = currentLanguage === "zh";
+    const lang = currentLanguage as SupportedLanguage;
+    const tpl = getUIText("adminKycTotalRecordsTemplate", lang);
     return {
-      title: ko
-        ? "KYC 데이터"
-        : vi
-          ? "Dữ liệu KYC"
-          : ja
-            ? "KYCデータ"
-            : zh
-              ? "KYC 数据"
-              : "KYC data",
-      total: (n: number) =>
-        ko
-          ? `총 ${n}명`
-          : vi
-            ? `${n} người`
-            : ja
-              ? `${n} 件`
-              : zh
-                ? `共 ${n} 人`
-                : `${n} records`,
-      refresh: ko ? "새로고침" : vi ? "Làm mới" : ja ? "更新" : zh ? "刷新" : "Refresh",
-      csv: ko ? "CSV" : vi ? "CSV" : ja ? "CSV" : zh ? "CSV" : "CSV",
-      loading: ko ? "로딩 중..." : vi ? "Đang tải..." : ja ? "読み込み..." : zh ? "加载中..." : "Loading...",
-      empty: ko
-        ? "데이터 없음"
-        : vi
-          ? "Không có dữ liệu"
-          : ja
-            ? "データなし"
-            : zh
-              ? "无数据"
-              : "No data",
-      noName: ko ? "이름 없음" : vi ? "Không tên" : ja ? "名前なし" : zh ? "无姓名" : "No name",
+      title: getUIText("adminKycPageTitle", lang),
+      total: (n: number) => tpl.replace(/\{\{count\}\}/g, String(n)),
+      refresh: getUIText("adminKycRefreshButton", lang),
+      csv: "CSV",
+      loading: getUIText("adminKycLoadingLabel", lang),
+      empty: getUIText("adminKycEmptyMessage", lang),
+      noName: getUIText("adminKycNoNameFallback", lang),
     };
   }, [currentLanguage]);
 
@@ -99,10 +74,11 @@ export function useAdminKycPage() {
   }, []);
 
   const handleDownloadCSV = async () => {
+    const lang = currentLanguage as SupportedLanguage;
     setDownloading(true);
     setError("");
     try {
-      await downloadAllKYCData();
+      await downloadAllKYCData(lang);
     } catch (err: unknown) {
       console.error("Error downloading CSV:", err);
       logAdminSystemEvent({
@@ -111,7 +87,9 @@ export function useAdminKycPage() {
         message: err instanceof Error ? err.message : "KYC CSV 다운로드 실패",
         snapshot: { function: "useAdminKycPage.handleDownloadCSV" },
       });
-      setError(err instanceof Error ? err.message : "CSV failed");
+      setError(
+        err instanceof Error ? err.message : getUIText("adminKycCsvDownloadError", lang),
+      );
     } finally {
       setDownloading(false);
     }

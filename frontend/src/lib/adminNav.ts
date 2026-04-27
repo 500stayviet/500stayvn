@@ -15,90 +15,92 @@ import {
 
 export type AdminNavItem = {
   href: string;
+  /** 폴백(비표시 권장). 화면 라벨은 `getUIText` + `adminNavI18nMaps` 사용 */
   label: string;
   icon: LucideIcon;
+  /** 폴백. 카드 설명은 `getUIText` + `ADMIN_NAV_HREF_TO_CARD_DESC_KEY` */
   description: string;
   /** 권한 체크 키 — 슈퍼는 전 메뉴 허용 */
   permissionId: string;
 };
 
-/** 관리자 상단 내비 + 대시보드 카드 공통 */
+/** 관리자 상단 내비 + 대시보드 카드 공통 (라벨/설명은 영문 폴백 — 실제 UI는 i18n) */
 export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   {
     href: '/admin',
-    label: '대시보드',
+    label: 'Dashboard',
     icon: LayoutDashboard,
-    description: '업무 요약·바로가기',
+    description: 'Summary and shortcuts',
     permissionId: 'dashboard',
   },
   {
     href: '/admin/users',
-    label: '계정',
+    label: 'Accounts',
     icon: Users,
-    description: '차단·복구 및 검색',
+    description: 'Block, restore, search',
     permissionId: 'users',
   },
   {
     href: '/admin/properties',
-    label: '매물',
+    label: 'Listings',
     icon: Home,
-    description: '숨김·복구',
+    description: 'Hide and restore',
     permissionId: 'properties',
   },
   {
     href: '/admin/property-logs',
-    label: '매물 이력',
+    label: 'Listing log',
     icon: Archive,
-    description: '삭제·취소 서버 로그',
+    description: 'Server log for deletes and cancels',
     permissionId: 'properties',
   },
   {
     href: '/admin/contracts',
-    label: '계약',
+    label: 'Contracts',
     icon: FileSignature,
-    description: '체결·임대 시작 예약',
+    description: 'Contracts and rental start scheduling',
     permissionId: 'contracts',
   },
   {
     href: '/admin/settlements',
-    label: '정산',
+    label: 'Settlement',
     icon: Wallet,
-    description: '출금 가능 반영 승인',
+    description: 'Approve withdrawable balances',
     permissionId: 'settlements',
   },
   {
     href: '/admin/refunds',
-    label: '환불',
+    label: 'Refunds',
     icon: Undo2,
-    description: '취소 환불 승인',
+    description: 'Approve cancellation refunds',
     permissionId: 'refunds',
   },
   {
     href: '/admin/withdrawals',
-    label: '출금',
+    label: 'Withdrawals',
     icon: ClipboardList,
-    description: '출금 요청 처리',
+    description: 'Process withdrawal requests',
     permissionId: 'withdrawals',
   },
   {
     href: '/admin/audit',
-    label: '감사',
+    label: 'Audit',
     icon: ScrollText,
-    description: '금전·조치 로그',
+    description: 'Financial and action logs',
     permissionId: 'audit',
   },
   {
     href: '/admin/kyc',
     label: 'KYC',
     icon: ShieldCheck,
-    description: '본인확인·검수',
+    description: 'Identity verification review',
     permissionId: 'kyc',
   },
   {
     href: '/admin/system-log',
-    label: '시스템 로그',
+    label: 'System log',
     icon: Bug,
-    description: '클라이언트 오류·경고·휘발 정보',
+    description: 'Client errors, warnings, volatile info',
     permissionId: 'system-log',
   },
 ];

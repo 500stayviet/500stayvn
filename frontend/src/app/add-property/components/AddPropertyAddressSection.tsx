@@ -5,10 +5,12 @@ import {
   getDistrictsByCityId,
   VIETNAM_CITIES,
 } from "@/lib/data/vietnam-regions";
+import type { SupportedLanguage } from "@/lib/api/translation";
+import { getUIText } from "@/utils/i18n";
 import type { AddPropertyColors } from "../constants/addPropertyColors";
 
 interface AddPropertyAddressSectionProps {
-  currentLanguage: string;
+  currentLanguage: SupportedLanguage;
   colors: AddPropertyColors;
   address: string;
   coordinates: { lat: number; lng: number } | null;
@@ -40,6 +42,7 @@ export function AddPropertyAddressSection({
   onBuildingNumberChange,
   onRoomNumberChange,
 }: AddPropertyAddressSectionProps) {
+  const lang = currentLanguage;
   return (
     <section
       className="p-5 rounded-2xl"
@@ -49,15 +52,7 @@ export function AddPropertyAddressSection({
       }}
     >
       <h2 className="text-sm font-bold mb-4" style={{ color: colors.text }}>
-        {currentLanguage === "ko"
-          ? "주소"
-          : currentLanguage === "vi"
-            ? "Địa chỉ"
-            : currentLanguage === "ja"
-              ? "住所"
-              : currentLanguage === "zh"
-                ? "地址"
-                : "Address"}
+        {getUIText("address", lang)}
         <span style={{ color: colors.error }} className="ml-1">
           *
         </span>
@@ -65,17 +60,7 @@ export function AddPropertyAddressSection({
 
       <div className="pb-2">
         <div className="flex items-center gap-2 mb-2">
-          <p className="text-xs font-bold text-gray-500">
-            {currentLanguage === "ko"
-              ? "주소 찾기"
-              : currentLanguage === "vi"
-                ? "Tìm địa chỉ"
-                : currentLanguage === "ja"
-                  ? "住所検索"
-                  : currentLanguage === "zh"
-                    ? "查找地址"
-                    : "Find Address"}
-          </p>
+          <p className="text-xs font-bold text-gray-500">{getUIText("listingFindAddrBtn", lang)}</p>
         </div>
         {(!address || !coordinates) && (
           <button
@@ -88,13 +73,7 @@ export function AddPropertyAddressSection({
             }}
           >
             <MapPin className="w-5 h-5" />
-            <span>
-              {currentLanguage === "ko"
-                ? "주소 찾기"
-                : currentLanguage === "vi"
-                  ? "Tìm địa chỉ"
-                  : "Find Address"}
-            </span>
+            <span>{getUIText("listingFindAddrBtn", lang)}</span>
           </button>
         )}
         {address && coordinates && (
@@ -118,11 +97,7 @@ export function AddPropertyAddressSection({
                   className="text-[11px] font-medium"
                   style={{ color: colors.success }}
                 >
-                  {currentLanguage === "ko"
-                    ? "확정된 주소 (클릭하여 수정)"
-                    : currentLanguage === "vi"
-                      ? "Địa chỉ đã xác nhận"
-                      : "Confirmed Address"}
+                  {getUIText("listingAddrPinnedHint", lang)}
                 </span>
                 <p
                   className="text-sm font-medium mt-0.5"
@@ -154,17 +129,7 @@ export function AddPropertyAddressSection({
         }}
       >
         <div className="flex items-center gap-2 mb-2">
-          <p className="text-xs font-bold text-gray-500">
-            {currentLanguage === "ko"
-              ? "도시·구"
-              : currentLanguage === "vi"
-                ? "Thành phố·Quận"
-                : currentLanguage === "ja"
-                  ? "都市・区"
-                  : currentLanguage === "zh"
-                    ? "城市・区"
-                    : "City·District"}
-          </p>
+          <p className="text-xs font-bold text-gray-500">{getUIText("listingCityDistHeader", lang)}</p>
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div>
@@ -172,11 +137,7 @@ export function AddPropertyAddressSection({
               className="block text-[11px] font-medium mb-1.5"
               style={{ color: colors.textSecondary }}
             >
-              {currentLanguage === "ko"
-                ? "도시"
-                : currentLanguage === "vi"
-                  ? "Thành phố"
-                  : "City"}
+              {getUIText("labelCity", lang)}
               <span style={{ color: colors.error }} className="ml-1">
                 *
               </span>
@@ -192,17 +153,7 @@ export function AddPropertyAddressSection({
                 color: colors.text,
               }}
             >
-              <option value="">
-                {currentLanguage === "ko"
-                  ? "선택"
-                  : currentLanguage === "vi"
-                    ? "Chọn"
-                    : currentLanguage === "ja"
-                      ? "選択"
-                      : currentLanguage === "zh"
-                        ? "选择"
-                        : "Select"}
-              </option>
+              <option value="">{getUIText("selectLabel", lang)}</option>
               {VIETNAM_CITIES.map((c) => {
                 const langMap: Record<string, string> = {
                   ko: c.nameKo,
@@ -213,7 +164,7 @@ export function AddPropertyAddressSection({
                 };
                 return (
                   <option key={c.id} value={c.id}>
-                    {langMap[currentLanguage] ?? c.name}
+                    {langMap[lang] ?? c.name}
                   </option>
                 );
               })}
@@ -224,11 +175,7 @@ export function AddPropertyAddressSection({
               className="block text-[11px] font-medium mb-1.5"
               style={{ color: colors.textSecondary }}
             >
-              {currentLanguage === "ko"
-                ? "구"
-                : currentLanguage === "vi"
-                  ? "Quận"
-                  : "District"}
+              {getUIText("labelDistrict", lang)}
               <span style={{ color: colors.error }} className="ml-1">
                 *
               </span>
@@ -244,17 +191,7 @@ export function AddPropertyAddressSection({
                 color: colors.text,
               }}
             >
-              <option value="">
-                {currentLanguage === "ko"
-                  ? "선택"
-                  : currentLanguage === "vi"
-                    ? "Chọn"
-                    : currentLanguage === "ja"
-                      ? "選択"
-                      : currentLanguage === "zh"
-                        ? "选择"
-                        : "Select"}
-              </option>
+              <option value="">{getUIText("selectLabel", lang)}</option>
               {getDistrictsByCityId(selectedCityId).map((d) => {
                 const langMap: Record<string, string> = {
                   ko: d.nameKo,
@@ -265,7 +202,7 @@ export function AddPropertyAddressSection({
                 };
                 return (
                   <option key={d.id} value={d.id}>
-                    {langMap[currentLanguage] ?? d.name}
+                    {langMap[lang] ?? d.name}
                   </option>
                 );
               })}
@@ -281,17 +218,7 @@ export function AddPropertyAddressSection({
         }}
       >
         <div className="flex items-center gap-2 mb-2">
-          <p className="text-xs font-bold text-gray-500">
-            {currentLanguage === "ko"
-              ? "동호수"
-              : currentLanguage === "vi"
-                ? "Số phòng"
-                : currentLanguage === "ja"
-                  ? "部屋番号"
-                  : currentLanguage === "zh"
-                    ? "房间号"
-                    : "Unit Number"}
-          </p>
+          <p className="text-xs font-bold text-gray-500">{getUIText("listingUnitBlockTitle", lang)}</p>
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div>
@@ -299,17 +226,13 @@ export function AddPropertyAddressSection({
               className="block text-[11px] font-medium mb-1.5"
               style={{ color: colors.textSecondary }}
             >
-              {currentLanguage === "ko"
-                ? "동"
-                : currentLanguage === "vi"
-                  ? "Tòa"
-                  : "Building"}
+              {getUIText("listingWing", lang)}
             </label>
             <input
               type="text"
               value={buildingNumber}
               onChange={(e) => onBuildingNumberChange(e.target.value)}
-              placeholder={currentLanguage === "ko" ? "예: A" : "e.g., A"}
+              placeholder={getUIText("listingWingPh", lang)}
               className="w-full px-2 py-2 rounded-md text-sm min-h-[36px] focus:outline-none transition-all"
               style={{
                 backgroundColor: colors.white,
@@ -322,11 +245,7 @@ export function AddPropertyAddressSection({
               className="block text-[11px] font-medium mb-1.5"
               style={{ color: colors.textSecondary }}
             >
-              {currentLanguage === "ko"
-                ? "호실"
-                : currentLanguage === "vi"
-                  ? "Phòng"
-                  : "Room"}
+              {getUIText("listingRoomNo", lang)}
               <span style={{ color: colors.error }} className="ml-1">
                 *
               </span>
@@ -335,7 +254,7 @@ export function AddPropertyAddressSection({
               type="text"
               value={roomNumber}
               onChange={(e) => onRoomNumberChange(e.target.value)}
-              placeholder={currentLanguage === "ko" ? "예: 101" : "e.g., 101"}
+              placeholder={getUIText("listingRoomPh", lang)}
               className="w-full px-2 py-2 rounded-md text-sm min-h-[36px] focus:outline-none transition-all"
               style={{
                 backgroundColor: colors.white,
@@ -350,11 +269,7 @@ export function AddPropertyAddressSection({
         >
           <span style={{ color: colors.primary }}>i</span>
           <span>
-            {currentLanguage === "ko"
-              ? "동호수는 예약 완료 후 임차인에게만 표시됩니다."
-              : currentLanguage === "vi"
-                ? "Số phòng chỉ hiển thị cho người thuê sau khi đặt chỗ."
-                : "Unit number shown to tenants after booking."}
+            {getUIText("listingUnitPrivacyGuest", lang)}
           </span>
         </p>
       </div>

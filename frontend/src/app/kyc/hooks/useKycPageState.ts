@@ -11,6 +11,7 @@ import {
 } from "@/types/kyc.types";
 import { getKycProvider } from "@/lib/providers/currentProviders";
 import { loadKycProgressFromUser } from "./loadKycProgressFromUser";
+import { getUIText } from "@/utils/i18n";
 
 type KYCStep = 1 | 2 | 3;
 
@@ -29,7 +30,7 @@ export function useKycPageState() {
 
   const toErrorMessage = (error: unknown): string => {
     if (error instanceof Error && error.message) return error.message;
-    return "KYC step failed";
+    return getUIText("kycStepFailedGeneric", currentLanguage);
   };
 
   useEffect(() => {
@@ -53,11 +54,7 @@ export function useKycPageState() {
         }
       } catch (loadError) {
         console.error("Error loading completed steps:", loadError);
-        setError(
-          currentLanguage === "ko"
-            ? "인증 진행 상황을 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요."
-            : "Could not load KYC progress. Please refresh and try again.",
-        );
+        setError(getUIText("kycProgressLoadError", currentLanguage));
       }
     };
 
@@ -193,17 +190,17 @@ export function useKycPageState() {
   const steps = [
     {
       number: 1 as const,
-      title: currentLanguage === "ko" ? "전화번호 인증" : "Phone Verification",
+      title: getUIText("kycPhoneVerificationHeading", currentLanguage),
       completed: phoneData !== null,
     },
     {
       number: 2 as const,
-      title: currentLanguage === "ko" ? "신분증 촬영" : "ID Capture",
+      title: getUIText("kycIdDocumentStepTitle", currentLanguage),
       completed: idDocumentData !== null,
     },
     {
       number: 3 as const,
-      title: currentLanguage === "ko" ? "얼굴 인증" : "Face Verification",
+      title: getUIText("kycFaceVerificationStepTitle", currentLanguage),
       completed: faceData !== null,
     },
   ];

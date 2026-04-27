@@ -7,6 +7,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { getProperty } from "@/lib/api/properties";
 import type { PropertyData } from "@/types/property";
 import { getPaymentProvider } from "@/lib/providers/currentProviders";
+import { getDateLocaleForLanguage } from "@/utils/i18n";
 
 /**
  * 예약 페이지 데이터·파생 값·폼 상태.
@@ -73,7 +74,7 @@ export function useBookingPageData() {
         if (data) setProperty(data);
         else router.push("/");
       } catch (error) {
-        console.error("매물 로드 실패:", error);
+        console.error("[booking] Failed to load property:", error);
         router.push("/");
       } finally {
         setLoading(false);
@@ -127,14 +128,11 @@ export function useBookingPageData() {
 
   const formatDate = (date: Date | null) => {
     if (!date || isNaN(date.getTime())) return "";
-    return date.toLocaleDateString(
-      currentLanguage === "ko"
-        ? "ko-KR"
-        : currentLanguage === "vi"
-          ? "vi-VN"
-          : "en-US",
-      { year: "numeric", month: "short", day: "numeric" },
-    );
+    return date.toLocaleDateString(getDateLocaleForLanguage(currentLanguage), {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
   };
 
   const formatPrice = (price: number) => {

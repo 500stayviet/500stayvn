@@ -13,15 +13,7 @@ export function PhoneVerificationStepView(vm: Vm) {
     return (
       <div className="w-full flex items-center justify-center py-8">
         <div className="text-gray-500">
-          {vm.currentLanguage === 'ko'
-            ? '로딩 중...'
-            : vm.currentLanguage === 'vi'
-              ? 'Đang tải...'
-              : vm.currentLanguage === 'ja'
-                ? '読み込み中...'
-                : vm.currentLanguage === 'zh'
-                  ? '加载中...'
-                  : 'Loading...'}
+          {getUIText('loading', vm.currentLanguage)}
         </div>
       </div>
     );
@@ -64,15 +56,7 @@ export function PhoneVerificationStepView(vm: Vm) {
 
       <div className="text-center">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          {currentLanguage === 'ko'
-            ? '전화번호 인증'
-            : currentLanguage === 'vi'
-              ? 'Xác thực số điện thoại'
-              : currentLanguage === 'ja'
-                ? '電話番号認証'
-                : currentLanguage === 'zh'
-                  ? '手机号验证'
-                  : 'Phone Verification'}
+          {getUIText('kycPhoneVerificationHeading', currentLanguage)}
         </h2>
         <p className="text-sm text-gray-600">
           {getUIText('kycPhoneVerificationForHostDesc', currentLanguage)}
@@ -94,17 +78,7 @@ export function PhoneVerificationStepView(vm: Vm) {
 
           <div className="flex items-center gap-2 text-green-600 text-sm font-bold bg-green-50 p-3 rounded-xl border border-green-100">
             <CheckCircle2 className="w-4 h-4" />
-            <span>
-              {currentLanguage === 'ko'
-                ? '✅ 전화번호 인증이 완료되었습니다.'
-                : currentLanguage === 'vi'
-                  ? '✅ Xác thực số điện thoại đã hoàn tất.'
-                  : currentLanguage === 'ja'
-                    ? '✅ 電話番号認証が完了しました。'
-                    : currentLanguage === 'zh'
-                      ? '✅ 手机号验证已完成。'
-                      : '✅ Phone number verification completed.'}
-            </span>
+            <span>{getUIText('kycPhoneVerifiedLong', currentLanguage)}</span>
           </div>
 
           <button

@@ -3,6 +3,7 @@
 import { Download, RefreshCw, Users } from "lucide-react";
 import AdminRouteGuard from "@/components/admin/AdminRouteGuard";
 import type { SupportedLanguage } from "@/lib/api/translation";
+import { getUIText } from "@/utils/i18n";
 import type { AdminKycPageViewModel } from "../hooks/useAdminKycPage";
 
 const LANG_OPTIONS = [
@@ -20,12 +21,18 @@ function kycStatusBadgeClass(status?: string): string {
   return "bg-slate-100 text-slate-700";
 }
 
+function kycIdTypeLabel(idType: string | undefined, lang: SupportedLanguage): string {
+  if (idType === "passport") return getUIText("adminKycIdTypePassportLabel", lang);
+  if (idType === "id_card") return getUIText("adminKycIdTypeIdCardLabel", lang);
+  return "—";
+}
+
 function kycStatusLabel(status: string | undefined, language: SupportedLanguage): string {
-  const ko = language === "ko";
-  if (status === "verified") return ko ? "인증완료" : "verified";
-  if (status === "pending") return ko ? "심사중" : "pending";
-  if (status === "rejected") return ko ? "거부" : "rejected";
-  return ko ? "미인증" : (status ?? "—");
+  if (status === "verified") return getUIText("adminKycStatusVerified", language);
+  if (status === "pending") return getUIText("adminKycStatusPending", language);
+  if (status === "rejected") return getUIText("adminKycStatusRejected", language);
+  if (!status) return getUIText("adminKycStatusUnverified", language);
+  return status;
 }
 
 type Props = { vm: AdminKycPageViewModel };
@@ -60,16 +67,25 @@ export function AdminKycPageView({ vm }: Props) {
             <h1 className="text-lg font-bold text-slate-900">{t.title}</h1>
             <p className="text-sm text-slate-500">
               {tab === "new"
-                ? `신규 ${newRows.length}명`
+                ? getUIText("adminKycSubtitleNew", currentLanguage).replace(
+                    "{{count}}",
+                    String(newRows.length),
+                  )
                 : tab === "verified"
-                  ? `인증 ${verifiedRows.length}명`
+                  ? getUIText("adminKycSubtitleVerified", currentLanguage).replace(
+                      "{{count}}",
+                      String(verifiedRows.length),
+                    )
                   : tab === "unverified"
-                    ? `미인증 ${unverifiedRows.length}명`
+                    ? getUIText("adminKycSubtitleUnverified", currentLanguage).replace(
+                        "{{count}}",
+                        String(unverifiedRows.length),
+                      )
                     : t.total(kycUsers.length)}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <label className="sr-only">언어</label>
+            <label className="sr-only">{getUIText("selectLanguage", currentLanguage)}</label>
             <select
               value={currentLanguage}
               onChange={(e) => void setCurrentLanguage(e.target.value as SupportedLanguage)}
@@ -110,7 +126,7 @@ export function AdminKycPageView({ vm }: Props) {
               tab === "new" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
             }`}
           >
-            신규
+            {getUIText("adminKycTabNew", currentLanguage)}
             <span className="ml-1 tabular-nums opacity-80">({newRows.length})</span>
             {unseenNew > 0 ? (
               <span className="ml-1 inline-flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white tabular-nums">
@@ -125,7 +141,7 @@ export function AdminKycPageView({ vm }: Props) {
               tab === "all" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
             }`}
           >
-            전체
+            {getUIText("adminKycTabAll", currentLanguage)}
             <span className="ml-1 tabular-nums opacity-80">({kycUsers.length})</span>
           </button>
           <button
@@ -135,7 +151,7 @@ export function AdminKycPageView({ vm }: Props) {
               tab === "verified" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
             }`}
           >
-            인증
+            {getUIText("adminKycTabVerified", currentLanguage)}
             <span className="ml-1 tabular-nums opacity-80">({verifiedRows.length})</span>
           </button>
           <button
@@ -145,7 +161,7 @@ export function AdminKycPageView({ vm }: Props) {
               tab === "unverified" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
             }`}
           >
-            미인증
+            {getUIText("adminKycTabUnverified", currentLanguage)}
             <span className="ml-1 tabular-nums opacity-80">({unverifiedRows.length})</span>
           </button>
         </div>
@@ -171,12 +187,12 @@ export function AdminKycPageView({ vm }: Props) {
                   <table className="w-full min-w-[860px] border-collapse text-left text-sm">
                     <thead>
                       <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
-                        <th className="px-3 py-2">이름</th>
-                        <th className="px-3 py-2">이메일</th>
-                        <th className="px-3 py-2">연락처</th>
-                        <th className="px-3 py-2">인증상태</th>
-                        <th className="px-3 py-2">신분증</th>
-                        <th className="px-3 py-2">생년월일</th>
+                        <th className="px-3 py-2">{getUIText("fullName", currentLanguage)}</th>
+                        <th className="px-3 py-2">{getUIText("email", currentLanguage)}</th>
+                        <th className="px-3 py-2">{getUIText("phoneNumber", currentLanguage)}</th>
+                        <th className="px-3 py-2">{getUIText("adminKycColVerificationStatus", currentLanguage)}</th>
+                        <th className="px-3 py-2">{getUIText("adminKycColIdDocument", currentLanguage)}</th>
+                        <th className="px-3 py-2">{getUIText("adminKycColDateOfBirth", currentLanguage)}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -199,11 +215,7 @@ export function AdminKycPageView({ vm }: Props) {
                             </span>
                           </td>
                           <td className="px-3 py-2 text-slate-600">
-                            {user.idType === "passport"
-                              ? "passport"
-                              : user.idType === "id_card"
-                                ? "id_card"
-                                : "—"}
+                            {kycIdTypeLabel(user.idType, currentLanguage)}
                           </td>
                           <td className="px-3 py-2 text-slate-600">{user.dateOfBirth || "—"}</td>
                         </tr>
@@ -233,13 +245,10 @@ export function AdminKycPageView({ vm }: Props) {
                       </div>
                       <div className="mt-2 border-t border-slate-200 pt-2 text-[11px] text-slate-500">
                         <p>
-                          ID:{" "}
-                          {user.idType === "passport"
-                            ? "passport"
-                            : user.idType === "id_card"
-                              ? "id_card"
-                              : "—"}{" "}
-                          · DOB: {user.dateOfBirth || "—"}
+                          {getUIText("adminKycMobileIdPrefix", currentLanguage)}:{" "}
+                          {kycIdTypeLabel(user.idType, currentLanguage)} ·{" "}
+                          {getUIText("adminKycMobileDobPrefix", currentLanguage)}:{" "}
+                          {user.dateOfBirth || "—"}
                         </p>
                       </div>
                     </div>

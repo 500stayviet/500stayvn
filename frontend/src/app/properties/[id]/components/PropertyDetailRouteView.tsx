@@ -33,7 +33,7 @@ export function PropertyDetailRouteView({ vm }: Props) {
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#FFF8F0' }}>
         <div className="text-center">
           <p className="text-gray-500 mb-4">
-            {currentLanguage === 'ko' ? '매물을 찾을 수 없습니다.' : currentLanguage === 'vi' ? 'Không tìm thấy bất động sản.' : 'Property not found.'}
+            {getUIText('propertyNotFound', currentLanguage as SupportedLanguage)}
           </p>
           <button
             type="button"

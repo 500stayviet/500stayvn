@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
 import type { UserFacingAppToast } from "@/lib/runtime/networkResilience";
+import { getUIText } from "@/utils/i18n";
 
 const MAX_ITEMS = 4;
 const DEDUPE_WINDOW_MS = 12_000;
@@ -12,6 +14,7 @@ type ToastItem = UserFacingAppToast & { id: string };
  * `emitUserFacingAppToast` / `stayviet-app-toast` 구독 — 성공·정보(비오류) 알림
  */
 export default function AppToastBanner() {
+  const { currentLanguage } = useLanguage();
   const [items, setItems] = useState<ToastItem[]>([]);
 
   const dismiss = useCallback((id: string) => {
@@ -74,7 +77,9 @@ export default function AppToastBanner() {
                     : "font-semibold text-sky-700 dark:text-sky-400"
                 }
               >
-                {isSuccess ? "완료" : "안내"}
+                {isSuccess
+                  ? getUIText("toastHeadingSuccess", currentLanguage)
+                  : getUIText("toastHeadingInfo", currentLanguage)}
               </p>
               <p className="mt-0.5 text-zinc-800 dark:text-zinc-200">{item.message}</p>
             </div>
@@ -83,7 +88,7 @@ export default function AppToastBanner() {
               onClick={() => dismiss(item.id)}
               className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
             >
-              닫기
+              {getUIText("close", currentLanguage)}
             </button>
           </div>
         );

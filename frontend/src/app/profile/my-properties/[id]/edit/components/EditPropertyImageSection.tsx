@@ -1,4 +1,6 @@
 import { Camera, X } from "lucide-react";
+import type { SupportedLanguage } from "@/lib/api/translation";
+import { getUIText } from "@/utils/i18n";
 
 interface EditPropertyImageSectionProps {
   currentLanguage: string;
@@ -37,6 +39,7 @@ export default function EditPropertyImageSection({
   openPhotoLibrary,
   openCamera,
 }: EditPropertyImageSectionProps) {
+  const lang = currentLanguage as SupportedLanguage;
   return (
     <section
       className="p-5 rounded-2xl"
@@ -47,11 +50,7 @@ export default function EditPropertyImageSection({
     >
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-sm font-bold" style={{ color: colors.text }}>
-          {currentLanguage === "ko"
-            ? "사진 등록"
-            : currentLanguage === "vi"
-              ? "Đăng ảnh"
-              : "Upload Photos"}
+          {getUIText("listingPhotoHeading", lang)}
           <span style={{ color: colors.error }} className="ml-1">
             *
           </span>
@@ -86,13 +85,7 @@ export default function EditPropertyImageSection({
               className="aspect-square rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors"
             >
               <Camera className="w-8 h-8 text-gray-400 mb-1" />
-              <span className="text-xs text-gray-500">
-                {currentLanguage === "ko"
-                  ? "추가"
-                  : currentLanguage === "vi"
-                    ? "Thêm"
-                    : "Add"}
-              </span>
+              <span className="text-xs text-gray-500">{getUIText("listingAddShort", lang)}</span>
             </button>
 
             <input
@@ -125,11 +118,7 @@ export default function EditPropertyImageSection({
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">
-              {currentLanguage === "ko"
-                ? "사진 추가 방법 선택"
-                : currentLanguage === "vi"
-                  ? "Chọn cách thêm ảnh"
-                  : "Select Photo Source"}
+              {getUIText("photoSourceMenuTitle", lang)}
             </h3>
             <div className="space-y-3">
               <button
@@ -138,13 +127,7 @@ export default function EditPropertyImageSection({
                 className="w-full py-4 px-4 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-3"
               >
                 <Camera className="w-5 h-5" />
-                <span>
-                  {currentLanguage === "ko"
-                    ? "사진첩에서 선택"
-                    : currentLanguage === "vi"
-                      ? "Chọn từ thư viện ảnh"
-                      : "Select from Photo Library"}
-                </span>
+                <span>{getUIText("selectFromLibrary", lang)}</span>
               </button>
               <button
                 type="button"
@@ -152,24 +135,14 @@ export default function EditPropertyImageSection({
                 className="w-full py-4 px-4 bg-gray-100 text-gray-900 rounded-xl font-medium hover:bg-gray-200 transition-colors flex items-center justify-center gap-3"
               >
                 <Camera className="w-5 h-5" />
-                <span>
-                  {currentLanguage === "ko"
-                    ? "카메라로 촬영"
-                    : currentLanguage === "vi"
-                      ? "Chụp ảnh"
-                      : "Take Photo"}
-                </span>
+                <span>{getUIText("takePhoto", lang)}</span>
               </button>
               <button
                 type="button"
                 onClick={closeImageSourceMenu}
                 className="w-full py-3 px-4 text-gray-600 rounded-xl font-medium hover:bg-gray-100 transition-colors"
               >
-                {currentLanguage === "ko"
-                  ? "취소"
-                  : currentLanguage === "vi"
-                    ? "Hủy"
-                    : "Cancel"}
+                {getUIText("cancel", lang)}
               </button>
             </div>
           </div>

@@ -7,12 +7,11 @@ import type { SupportedLanguage } from "@/lib/api/translation";
 import type { PropertyData } from "@/types/property";
 import { formatFullPrice, getBookableDateSegments } from "@/lib/utils/propertyUtils";
 import { formatDate } from "@/lib/utils/dateUtils";
+import { getDateLocaleForLanguage } from "@/utils/i18n";
 import { PropertyDetailFacilitiesSection } from "./PropertyDetailFacilitiesSection";
 import type { PropertyDetailBookingVm } from "./usePropertyDetailBooking";
 
 const SECTION_DASHED = { borderBottom: "1.5px dashed rgba(254, 215, 170, 0.8)" };
-
-type TFn = (ko: string, vi: string, en: string, ja?: string, zh?: string) => string;
 
 type ColorTokens = {
   primary: string;
@@ -28,11 +27,22 @@ type Props = {
   currentLanguage: SupportedLanguage;
   colors: ColorTokens;
   labelColor: string;
-  t: TFn;
   cityDistrictLine: string;
   propertyTypeLabel: string;
   booking: PropertyDetailBookingVm;
 };
+
+function formatAreaNumber(area: number, lang: SupportedLanguage): string {
+  return Number(area).toLocaleString(getDateLocaleForLanguage(lang), {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 0,
+  });
+}
+
+function hasDisplayableArea(property: PropertyData): boolean {
+  const a = property.area;
+  return typeof a === "number" && Number.isFinite(a) && a > 0;
+}
 
 /**
  * 임차인 모드: 매물 메타·이용기간(예약과 무관한 노출 기간)·시설·체크인·설명·날짜/인원/예약 CTA.
@@ -42,7 +52,6 @@ export function PropertyDetailTenantContent({
   currentLanguage,
   colors,
   labelColor,
-  t,
   cityDistrictLine,
   propertyTypeLabel,
   booking: b,
@@ -69,23 +78,19 @@ export function PropertyDetailTenantContent({
     bookNow,
   } = b;
 
-  const facilitiesTitle =
-    currentLanguage === "ko"
-      ? "숙소시설 및 정책"
-      : currentLanguage === "vi"
-        ? "Tiện ích và chính sách"
-        : currentLanguage === "ja"
-          ? "施設とポリシー"
-          : currentLanguage === "zh"
-            ? "设施与政策"
-            : "Facilities & Policy";
+  const curLabels = {
+    vnd: getUIText("curVnd", currentLanguage),
+    usd: getUIText("curUsd", currentLanguage),
+    krw: getUIText("curKrw", currentLanguage),
+  };
+  const dateLoc = getDateLocaleForLanguage(currentLanguage);
 
   return (
     <>
       {property.propertyType && (
         <section className="py-3 text-left" style={SECTION_DASHED}>
           <p className="text-base font-bold mb-1.5" style={{ color: colors.text }}>
-            {t("매물 종류", "Loại BĐS", "Property Type", "物件タイプ", "房源类型")}
+            {getUIText("listingKindTitle", currentLanguage)}
           </p>
           <p className="text-sm" style={{ color: colors.text }}>
             {propertyTypeLabel}
@@ -95,13 +100,14 @@ export function PropertyDetailTenantContent({
       {(property.bedrooms !== undefined ||
         property.bathrooms !== undefined ||
         property.maxAdults != null ||
-        property.maxChildren != null) && (
+        property.maxChildren != null ||
+        hasDisplayableArea(property)) && (
         <section className="py-3 text-left" style={SECTION_DASHED}>
           <div className="grid grid-cols-3 gap-2">
             {property.bedrooms !== undefined && (
               <div>
                 <p className="text-xs font-bold mb-1" style={{ color: colors.text }}>
-                  {t("방 개수", "Số phòng", "Bedrooms", "寝室数", "卧室数")}
+                  {getUIText("roomsLabel", currentLanguage)}
                 </p>
                 <p className="text-sm" style={{ color: colors.text }}>
                   {property.bedrooms}
@@ -111,7 +117,7 @@ export function PropertyDetailTenantContent({
             {property.bathrooms !== undefined && (
               <div>
                 <p className="text-xs font-bold mb-1" style={{ color: colors.text }}>
-                  {t("화장실 수", "Số phòng tắm", "Bathrooms", "浴室数", "浴室数")}
+                  {getUIText("detBathCount", currentLanguage)}
                 </p>
                 <p className="text-sm" style={{ color: colors.text }}>
                   {property.bathrooms}
@@ -121,19 +127,22 @@ export function PropertyDetailTenantContent({
             {(property.maxAdults != null || property.maxChildren != null) && (
               <div>
                 <p className="text-xs font-bold mb-1" style={{ color: colors.text }}>
-                  {t("최대 인원", "Số người tối đa", "Max Guests", "最大人数", "最多人数")}
+                  {getUIText("maxGuests", currentLanguage)}
                 </p>
                 <p className="text-sm" style={{ color: colors.text }}>
                   {(property.maxAdults || 0) + (property.maxChildren || 0)}
-                  {currentLanguage === "ko"
-                    ? "명"
-                    : currentLanguage === "vi"
-                      ? " người"
-                      : currentLanguage === "ja"
-                        ? "名"
-                        : currentLanguage === "zh"
-                          ? "人"
-                          : " guests"}
+                  {getUIText("detGuestSuffix", currentLanguage)}
+                </p>
+              </div>
+            )}
+            {hasDisplayableArea(property) && (
+              <div>
+                <p className="text-xs font-bold mb-1" style={{ color: colors.text }}>
+                  {getUIText("detAreaLabel", currentLanguage)}
+                </p>
+                <p className="text-sm" style={{ color: colors.text }}>
+                  {formatAreaNumber(property.area, currentLanguage)}{" "}
+                  {getUIText("areaUnitSqm", currentLanguage)}
                 </p>
               </div>
             )}
@@ -142,7 +151,7 @@ export function PropertyDetailTenantContent({
       )}
       <section className="py-3 text-left" style={SECTION_DASHED}>
         <p className="text-base font-bold mb-1.5" style={{ color: colors.text }}>
-          {t("주소", "Địa chỉ", "Address", "住所", "地址")}
+          {getUIText("address", currentLanguage)}
         </p>
         <p className="text-sm break-words leading-relaxed" style={{ color: colors.text }}>
           {property.address || "—"}
@@ -150,7 +159,7 @@ export function PropertyDetailTenantContent({
       </section>
       <section className="py-3 text-left" style={SECTION_DASHED}>
         <p className="text-base font-bold mb-1.5" style={{ color: colors.text }}>
-          {t("도시·구", "Thành phố·Quận", "City·District", "都市・区", "城市・区")}
+          {getUIText("detCityDistLine", currentLanguage)}
         </p>
         <p className="text-sm" style={{ color: colors.text }}>
           {cityDistrictLine}
@@ -159,12 +168,12 @@ export function PropertyDetailTenantContent({
       {(property.checkInDate || property.checkOutDate) && (
         <section className="py-3 text-left" style={SECTION_DASHED}>
           <p className="text-base font-bold mb-1.5" style={{ color: colors.text }}>
-            {t("이용 가능 기간", "Khoảng trống", "Available period", "利用可能期間", "可用期间")}
+            {getUIText("detAvailRange", currentLanguage)}
           </p>
           <div className="grid grid-cols-2 gap-2">
             <div>
               <p className="text-sm font-bold mb-1" style={{ color: colors.text }}>
-                {t("시작일", "Ngày bắt đầu", "Start Date", "開始日", "开始日期")}
+                {getUIText("listingLabelStart", currentLanguage)}
               </p>
               <p className="text-sm" style={{ color: colors.text }}>
                 {property.checkInDate && property.checkOutDate
@@ -185,7 +194,7 @@ export function PropertyDetailTenantContent({
             </div>
             <div>
               <p className="text-sm font-bold mb-1" style={{ color: colors.text }}>
-                {t("종료일", "Ngày kết thúc", "End Date", "終了日", "结束日期")}
+                {getUIText("listingLabelEnd", currentLanguage)}
               </p>
               <p className="text-sm" style={{ color: colors.text }}>
                 {property.checkInDate && property.checkOutDate
@@ -209,12 +218,12 @@ export function PropertyDetailTenantContent({
       )}
       <section className="py-3 text-left" style={SECTION_DASHED}>
         <p className="text-base font-bold mb-1.5" style={{ color: colors.text }}>
-          {t("1주일 임대료", "Giá thuê 1 tuần", "Weekly Rent", "1週間賃貸料", "1周租金")}
+          {getUIText("weeklyRent", currentLanguage)}
         </p>
         <p className="text-lg font-bold" style={{ color: colors.text }}>
-          {formatFullPrice(property.price, property.priceUnit)}
+          {formatFullPrice(property.price, property.priceUnit, curLabels)}
           <span className="text-sm font-normal ml-1.5" style={{ color: colors.textMuted }}>
-            {t("공과금/관리비 포함", "Bao gồm phí", "incl. utilities", "光熱・管理費込み", "含水电")}
+            {getUIText("utilitiesIncluded", currentLanguage)}
           </span>
         </p>
       </section>
@@ -229,18 +238,18 @@ export function PropertyDetailTenantContent({
           textSecondary: colors.textSecondary,
           textMuted: colors.textMuted,
         }}
-        title={facilitiesTitle}
+        title={getUIText("detPolicyTitle", currentLanguage)}
       />
 
       {(property.checkInTime || property.checkOutTime) && (
         <section className="py-3 text-left" style={SECTION_DASHED}>
           <p className="text-base font-bold mb-1.5" style={{ color: colors.text }}>
-            {t("체크인/체크아웃 시간", "Giờ check-in/out", "Check-in/out time", "チェックイン・アウト", "入住/退房时间")}
+            {getUIText("checkInOutScheduleTitle", currentLanguage)}
           </p>
           <div className="grid grid-cols-2 gap-2">
             <div>
               <p className="text-sm font-bold mb-1" style={{ color: colors.text }}>
-                {t("체크인", "Check-in", "Check-in", "チェックイン", "入住")}
+                {getUIText("checkIn", currentLanguage)}
               </p>
               <p className="text-base" style={{ color: colors.text }}>
                 {property.checkInTime || "14:00"}
@@ -248,7 +257,7 @@ export function PropertyDetailTenantContent({
             </div>
             <div>
               <p className="text-sm font-bold mb-1" style={{ color: colors.text }}>
-                {t("체크아웃", "Check-out", "Check-out", "チェックアウト", "退房")}
+                {getUIText("checkOut", currentLanguage)}
               </p>
               <p className="text-base" style={{ color: colors.text }}>
                 {property.checkOutTime || "12:00"}
@@ -295,10 +304,7 @@ export function PropertyDetailTenantContent({
             <span className="text-[9px] text-gray-500 mb-0.5">{getUIText("checkIn", currentLanguage)}</span>
             <span className={`text-xs font-semibold ${checkInDate ? "text-orange-600" : "text-gray-400"}`}>
               {checkInDate
-                ? checkInDate.toLocaleDateString(
-                    currentLanguage === "ko" ? "ko-KR" : currentLanguage === "vi" ? "vi-VN" : "en-US",
-                    { month: "short", day: "numeric" },
-                  )
+                ? checkInDate.toLocaleDateString(dateLoc, { month: "short", day: "numeric" })
                 : getUIText("selectDate", currentLanguage)}
             </span>
           </button>
@@ -317,10 +323,7 @@ export function PropertyDetailTenantContent({
             <span className="text-[9px] text-gray-500 mb-0.5">{getUIText("checkOut", currentLanguage)}</span>
             <span className={`text-xs font-semibold ${checkOutDate ? "text-orange-600" : "text-gray-400"}`}>
               {checkOutDate
-                ? checkOutDate.toLocaleDateString(
-                    currentLanguage === "ko" ? "ko-KR" : currentLanguage === "vi" ? "vi-VN" : "en-US",
-                    { month: "short", day: "numeric" },
-                  )
+                ? checkOutDate.toLocaleDateString(dateLoc, { month: "short", day: "numeric" })
                 : getUIText("selectDate", currentLanguage)}
             </span>
           </button>
@@ -360,16 +363,8 @@ export function PropertyDetailTenantContent({
                       selectedGuests === n ? "bg-orange-50 text-orange-700 font-medium" : "text-gray-700 hover:bg-gray-50"
                     }`}
                   >
-                    {n}{" "}
-                    {currentLanguage === "ko"
-                      ? "명"
-                      : currentLanguage === "vi"
-                        ? "người"
-                        : currentLanguage === "ja"
-                          ? "名"
-                          : currentLanguage === "zh"
-                            ? "人"
-                            : ""}
+                    {n}
+                    {getUIText("detGuestSuffix", currentLanguage)}
                     {n === maxGuests && (
                       <span className="text-gray-500 font-normal"> {getUIText("maxSuffix", currentLanguage)}</span>
                     )}
@@ -392,15 +387,7 @@ export function PropertyDetailTenantContent({
                 }}
                 className="w-3.5 h-3.5 rounded border-gray-300 text-orange-600"
               />
-              <span className="text-xs text-gray-700">
-                {t(
-                  "애완동물과 함께 여행하시나요?",
-                  "Bạn có đi cùng thú cưng?",
-                  "Traveling with pets?",
-                  "ペットと一緒に旅行しますか？",
-                  "与宠物一起旅行吗？",
-                )}
-              </span>
+              <span className="text-xs text-gray-700">{getUIText("petsTravelQuestion", currentLanguage)}</span>
             </label>
             {addPetSelected && (
               <div className="relative" ref={petDropdownRef}>
@@ -411,15 +398,7 @@ export function PropertyDetailTenantContent({
                   style={{ borderColor: labelColor, color: labelColor }}
                 >
                   {selectedPetCount}
-                  {currentLanguage === "ko"
-                    ? "마리"
-                    : currentLanguage === "vi"
-                      ? " con"
-                      : currentLanguage === "ja"
-                        ? "匹"
-                        : currentLanguage === "zh"
-                          ? "只"
-                          : " pet(s)"}
+                  {getUIText("petCountClassifier", currentLanguage)}
                   <ChevronDown
                     className={`w-3.5 h-3.5 transition-transform ${showPetDropdown ? "rotate-180" : ""}`}
                   />
@@ -438,16 +417,8 @@ export function PropertyDetailTenantContent({
                           selectedPetCount === n ? "bg-orange-50 text-orange-700 font-medium" : "text-gray-700 hover:bg-gray-50"
                         }`}
                       >
-                        {n}{" "}
-                        {currentLanguage === "ko"
-                          ? "마리"
-                          : currentLanguage === "vi"
-                            ? "con"
-                            : currentLanguage === "ja"
-                              ? "匹"
-                              : currentLanguage === "zh"
-                                ? "只"
-                                : ""}
+                        {n}
+                        {getUIText("petCountClassifier", currentLanguage)}
                         {n === maxPets && (
                           <span className="text-gray-500"> {getUIText("maxSuffix", currentLanguage)}</span>
                         )}

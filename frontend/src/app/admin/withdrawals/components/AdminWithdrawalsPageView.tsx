@@ -1,21 +1,20 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { type ReactNode, useMemo } from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
+import {
+  ADMIN_ACTION_REASON_WITHDRAWAL_HOLD,
+  ADMIN_ACTION_REASON_WITHDRAWAL_REJECT,
+} from "@/lib/adminActionReasons";
+import { getUIText } from "@/utils/i18n";
 import AdminRouteGuard from "@/components/admin/AdminRouteGuard";
 import type { ServerWithdrawalRequest } from "@/lib/api/financeServer";
 import type { AdminWithdrawalsPageViewModel, WithdrawalTab } from "../hooks/useAdminWithdrawalsPage";
 
-const TABS: { id: WithdrawalTab; label: string }[] = [
-  { id: "pending", label: "승인 대기" },
-  { id: "processing", label: "처리 중" },
-  { id: "rejected", label: "반려" },
-  { id: "completed", label: "완료" },
-  { id: "held", label: "보류" },
-];
-
 type Props = { vm: AdminWithdrawalsPageViewModel };
 
 export function AdminWithdrawalsPageView({ vm }: Props) {
+  const { currentLanguage } = useLanguage();
   const {
     loading,
     load,
@@ -35,6 +34,28 @@ export function AdminWithdrawalsPageView({ vm }: Props) {
     runWithdrawalAction,
     patchWithdrawal,
   } = vm;
+
+  const TABS: { id: WithdrawalTab; label: string }[] = useMemo(
+    () => [
+      { id: "pending", label: getUIText("adminWithdrawalsTabPending", currentLanguage) },
+      { id: "processing", label: getUIText("adminWithdrawalsTabProcessing", currentLanguage) },
+      { id: "rejected", label: getUIText("adminWithdrawalsTabRejected", currentLanguage) },
+      { id: "completed", label: getUIText("adminWithdrawalsTabCompleted", currentLanguage) },
+      { id: "held", label: getUIText("adminWithdrawalsTabHeld", currentLanguage) },
+    ],
+    [currentLanguage],
+  );
+
+  const introLine = useMemo(
+    () =>
+      getUIText("adminWithdrawalsIntroLine", currentLanguage)
+        .replace("{{pending}}", String(pending.length))
+        .replace("{{processing}}", String(processing.length))
+        .replace("{{rejected}}", String(rejected.length))
+        .replace("{{completed}}", String(completed.length))
+        .replace("{{held}}", String(held.length)),
+    [currentLanguage, pending.length, processing.length, rejected.length, completed.length, held.length],
+  );
 
   const column = (list: ServerWithdrawalRequest[], body: ReactNode) => (
     <div className="flex min-h-0 max-h-[min(75vh,920px)] flex-col overflow-y-auto rounded-lg border border-slate-200 bg-slate-50/40">
@@ -63,18 +84,19 @@ export function AdminWithdrawalsPageView({ vm }: Props) {
       <div>
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-lg font-bold text-slate-900">출금 요청 승인</h1>
-            <p className="text-sm text-slate-500">
-              카테고리별로 확인하세요. · 대기 {pending.length} · 처리 {processing.length} · 반려 {rejected.length} · 완료{" "}
-              {completed.length} · 보류 {held.length}
-            </p>
+            <h1 className="text-lg font-bold text-slate-900">
+              {getUIText("adminWithdrawalsPageTitle", currentLanguage)}
+            </h1>
+            <p className="text-sm text-slate-500">{introLine}</p>
           </div>
           <button
             type="button"
             onClick={() => void load()}
             className="shrink-0 rounded-md bg-slate-100 px-4 py-2 text-sm font-medium hover:bg-slate-200"
           >
-            {loading ? "불러오는 중..." : "새로고침"}
+            {loading
+              ? getUIText("adminCommonLoading", currentLanguage)
+              : getUIText("adminCommonRefresh", currentLanguage)}
           </button>
         </div>
 
@@ -108,18 +130,18 @@ export function AdminWithdrawalsPageView({ vm }: Props) {
 
         <div className="mb-4">
           <label htmlFor="withdrawal-search" className="sr-only">
-            검색
+            {getUIText("search", currentLanguage)}
           </label>
           <input
             id="withdrawal-search"
             type="search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="이메일, UID, 계좌 라벨, 금액…"
+            placeholder={getUIText("adminWithdrawalsSearchPlaceholder", currentLanguage)}
             className="w-full max-w-md rounded-md border border-slate-200 bg-white px-3 py-2 text-sm placeholder:text-slate-400"
           />
           <p className="mt-1 text-xs text-slate-500">
-            선택한 탭(승인 대기·처리 중·반려·완료·보류) 안에서만 검색됩니다.
+            {getUIText("adminWithdrawalsSearchHint", currentLanguage)}
           </p>
         </div>
 
@@ -140,16 +162,16 @@ export function AdminWithdrawalsPageView({ vm }: Props) {
                       }
                       className="rounded-md bg-blue-600 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
                     >
-                      승인
+                      {getUIText("adminWithdrawalApprove", currentLanguage)}
                     </button>
                     <button
                       type="button"
                       onClick={() =>
-                        void runWithdrawalAction(() => patchWithdrawal(r.id, "reject", "관리자 반려"))
+                        void runWithdrawalAction(() => patchWithdrawal(r.id, "reject", ADMIN_ACTION_REASON_WITHDRAWAL_REJECT))
                       }
                       className="rounded-md bg-red-50 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100"
                     >
-                      반려
+                      {getUIText("adminWithdrawalReject", currentLanguage)}
                     </button>
                   </div>
                 </div>
@@ -165,27 +187,27 @@ export function AdminWithdrawalsPageView({ vm }: Props) {
                     <button
                       type="button"
                       onClick={() =>
-                        void runWithdrawalAction(() => patchWithdrawal(r.id, "hold", "관리자 보류"))
+                        void runWithdrawalAction(() => patchWithdrawal(r.id, "hold", ADMIN_ACTION_REASON_WITHDRAWAL_HOLD))
                       }
                       className="rounded-md bg-amber-50 py-1.5 text-[10px] font-semibold text-amber-900 hover:bg-amber-100"
                     >
-                      보류
+                      {getUIText("adminWithdrawalHold", currentLanguage)}
                     </button>
                     <button
                       type="button"
                       onClick={() => void runWithdrawalAction(() => patchWithdrawal(r.id, "complete"))}
                       className="rounded-md bg-green-600 py-1.5 text-[10px] font-semibold text-white hover:bg-green-700"
                     >
-                      완료
+                      {getUIText("adminWithdrawalComplete", currentLanguage)}
                     </button>
                     <button
                       type="button"
                       onClick={() =>
-                        void runWithdrawalAction(() => patchWithdrawal(r.id, "reject", "관리자 반려"))
+                        void runWithdrawalAction(() => patchWithdrawal(r.id, "reject", ADMIN_ACTION_REASON_WITHDRAWAL_REJECT))
                       }
                       className="rounded-md bg-red-50 py-1.5 text-[10px] font-semibold text-red-700 hover:bg-red-100"
                     >
-                      반려
+                      {getUIText("adminWithdrawalReject", currentLanguage)}
                     </button>
                   </div>
                 </div>
@@ -203,16 +225,16 @@ export function AdminWithdrawalsPageView({ vm }: Props) {
                       onClick={() => void runWithdrawalAction(() => patchWithdrawal(r.id, "resume"))}
                       className="rounded-md bg-blue-600 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
                     >
-                      재개
+                      {getUIText("adminWithdrawalResume", currentLanguage)}
                     </button>
                     <button
                       type="button"
                       onClick={() =>
-                        void runWithdrawalAction(() => patchWithdrawal(r.id, "reject", "관리자 반려"))
+                        void runWithdrawalAction(() => patchWithdrawal(r.id, "reject", ADMIN_ACTION_REASON_WITHDRAWAL_REJECT))
                       }
                       className="rounded-md bg-red-50 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100"
                     >
-                      반려
+                      {getUIText("adminWithdrawalReject", currentLanguage)}
                     </button>
                   </div>
                 </div>
@@ -230,7 +252,9 @@ export function AdminWithdrawalsPageView({ vm }: Props) {
                         st === "completed" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
                       }`}
                     >
-                      {st === "completed" ? "완료" : "반려"}
+                      {st === "completed"
+                        ? getUIText("adminWithdrawalBadgeCompleted", currentLanguage)
+                        : getUIText("adminWithdrawalBadgeRejected", currentLanguage)}
                     </span>
                   </div>
                 </div>

@@ -11,7 +11,6 @@ import TopBar from "@/components/TopBar";
 import ChatModal from "@/components/ChatModal";
 import BookingDetailsModal from "@/components/BookingDetailsModal";
 import Image from "next/image";
-import type { SupportedLanguage } from "@/lib/api/translation";
 import { getUIText } from "@/utils/i18n";
 import type { MyBookingsPageViewModel } from "../hooks/useMyBookingsPage";
 
@@ -22,39 +21,23 @@ const STATUS_COLORS = {
   completed: "bg-gray-100 text-gray-700",
 };
 
-const STATUS_LABELS: Record<
-  "pending" | "confirmed" | "cancelled" | "completed",
-  Record<SupportedLanguage, string>
-> = {
-  pending: {
-    ko: "승인 대기 중",
-    vi: "Chờ phê duyệt",
-    en: "Pending Approval",
-    ja: "承認待ち",
-    zh: "待批准",
-  },
-  confirmed: {
-    ko: "확정됨",
-    vi: "Đã xác nhận",
-    en: "Confirmed",
-    ja: "確定済み",
-    zh: "已确认",
-  },
-  cancelled: {
-    ko: "취소됨",
-    vi: "Đã hủy",
-    en: "Cancelled",
-    ja: "キャンセル済み",
-    zh: "已取消",
-  },
-  completed: {
-    ko: "완료됨",
-    vi: "Hoàn thành",
-    en: "Completed",
-    ja: "完了済み",
-    zh: "已完成",
-  },
-};
+function bookingListStatusLabel(
+  status: keyof typeof STATUS_COLORS,
+  lang: Parameters<typeof getUIText>[1],
+): string {
+  switch (status) {
+    case "pending":
+      return getUIText("bookingBadgePending", lang);
+    case "confirmed":
+      return getUIText("bookingBadgeConfirmed", lang);
+    case "cancelled":
+      return getUIText("bookingBadgeCancelled", lang);
+    case "completed":
+      return getUIText("completed", lang);
+    default:
+      return status;
+  }
+}
 
 type Props = { vm: MyBookingsPageViewModel };
 
@@ -152,7 +135,7 @@ export function MyBookingsPageView({ vm }: Props) {
                 <span
                   className={`text-[10px] px-2 py-1 rounded-full font-bold ${STATUS_COLORS[booking.status]}`}
                 >
-                  {STATUS_LABELS[booking.status][currentLanguage]}
+                  {bookingListStatusLabel(booking.status, currentLanguage)}
                 </span>
                 <span className="text-[10px] text-gray-400">
                   {booking.createdAt && formatDateTime(booking.createdAt)}

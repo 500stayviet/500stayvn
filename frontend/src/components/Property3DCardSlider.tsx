@@ -3,9 +3,12 @@
 import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
-import { MapPin, ChevronLeft, ChevronRight, Heart, Zap } from "lucide-react";
+import { MapPin, ChevronLeft, ChevronRight, Heart, Zap, Calendar } from "lucide-react";
 import { formatPrice } from "@/lib/utils/propertyUtils";
 import { getCityName } from "@/lib/utils/propertyUtils";
+import { isAvailableNow, formatDateForBadge } from "@/lib/utils/dateUtils";
+import type { SupportedLanguage } from "@/lib/api/translation";
+import { getUIText } from "@/utils/i18n";
 
 interface Property {
   id: string;
@@ -24,6 +27,16 @@ interface Property3DCardSliderProps {
   selectedIndex: number;
   onSelectIndex: (index: number) => void;
   onCardClick?: (property: Property, index: number) => void;
+  currentLanguage: SupportedLanguage;
+}
+
+function listingImageAlt(
+  name: string | undefined,
+  language: SupportedLanguage,
+): string {
+  const n = name?.trim();
+  if (n) return n;
+  return getUIText("propertyImageAltFallback", language);
 }
 
 export default function Property3DCardSlider({
@@ -31,6 +44,7 @@ export default function Property3DCardSlider({
   selectedIndex,
   onSelectIndex,
   onCardClick,
+  currentLanguage,
 }: Property3DCardSliderProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
@@ -93,7 +107,7 @@ export default function Property3DCardSlider({
       <div className="w-full flex flex-col items-center justify-center">
         {/* 매물 카드와 동일한 높이의 컨테이너 */}
         <div className="w-[85vw] sm:w-96 h-[360px] sm:h-80 flex items-center justify-center bg-transparent rounded-[2.5rem]">
-          <p className="text-gray-400 text-xs">매물을 불러오는 중...</p>
+          <p className="text-gray-400 text-xs">{getUIText("loading", currentLanguage)}</p>
         </div>
       </div>
     );
@@ -140,7 +154,7 @@ export default function Property3DCardSlider({
                   prevProperty.images?.[0] ||
                   "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400"
                 }
-                alt={prevProperty.name}
+                alt={listingImageAlt(prevProperty.name, currentLanguage)}
                 fill
                 className="object-cover blur-sm"
               />
@@ -188,7 +202,7 @@ export default function Property3DCardSlider({
                     currentProperty.images?.[0] ||
                     "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=500"
                   }
-                  alt={currentProperty.name}
+                  alt={listingImageAlt(currentProperty.name, currentLanguage)}
                   fill
                   className="object-cover"
                   priority
@@ -207,23 +221,39 @@ export default function Property3DCardSlider({
                 {/* 그라데이션 오버레이 */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
 
-                {/* 즉시 입주 가능 배지 */}
-                <motion.div
-                  className="absolute top-3 left-3 flex items-center gap-2 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-full shadow-lg"
-                  whileHover={{ scale: 1.05 }}
-                >
-                  <Zap className="w-3.5 h-3.5 text-[#E63946]" />
-                  <span className="text-xs font-bold text-[#E63946]">NEW</span>
-                </motion.div>
+                {(isAvailableNow(currentProperty.checkInDate) ||
+                  !!currentProperty.checkInDate) && (
+                  <motion.div
+                    className="absolute top-3 left-3 flex items-center gap-2 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-full shadow-lg max-w-[85%]"
+                    whileHover={{ scale: 1.05 }}
+                  >
+                    {isAvailableNow(currentProperty.checkInDate) ? (
+                      <>
+                        <Zap className="w-3.5 h-3.5 flex-shrink-0 text-[#E63946]" />
+                        <span className="text-xs font-bold text-[#E63946] line-clamp-2">
+                          {getUIText("immediateEntry", currentLanguage)}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <Calendar className="w-3.5 h-3.5 flex-shrink-0 text-[#E63946]" />
+                        <span className="text-xs font-bold text-[#E63946] line-clamp-2">
+                          {formatDateForBadge(currentProperty.checkInDate!, currentLanguage)}
+                        </span>
+                      </>
+                    )}
+                  </motion.div>
+                )}
 
                 {/* 찜 버튼 */}
                 <motion.button
+                  type="button"
+                  aria-label={getUIText("propertyFavoriteButtonAria", currentLanguage)}
                   className="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 backdrop-blur-md shadow-lg flex items-center justify-center hover:bg-white transition-colors"
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={(e) => {
-                    e.stopPropagation(); // 상세 페이지 이동 방지
-                    // 찜하기 기능 구현
+                    e.stopPropagation();
                   }}
                 >
                   <Heart className="w-5 h-5 text-[#E63946]" />
@@ -231,18 +261,23 @@ export default function Property3DCardSlider({
 
                 {/* 가격 배지 */}
                 <motion.div
-                  className="absolute bottom-3 right-3 bg-gradient-to-br from-[#E63946] to-[#FF6B35] text-white px-4 py-2 rounded-2xl shadow-xl font-black text-sm"
+                  className="absolute bottom-3 right-3 bg-gradient-to-br from-[#E63946] to-[#FF6B35] text-white px-4 py-2 rounded-2xl shadow-xl font-black text-sm text-right"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2 }}
                 >
-                  {formatPrice(currentProperty.price, "vnd")}
+                  <div>{formatPrice(currentProperty.price, currentProperty.priceUnit ?? "vnd")}</div>
+                  <div className="text-[10px] font-semibold opacity-90">
+                    {getUIText("priceHeroPerWeek", currentLanguage)}
+                  </div>
                 </motion.div>
 
                 {/* 매물 이미지 하단에 위치한 네비게이션 컨트롤러 (globals 44px 예외로 작은 크기 유지) */}
                 <div className="card-slider-nav absolute bottom-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2">
                   {/* 좌측 버튼 */}
                   <motion.button
+                    type="button"
+                    aria-label={getUIText("carouselPrevious", currentLanguage)}
                     onClick={(e) => {
                       e.stopPropagation();
                       handlePrevious();
@@ -267,7 +302,12 @@ export default function Property3DCardSlider({
 
                       return (
                         <motion.button
+                          type="button"
                           key={index}
+                          aria-label={getUIText("carouselSlideSelectAria", currentLanguage).replace(
+                            /\{\{n\}\}/g,
+                            String(index + 1),
+                          )}
                           onClick={(e) => {
                             e.stopPropagation();
                             onSelectIndex(index);
@@ -305,6 +345,8 @@ export default function Property3DCardSlider({
 
                   {/* 우측 버튼 */}
                   <motion.button
+                    type="button"
+                    aria-label={getUIText("carouselNext", currentLanguage)}
                     onClick={(e) => {
                       e.stopPropagation();
                       handleNext();
@@ -370,7 +412,7 @@ export default function Property3DCardSlider({
                   nextProperty.images?.[0] ||
                   "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400"
                 }
-                alt={nextProperty.name}
+                alt={listingImageAlt(nextProperty.name, currentLanguage)}
                 fill
                 className="object-cover blur-sm"
               />

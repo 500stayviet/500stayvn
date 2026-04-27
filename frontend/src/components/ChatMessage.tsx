@@ -3,6 +3,9 @@
 import React, { useState } from 'react';
 import { Languages, Loader2, AlertCircle, User } from 'lucide-react';
 import { useTranslationToggle } from '@/hooks/useTranslationToggle';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { getUIText } from '@/utils/i18n';
+import { resolveChatMessageBody } from '@/lib/chat/chatMessageDisplay';
 import { TranslationConsentModal } from './TranslationConsentModal';
 
 interface ChatMessageProps {
@@ -41,11 +44,19 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   cacheKey,
   className = '',
 }) => {
-  // 모달 상태
+  const { currentLanguage } = useLanguage();
+  const resolvedBody = resolveChatMessageBody(message, currentLanguage);
+  const textForTranslation = resolvedBody.displayText;
+  const translationSource = resolvedBody.skipTranslation
+    ? currentLanguage
+    : sourceLanguage;
+  const translationTarget = resolvedBody.skipTranslation
+    ? currentLanguage
+    : (targetLanguageProp ?? currentLanguage);
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [showLanguagePackModal, setShowLanguagePackModal] = useState(false);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
-  
+
   // 번역 토글 훅
   const {
     displayText,
@@ -61,9 +72,9 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     environment,
     engine,
   } = useTranslationToggle({
-    text: message,
-    sourceLanguage,
-    targetLanguage: targetLanguageProp,
+    text: textForTranslation,
+    sourceLanguage: translationSource,
+    targetLanguage: translationTarget,
     cacheKey: cacheKey || `chat-msg-${sender.id}-${timestamp}`,
   }, {
     onConsentGiven: () => {
@@ -171,9 +182,9 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           {isTranslated && (
             <div className={`mt-2 ${isCurrentUser ? 'text-blue-200' : 'text-gray-500'}`}>
               <p className="text-[10px] italic">
-                {environment === 'web' 
-                  ? 'Gemini AI를 사용한 자동 번역 결과입니다.' 
-                  : '기기 엔진을 사용한 자동 번역 결과입니다.'}
+                {environment === 'web'
+                  ? getUIText('chatTranslatedByGemini', currentLanguage)
+                  : getUIText('chatTranslatedByDevice', currentLanguage)}
               </p>
             </div>
           )}
@@ -182,7 +193,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           {error && (
             <div className={`mt-2 flex items-center gap-2 ${isCurrentUser ? 'text-blue-200' : 'text-red-600'} text-xs`}>
               <AlertCircle className="w-3 h-3" />
-              <span>번역 오류</span>
+              <span>{getUIText('chatTranslationErrorLabel', currentLanguage)}</span>
             </div>
           )}
           
@@ -208,12 +219,16 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }
               `}
-              title={isTranslated ? '원문 보기' : '번역 보기'}
+              title={
+                isTranslated
+                  ? getUIText('chatTranslateShowOriginalTitle', currentLanguage)
+                  : getUIText('chatTranslateShowTranslatedTitle', currentLanguage)
+              }
             >
               {isLoading ? (
                 <>
                   <Loader2 className="w-3 h-3 animate-spin" />
-                  <span>번역 중</span>
+                  <span>{getUIText('chatTranslating', currentLanguage)}</span>
                 </>
               ) : (
                 <>
@@ -260,46 +275,51 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
 
 // ChatMessage를 사용하는 예시 컴포넌트
 export const ChatMessageExample: React.FC = () => {
+  const { currentLanguage } = useLanguage();
+  const guestName = getUIText('chatExampleDemoGuestName', currentLanguage);
+  const hostName = getUIText('chatExampleDemoHostName', currentLanguage);
   const exampleMessages = [
     {
       id: '1',
       message: 'Xin chào, tôi muốn đặt phòng từ ngày 15 đến ngày 22 tháng 2.',
       sender: {
         id: 'guest1',
-        name: '김지현',
+        name: guestName,
         isCurrentUser: false,
       },
-      timestamp: '오후 2:30',
+      timestamp: getUIText('chatExampleDemoTime1', currentLanguage),
       sourceLanguage: 'vi' as const,
     },
     {
       id: '2',
-      message: '안녕하세요, 2월 15일부터 22일까지 예약 가능합니다. 자세한 정보를 알려드릴게요.',
+      message: getUIText('chatExampleDemoMsgHostReply', currentLanguage),
       sender: {
         id: 'host1',
-        name: '호스트',
+        name: hostName,
         isCurrentUser: true,
       },
-      timestamp: '오후 2:32',
-      sourceLanguage: 'ko' as const,
+      timestamp: getUIText('chatExampleDemoTime2', currentLanguage),
+      sourceLanguage: currentLanguage,
     },
     {
       id: '3',
       message: 'Cảm ơn bạn. Tôi muốn biết giá cả và chính sách hủy phòng.',
       sender: {
         id: 'guest1',
-        name: '김지현',
+        name: guestName,
         isCurrentUser: false,
       },
-      timestamp: '오후 2:35',
+      timestamp: getUIText('chatExampleDemoTime3', currentLanguage),
       sourceLanguage: 'vi' as const,
     },
   ];
   
   return (
     <div className="max-w-2xl mx-auto p-6 bg-white rounded-xl shadow-lg">
-      <h2 className="text-xl font-bold mb-4">채팅 메시지 예시</h2>
-      
+      <h2 className="text-xl font-bold mb-4">
+        {getUIText('chatExampleTitle', currentLanguage)}
+      </h2>
+
       <div className="space-y-4 mb-6">
         {exampleMessages.map((msg) => (
           <ChatMessage
@@ -312,17 +332,17 @@ export const ChatMessageExample: React.FC = () => {
           />
         ))}
       </div>
-      
+
       <div className="pt-6 border-t border-gray-200">
-        <h3 className="text-lg font-semibold mb-2">사용 방법</h3>
+        <h3 className="text-lg font-semibold mb-2">
+          {getUIText('chatExampleHowToTitle', currentLanguage)}
+        </h3>
         <ul className="text-sm text-gray-600 space-y-1">
-          <li>• 각 메시지 우측 하단에 번역 버튼이 있습니다.</li>
-          <li>• 베트남어 메시지는 한국어로 번역됩니다.</li>
-          <li>• 한국어 메시지는 베트남어로 번역됩니다.</li>
-          <li>
-            • 번역 후 {'"'}원문 보기{'"'} 버튼으로 토글 가능합니다.
-          </li>
-          <li>• 번역된 내용은 캐시되어 재사용됩니다.</li>
+          <li>• {getUIText('chatExampleBullet1', currentLanguage)}</li>
+          <li>• {getUIText('chatExampleBullet2', currentLanguage)}</li>
+          <li>• {getUIText('chatExampleBullet3', currentLanguage)}</li>
+          <li>• {getUIText('chatExampleBullet4', currentLanguage)}</li>
+          <li>• {getUIText('chatExampleBullet5', currentLanguage)}</li>
         </ul>
       </div>
     </div>

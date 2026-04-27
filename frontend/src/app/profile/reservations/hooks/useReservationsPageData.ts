@@ -12,7 +12,7 @@ import { getOwnerBookings } from "@/lib/api/bookings";
 import { getServerTime, ServerTimeSyncError } from "@/lib/api/serverTime";
 import { getCheckInMoment } from "@/lib/utils/rentalIncome";
 import { toISODateString } from "@/lib/utils/dateUtils";
-import { getUIText } from "@/utils/i18n";
+import { getDateLocaleForLanguage, getUIText } from "@/utils/i18n";
 import type { ReservationWithProperty } from "../types";
 
 /**
@@ -123,18 +123,11 @@ export function useReservationsPageData() {
     if (!dateInput) return "";
     const date = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
     if (isNaN(date.getTime())) return "";
-
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
-    const year = date.getFullYear();
-
-    if (currentLanguage === "ko") {
-      return `${year}년 ${month}월 ${day}일`;
-    }
-    if (currentLanguage === "vi") {
-      return `${day}/${month}/${year}`;
-    }
-    return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+    return date.toLocaleDateString(getDateLocaleForLanguage(currentLanguage), {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
   };
 
   const isReservationInStay = (reservation: ReservationWithProperty): boolean => {
@@ -155,18 +148,18 @@ export function useReservationsPageData() {
 
   const getStatusText = (status: ReservationData["status"], reservation?: ReservationWithProperty) => {
     if (status === "pending") {
-      return currentLanguage === "ko" ? "예약 대기" : currentLanguage === "vi" ? "Chờ xác nhận" : "Pending";
+      return getUIText("bookingBadgePending", currentLanguage);
     }
     if (status === "confirmed") {
       if (reservation && isReservationInStay(reservation)) {
         return getUIText("rentingInProgress", currentLanguage);
       }
-      return currentLanguage === "ko" ? "예약 확정" : currentLanguage === "vi" ? "Đã xác nhận" : "Confirmed";
+      return getUIText("bookingBadgeConfirmed", currentLanguage);
     }
     if (status === "completed") {
-      return currentLanguage === "ko" ? "예약 완료" : currentLanguage === "vi" ? "Hoàn thành" : "Completed";
+      return getUIText("hostReservationLabelCompleted", currentLanguage);
     }
-    return currentLanguage === "ko" ? "취소됨" : currentLanguage === "vi" ? "Đã hủy" : "Cancelled";
+    return getUIText("bookingBadgeCancelled", currentLanguage);
   };
 
   const getStatusColor = (status: ReservationData["status"], reservation?: ReservationWithProperty) => {

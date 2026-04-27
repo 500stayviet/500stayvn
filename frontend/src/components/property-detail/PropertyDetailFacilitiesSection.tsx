@@ -12,6 +12,7 @@ import {
 import { getUIText } from "@/utils/i18n";
 import type { SupportedLanguage } from "@/lib/api/translation";
 import type { PropertyData } from "@/types/property";
+import { formatFullPrice } from "@/lib/utils/propertyUtils";
 
 type ColorTokens = {
   primary: string;
@@ -31,6 +32,12 @@ type Props = {
 
 /** 숙소시설 그리드 — 임차인/임대인 상세에서 동일 마크업 재사용 */
 export function PropertyDetailFacilitiesSection({ property, currentLanguage, colors, title }: Props) {
+  const curLabels = {
+    vnd: getUIText("curVnd", currentLanguage),
+    usd: getUIText("curUsd", currentLanguage),
+    krw: getUIText("curKrw", currentLanguage),
+  };
+
   return (
     <section
       className="p-5 rounded-2xl text-left"
@@ -73,7 +80,7 @@ export function PropertyDetailFacilitiesSection({ property, currentLanguage, col
                     <div className="flex items-center gap-1 bg-orange-50 px-2 py-0.5 rounded-full">
                       <Sparkles className="w-3 h-3 text-orange-500" />
                       <p className="text-[10px] text-orange-600 font-medium">
-                        {currentLanguage === "ko" ? "뱃지 획득" : "Badge"}
+                        {getUIText("facBadgeGot", currentLanguage)}
                       </p>
                     </div>
                   )}
@@ -102,32 +109,16 @@ export function PropertyDetailFacilitiesSection({ property, currentLanguage, col
                           <div className="w-full mt-1 text-center">
                             <p className="text-[10px]" style={{ color: colors.textSecondary }}>
                               {property.maxPets != null &&
-                                `${currentLanguage === "ko" ? "최대 " : ""}${property.maxPets}${
-                                  currentLanguage === "ko" ? "마리" : currentLanguage === "vi" ? " con" : ""
-                                }`}
+                                `${getUIText("facMaxShort", currentLanguage)}${property.maxPets}${getUIText("petCountClassifier", currentLanguage)}`}
                               {property.petFee != null &&
-                                ` · ${
-                                  property.priceUnit === "vnd"
-                                    ? `${property.petFee.toLocaleString("vi-VN")} VND`
-                                    : `$${property.petFee.toLocaleString()}`
-                                } (${
-                                  currentLanguage === "ko"
-                                    ? "마리당"
-                                    : currentLanguage === "vi"
-                                      ? "mỗi con"
-                                      : "per pet"
-                                })`}
+                                ` · ${formatFullPrice(property.petFee, property.priceUnit ?? "vnd", curLabels)} (${getUIText("facEachPet", currentLanguage)})`}
                             </p>
                           </div>
                         )}
                         {isCleaning && property.cleaningPerWeek != null && (
                           <p className="text-[10px] mt-1 w-full text-center" style={{ color: colors.textSecondary }}>
                             {property.cleaningPerWeek}
-                            {currentLanguage === "ko"
-                              ? "회/주"
-                              : currentLanguage === "vi"
-                                ? " lần/tuần"
-                                : "/week"}
+                            {getUIText("facTimesPerWeek", currentLanguage)}
                           </p>
                         )}
                       </div>

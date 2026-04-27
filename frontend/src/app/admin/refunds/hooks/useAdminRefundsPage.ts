@@ -13,6 +13,8 @@ import { useAdminMe } from "@/contexts/AdminMeContext";
 import { refreshAdminBadges } from "@/lib/adminBadgeCounts";
 import { acknowledgeCurrentNewRefunds, getUnseenNewRefundCount } from "@/lib/adminAckState";
 import { useAdminDomainRefresh } from "@/lib/adminDomainEventsClient";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { getUIText } from "@/utils/i18n";
 
 export type RefundTab = "all" | "new" | "pre" | "during";
 
@@ -20,6 +22,7 @@ export type RefundTab = "all" | "new" | "pre" | "during";
  * 관리자 환불 뷰: 예약 로드, 환불 대기 탭(전체·신규·계약전·진행중)·검색, 신규 탭 열람 시 ack, 환불 승인.
  */
 export function useAdminRefundsPage() {
+  const { currentLanguage } = useLanguage();
   const [bookings, setBookings] = useState<BookingData[]>([]);
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<RefundTab>("all");
@@ -67,14 +70,13 @@ export function useAdminRefundsPage() {
     [activeList, searchQuery, emailMap],
   );
 
-  const emptyMsg =
-    tab === "all"
-      ? "환불 대기 건이 없습니다."
-      : tab === "new"
-        ? "신규 환불 대기 건이 없습니다."
-        : tab === "pre"
-          ? "계약전 환불 대기 건이 없습니다."
-          : "계약진행중 환불 대기 건이 없습니다.";
+  const emptyMsg = useMemo(() => {
+    const lang = currentLanguage;
+    if (tab === "all") return getUIText("adminRefundsEmptyAll", lang);
+    if (tab === "new") return getUIText("adminRefundsEmptyNew", lang);
+    if (tab === "pre") return getUIText("adminRefundsEmptyPre", lang);
+    return getUIText("adminRefundsEmptyDuring", lang);
+  }, [tab, currentLanguage]);
 
   useEffect(() => {
     const resetToAll = () => setTab("all");

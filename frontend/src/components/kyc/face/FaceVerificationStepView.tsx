@@ -4,6 +4,26 @@ import { Camera, CheckCircle2, Brain } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { faceDirections } from '@/components/kyc/face/faceDirectionConfig';
 import type { useFaceVerificationStepState } from './useFaceVerificationStepState';
+import type { SupportedLanguage } from '@/lib/api/translation';
+import { getUIText } from '@/utils/i18n';
+
+function isLikelyCameraPermissionError(message: string): boolean {
+  const m = message.toLowerCase();
+  return (
+    m.includes('permission') ||
+    m.includes('권한') ||
+    m.includes('quyền') ||
+    m.includes('权限') ||
+    m.includes('許可')
+  );
+}
+
+function faceDirectionLabel(directionKey: string, language: SupportedLanguage): string {
+  const dir = faceDirections.find((d) => d.key === directionKey);
+  if (!dir?.text) return directionKey;
+  const t = dir.text as Record<SupportedLanguage, string>;
+  return t[language] ?? dir.text.en;
+}
 
 type Vm = ReturnType<typeof useFaceVerificationStepState>;
 
@@ -28,10 +48,13 @@ export function FaceVerificationStepView(p: Vm) {
     currentGuideText,
   } = p;
 
+  const stepProgress = getUIText('kycMultistepProgress', currentLanguage)
+    .replace('{current}', String(currentDirectionIndex + 1))
+    .replace('{total}', String(faceDirections.length));
+
   return (
     <div className="w-full">
       <AnimatePresence mode="sync">
-        {/* Step 1: 준비 화면 */}
         {step === 'ready' && (
           <motion.div
             key="ready"
@@ -40,32 +63,15 @@ export function FaceVerificationStepView(p: Vm) {
             exit={{ opacity: 0, x: -20 }}
             className="space-y-6"
           >
-            {/* 테스트 모드 알림 */}
             <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-xl text-yellow-700 text-sm">
               <div className="flex items-center gap-2">
                 <span className="text-lg">⚠️</span>
                 <div>
                   <p className="font-medium">
-                    {currentLanguage === 'ko' 
-                      ? '현재 테스트 모드입니다'
-                      : currentLanguage === 'vi'
-                      ? 'Đang ở chế độ thử nghiệm'
-                      : currentLanguage === 'ja'
-                      ? '現在テストモードです'
-                      : currentLanguage === 'zh'
-                      ? '当前为测试模式'
-                      : 'Currently in test mode'}
+                    {getUIText('kycTestModeBannerTitle', currentLanguage)}
                   </p>
                   <p className="text-xs mt-1">
-                    {currentLanguage === 'ko' 
-                      ? '촬영 없이도 인증 완료 가능'
-                      : currentLanguage === 'vi'
-                      ? 'Có thể hoàn thành xác thực mà không cần chụp ảnh'
-                      : currentLanguage === 'ja'
-                      ? '撮影なしで認証完了可能'
-                      : currentLanguage === 'zh'
-                      ? '无需拍摄即可完成认证'
-                      : 'Can complete verification without capture'}
+                    {getUIText('kycTestModeFaceSubtitle', currentLanguage)}
                   </p>
                 </div>
               </div>
@@ -76,71 +82,32 @@ export function FaceVerificationStepView(p: Vm) {
                 <Camera className="w-8 h-8 text-blue-600" />
               </div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                {currentLanguage === 'ko'
-                  ? '얼굴 인증'
-                  : currentLanguage === 'vi'
-                    ? 'Xác thực khuôn mặt'
-                    : currentLanguage === 'ja'
-                      ? '顔認証'
-                      : currentLanguage === 'zh'
-                        ? '面部识别'
-                        : 'Face Verification'}
+                {getUIText('kycFaceVerificationStepTitle', currentLanguage)}
               </h2>
               <p className="text-sm text-gray-600">
-                {currentLanguage === 'ko'
-                  ? '5방향 얼굴 촬영을 진행해주세요'
-                  : currentLanguage === 'vi'
-                    ? 'Vui lòng thực hiện chụp ảnh khuôn mặt 5 hướng'
-                  : currentLanguage === 'ja'
-                    ? '5方向の顔撮影を行ってください'
-                  : currentLanguage === 'zh'
-                    ? '请进行5个方向的面部拍摄'
-                  : 'Please perform 5-direction face capture'}
+                {getUIText('kycFaceFiveDirectionInstruction', currentLanguage)}
               </p>
             </div>
 
-            {/* 촬영 시작 버튼 */}
             <button
               onClick={handleStartCapture}
               className="w-full py-3.5 px-4 bg-blue-600 text-white rounded-xl font-semibold text-base hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
             >
               <Camera className="w-5 h-5" />
-              <span>
-                {currentLanguage === 'ko'
-                  ? '촬영 시작'
-                  : currentLanguage === 'vi'
-                    ? 'Bắt đầu chụp ảnh'
-                  : currentLanguage === 'ja'
-                    ? '撮影開始'
-                  : currentLanguage === 'zh'
-                    ? '开始拍摄'
-                  : 'Start Capture'}
-              </span>
+              <span>{getUIText('kycStartCapture', currentLanguage)}</span>
             </button>
 
-            {/* 테스트용: 바로 인증 완료 버튼 */}
             <div className="pt-4 border-t border-gray-200">
               <button
                 onClick={handleCompleteWithAnalysis}
                 className="w-full py-3 px-4 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-all"
               >
-                <span>
-                  {currentLanguage === 'ko'
-                    ? '다음 (테스트 모드)'
-                    : currentLanguage === 'vi'
-                      ? 'Tiếp theo (Chế độ thử nghiệm)'
-                    : currentLanguage === 'ja'
-                      ? '次へ（テストモード）'
-                    : currentLanguage === 'zh'
-                      ? '下一步（测试模式）'
-                    : 'Next (Test Mode)'}
-                </span>
+                <span>{getUIText('kycTestModeProceed', currentLanguage)}</span>
               </button>
             </div>
           </motion.div>
         )}
 
-        {/* Step 2: 촬영 중 화면 */}
         {step === 'capturing' && (
           <motion.div
             key="capturing"
@@ -151,46 +118,25 @@ export function FaceVerificationStepView(p: Vm) {
           >
             <div className="text-center">
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                {currentLanguage === 'ko'
-                  ? '얼굴 촬영'
-                  : currentLanguage === 'vi'
-                    ? 'Chụp ảnh khuôn mặt'
-                  : currentLanguage === 'ja'
-                    ? '顔撮影'
-                  : currentLanguage === 'zh'
-                    ? '面부拍摄'
-                  : 'Face Capture'}
+                {getUIText('kycFaceCaptureSessionTitle', currentLanguage)}
               </h2>
-              <p className="text-sm text-gray-600">
-                {currentLanguage === 'ko'
-                  ? `${currentDirectionIndex + 1}/${faceDirections.length} 단계`
-                  : currentLanguage === 'vi'
-                    ? `Bước ${currentDirectionIndex + 1}/${faceDirections.length}`
-                  : currentLanguage === 'ja'
-                    ? `ステップ ${currentDirectionIndex + 1}/${faceDirections.length}`
-                  : currentLanguage === 'zh'
-                    ? `第 ${currentDirectionIndex + 1}/${faceDirections.length} 步`
-                  : `Step ${currentDirectionIndex + 1}/${faceDirections.length}`}
-              </p>
+              <p className="text-sm text-gray-600">{stepProgress}</p>
             </div>
 
-            {/* 카메라 에러 메시지 */}
             {cameraError && (
               <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
-                <p className="font-medium mb-1">카메라 오류</p>
+                <p className="font-medium mb-1">
+                  {getUIText('kycCameraErrorTitle', currentLanguage)}
+                </p>
                 <p>{cameraError.message}</p>
-                {cameraError.message.includes('권한') && (
-                  <button
-                    onClick={startCamera}
-                    className="mt-2 text-xs underline"
-                  >
-                    {currentLanguage === 'ko' ? '다시 시도' : 'Thử lại'}
+                {isLikelyCameraPermissionError(cameraError.message) && (
+                  <button onClick={startCamera} className="mt-2 text-xs underline">
+                    {getUIText('retry', currentLanguage)}
                   </button>
                 )}
               </div>
             )}
 
-            {/* 카메라 프리뷰 */}
             <div className="relative bg-gray-900 rounded-2xl overflow-hidden aspect-square">
               <video
                 ref={videoRef}
@@ -200,12 +146,10 @@ export function FaceVerificationStepView(p: Vm) {
                 className="w-full h-full object-cover"
               />
 
-              {/* 원형 가이드 라인 */}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="w-[70%] h-[70%] border-4 border-white rounded-full"></div>
               </div>
 
-              {/* 카운트다운 */}
               {countdown > 0 && (
                 <motion.div
                   key={countdown}
@@ -214,13 +158,10 @@ export function FaceVerificationStepView(p: Vm) {
                   exit={{ scale: 0.5, opacity: 0 }}
                   className="absolute inset-0 flex items-center justify-center"
                 >
-                  <div className="text-6xl font-bold text-white">
-                    {countdown}
-                  </div>
+                  <div className="text-6xl font-bold text-white">{countdown}</div>
                 </motion.div>
               )}
 
-              {/* 안내 메시지 */}
               {countdown === 0 && (
                 <AnimatePresence mode="sync">
                   <motion.div
@@ -231,15 +172,12 @@ export function FaceVerificationStepView(p: Vm) {
                     className="absolute bottom-8 left-0 right-0 text-center"
                   >
                     <div className="inline-block bg-white/90 backdrop-blur-sm px-6 py-3 rounded-full">
-                      <p className="text-base font-semibold text-gray-900">
-                        {currentGuideText}
-                      </p>
+                      <p className="text-base font-semibold text-gray-900">{currentGuideText}</p>
                     </div>
                   </motion.div>
                 </AnimatePresence>
               )}
 
-              {/* 수동 촬영 버튼 */}
               {countdown === 0 && !autoCapture && (
                 <button
                   onClick={handleManualCapture}
@@ -274,7 +212,6 @@ export function FaceVerificationStepView(p: Vm) {
               )}
             </div>
 
-            {/* 진행 단계 표시 */}
             <div className="flex justify-center gap-2">
               {faceDirections.map((_, index) => (
                 <div
@@ -290,17 +227,15 @@ export function FaceVerificationStepView(p: Vm) {
               ))}
             </div>
 
-            {/* 촬영 중단 버튼 */}
             <button
               onClick={handleCancelCapture}
               className="w-full py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
             >
-              {currentLanguage === 'ko' ? '촬영 중단' : 'Dừng chụp ảnh'}
+              {getUIText('kycStopCapture', currentLanguage)}
             </button>
           </motion.div>
         )}
 
-        {/* Step 3: 이미지 미리보기 */}
         {step === 'preview' && (
           <motion.div
             key="preview"
@@ -314,48 +249,18 @@ export function FaceVerificationStepView(p: Vm) {
                 <CheckCircle2 className="w-8 h-8 text-green-600" />
               </div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                {currentLanguage === 'ko'
-                  ? '촬영 완료'
-                  : currentLanguage === 'vi'
-                    ? 'Hoàn thành chụp ảnh'
-                  : currentLanguage === 'ja'
-                    ? '撮影完了'
-                  : currentLanguage === 'zh'
-                    ? '拍摄完成'
-                  : 'Capture Complete'}
+                {getUIText('kycCaptureCompleteTitle', currentLanguage)}
               </h2>
               <p className="text-sm text-gray-600">
-                {currentLanguage === 'ko'
-                  ? '촬영된 이미지를 확인해주세요'
-                  : currentLanguage === 'vi'
-                    ? 'Vui lòng xác nhận hình ảnh đã chụp'
-                  : currentLanguage === 'ja'
-                    ? '撮影された画像を確認してください'
-                  : currentLanguage === 'zh'
-                    ? '请确认拍摄的图片'
-                  : 'Please review the captured images'}
+                {getUIText('kycReviewCapturedImagesFace', currentLanguage)}
               </p>
             </div>
 
-            {/* 촬영된 이미지 그리드 */}
             <div className="grid grid-cols-2 gap-3">
               {capturedImages.map((img, index) => (
                 <div key={index} className="space-y-2">
                   <p className="text-xs font-medium text-gray-700">
-                    {(() => {
-                      const dir = faceDirections.find(
-                        (d) => d.key === img.direction,
-                      );
-                      if (!dir?.text) return img.direction;
-                      const t = dir.text;
-                      const localized =
-                        currentLanguage === 'ko' ||
-                        currentLanguage === 'vi' ||
-                        currentLanguage === 'en'
-                          ? t[currentLanguage as keyof typeof t]
-                          : undefined;
-                      return localized ?? t.en ?? img.direction;
-                    })()}
+                    {faceDirectionLabel(img.direction, currentLanguage)}
                   </p>
                   <div className="relative bg-gray-100 rounded-xl overflow-hidden aspect-square">
                     {/* eslint-disable-next-line @next/next/no-img-element -- blob: URL */}
@@ -374,38 +279,19 @@ export function FaceVerificationStepView(p: Vm) {
                 onClick={handleRetake}
                 className="flex-1 py-3 px-4 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-all"
               >
-                {currentLanguage === 'ko'
-                  ? '다시 촬영'
-                  : currentLanguage === 'vi'
-                    ? 'Chụp lại'
-                  : currentLanguage === 'ja'
-                    ? '撮り直し'
-                  : currentLanguage === 'zh'
-                    ? '重新拍摄'
-                  : 'Retake'}
+                {getUIText('kycRetakePhotos', currentLanguage)}
               </button>
               <button
                 onClick={handleCompleteWithAnalysis}
                 className="flex-1 py-3 px-4 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
               >
                 <CheckCircle2 className="w-5 h-5" />
-                <span>
-                  {currentLanguage === 'ko'
-                    ? '인증 완료'
-                    : currentLanguage === 'vi'
-                      ? 'Hoàn thành xác thực'
-                    : currentLanguage === 'ja'
-                      ? '認証完了'
-                    : currentLanguage === 'zh'
-                      ? '认证完成'
-                      : 'Complete Verification'}
-                </span>
+                <span>{getUIText('kycCompleteVerification', currentLanguage)}</span>
               </button>
             </div>
           </motion.div>
         )}
 
-        {/* AI 분석 중 화면 */}
         {showAIAnalysis && (
           <motion.div
             key="analyzing"
@@ -420,26 +306,10 @@ export function FaceVerificationStepView(p: Vm) {
               </div>
               <div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">
-                  {currentLanguage === 'ko'
-                    ? 'AI 분석 중'
-                    : currentLanguage === 'vi'
-                      ? 'Đang phân tích AI'
-                    : currentLanguage === 'ja'
-                      ? 'AI分析中'
-                    : currentLanguage === 'zh'
-                      ? 'AI分析中'
-                      : 'AI Analyzing'}
+                  {getUIText('kycAiAnalyzingTitle', currentLanguage)}
                 </h3>
                 <p className="text-sm text-gray-600">
-                  {currentLanguage === 'ko'
-                    ? '얼굴 인증 데이터를 분석하고 있습니다...'
-                    : currentLanguage === 'vi'
-                      ? 'Đang phân tích dữ liệu xác thực khuôn mặt...'
-                    : currentLanguage === 'ja'
-                      ? '顔認証データを分析中...'
-                    : currentLanguage === 'zh'
-                      ? '正在分析面部认证数据...'
-                      : 'Analyzing face verification data...'}
+                  {getUIText('kycAiAnalyzingDesc', currentLanguage)}
                 </p>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">

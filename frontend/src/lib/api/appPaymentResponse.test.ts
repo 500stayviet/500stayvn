@@ -22,7 +22,7 @@ describe("parseAppPaymentResponse", () => {
     expect(p.ok).toBe(false);
     if (!p.ok) {
       expect(p.code).toBe("unauthorized");
-      expect(p.errorMessage).toMatch(/로그인|다시/);
+      expect(p.errorMessage).toMatch(/sign-?in|Try again|로그인|다시|登录|再试|ログイン/i);
     }
   });
 
@@ -58,7 +58,7 @@ describe("parseAppPaymentResponse", () => {
     const p = await parseAppPaymentResponse(res);
     expect(p.ok).toBe(false);
     if (!p.ok) {
-      expect(p.errorMessage).toMatch(/해석/);
+      expect(p.errorMessage).toMatch(/parse|해석|解析|phân tích|解析できません/i);
     }
   });
 

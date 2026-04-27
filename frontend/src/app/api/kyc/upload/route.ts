@@ -290,9 +290,7 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: `KYC step ${step} completed successfully`,
-      testModeMessage: s3Client
-        ? "인증 데이터가 AWS S3에 저장되었습니다."
-        : "인증 데이터가 안전하게 접수되었습니다. (테스트 모드: 자동 승인)",
+      kycStorageNoticeCode: s3Client ? "kyc_storage_s3" : "kyc_storage_local_test",
     });
   } catch (error) {
     console.error("KYC step completion error:", error);

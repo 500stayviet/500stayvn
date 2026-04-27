@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
     )) as Array<{ guestId: string; ownerId: string }>;
     if (!ownerRows[0]) return appApiError('booking_not_found', 404);
     if (userId !== ownerRows[0].guestId && userId !== ownerRows[0].ownerId) {
-      return appApiError('invalid_payment_actor', 403, 'userId must be the booking guest or property owner.');
+      return appApiError('invalid_payment_actor', 403);
     }
     const denied = rejectAppWriteUnlessActorAllowed(request, [ownerRows[0].guestId, ownerRows[0].ownerId]);
     if (denied) return denied;

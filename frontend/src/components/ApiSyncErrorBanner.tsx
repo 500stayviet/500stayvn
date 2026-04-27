@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
 import type { UserFacingSyncError } from "@/lib/runtime/networkResilience";
+import { getUIText, resolveUserFacingSyncErrorMessage } from "@/utils/i18n";
 
 const MAX_ITEMS = 4;
 const DEDUPE_WINDOW_MS = 15_000;
@@ -9,6 +11,7 @@ const DEDUPE_WINDOW_MS = 15_000;
 type BannerItem = UserFacingSyncError & { id: string };
 
 export default function ApiSyncErrorBanner() {
+  const { currentLanguage } = useLanguage();
   const [items, setItems] = useState<BannerItem[]>([]);
 
   const dismiss = useCallback((id: string) => {
@@ -58,15 +61,19 @@ export default function ApiSyncErrorBanner() {
           className="pointer-events-auto mx-auto flex w-full max-w-lg items-start gap-3 rounded-lg border border-red-200 bg-white/95 px-3 py-2.5 text-sm shadow-lg backdrop-blur-sm dark:border-red-900/60 dark:bg-zinc-900/95"
         >
           <div className="min-w-0 flex-1">
-            <p className="font-semibold text-red-600 dark:text-red-400">오류</p>
-            <p className="mt-0.5 text-zinc-800 dark:text-zinc-200">{item.message}</p>
+            <p className="font-semibold text-red-600 dark:text-red-400">
+              {getUIText("mapErrorHeading", currentLanguage)}
+            </p>
+            <p className="mt-0.5 text-zinc-800 dark:text-zinc-200">
+              {resolveUserFacingSyncErrorMessage(item.message, currentLanguage)}
+            </p>
           </div>
           <button
             type="button"
             onClick={() => dismiss(item.id)}
             className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
           >
-            닫기
+            {getUIText("close", currentLanguage)}
           </button>
         </div>
       ))}

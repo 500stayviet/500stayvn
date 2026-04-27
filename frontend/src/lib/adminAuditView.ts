@@ -1,14 +1,18 @@
-'use client';
+"use client";
 
-import type { LedgerEntry } from '@/lib/api/adminFinance';
-import type { ModerationAuditEntry } from '@/lib/api/adminModeration';
+import type { SupportedLanguage } from "@/lib/api/translation";
+import type { LedgerEntry } from "@/lib/api/adminFinance";
+import type { ModerationAuditEntry } from "@/lib/api/adminModeration";
+import { getUIText, type UITextKey } from "@/utils/i18n";
 
-export type AuditTabId = 'all' | 'new' | 'settlement' | 'withdrawal' | 'refund' | 'account' | 'property';
+export type AuditTabId = "all" | "new" | "settlement" | "withdrawal" | "refund" | "account" | "property";
 
 export type UnifiedAuditRow = {
   id: string;
   category: AuditTabId;
-  actionLabel: string;
+  sourceKind: "ledger" | "moderation";
+  ledgerType?: LedgerEntry["type"];
+  modAction?: ModerationAuditEntry["action"];
   amount: number;
   ownerId: string;
   refId: string;
@@ -17,80 +21,108 @@ export type UnifiedAuditRow = {
   note: string;
 };
 
-const LEDGER_LABEL: Partial<Record<LedgerEntry['type'], string>> = {
-  settlement_approved: '정산 승인',
-  settlement_held: '정산 보류',
-  settlement_resumed: '정산 재개(승인 유지)',
-  settlement_reverted_pending: '정산 복구 → 승인 대기',
-  settlement_reverted_request: '정산 복구 → 승인 요청',
-  withdrawal_requested: '출금 요청',
-  withdrawal_processing: '출금 승인(처리 중)',
-  withdrawal_held: '출금 보류',
-  withdrawal_resumed: '출금 재개',
-  withdrawal_completed: '출금 완료',
-  withdrawal_rejected_refund: '출금 반려·환원',
-  refund_approved: '환불 승인',
+const LEDGER_LABEL_KEY: Partial<Record<LedgerEntry["type"], UITextKey>> = {
+  settlement_approved: "adminAuditLedgerSettlementApproved",
+  settlement_held: "adminAuditLedgerSettlementHeld",
+  settlement_resumed: "adminAuditLedgerSettlementResumed",
+  settlement_reverted_pending: "adminAuditLedgerSettlementRevertedPending",
+  settlement_reverted_request: "adminAuditLedgerSettlementRevertedRequest",
+  withdrawal_requested: "adminAuditLedgerWithdrawalRequested",
+  withdrawal_processing: "adminAuditLedgerWithdrawalProcessing",
+  withdrawal_held: "adminAuditLedgerWithdrawalHeld",
+  withdrawal_resumed: "adminAuditLedgerWithdrawalResumed",
+  withdrawal_completed: "adminAuditLedgerWithdrawalCompleted",
+  withdrawal_rejected_refund: "adminAuditLedgerWithdrawalRejectedRefund",
+  refund_approved: "adminAuditLedgerRefundApproved",
 };
 
-const MOD_LABEL: Record<ModerationAuditEntry['action'], string> = {
-  user_blocked: '계정 차단',
-  user_restored: '계정 복구',
-  property_hidden: '매물 숨김',
-  property_restored: '매물 복구',
-  property_ad_ended_by_host: '매물 광고종료(호스트)',
-  property_deleted_by_host: '매물 삭제(호스트)',
+const MOD_LABEL_KEY: Record<ModerationAuditEntry["action"], UITextKey> = {
+  user_blocked: "adminAuditModUserBlocked",
+  user_restored: "adminAuditModUserRestored",
+  property_hidden: "adminAuditModPropertyHidden",
+  property_restored: "adminAuditModPropertyRestored",
+  property_ad_ended_by_host: "adminAuditModPropertyAdEndedByHost",
+  property_deleted_by_host: "adminAuditModPropertyDeletedByHost",
 };
 
-export function ledgerTypeToCategory(t: LedgerEntry['type']): AuditTabId {
-  if (t === 'refund_approved') return 'refund';
-  if (t.startsWith('settlement_')) return 'settlement';
-  if (t.startsWith('withdrawal_')) return 'withdrawal';
-  return 'settlement';
+export const AUDIT_TAB_ORDER: AuditTabId[] = [
+  "new",
+  "all",
+  "settlement",
+  "withdrawal",
+  "refund",
+  "account",
+  "property",
+];
+
+const AUDIT_TAB_KEY: Record<AuditTabId, UITextKey> = {
+  new: "adminAuditTabNew",
+  all: "adminAuditTabAll",
+  settlement: "adminAuditTabSettlement",
+  withdrawal: "adminAuditTabWithdrawal",
+  refund: "adminAuditTabRefund",
+  account: "adminAuditTabAccount",
+  property: "adminAuditTabProperty",
+};
+
+export function getAuditTabLabel(id: AuditTabId, language: SupportedLanguage): string {
+  return getUIText(AUDIT_TAB_KEY[id], language);
+}
+
+export function getUnifiedAuditRowLabel(row: UnifiedAuditRow, language: SupportedLanguage): string {
+  if (row.sourceKind === "ledger" && row.ledgerType) {
+    const k = LEDGER_LABEL_KEY[row.ledgerType];
+    return k ? getUIText(k, language) : row.ledgerType;
+  }
+  if (row.sourceKind === "moderation" && row.modAction) {
+    const k = MOD_LABEL_KEY[row.modAction];
+    return k ? getUIText(k, language) : row.modAction;
+  }
+  return "—";
+}
+
+export function ledgerTypeToCategory(t: LedgerEntry["type"]): AuditTabId {
+  if (t === "refund_approved") return "refund";
+  if (t.startsWith("settlement_")) return "settlement";
+  if (t.startsWith("withdrawal_")) return "withdrawal";
+  return "settlement";
 }
 
 export function moderationToCategory(e: ModerationAuditEntry): AuditTabId {
-  return e.targetType === 'user' ? 'account' : 'property';
+  return e.targetType === "user" ? "account" : "property";
 }
 
 export function buildUnifiedAuditRows(
   ledger: LedgerEntry[],
-  moderation: ModerationAuditEntry[]
+  moderation: ModerationAuditEntry[],
 ): UnifiedAuditRow[] {
   const financeRows: UnifiedAuditRow[] = ledger.map((r) => ({
     id: r.id,
     category: ledgerTypeToCategory(r.type),
-    actionLabel: LEDGER_LABEL[r.type] || r.type,
+    sourceKind: "ledger",
+    ledgerType: r.type,
     amount: r.amount,
     ownerId: r.ownerId,
-    refId: r.refId || '-',
-    createdBy: r.createdBy || '-',
+    refId: r.refId || "-",
+    createdBy: r.createdBy || "-",
     createdAt: r.createdAt,
-    note: r.note || '',
+    note: r.note || "",
   }));
 
   const modRows: UnifiedAuditRow[] = moderation.map((r) => ({
     id: r.id,
     category: moderationToCategory(r),
-    actionLabel: MOD_LABEL[r.action] || r.action,
+    sourceKind: "moderation",
+    modAction: r.action,
     amount: 0,
     ownerId: r.ownerId || r.targetId,
     refId: r.targetId,
     createdBy: r.createdBy,
     createdAt: r.createdAt,
-    note: r.reason || '',
+    note: r.reason || "",
   }));
 
   return [...financeRows, ...modRows].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
 }
-
-export const AUDIT_TABS: { id: AuditTabId; label: string }[] = [
-  { id: 'new', label: '신규' },
-  { id: 'all', label: '전체' },
-  { id: 'settlement', label: '정산' },
-  { id: 'withdrawal', label: '출금' },
-  { id: 'refund', label: '환불' },
-  { id: 'account', label: '계정' },
-  { id: 'property', label: '매물' },
-];

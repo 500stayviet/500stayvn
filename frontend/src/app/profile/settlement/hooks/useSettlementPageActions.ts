@@ -1,6 +1,9 @@
 "use client";
 
 import { useCallback } from "react";
+import type { SupportedLanguage } from "@/lib/api/translation";
+import { getAppApiErrorMessageForCode } from "@/lib/api/i18nAppApiErrors";
+import { getUIText } from "@/utils/i18n";
 import {
   emitUserFacingAppToast,
   emitUserFacingSyncError,
@@ -27,6 +30,8 @@ export function useSettlementPageActions(data: SettlementPageData) {
     setAsPrimaryOnCreate,
   } = data;
 
+  const lang = currentLanguage as SupportedLanguage;
+
   const handleSubmitWithdrawal = useCallback(async () => {
     if (!user?.uid) return;
     const amount = parseInt(withdrawalAmount.replace(/\D/g, ""), 10) || 0;
@@ -34,10 +39,7 @@ export function useSettlementPageActions(data: SettlementPageData) {
       emitUserFacingSyncError({
         area: "generic",
         action: "withdrawal_validate",
-        message:
-          currentLanguage === "ko"
-            ? "출금 금액을 입력해주세요."
-            : "Vui lòng nhập số tiền rút.",
+        message: getUIText("withdrawalValidateAmount", lang),
       });
       return;
     }
@@ -45,10 +47,7 @@ export function useSettlementPageActions(data: SettlementPageData) {
       emitUserFacingSyncError({
         area: "generic",
         action: "withdrawal_bank",
-        message:
-          currentLanguage === "ko"
-            ? "계좌를 선택해주세요."
-            : "Vui lòng chọn tài khoản.",
+        message: getUIText("withdrawalSelectBankRequired", lang),
       });
       return;
     }
@@ -57,10 +56,15 @@ export function useSettlementPageActions(data: SettlementPageData) {
       bankAccountId: selectedBankId,
     });
     if (!result.ok) {
+      const msg = result.appErrorCode
+        ? getAppApiErrorMessageForCode(result.appErrorCode, lang)
+        : result.message && result.message !== "request_failed"
+          ? result.message
+          : getUIText("withdrawalRequestFailedMessage", lang);
       emitUserFacingSyncError({
         area: "generic",
         action: "withdrawal_request",
-        message: result.message || "Withdrawal request failed",
+        message: msg,
       });
       return;
     }
@@ -70,14 +74,11 @@ export function useSettlementPageActions(data: SettlementPageData) {
       tone: "success",
       area: "generic",
       action: "withdrawal_submitted",
-      message:
-        currentLanguage === "ko"
-          ? "출금 신청이 접수되었습니다."
-          : "Yêu cầu rút tiền đã được gửi.",
+      message: getUIText("withdrawalSubmittedSuccess", lang),
     });
   }, [
     user?.uid,
-    currentLanguage,
+    lang,
     withdrawalAmount,
     selectedBankId,
     bankProvider,
@@ -91,10 +92,7 @@ export function useSettlementPageActions(data: SettlementPageData) {
       emitUserFacingSyncError({
         area: "generic",
         action: "bank_form",
-        message:
-          currentLanguage === "ko"
-            ? "계좌 정보를 모두 입력해주세요."
-            : "Vui lòng nhập đầy đủ thông tin tài khoản.",
+        message: getUIText("bankAccountFormIncomplete", lang),
       });
       return;
     }
@@ -108,10 +106,7 @@ export function useSettlementPageActions(data: SettlementPageData) {
       emitUserFacingSyncError({
         area: "generic",
         action: "bank_add",
-        message:
-          currentLanguage === "ko"
-            ? "계좌 등록에 실패했습니다."
-            : "Đăng ký tài khoản thất bại.",
+        message: getUIText("bankAccountAddFailed", lang),
       });
       return;
     }
@@ -124,14 +119,11 @@ export function useSettlementPageActions(data: SettlementPageData) {
       tone: "success",
       area: "generic",
       action: "bank_added",
-      message:
-        currentLanguage === "ko"
-          ? "계좌가 등록되었습니다."
-          : "Tài khoản đã được thêm.",
+      message: getUIText("bankAccountAddedSuccess", lang),
     });
   }, [
     user?.uid,
-    currentLanguage,
+    lang,
     newBankName,
     newAccountNumber,
     newAccountHolder,

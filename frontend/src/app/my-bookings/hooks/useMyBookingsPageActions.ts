@@ -47,12 +47,7 @@ export function useMyBookingsPageActions(data: MyBookingsPageData) {
         emitUserFacingSyncError({
           area: "bookings",
           action: "guest_cancel_policy",
-          message:
-            currentLanguage === "ko"
-              ? "취소 정책에 동의해 주세요."
-              : currentLanguage === "vi"
-                ? "Vui lòng đồng ý chính sách hủy."
-                : "Please agree to the cancellation policy.",
+          message: getUIText("cancelPolicyAgreeRequired", currentLanguage),
         });
         return;
       }
@@ -75,12 +70,7 @@ export function useMyBookingsPageActions(data: MyBookingsPageData) {
         emitUserFacingSyncError({
           area: "bookings",
           action: "guest_cancel",
-          message:
-            currentLanguage === "ko"
-              ? "취소 처리에 실패했습니다."
-              : currentLanguage === "vi"
-                ? "Hủy thất bại."
-                : "Could not cancel the booking.",
+          message: getUIText("bookingCancelFailed", currentLanguage),
         });
       } finally {
         setCancellingId(null);
@@ -109,12 +99,7 @@ export function useMyBookingsPageActions(data: MyBookingsPageData) {
           tone: "success",
           area: "bookings",
           action: "guest_delete_booking",
-          message:
-            currentLanguage === "ko"
-              ? "삭제되었습니다."
-              : currentLanguage === "vi"
-                ? "Đã xóa."
-                : "Removed.",
+          message: getUIText("bookingDeletedToast", currentLanguage),
         });
       } catch (error) {
         console.error(error);

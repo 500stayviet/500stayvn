@@ -2,9 +2,11 @@
 
 import { motion } from "framer-motion";
 import { CheckCircle2 } from "lucide-react";
+import type { SupportedLanguage } from "@/lib/api/translation";
+import { getUIText } from "@/utils/i18n";
 
 interface KycStep2SuccessModalProps {
-  currentLanguage: string;
+  currentLanguage: SupportedLanguage;
   onClose: () => void;
 }
 
@@ -23,40 +25,16 @@ export default function KycStep2SuccessModal({
           <CheckCircle2 className="w-8 h-8 text-green-600" />
         </div>
         <h3 className="text-xl font-bold text-gray-900 mb-3">
-          {currentLanguage === "ko"
-            ? "2단계 인증 완료"
-            : currentLanguage === "vi"
-              ? "Hoan thanh buoc 2"
-              : currentLanguage === "ja"
-                ? "2段階認証完了"
-                : currentLanguage === "zh"
-                  ? "第2阶段认证完成"
-                  : "Step 2 Verification Complete"}
+          {getUIText("kycStep2CompleteTitle", currentLanguage)}
         </h3>
         <p className="text-sm text-gray-600 mb-6 leading-relaxed">
-          {currentLanguage === "ko"
-            ? "신분증 정보가 안전하게 접수되었습니다. 이제 3단계 얼굴 인증을 진행해주세요."
-            : currentLanguage === "vi"
-              ? "Thong tin giay to da duoc tiep nhan an toan. Hay tiep tuc buoc 3 xac thuc khuon mat."
-              : currentLanguage === "ja"
-                ? "身分証情報が安全に受理されました。続けて3段階の顔認証を進めてください。"
-                : currentLanguage === "zh"
-                  ? "证件信息已安全接收。请继续进行第3阶段的人脸认证。"
-                  : "Your ID information has been received safely. Please continue to step 3 face verification."}
+          {getUIText("kycStep2CompleteBody", currentLanguage)}
         </p>
         <button
           onClick={onClose}
           className="w-full py-3 px-6 bg-green-600 text-white rounded-xl font-semibold"
         >
-          {currentLanguage === "ko"
-            ? "확인"
-            : currentLanguage === "vi"
-              ? "Xac nhan"
-              : currentLanguage === "ja"
-                ? "確認"
-                : currentLanguage === "zh"
-                  ? "确认"
-                  : "Confirm"}
+          {getUIText("confirm", currentLanguage)}
         </button>
       </motion.div>
     </div>

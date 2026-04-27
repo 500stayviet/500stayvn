@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAdminFromRequest } from '@/lib/server/adminAuthServer';
 import { observeRouteResponse } from '@/lib/server/apiMonitoring';
+import {
+  SETTLEMENT_DB_REASON_HOLD_APPROVED_CASE,
+  SETTLEMENT_DB_REASON_HOLD_PENDING_CASE,
+  SETTLEMENT_DB_REASON_HOLD_POST_APPROVAL,
+  SETTLEMENT_DB_REASON_HOLD_PRE_APPROVAL,
+} from '@/lib/adminSettlementDbReasons';
 import { bumpBookingUpdatedAtForDomainSignal } from '@/lib/server/bumpBookingDomainSignal';
 
 type SettlementCandidateRow = {
@@ -151,7 +157,7 @@ export async function PATCH(request: NextRequest) {
           ownerId,
           amount,
           me.username,
-          reason || '관리자 보류(승인 전)'
+          reason || SETTLEMENT_DB_REASON_HOLD_PRE_APPROVAL
         );
         await tx.$executeRawUnsafe(`DELETE FROM "AdminSettlementPendingQueue" WHERE "bookingId" = $1`, bookingId);
         await tx.$executeRawUnsafe(
@@ -162,7 +168,7 @@ export async function PATCH(request: NextRequest) {
           crypto.randomUUID(),
           ownerId,
           bookingId,
-          reason || '정산 보류(승인 대기 건)',
+          reason || SETTLEMENT_DB_REASON_HOLD_PENDING_CASE,
           me.username
         );
         return;
@@ -212,7 +218,7 @@ export async function PATCH(request: NextRequest) {
           SET "status" = 'held', "reason" = $1, "approvedBy" = $2, "approvedAt" = NOW(), "updatedAt" = NOW()
           WHERE "bookingId" = $3 AND "status" = 'approved'
           `,
-          reason || '관리자 보류',
+          reason || SETTLEMENT_DB_REASON_HOLD_POST_APPROVAL,
           me.username,
           bookingId
         );
@@ -230,7 +236,7 @@ export async function PATCH(request: NextRequest) {
             crypto.randomUUID(),
             row.ownerId,
             bookingId,
-            reason || '정산 보류(승인 완료 건)',
+            reason || SETTLEMENT_DB_REASON_HOLD_APPROVED_CASE,
             me.username
           );
         }
@@ -258,7 +264,7 @@ export async function PATCH(request: NextRequest) {
             crypto.randomUUID(),
             row.ownerId,
             bookingId,
-            `보류 해제 → 승인 대기로 복구 (해당 건 금액 ${row.amount.toLocaleString()} ₫ 재승인 필요)`,
+            `Hold released → restored to approval pending (amount ${row.amount.toLocaleString('en-US')} VND; re-approval required)`,
             me.username
           );
         } else {
@@ -271,7 +277,7 @@ export async function PATCH(request: NextRequest) {
             crypto.randomUUID(),
             row.ownerId,
             bookingId,
-            `보류 해제 → 승인 요청으로 복구 (해당 건 금액 ${row.amount.toLocaleString()} ₫, 확인 후 승인 대기로 이동 가능)`,
+            `Hold released → restored to approval request (amount ${row.amount.toLocaleString('en-US')} VND; review then move to pending)`,
             me.username
           );
         }

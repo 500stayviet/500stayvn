@@ -5,8 +5,13 @@ import type { ChangeEvent, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { SupportedLanguage } from "@/lib/api/translation";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { getAppApiErrorMessageForCode, isKnownAppApiErrorCode } from "@/lib/api/i18nAppApiErrors";
 import { signUpWithEmail, type SignUpData } from "@/lib/api/auth";
 import { signIn } from "next-auth/react";
+import { getUIText } from "@/utils/i18n";
+
+const EMAIL_FORMAT =
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
  * 회원가입 폼, 조건부 OTP, 소셜 가입 진입을 한 훅에 묶는다.
@@ -86,11 +91,15 @@ export function useSignupPage() {
         return true;
       } else {
         const data = await response.json();
-        setError(data.error || "Failed to send OTP");
+        setError(
+          typeof data.error === "string" && data.error.trim()
+            ? data.error
+            : getUIText("signupErrorOtpSendFailed", currentLanguage),
+        );
         return false;
       }
     } catch {
-      setError("System error occurred while sending OTP");
+      setError(getUIText("signupErrorOtpSendSystem", currentLanguage));
       return false;
     } finally {
       setLoading(false);
@@ -117,10 +126,14 @@ export function useSignupPage() {
         setOtpError("");
       } else {
         const data = await response.json();
-        setOtpError(data.error || "Invalid code");
+        setOtpError(
+          typeof data.error === "string" && data.error.trim()
+            ? data.error
+            : getUIText("signupErrorOtpInvalidCode", currentLanguage),
+        );
       }
     } catch {
-      setOtpError("Verification error");
+      setOtpError(getUIText("signupErrorOtpVerifyFailed", currentLanguage));
     } finally {
       setIsVerifyingOtp(false);
     }
@@ -131,37 +144,28 @@ export function useSignupPage() {
     setError("");
 
     if (!formData.email || !formData.password || !formData.fullName) {
-      setError(
-        currentLanguage === "ko"
-          ? "모든 필수 필드를 입력해주세요"
-          : "Vui lòng điền đầy đủ thông tin",
-      );
+      setError(getUIText("signupErrorRequiredFields", currentLanguage));
+      return;
+    }
+
+    if (!EMAIL_FORMAT.test(formData.email.trim())) {
+      setError(getUIText("signupErrorInvalidEmailFormat", currentLanguage));
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      setError(
-        currentLanguage === "ko"
-          ? "비밀번호가 일치하지 않습니다"
-          : "Mật khẩu không khớp",
-      );
+      setError(getUIText("signupErrorPasswordMismatch", currentLanguage));
       return;
     }
 
     if (formData.password.length < 6) {
-      setError(
-        currentLanguage === "ko"
-          ? "비밀번호는 최소 6자 이상이어야 합니다"
-          : "Mật khẩu phải có ít nhất 6 ký tự",
-      );
+      setError(getUIText("signupErrorPasswordMinLength", currentLanguage));
       return;
     }
 
     if (requirePhoneVerification && !isPhoneVerified) {
       setError(
-        currentLanguage === "ko"
-          ? "전화번호 인증이 필요합니다"
-          : "Vui lòng xác thực số điện thoại",
+        getUIText("signupErrorPhoneVerificationRequired", currentLanguage),
       );
       return;
     }
@@ -170,7 +174,7 @@ export function useSignupPage() {
 
     try {
       const signUpData: SignUpData = {
-        email: formData.email,
+        email: formData.email.trim(),
         password: formData.password,
         fullName: formData.fullName,
         phoneNumber: formData.phoneNumber || "",
@@ -181,13 +185,22 @@ export function useSignupPage() {
       const result = await signUpWithEmail(signUpData);
 
       if ("error" in result) {
-        setError(result.error.message || "Signup failed");
+        const { code, message } = result.error;
+        if (code && isKnownAppApiErrorCode(code)) {
+          setError(getAppApiErrorMessageForCode(code, currentLanguage));
+          return;
+        }
+        setError(
+          message?.trim()
+            ? message
+            : getUIText("signupErrorFailedGeneric", currentLanguage),
+        );
         return;
       }
 
       router.push("/");
     } catch {
-      setError("An unexpected error occurred");
+      setError(getUIText("signupErrorUnexpected", currentLanguage));
     } finally {
       setLoading(false);
     }
@@ -198,7 +211,7 @@ export function useSignupPage() {
     try {
       await signIn(provider, { callbackUrl: "/" });
     } catch {
-      setError("Social login failed");
+      setError(getUIText("signupErrorSocialLoginFailed", currentLanguage));
       setLoading(false);
     }
   };

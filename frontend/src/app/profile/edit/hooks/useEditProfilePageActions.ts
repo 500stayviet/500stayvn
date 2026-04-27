@@ -175,11 +175,7 @@ export function useEditProfilePageActions(data: EditProfilePageData) {
   const handlePhoneSubmit = useCallback(async () => {
     if (!user) return;
     if (requirePhoneVerification && !isPhoneVerified) {
-      setUpdateError(
-        currentLanguage === "ko"
-          ? "전화번호 인증이 필요합니다"
-          : "Vui lòng xác thực số điện thoại",
-      );
+      setUpdateError(getUIText("phoneVerificationRequired", currentLanguage));
       return;
     }
     setUpdatingPhone(true);

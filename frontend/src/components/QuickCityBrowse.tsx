@@ -9,8 +9,9 @@
 
 import { useRouter } from 'next/navigation';
 import { SupportedLanguage } from '@/lib/api/translation';
-import { VIETNAM_CITIES } from '@/lib/data/vietnam-regions';
+import { VIETNAM_CITIES, getVietnamRegionDisplayName } from '@/lib/data/vietnam-regions';
 import type { VietnamRegion } from '@/lib/data/vietnam-regions';
+import { getUIText } from '@/utils/i18n';
 
 interface QuickCityBrowseProps {
   currentLanguage: SupportedLanguage;
@@ -31,26 +32,6 @@ const CITY_IMAGES: Record<string, string> = {
   vungtau: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=300&h=200&fit=crop',
 };
 
-function getCityDisplayName(region: VietnamRegion, lang: SupportedLanguage): string {
-  if (lang === 'ko') return region.nameKo ?? region.name ?? '';
-  if (lang === 'vi') return region.nameVi ?? region.name ?? '';
-  if (lang === 'ja') return region.nameJa ?? region.name ?? '';
-  if (lang === 'zh') return region.nameZh ?? region.name ?? '';
-  return region.name ?? '';
-}
-
-// 섹션 타이틀 다국어
-function getSectionTitle(lang: SupportedLanguage): string {
-  const titles: Record<SupportedLanguage, string> = {
-    ko: '인기 도시 둘러보기',
-    vi: 'Khám phá thành phố',
-    en: 'Explore Popular Cities',
-    ja: '人気都市を探索',
-    zh: '探索热门城市',
-  };
-  return titles[lang] || titles.en;
-}
-
 const BRAND = {
   primary: '#E63946',
   text: '#1F2937',
@@ -65,7 +46,7 @@ export default function QuickCityBrowse({ currentLanguage }: QuickCityBrowseProp
     .filter((c): c is VietnamRegion => !!c);
 
   const handleCityClick = (city: VietnamRegion) => {
-    const name = getCityDisplayName(city, currentLanguage);
+    const name = getVietnamRegionDisplayName(city, currentLanguage);
     const params = new URLSearchParams({ q: name, cityId: city.id });
     router.push(`/search?${params.toString()}`);
   };
@@ -74,7 +55,7 @@ export default function QuickCityBrowse({ currentLanguage }: QuickCityBrowseProp
     <section className="py-5 bg-white">
       <div className="px-4">
         <h3 className="text-base font-bold mb-3" style={{ color: BRAND.text }}>
-          {getSectionTitle(currentLanguage)}
+          {getUIText('explorePopularCities', currentLanguage)}
         </h3>
       </div>
       <div className="flex gap-3 overflow-x-auto scrollbar-hide px-4 pb-1">
@@ -89,14 +70,14 @@ export default function QuickCityBrowse({ currentLanguage }: QuickCityBrowseProp
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={CITY_IMAGES[city.id] || ''}
-                alt={getCityDisplayName(city, currentLanguage)}
+                alt={getVietnamRegionDisplayName(city, currentLanguage)}
                 className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                 crossOrigin="anonymous"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
             </div>
             <p className="text-xs font-medium mt-1.5 text-center truncate w-20" style={{ color: BRAND.text }}>
-              {getCityDisplayName(city, currentLanguage)}
+              {getVietnamRegionDisplayName(city, currentLanguage)}
             </p>
           </button>
         ))}

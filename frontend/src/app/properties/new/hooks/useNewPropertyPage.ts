@@ -3,14 +3,17 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { geocodeAddress } from "@/lib/api/geocoding";
 import { addProperty } from "@/lib/api/properties";
+import { getUIText } from "@/utils/i18n";
 
 /**
  * 레거시 `/properties/new` 단일 폼: 주소 지오코딩·좌표 보정·addProperty 제출.
  */
 export function useNewPropertyPage() {
   const router = useRouter();
+  const { currentLanguage } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
 
@@ -113,10 +116,10 @@ export function useNewPropertyPage() {
         checkOutTime: formData.checkOutTime,
       });
 
-      alert("매물이 성공적으로 등록되었습니다!");
+      alert(getUIText("legacyNewPropertySuccess", currentLanguage));
       router.push("/");
     } catch {
-      alert("매물 등록 중 오류가 발생했습니다.");
+      alert(getUIText("legacyNewPropertyError", currentLanguage));
     } finally {
       setLoading(false);
     }
@@ -131,6 +134,7 @@ export function useNewPropertyPage() {
     coordinates,
     handleAddressChange,
     handleSubmit,
+    currentLanguage,
   };
 }
 

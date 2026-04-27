@@ -56,7 +56,7 @@ const notoSansJP = Noto_Sans_JP({
 
 export const metadata: Metadata = {
   title: "500 STAY VN",
-  description: "베트남 숙박 예약 플랫폼 - 7일 단위 숙박 예약 시스템",
+  description: "Vietnam stays booking platform — weekly (7-night) stays.",
   manifest: "/manifest.json",
   icons: {
     icon: [
@@ -77,13 +77,13 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "500 STAY VN",
-    title: "500 STAY VN - 베트남 숙박 예약",
-    description: "베트남 숙박 예약 플랫폼 - 7일 단위 숙박 예약 시스템",
+    title: "500 STAY VN — Vietnam stays",
+    description: "Vietnam stays booking platform — weekly (7-night) stays.",
   },
   twitter: {
     card: "summary",
     title: "500 STAY VN",
-    description: "베트남 숙박 예약 플랫폼 - 7일 단위 숙박 예약 시스템",
+    description: "Vietnam stays booking platform — weekly (7-night) stays.",
   },
 };
 
@@ -119,7 +119,7 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        {/* zh UI 보조 폰트 — App Router 전역 head에서 로드 (next/font 미사용) */}
+        {/* zh UI auxiliary font — loaded in root head (not via next/font) */}
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
         <link
           href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap"

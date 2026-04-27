@@ -1,10 +1,12 @@
 "use client";
 
 import { Calendar } from "lucide-react";
+import type { SupportedLanguage } from "@/lib/api/translation";
+import { getUIText } from "@/utils/i18n";
 import type { AddPropertyColors } from "../constants/addPropertyColors";
 
 interface AddPropertyRentalSectionProps {
-  currentLanguage: string;
+  currentLanguage: SupportedLanguage;
   colors: AddPropertyColors;
   checkInDate: Date | null;
   checkOutDate: Date | null;
@@ -14,30 +16,29 @@ interface AddPropertyRentalSectionProps {
   onWeeklyRentChange: (value: string) => void;
 }
 
-const formatDateDisplay = (
-  value: Date | null,
-  currentLanguage: string,
-): string => {
-  const emptyLabel =
-    currentLanguage === "ko"
-      ? "날짜 선택"
-      : currentLanguage === "vi"
-        ? "Chọn ngày"
-        : "Select date";
-  if (!value || Number.isNaN(value.getTime())) {
-    return emptyLabel;
+const dateLocale = (lang: SupportedLanguage): string => {
+  switch (lang) {
+    case "ko":
+      return "ko-KR";
+    case "vi":
+      return "vi-VN";
+    case "ja":
+      return "ja-JP";
+    case "zh":
+      return "zh-CN";
+    default:
+      return "en-US";
   }
-  return value.toLocaleDateString(
-    currentLanguage === "ko"
-      ? "ko-KR"
-      : currentLanguage === "vi"
-        ? "vi-VN"
-        : "en-US",
-    {
-      month: "short",
-      day: "numeric",
-    },
-  );
+};
+
+const formatDateDisplay = (value: Date | null, lang: SupportedLanguage): string => {
+  if (!value || Number.isNaN(value.getTime())) {
+    return getUIText("selectDate", lang);
+  }
+  return value.toLocaleDateString(dateLocale(lang), {
+    month: "short",
+    day: "numeric",
+  });
 };
 
 export function AddPropertyRentalSection({
@@ -50,6 +51,7 @@ export function AddPropertyRentalSection({
   onOpenCheckOutCalendar,
   onWeeklyRentChange,
 }: AddPropertyRentalSectionProps) {
+  const t = currentLanguage;
   return (
     <>
       <section
@@ -60,15 +62,7 @@ export function AddPropertyRentalSection({
         }}
       >
         <h2 className="text-sm font-bold mb-3" style={{ color: colors.text }}>
-          {currentLanguage === "ko"
-            ? "임대 희망 날짜"
-            : currentLanguage === "vi"
-              ? "Ngày cho thuê mong muốn"
-              : currentLanguage === "ja"
-                ? "賃貸希望日"
-                : currentLanguage === "zh"
-                  ? "租赁希望日期"
-                  : "Desired Rental Dates"}
+          {getUIText("listingWantRentDates", t)}
           <span style={{ color: colors.error }} className="ml-1">
             *
           </span>
@@ -86,15 +80,9 @@ export function AddPropertyRentalSection({
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-gray-600" />
               <div className="text-left">
-                <div className="text-xs text-gray-500">
-                  {currentLanguage === "ko"
-                    ? "시작일"
-                    : currentLanguage === "vi"
-                      ? "Ngày bắt đầu"
-                      : "Start Date"}
-                </div>
+                <div className="text-xs text-gray-500">{getUIText("listingLabelStart", t)}</div>
                 <div className="text-sm font-medium text-gray-900">
-                  {formatDateDisplay(checkInDate, currentLanguage)}
+                  {formatDateDisplay(checkInDate, t)}
                 </div>
               </div>
             </div>
@@ -112,15 +100,9 @@ export function AddPropertyRentalSection({
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-gray-600" />
               <div className="text-left">
-                <div className="text-xs text-gray-500">
-                  {currentLanguage === "ko"
-                    ? "종료일"
-                    : currentLanguage === "vi"
-                      ? "Ngày kết thúc"
-                      : "End Date"}
-                </div>
+                <div className="text-xs text-gray-500">{getUIText("listingLabelEnd", t)}</div>
                 <div className="text-sm font-medium text-gray-900">
-                  {formatDateDisplay(checkOutDate, currentLanguage)}
+                  {formatDateDisplay(checkOutDate, t)}
                 </div>
               </div>
             </div>
@@ -136,25 +118,13 @@ export function AddPropertyRentalSection({
         }}
       >
         <h2 className="text-sm font-bold mb-1" style={{ color: colors.text }}>
-          {currentLanguage === "ko"
-            ? "1주일 임대료"
-            : currentLanguage === "vi"
-              ? "Giá thuê 1 tuần"
-              : currentLanguage === "ja"
-                ? "1週間賃貸料"
-                : currentLanguage === "zh"
-                  ? "1周租金"
-                  : "Weekly Rent"}
+          {getUIText("weeklyRent", t)}
           <span style={{ color: colors.error }} className="ml-1">
             *
           </span>
         </h2>
         <p className="text-[11px] mb-3" style={{ color: colors.textSecondary }}>
-          {currentLanguage === "ko"
-            ? "공과금/관리비 포함"
-            : currentLanguage === "vi"
-              ? "Bao gồm phí dịch vụ/quản lý"
-              : "Utilities/Management fees included"}
+          {getUIText("utilitiesIncluded", t)}
         </p>
         <div className="flex items-center gap-2">
           <input
@@ -174,7 +144,7 @@ export function AddPropertyRentalSection({
             required
           />
           <span className="text-sm font-medium" style={{ color: colors.textSecondary }}>
-            VND
+            {getUIText("curVnd", t)}
           </span>
         </div>
       </section>

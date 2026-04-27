@@ -41,13 +41,23 @@ export function useLoginPage() {
       const result = await signInWithEmail(formData.email, formData.password);
       if ("error" in result) {
         const errorCode = result.error.code;
-        setError(
-          errorCode === "auth/account-deleted"
-            ? getUIText("accountDeletedDesc", currentLanguage)
-            : errorCode === "auth/user-not-found"
-              ? getUIText("emailNotRegistered", currentLanguage)
-              : getUIText("loginFailed", currentLanguage),
-        );
+        if (errorCode === "auth/account-deleted") {
+          setError(getUIText("accountDeletedDesc", currentLanguage));
+        } else if (errorCode === "auth/user-not-found") {
+          setError(getUIText("emailNotRegistered", currentLanguage));
+        } else if (errorCode === "auth/wrong-password") {
+          setError(getUIText("loginWrongPassword", currentLanguage));
+        } else if (errorCode === "auth/social_login_required") {
+          setError(getUIText("loginSocialLoginRequired", currentLanguage));
+        } else if (errorCode === "auth/user-blocked") {
+          setError(getUIText("loginAccountBlocked", currentLanguage));
+        } else if (errorCode === "network/error") {
+          setError(getUIText("loginNetworkError", currentLanguage));
+        } else if (errorCode === "server/unavailable") {
+          setError(getUIText("loginServerUnavailable", currentLanguage));
+        } else {
+          setError(getUIText("loginFailed", currentLanguage));
+        }
         setLoading(false);
         return;
       }

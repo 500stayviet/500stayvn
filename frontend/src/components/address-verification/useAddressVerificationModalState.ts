@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import {
@@ -11,7 +11,8 @@ import {
   type AwsSuggestionItem,
 } from '@/lib/api/aws-location';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { formatAddress } from '@/components/address-verification/addressTextFormatters';
+import { formatAddress as formatAddressItem } from '@/components/address-verification/addressTextFormatters';
+import { getUIText } from '@/utils/i18n';
 import type { AddressVerificationModalProps } from './types';
 
 export function useAddressVerificationModalState({
@@ -24,6 +25,10 @@ export function useAddressVerificationModalState({
   // LanguageContext에서 직접 언어 상태 가져오기 (우선순위)
   const languageContext = useLanguage();
   const currentLanguage = propCurrentLanguage ?? languageContext.currentLanguage;
+  const formatAddress = useCallback(
+    (item: Parameters<typeof formatAddressItem>[0]) => formatAddressItem(item, currentLanguage),
+    [currentLanguage],
+  );
   const [searchText, setSearchText] = useState(initialAddress);
   const [suggestions, setSuggestions] = useState<AwsSuggestionItem[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -642,13 +647,7 @@ export function useAddressVerificationModalState({
       
       // PlaceId로 상세 정보 조회 (Grab 앱 방식)
       if (!placeId) {
-        alert(
-          currentLanguage === 'ko'
-            ? '주소 정보를 가져올 수 없습니다.'
-            : currentLanguage === 'vi'
-            ? 'Không thể lấy thông tin địa chỉ.'
-            : 'Cannot fetch address information.'
-        );
+        alert(getUIText('listingAddrErrNoPlaceId', currentLanguage));
         setIsValidating(false);
         return;
       }
@@ -656,13 +655,7 @@ export function useAddressVerificationModalState({
       const placeDetails = await getPlaceById(placeId, language);
       
       if (!placeDetails) {
-        alert(
-          currentLanguage === 'ko'
-            ? '주소 상세 정보를 찾을 수 없습니다.'
-            : currentLanguage === 'vi'
-            ? 'Không tìm thấy thông tin chi tiết địa chỉ.'
-            : 'Address details not found.'
-        );
+        alert(getUIText('listingAddrErrDetailNotFound', currentLanguage));
         setIsValidating(false);
         return;
       }
@@ -670,13 +663,7 @@ export function useAddressVerificationModalState({
       // 베트남(VNM) 지역인지 확인
       const country = placeDetails.Country || placeDetails.Address?.Country || '';
       if (country && country !== 'VNM') {
-        alert(
-          currentLanguage === 'ko'
-            ? '베트남 내 지역만 선택할 수 있습니다.'
-            : currentLanguage === 'vi'
-            ? 'Chỉ có thể chọn khu vực trong Việt Nam.'
-            : 'Only areas within Vietnam can be selected.'
-        );
+        alert(getUIText('listingAddrErrVietnamOnly', currentLanguage));
         setIsValidating(false);
         return;
       }
@@ -685,13 +672,7 @@ export function useAddressVerificationModalState({
       const position = placeDetails.Geometry?.Point || [];
       
       if (!position || !Array.isArray(position) || position.length < 2) {
-        alert(
-          currentLanguage === 'ko'
-            ? '좌표 정보를 찾을 수 없습니다.'
-            : currentLanguage === 'vi'
-            ? 'Không tìm thấy thông tin tọa độ.'
-            : 'Coordinates not found.'
-        );
+        alert(getUIText('listingAddrErrCoordsMissing', currentLanguage));
         setIsValidating(false);
         return;
       }
@@ -708,13 +689,7 @@ export function useAddressVerificationModalState({
       
       // 유효성 검사: 숫자이고 유한한 값인지 확인
       if (isNaN(lat) || isNaN(lng) || !isFinite(lat) || !isFinite(lng)) {
-        alert(
-          currentLanguage === 'ko'
-            ? '유효하지 않은 좌표입니다.'
-            : currentLanguage === 'vi'
-            ? 'Tọa độ không hợp lệ.'
-            : 'Invalid coordinates.'
-        );
+        alert(getUIText('listingAddrErrCoordsInvalid', currentLanguage));
         setIsValidating(false);
         return;
       }
@@ -761,13 +736,7 @@ export function useAddressVerificationModalState({
       
     } catch (error) {
       console.error('Error getting place details:', error);
-      alert(
-        currentLanguage === 'ko'
-          ? '주소 정보를 가져오는 중 오류가 발생했습니다.'
-          : currentLanguage === 'vi'
-          ? 'Đã xảy ra lỗi khi lấy thông tin địa chỉ.'
-          : 'An error occurred while fetching address information.'
-      );
+      alert(getUIText('listingAddrErrFetchError', currentLanguage));
     } finally {
       setIsValidating(false);
     }
@@ -776,13 +745,7 @@ export function useAddressVerificationModalState({
   // 위치 확정 (사용자가 선택한 최종 좌표 저장)
   const handleConfirm = () => {
     if (!selectedAddress) {
-      alert(
-        currentLanguage === 'ko'
-          ? '주소를 선택해주세요.'
-          : currentLanguage === 'vi'
-          ? 'Vui lòng chọn địa chỉ.'
-          : 'Please select an address.'
-      );
+      alert(getUIText('listingAddrErrSelectAddress', currentLanguage));
       return;
     }
 
@@ -824,13 +787,7 @@ export function useAddressVerificationModalState({
     const safeLng = Number(finalCoordinates.lng) || fallbackLng;
     
     if (isNaN(safeLat) || isNaN(safeLng) || !isFinite(safeLat) || !isFinite(safeLng)) {
-      alert(
-        currentLanguage === 'ko'
-          ? '지도에서 위치를 확인해주세요.'
-          : currentLanguage === 'vi'
-          ? 'Vui lòng xác nhận vị trí trên bản đồ.'
-          : 'Please verify the location on the map.'
-      );
+      alert(getUIText('listingAddrErrVerifyMap', currentLanguage));
       return;
     }
     

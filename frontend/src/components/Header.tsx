@@ -16,7 +16,19 @@
 import { useState } from 'react';
 import { Home, LogIn, Globe } from 'lucide-react';
 import { SupportedLanguage } from '@/lib/api/translation';
-import { getUIText } from '@/utils/i18n';
+import { getUIText, type BaseUITextKey } from '@/utils/i18n';
+
+const LANGUAGE_MENU: {
+  code: SupportedLanguage;
+  endonymKey: BaseUITextKey;
+  flag: string;
+}[] = [
+  { code: 'en', endonymKey: 'langEndonymEn', flag: '🇺🇸' },
+  { code: 'vi', endonymKey: 'langEndonymVi', flag: '🇻🇳' },
+  { code: 'ko', endonymKey: 'langEndonymKo', flag: '🇰🇷' },
+  { code: 'ja', endonymKey: 'langEndonymJa', flag: '🇯🇵' },
+  { code: 'zh', endonymKey: 'langEndonymZh', flag: '🇨🇳' },
+];
 
 interface HeaderProps {
   currentLanguage?: SupportedLanguage;
@@ -34,17 +46,8 @@ export default function Header({ currentLanguage = 'en', onLanguageChange }: Hea
   // [상태값, 상태변경함수] = useState(초기값)
   const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
 
-  // 언어 옵션 정의 (영어, 베트남어, 한국어 순서)
-  const languages: { code: SupportedLanguage; name: string; flag: string }[] = [
-    { code: 'en', name: 'English', flag: '🇺🇸' },
-    { code: 'vi', name: 'Tiếng Việt', flag: '🇻🇳' },
-    { code: 'ko', name: '한국어', flag: '🇰🇷' },
-    { code: 'ja', name: '日本語', flag: '🇯🇵' },
-    { code: 'zh', name: '中文', flag: '🇨🇳' },
-  ];
-
-  // 현재 선택된 언어 정보 찾기
-  const currentLang = languages.find(lang => lang.code === currentLanguage) || languages[0];
+  const currentLang =
+    LANGUAGE_MENU.find((lang) => lang.code === currentLanguage) || LANGUAGE_MENU[0];
 
   /**
    * 언어 변경 핸들러
@@ -78,12 +81,13 @@ export default function Header({ currentLanguage = 'en', onLanguageChange }: Hea
                 onClick: 이벤트 핸들러로 상태를 변경
               */}
               <button
+                type="button"
                 onClick={() => setIsLanguageMenuOpen(!isLanguageMenuOpen)}
                 className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors"
               >
                 <Globe className="w-4 h-4" />
                 <span>{currentLang.flag}</span>
-                <span>{currentLang.name}</span>
+                <span>{getUIText(currentLang.endonymKey, currentLanguage)}</span>
               </button>
 
               {/* 
@@ -92,16 +96,17 @@ export default function Header({ currentLanguage = 'en', onLanguageChange }: Hea
               */}
               {isLanguageMenuOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
-                  {languages.map((lang) => (
+                  {LANGUAGE_MENU.map((lang) => (
                     <button
                       key={lang.code}
+                      type="button"
                       onClick={() => handleLanguageSelect(lang.code)}
                       className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 ${
                         currentLanguage === lang.code ? 'bg-blue-50 text-blue-600' : 'text-gray-700'
                       }`}
                     >
                       <span>{lang.flag}</span>
-                      <span>{lang.name}</span>
+                      <span>{getUIText(lang.endonymKey, currentLanguage)}</span>
                     </button>
                   ))}
                 </div>
@@ -109,7 +114,10 @@ export default function Header({ currentLanguage = 'en', onLanguageChange }: Hea
             </div>
 
             {/* 로그인 버튼 - 언어별 텍스트 표시 */}
-            <button className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">
+            <button
+              type="button"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+            >
               <LogIn className="w-4 h-4" />
               <span>{getUIText('login', currentLanguage)}</span>
             </button>

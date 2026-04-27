@@ -3,6 +3,18 @@
 import { Camera, ArrowRight, CheckCircle2, FileText, RotateCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { useIdDocumentStepState } from './useIdDocumentStepState';
+import { getUIText } from '@/utils/i18n';
+
+function isLikelyCameraPermissionError(message: string): boolean {
+  const m = message.toLowerCase();
+  return (
+    m.includes('permission') ||
+    m.includes('권한') ||
+    m.includes('quyền') ||
+    m.includes('权限') ||
+    m.includes('許可')
+  );
+}
 
 type Vm = ReturnType<typeof useIdDocumentStepState>;
 
@@ -38,6 +50,8 @@ export function IdDocumentStepView(p: Vm) {
 
   void stopCamera;
 
+  const optionalSuffix = ` (${getUIText('optional', currentLanguage)})`;
+
   return (
     <div className="w-full">
       <AnimatePresence mode="sync">
@@ -54,26 +68,10 @@ export function IdDocumentStepView(p: Vm) {
                 <span className="text-lg">⚠️</span>
                 <div>
                   <p className="font-medium">
-                    {currentLanguage === 'ko'
-                      ? '현재 테스트 모드입니다'
-                      : currentLanguage === 'vi'
-                        ? 'Đang ở chế độ thử nghiệm'
-                        : currentLanguage === 'ja'
-                          ? '現在テストモードです'
-                          : currentLanguage === 'zh'
-                            ? '当前为测试模式'
-                            : 'Currently in test mode'}
+                    {getUIText('kycTestModeBannerTitle', currentLanguage)}
                   </p>
                   <p className="text-xs mt-1">
-                    {currentLanguage === 'ko'
-                      ? '촬영 없이도 다음 단계 이동 가능'
-                      : currentLanguage === 'vi'
-                        ? 'Có thể chuyển bước tiếp theo mà không cần chụp ảnh'
-                        : currentLanguage === 'ja'
-                          ? '撮影なしで次のステップに移動可能'
-                          : currentLanguage === 'zh'
-                            ? '无需拍摄即可进入下一步'
-                            : 'Can proceed to next step without capture'}
+                    {getUIText('kycTestModeIdSubtitle', currentLanguage)}
                   </p>
                 </div>
               </div>
@@ -84,26 +82,10 @@ export function IdDocumentStepView(p: Vm) {
                 <FileText className="w-8 h-8 text-blue-600" />
               </div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                {currentLanguage === 'ko'
-                  ? '신분증 촬영'
-                  : currentLanguage === 'vi'
-                    ? 'Chụp ảnh giấy tờ'
-                    : currentLanguage === 'ja'
-                      ? '身分証明書撮影'
-                      : currentLanguage === 'zh'
-                        ? '证件拍摄'
-                        : 'ID Capture'}
+                {getUIText('kycIdDocumentStepTitle', currentLanguage)}
               </h2>
               <p className="text-sm text-gray-600">
-                {currentLanguage === 'ko'
-                  ? '신분증 유형을 선택하고 카메라로 촬영해주세요'
-                  : currentLanguage === 'vi'
-                    ? 'Chọn loại giấy tờ và chụp ảnh bằng camera'
-                    : currentLanguage === 'ja'
-                      ? '身分証明書の種類を選択し、カメラで撮影してください'
-                      : currentLanguage === 'zh'
-                        ? '选择证件类型并使用相机拍摄'
-                        : 'Select ID type and capture with camera'}
+                {getUIText('kycIdSelectTypeAndCapture', currentLanguage)}
               </p>
             </div>
 
@@ -114,17 +96,7 @@ export function IdDocumentStepView(p: Vm) {
                 className="w-full py-3.5 px-4 bg-blue-600 text-white rounded-xl font-semibold text-base hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
               >
                 <Camera className="w-5 h-5" />
-                <span>
-                  {currentLanguage === 'ko'
-                    ? '카메라 켜기 (신분증)'
-                    : currentLanguage === 'vi'
-                      ? 'Bật camera (CMND/CCCD)'
-                      : currentLanguage === 'ja'
-                        ? 'カメラをオン (身分証明書)'
-                        : currentLanguage === 'zh'
-                          ? '打开相机 (证件)'
-                          : 'Turn on Camera (ID Card)'}
-                </span>
+                <span>{getUIText('kycCameraOpenIdCard', currentLanguage)}</span>
               </button>
 
               <button
@@ -133,17 +105,7 @@ export function IdDocumentStepView(p: Vm) {
                 className="w-full py-3.5 px-4 bg-blue-600 text-white rounded-xl font-semibold text-base hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
               >
                 <Camera className="w-5 h-5" />
-                <span>
-                  {currentLanguage === 'ko'
-                    ? '카메라 켜기 (여권)'
-                    : currentLanguage === 'vi'
-                      ? 'Bật camera (Hộ chiếu)'
-                      : currentLanguage === 'ja'
-                        ? 'カメラをオン (パスポート)'
-                        : currentLanguage === 'zh'
-                          ? '打开相机 (护照)'
-                          : 'Turn on Camera (Passport)'}
-                </span>
+                <span>{getUIText('kycCameraOpenPassport', currentLanguage)}</span>
               </button>
             </div>
 
@@ -153,17 +115,7 @@ export function IdDocumentStepView(p: Vm) {
                 onClick={handleTestModeButton}
                 className="w-full py-3 px-4 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-all"
               >
-                <span>
-                  {currentLanguage === 'ko'
-                    ? '다음 (테스트 모드)'
-                    : currentLanguage === 'vi'
-                      ? 'Tiếp theo (Chế độ thử nghiệm)'
-                      : currentLanguage === 'ja'
-                        ? '次へ（テストモード）'
-                        : currentLanguage === 'zh'
-                          ? '下一步（测试模式）'
-                          : 'Next (Test Mode)'}
-                </span>
+                <span>{getUIText('kycTestModeProceed', currentLanguage)}</span>
               </button>
             </div>
           </motion.div>
@@ -179,32 +131,26 @@ export function IdDocumentStepView(p: Vm) {
           >
             <div className="text-center">
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                {currentLanguage === 'ko'
-                  ? captureStep === 'front'
-                    ? idType === 'id_card'
-                      ? '신분증 앞면 촬영'
-                      : '여권 정보면 촬영'
-                    : '신분증 뒷면 촬영'
-                  : captureStep === 'front'
-                    ? idType === 'id_card'
-                      ? 'Chụp mặt trước CMND/CCCD'
-                      : 'Chụp trang thông tin hộ chiếu'
-                    : 'Chụp mặt sau CMND/CCCD'}
+                {captureStep === 'front'
+                  ? idType === 'id_card'
+                    ? getUIText('kycIdCaptureTitleFrontIdCard', currentLanguage)
+                    : getUIText('kycIdCaptureTitleFrontPassport', currentLanguage)
+                  : getUIText('kycIdCaptureTitleBack', currentLanguage)}
               </h2>
               <p className="text-sm text-gray-600">
-                {currentLanguage === 'ko'
-                  ? '신분증을 가이드 라인에 맞춰 촬영해주세요'
-                  : 'Vui lòng chụp ảnh giấy tờ theo đường viền hướng dẫn'}
+                {getUIText('kycIdAlignInGuide', currentLanguage)}
               </p>
             </div>
 
             {cameraError && (
               <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
-                <p className="font-medium mb-1">카메라 오류</p>
+                <p className="font-medium mb-1">
+                  {getUIText('kycCameraErrorTitle', currentLanguage)}
+                </p>
                 <p>{cameraError.message}</p>
-                {cameraError.message.includes('권한') && (
+                {isLikelyCameraPermissionError(cameraError.message) && (
                   <button type="button" onClick={startCamera} className="mt-2 text-xs underline">
-                    {currentLanguage === 'ko' ? '다시 시도' : 'Thử lại'}
+                    {getUIText('retry', currentLanguage)}
                   </button>
                 )}
               </div>
@@ -217,12 +163,10 @@ export function IdDocumentStepView(p: Vm) {
               </div>
               <div className="absolute bottom-20 left-0 right-0 text-center text-white">
                 <p className="text-sm font-medium mb-1">
-                  {currentLanguage === 'ko'
-                    ? '신분증을 가이드 라인에 맞춰주세요'
-                    : 'Đặt giấy tờ vào đường viền hướng dẫn'}
+                  {getUIText('kycIdPlaceInFrame', currentLanguage)}
                 </p>
                 <p className="text-xs text-gray-300">
-                  {currentLanguage === 'ko' ? '전체가 보이도록 촬영해주세요' : 'Đảm bảo toàn bộ giấy tờ được hiển thị'}
+                  {getUIText('kycIdFullDocumentVisible', currentLanguage)}
                 </p>
               </div>
               <button
@@ -252,8 +196,12 @@ export function IdDocumentStepView(p: Vm) {
               </button>
             </div>
 
-            <button type="button" onClick={handleBackToSelect} className="w-full py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors">
-              {currentLanguage === 'ko' ? '뒤로가기' : 'Quay lại'}
+            <button
+              type="button"
+              onClick={handleBackToSelect}
+              className="w-full py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              {getUIText('back', currentLanguage)}
             </button>
           </motion.div>
         )}
@@ -268,17 +216,17 @@ export function IdDocumentStepView(p: Vm) {
           >
             <div className="text-center">
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                {currentLanguage === 'ko' ? '이미지 확인' : 'Xác nhận hình ảnh'}
+                {getUIText('kycImageConfirmTitle', currentLanguage)}
               </h2>
               <p className="text-sm text-gray-600">
-                {currentLanguage === 'ko' ? '촬영된 이미지를 확인해주세요' : 'Vui lòng xác nhận hình ảnh đã chụp'}
+                {getUIText('kycImageConfirmDesc', currentLanguage)}
               </p>
             </div>
 
             {frontImage && (
               <div className="space-y-2">
                 <p className="text-sm font-medium text-gray-700">
-                  {currentLanguage === 'ko' ? '앞면' : 'Mặt trước'}
+                  {getUIText('kycIdSideFront', currentLanguage)}
                 </p>
                 <div className="relative bg-gray-100 rounded-2xl overflow-hidden aspect-[16/10]">
                   {/* eslint-disable-next-line @next/next/no-img-element -- blob: URL */}
@@ -297,7 +245,7 @@ export function IdDocumentStepView(p: Vm) {
             {backImage && (
               <div className="space-y-2">
                 <p className="text-sm font-medium text-gray-700">
-                  {currentLanguage === 'ko' ? '뒷면' : 'Mặt sau'}
+                  {getUIText('kycIdSideBack', currentLanguage)}
                 </p>
                 <div className="relative bg-gray-100 rounded-2xl overflow-hidden aspect-[16/10]">
                   {/* eslint-disable-next-line @next/next/no-img-element -- blob: URL */}
@@ -320,12 +268,8 @@ export function IdDocumentStepView(p: Vm) {
                 className="flex-1 py-3 px-4 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-all"
               >
                 {idType === 'id_card' && !backImage
-                  ? currentLanguage === 'ko'
-                    ? '뒷면 촬영'
-                    : 'Chụp mặt sau'
-                  : currentLanguage === 'ko'
-                    ? '다시 촬영'
-                    : 'Chụp lại'}
+                  ? getUIText('kycShootBackSide', currentLanguage)
+                  : getUIText('kycRetakeCapture', currentLanguage)}
               </button>
               <button
                 type="button"
@@ -334,7 +278,7 @@ export function IdDocumentStepView(p: Vm) {
                 className="flex-1 py-3 px-4 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <CheckCircle2 className="w-5 h-5" />
-                <span>{currentLanguage === 'ko' ? '확인' : 'Xác nhận'}</span>
+                <span>{getUIText('confirm', currentLanguage)}</span>
               </button>
             </div>
           </motion.div>
@@ -350,40 +294,16 @@ export function IdDocumentStepView(p: Vm) {
           >
             <div className="text-center">
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                {currentLanguage === 'ko'
-                  ? '신분증 정보 입력'
-                  : currentLanguage === 'vi'
-                    ? 'Nhập thông tin giấy tờ'
-                    : currentLanguage === 'ja'
-                      ? '身分証明書情報入力'
-                      : currentLanguage === 'zh'
-                        ? '填写证件信息'
-                        : 'Enter ID Information'}
+                {getUIText('kycFormTitleEnterIdInfo', currentLanguage)}
               </h2>
               <p className="text-sm text-gray-600">
-                {currentLanguage === 'ko'
-                  ? '신분증에 기재된 정보를 입력해주세요'
-                  : currentLanguage === 'vi'
-                    ? 'Vui lòng nhập thông tin trên giấy tờ'
-                    : currentLanguage === 'ja'
-                      ? '身分証明書に記載された情報を入力してください'
-                      : currentLanguage === 'zh'
-                        ? '请输入证件上的信息'
-                        : 'Please enter the information as shown on your ID'}
+                {getUIText('kycFormDescEnterIdInfo', currentLanguage)}
               </p>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {currentLanguage === 'ko'
-                  ? '이름'
-                  : currentLanguage === 'vi'
-                    ? 'Họ tên'
-                    : currentLanguage === 'ja'
-                      ? '氏名'
-                      : currentLanguage === 'zh'
-                        ? '姓名'
-                        : 'Full Name'}
+                {getUIText('fullName', currentLanguage)}
                 <span className="text-red-500 text-xs ml-1">*</span>
               </label>
               <input
@@ -400,15 +320,7 @@ export function IdDocumentStepView(p: Vm) {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {currentLanguage === 'ko'
-                  ? '신분증 번호'
-                  : currentLanguage === 'vi'
-                    ? 'Số giấy tờ'
-                    : currentLanguage === 'ja'
-                      ? '身분証番号'
-                      : currentLanguage === 'zh'
-                        ? '证件号码'
-                        : 'ID Number'}
+                {getUIText('kycFormIdNumberLabel', currentLanguage)}
                 <span className="text-red-500 text-xs ml-1">*</span>
               </label>
               <input
@@ -425,15 +337,7 @@ export function IdDocumentStepView(p: Vm) {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {currentLanguage === 'ko'
-                  ? '생년월일'
-                  : currentLanguage === 'vi'
-                    ? 'Ngày sinh'
-                    : currentLanguage === 'ja'
-                      ? '生年月日'
-                      : currentLanguage === 'zh'
-                        ? '出生日期'
-                        : 'Date of Birth'}
+                {getUIText('kycFormDateOfBirthLabel', currentLanguage)}
                 <span className="text-red-500 text-xs ml-1">*</span>
               </label>
               <input
@@ -450,16 +354,8 @@ export function IdDocumentStepView(p: Vm) {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {currentLanguage === 'ko'
-                  ? '발급일'
-                  : currentLanguage === 'vi'
-                    ? 'Ngày cấp'
-                    : currentLanguage === 'ja'
-                      ? '発行日'
-                      : currentLanguage === 'zh'
-                        ? '签发日期'
-                        : 'Issue Date'}{' '}
-                (선택)
+                {getUIText('kycFormIssueDateLabel', currentLanguage)}
+                {optionalSuffix}
               </label>
               <input
                 type="date"
@@ -471,16 +367,8 @@ export function IdDocumentStepView(p: Vm) {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {currentLanguage === 'ko'
-                  ? '만료일'
-                  : currentLanguage === 'vi'
-                    ? 'Ngày hết hạn'
-                    : currentLanguage === 'ja'
-                      ? '有効期限'
-                      : currentLanguage === 'zh'
-                        ? '有效期限'
-                        : 'Expiry Date'}{' '}
-                (선택)
+                {getUIText('kycFormExpiryDateLabel', currentLanguage)}
+                {optionalSuffix}
               </label>
               <input
                 type="date"
@@ -499,17 +387,7 @@ export function IdDocumentStepView(p: Vm) {
               onClick={handleSubmit}
               className="w-full py-3.5 px-4 bg-blue-600 text-white rounded-xl font-semibold text-base hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
             >
-              <span>
-                {currentLanguage === 'ko'
-                  ? '다음 단계'
-                  : currentLanguage === 'vi'
-                    ? 'Bước tiếp theo'
-                    : currentLanguage === 'ja'
-                      ? '次へ'
-                      : currentLanguage === 'zh'
-                        ? '下一步'
-                        : 'Next Step'}
-              </span>
+              <span>{getUIText('kycFormNextStep', currentLanguage)}</span>
               <ArrowRight className="w-5 h-5" />
             </button>
           </motion.div>

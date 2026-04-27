@@ -11,6 +11,8 @@ import {
 } from "@/lib/api/financeServer";
 import { filterWithdrawalsBySearch, useOwnerEmailMap } from "@/lib/adminSearchHelpers";
 import { useAdminDomainRefresh } from "@/lib/adminDomainEventsClient";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { getUIText } from "@/utils/i18n";
 
 export type WithdrawalTab = "pending" | "processing" | "completed" | "rejected" | "held";
 
@@ -24,6 +26,7 @@ function normalizeStatus(s: ServerWithdrawalRequest["status"]) {
  * 관리자 출금 요청: 목록 로드, 탭·검색, 승인·반려·보류·완료·재개.
  */
 export function useAdminWithdrawalsPage() {
+  const { currentLanguage } = useLanguage();
   const searchParams = useSearchParams();
   const [rows, setRows] = useState<ServerWithdrawalRequest[]>([]);
   const [loading, setLoading] = useState(false);
@@ -103,16 +106,14 @@ export function useAdminWithdrawalsPage() {
     [activeList, searchQuery, emailMap],
   );
 
-  const emptyMsg =
-    tab === "pending"
-      ? "승인 대기 건이 없습니다."
-      : tab === "processing"
-        ? "처리 중인 출금이 없습니다."
-        : tab === "completed"
-          ? "완료된 출금 내역이 없습니다."
-          : tab === "rejected"
-            ? "반려된 출금 내역이 없습니다."
-            : "보류된 출금이 없습니다.";
+  const emptyMsg = useMemo(() => {
+    const lang = currentLanguage;
+    if (tab === "pending") return getUIText("adminWithdrawalsEmptyPending", lang);
+    if (tab === "processing") return getUIText("adminWithdrawalsEmptyProcessing", lang);
+    if (tab === "completed") return getUIText("adminWithdrawalsEmptyCompleted", lang);
+    if (tab === "rejected") return getUIText("adminWithdrawalsEmptyRejected", lang);
+    return getUIText("adminWithdrawalsEmptyHeld", lang);
+  }, [tab, currentLanguage]);
 
   /**
    * 출금 상태 변경 후 성공 시에만 목록을 다시 불러온다.

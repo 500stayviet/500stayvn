@@ -9,6 +9,7 @@ import { AddPropertyTypeSection } from "./AddPropertyTypeSection";
 import { ADD_PROPERTY_COLORS as COLORS } from "../constants/addPropertyColors";
 import type { AddPropertyPageViewModel } from "../hooks/useAddPropertyPageState";
 import type { SupportedLanguage } from "@/lib/api/translation";
+import { getUIText } from "@/utils/i18n";
 
 const AddPropertyImageSection = dynamic(
   () =>
@@ -134,13 +135,7 @@ export function AddPropertyPageView({
   if (checkingAccess || authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-500">
-          {currentLanguage === "ko"
-            ? "로딩 중..."
-            : currentLanguage === "vi"
-              ? "Đang tải..."
-              : "Loading..."}
-        </div>
+        <div className="text-gray-500">{getUIText("loading", currentLanguage)}</div>
       </div>
     );
   }
@@ -167,26 +162,10 @@ export function AddPropertyPageView({
             style={{ borderBottom: `1px solid ${COLORS.border}` }}
           >
             <h1 className="text-xl font-bold" style={{ color: COLORS.text }}>
-              {currentLanguage === "ko"
-                ? "새 매물 등록"
-                : currentLanguage === "vi"
-                  ? "Đăng ký bất động sản mới"
-                  : currentLanguage === "ja"
-                    ? "新規物件登録"
-                    : currentLanguage === "zh"
-                      ? "新物业注册"
-                      : "Register New Property"}
+              {getUIText("addProperty", currentLanguage)}
             </h1>
             <p className="text-sm mt-1" style={{ color: COLORS.textSecondary }}>
-              {currentLanguage === "ko"
-                ? "매물 정보를 입력해주세요"
-                : currentLanguage === "vi"
-                  ? "Vui lòng nhập thông tin bất động sản"
-                  : currentLanguage === "ja"
-                    ? "物件情報を入力してください"
-                    : currentLanguage === "zh"
-                      ? "请输入物业信息"
-                      : "Please enter property information"}
+              {getUIText("addFormSubtitle", currentLanguage)}
             </p>
           </div>
 
@@ -320,22 +299,10 @@ export function AddPropertyPageView({
               {loading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>
-                    {currentLanguage === "ko"
-                      ? "등록 중..."
-                      : currentLanguage === "vi"
-                        ? "Đang đăng ký..."
-                        : "Registering..."}
-                  </span>
+                  <span>{getUIText("addSubmitting", currentLanguage)}</span>
                 </>
               ) : (
-                <span>
-                  {currentLanguage === "ko"
-                    ? "매물 등록하기"
-                    : currentLanguage === "vi"
-                      ? "Đăng ký bất động sản"
-                      : "Register Property"}
-                </span>
+                <span>{getUIText("addSubmitCta", currentLanguage)}</span>
               )}
             </button>
           </form>
@@ -389,29 +356,13 @@ export function AddPropertyPageView({
               className="text-xl font-bold text-center mb-2"
               style={{ color: COLORS.text }}
             >
-              {currentLanguage === "ko"
-                ? "매물 등록 완료!"
-                : currentLanguage === "vi"
-                  ? "Đăng ký bất động sản thành công!"
-                  : currentLanguage === "ja"
-                    ? "物件登録完了！"
-                    : currentLanguage === "zh"
-                      ? "物业注册完成！"
-                      : "Property Registered!"}
+              {getUIText("addDoneTitle", currentLanguage)}
             </h3>
             <p
               className="text-sm text-center mb-5"
               style={{ color: COLORS.textSecondary }}
             >
-              {currentLanguage === "ko"
-                ? "내 매물 목록에서 바로 확인할 수 있어요."
-                : currentLanguage === "vi"
-                  ? "Bạn có thể kiểm tra ngay trong danh sách bất động sản của tôi."
-                  : currentLanguage === "ja"
-                    ? "マイ物件一覧ですぐ確認できます。"
-                    : currentLanguage === "zh"
-                      ? "可在我的房源列表中立即查看。"
-                      : "You can check it in My Properties now."}
+              {getUIText("addDoneLine", currentLanguage)}
             </p>
             <button
               type="button"
@@ -424,15 +375,7 @@ export function AddPropertyPageView({
                 router.replace("/profile/my-properties");
               }}
             >
-              {currentLanguage === "ko"
-                ? "내 매물 보러가기"
-                : currentLanguage === "vi"
-                  ? "Xem bất động sản của tôi"
-                  : currentLanguage === "ja"
-                    ? "マイ物件を見る"
-                    : currentLanguage === "zh"
-                      ? "查看我的房源"
-                      : "Go to My Properties"}
+              {getUIText("addGoMyprops", currentLanguage)}
             </button>
           </div>
         </div>

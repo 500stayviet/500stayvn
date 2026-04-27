@@ -3,6 +3,7 @@
 import PropertyDetailView from "@/components/PropertyDetailView";
 import AppBox from "@/components/AppBox";
 import type { SupportedLanguage } from "@/lib/api/translation";
+import { getUIText } from "@/utils/i18n";
 import type { InterceptedMyPropertyDetailPageViewModel } from "../hooks/useInterceptedMyPropertyDetailPage";
 
 type Props = { vm: InterceptedMyPropertyDetailPageViewModel };
@@ -26,11 +27,7 @@ export function InterceptedMyPropertyDetailView({ vm }: Props) {
         onClick={handleBack}
       >
         <div className="text-white" onClick={(e) => e.stopPropagation()}>
-          {currentLanguage === "ko"
-            ? "로딩 중..."
-            : currentLanguage === "vi"
-              ? "Đang tải..."
-              : "Loading..."}
+          {getUIText("loading", currentLanguage as SupportedLanguage)}
         </div>
       </div>
     );
@@ -47,11 +44,7 @@ export function InterceptedMyPropertyDetailView({ vm }: Props) {
           onClick={(e) => e.stopPropagation()}
         >
           <p className="text-gray-500 mb-4">
-            {currentLanguage === "ko"
-              ? "매물을 찾을 수 없습니다."
-              : currentLanguage === "vi"
-                ? "Không tìm thấy."
-                : "Not found."}
+            {getUIText("propertyNotFound", currentLanguage as SupportedLanguage)}
           </p>
           <button
             type="button"
@@ -59,11 +52,7 @@ export function InterceptedMyPropertyDetailView({ vm }: Props) {
             className="px-4 py-2 rounded-lg text-white"
             style={{ backgroundColor: "#E63946" }}
           >
-            {currentLanguage === "ko"
-              ? "뒤로"
-              : currentLanguage === "vi"
-                ? "Quay lại"
-                : "Back"}
+            {getUIText("back", currentLanguage as SupportedLanguage)}
           </button>
         </div>
       </div>

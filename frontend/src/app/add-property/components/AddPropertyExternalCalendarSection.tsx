@@ -60,9 +60,7 @@ export function AddPropertyExternalCalendarSection({
           style={{ borderTop: `1px solid ${colors.border}30` }}
         >
           <p className="text-[11px]" style={{ color: colors.textSecondary }}>
-            {currentLanguage === "ko"
-              ? "에어비앤비, 아고다 등 예약을 500stay와 동기화합니다."
-              : "Sync bookings from Airbnb, Agoda, etc."}
+            {getUIText("listingIcalBlurb", lang)}
           </p>
           <div>
             <label
@@ -81,7 +79,7 @@ export function AddPropertyExternalCalendarSection({
                 color: colors.text,
               }}
             >
-              <option value="">{currentLanguage === "ko" ? "선택 안 함" : "None"}</option>
+              <option value="">{getUIText("calendarOptionNone", lang)}</option>
               <option value="airbnb">Airbnb</option>
               <option value="agoda">Agoda</option>
               <option value="booking_com">Booking.com</option>
@@ -93,7 +91,7 @@ export function AddPropertyExternalCalendarSection({
               className="block text-[11px] font-medium mb-1.5"
               style={{ color: colors.textSecondary }}
             >
-              {currentLanguage === "ko" ? "캘린더 이름" : "Calendar name"}
+              {getUIText("calendarNameLabel", lang)}
             </label>
             <input
               type="text"
@@ -112,7 +110,7 @@ export function AddPropertyExternalCalendarSection({
               className="block text-[11px] font-medium mb-1.5"
               style={{ color: colors.textSecondary }}
             >
-              iCal URL (.ics)
+              {getUIText("detIcalUrlField", lang)} (.ics)
             </label>
             <input
               type="url"

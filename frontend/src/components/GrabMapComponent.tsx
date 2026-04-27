@@ -16,20 +16,19 @@ import {
 } from "@/lib/api/properties";
 import { PropertyData } from "@/types/property";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { ALL_LANDMARKS } from "@/lib/data/vietnam-landmarks";
 import { useRouter } from "next/navigation";
 import SearchBox from "@/components/map/SearchBox";
 import MapZoomRuler from "@/components/map/MapZoomRuler";
-import { getUIText } from "@/utils/i18n";
+import { getUIText, type BaseUITextKey } from "@/utils/i18n";
 import { useGrabMapMarkers } from "@/hooks/map/useGrabMapMarkers";
 import { useGrabMapSearch } from "@/hooks/map/useGrabMapSearch";
 import {
   clearGeoConsentDismissTime,
   DEFAULT_MAP_CENTER_HCMC_D1,
   DEFAULT_MAP_FALLBACK_ZOOM,
-  escapeHtmlLandmarkName,
   flyToHcmcDistrict1,
   isInVietnam,
+  replaceLandmarkMarkers,
   RULER_HEIGHT,
   shouldShowGeoConsentModal,
   THUMB_SIZE,
@@ -76,7 +75,10 @@ export default function GrabMapComponent({
   const propertyMarkersRef = useRef<maplibregl.Marker[]>([]);
   const popupsRef = useRef<maplibregl.Popup[]>([]);
   const [, setMapLoading] = useState(true);
-  const [mapError, setMapError] = useState<string | null>(null);
+  const [mapError, setMapError] = useState<{
+    key: BaseUITextKey;
+    detail?: string;
+  } | null>(null);
   const [, setUserLocation] = useState<{
     lat: number;
     lng: number;
@@ -103,6 +105,8 @@ export default function GrabMapComponent({
   const landmarkMarkersRef = useRef<maplibregl.Marker[]>([]);
 
   const { currentLanguage } = useLanguage();
+  const currentLanguageRef = useRef(currentLanguage);
+  currentLanguageRef.current = currentLanguage;
   const router = useRouter();
 
   // allProperties 변경 시 ref도 업데이트
@@ -544,9 +548,7 @@ export default function GrabMapComponent({
     if (!apiKey) {
       console.error("NEXT_PUBLIC_AWS_API_KEY is not set");
       setMapLoading(false);
-      setMapError(
-        "AWS API Key가 설정되지 않았습니다. .env.local 파일을 확인해주세요.",
-      );
+      setMapError({ key: "mapErrAwsApiKeyMissing" });
       isInitializingRef.current = false;
       return;
     }
@@ -554,9 +556,7 @@ export default function GrabMapComponent({
     if (!mapName) {
       console.error("NEXT_PUBLIC_AWS_MAP_NAME is not set");
       setMapLoading(false);
-      setMapError(
-        "AWS Map Name이 설정되지 않았습니다. .env.local 파일을 확인해주세요.",
-      );
+      setMapError({ key: "mapErrAwsMapNameMissing" });
       isInitializingRef.current = false;
       return;
     }
@@ -663,40 +663,11 @@ export default function GrabMapComponent({
           updateVisiblePropertiesRef.current();
         }
 
-        // 명소 핀 추가 (카테고리별 색상: 랜드마크=시그니처빨강, 쇼핑=시그니처오렌지, 거주=성공초록)
-        const categoryColor: Record<string, string> = {
-          landmark: "#E63946",
-          shopping: "#FF6B35",
-          residential: "#10B981",
-        };
-        landmarkMarkersRef.current.forEach((m) => m.remove());
-        landmarkMarkersRef.current = [];
-        const landmarkSizePx = 8;
-        for (const lm of ALL_LANDMARKS) {
-          const el = document.createElement("div");
-          el.className = "landmark-marker";
-          el.style.width = `${landmarkSizePx}px`;
-          el.style.height = `${landmarkSizePx}px`;
-          el.style.borderRadius = "50%";
-          el.style.backgroundColor = categoryColor[lm.category] || "#6b7280";
-          el.style.border = "2px solid white";
-          el.style.boxShadow = "0 1px 3px rgba(0,0,0,0.3)";
-          el.style.cursor = "pointer";
-          const m = new maplibregl.Marker({ element: el })
-            .setLngLat([lm.lng, lm.lat])
-            .setPopup(
-              new maplibregl.Popup({
-                offset: 15,
-                className: "landmark-popup-card",
-                closeButton: true,
-                maxWidth: "240px",
-              }).setHTML(
-                `<div class="landmark-popup-title">${escapeHtmlLandmarkName(lm.name)}</div>`,
-              ),
-            )
-            .addTo(map.current!);
-          landmarkMarkersRef.current.push(m);
-        }
+        landmarkMarkersRef.current = replaceLandmarkMarkers(
+          map.current!,
+          currentLanguageRef.current,
+          landmarkMarkersRef.current,
+        );
       });
 
       // 지도 이동/확대/축소 이벤트 (디바운싱 적용)
@@ -742,9 +713,6 @@ export default function GrabMapComponent({
         console.error("Map error:", e);
         setMapLoading(false);
 
-        // 다양한 에러 형식 처리
-        let errorMessage = "지도를 로드하는 중 오류가 발생했습니다.";
-
         const fallbackEventMessageRaw = (e as unknown as { message?: unknown })
           .message;
         const fallbackEventMessage =
@@ -752,30 +720,29 @@ export default function GrabMapComponent({
             ? fallbackEventMessageRaw
             : undefined;
 
-        if (e.error) {
-          errorMessage = e.error.message || errorMessage;
+        let rawMessage = "";
+        if (e.error?.message) {
+          rawMessage = e.error.message;
         } else if (fallbackEventMessage) {
-          errorMessage = fallbackEventMessage;
+          rawMessage = fallbackEventMessage;
         }
 
-        // AWS API 관련 에러 메시지 구체화
+        let errKey: BaseUITextKey = "mapErrLoadGeneric";
         if (
-          errorMessage.includes("Failed to fetch") ||
-          errorMessage.includes("NetworkError")
+          rawMessage.includes("Failed to fetch") ||
+          rawMessage.includes("NetworkError")
         ) {
-          errorMessage = "네트워크 연결 오류. AWS 서비스에 접근할 수 없습니다.";
+          errKey = "mapErrNetworkAws";
         } else if (
-          errorMessage.includes("401") ||
-          errorMessage.includes("403")
+          rawMessage.includes("401") ||
+          rawMessage.includes("403")
         ) {
-          errorMessage =
-            "AWS API 키가 유효하지 않습니다. 환경 변수를 확인해주세요.";
-        } else if (errorMessage.includes("404")) {
-          errorMessage =
-            "지도 리소스를 찾을 수 없습니다. Map 이름을 확인해주세요.";
+          errKey = "mapErrAwsKeyInvalid";
+        } else if (rawMessage.includes("404")) {
+          errKey = "mapErrMapNotFound";
         }
 
-        setMapError(errorMessage);
+        setMapError({ key: errKey });
       });
 
       // 스타일 로드 에러 처리
@@ -786,9 +753,7 @@ export default function GrabMapComponent({
       map.current.on("style.error", (e) => {
         console.error("Style error:", e);
         setMapLoading(false);
-        setMapError(
-          "지도 스타일을 로드하는 중 오류가 발생했습니다. API Key와 Map 리소스 이름을 확인해주세요.",
-        );
+        setMapError({ key: "mapErrStyleLoad" });
       });
     } catch (error) {
       console.error("Failed to initialize map:", error);
@@ -872,8 +837,15 @@ export default function GrabMapComponent({
     setSelectedDistrictIdFilter,
   });
 
-  // 언어 변경 시 현재 보이는 매물 마커 다시 그리기 (팝업 번역 업데이트)
+  // 언어 변경 시 명소 팝업·매물 마커·검색 제안 갱신
   useEffect(() => {
+    if (map.current?.loaded()) {
+      landmarkMarkersRef.current = replaceLandmarkMarkers(
+        map.current,
+        currentLanguage,
+        landmarkMarkersRef.current,
+      );
+    }
     if (updateVisiblePropertiesRef.current) {
       updateVisiblePropertiesRef.current();
     }
@@ -980,11 +952,19 @@ export default function GrabMapComponent({
       {/* 에러 메시지 */}
       {mapError && (
         <div className="absolute bottom-4 left-4 right-4 z-30 bg-red-50 border border-red-200 rounded-lg p-4 shadow-lg">
-          <p className="text-red-800 text-sm font-medium">오류</p>
-          <p className="text-red-600 text-sm mt-1">{mapError}</p>
+          <p className="text-red-800 text-sm font-medium">
+            {getUIText("mapErrorHeading", currentLanguage)}
+          </p>
+          <p className="text-red-600 text-sm mt-1">
+            {getUIText(mapError.key, currentLanguage)}
+          </p>
+          {mapError.detail ? (
+            <p className="text-red-500 text-xs mt-1 font-mono break-all">
+              {mapError.detail}
+            </p>
+          ) : null}
           <p className="text-red-500 text-xs mt-2">
-            환경 변수(NEXT_PUBLIC_AWS_API_KEY, NEXT_PUBLIC_AWS_MAP_NAME)를
-            확인해주세요.
+            {getUIText("mapErrCheckEnvHint", currentLanguage)}
           </p>
         </div>
       )}

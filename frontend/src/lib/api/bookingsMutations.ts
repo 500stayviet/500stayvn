@@ -20,6 +20,8 @@ import {
   isDateRangeBooked,
   refreshBookingsFromServer,
 } from "./bookingsQueries";
+import { readStoredUiLanguage } from "@/lib/uiLanguageStorage";
+import { getUIText } from "@/utils/i18n";
 import { readBookingsArray, writeBookingsArray } from "./bookingsState";
 
 /** 즉시 PUT: 결제·확정·취소 등 사용자 액션 직후 서버 원장과 맞출 때 사용 (debounce 없음) */
@@ -40,7 +42,7 @@ export async function syncBookingsNow(snapshot: BookingData[]): Promise<void> {
     emitUserFacingSyncError({
       area: "bookings",
       action: "sync",
-      message: "예약 저장에 실패했습니다. 잠시 후 다시 시도해주세요.",
+      message: getUIText("bookingSyncImmediateFailed", readStoredUiLanguage()),
     });
   }
 }
@@ -230,7 +232,9 @@ export async function confirmBooking(
   if (index === -1) return null;
 
   if (bookings[index].paymentStatus !== "paid") {
-    throw new Error("결제가 완료되지 않았습니다.");
+    throw new Error(
+      getUIText("bookingErrorPaymentNotCompleted", readStoredUiLanguage()),
+    );
   }
 
   bookings[index] = {

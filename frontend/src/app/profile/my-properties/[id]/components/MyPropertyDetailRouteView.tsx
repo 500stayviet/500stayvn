@@ -3,6 +3,7 @@
 import TopBar from "@/components/TopBar";
 import PropertyDetailView from "@/components/PropertyDetailView";
 import type { SupportedLanguage } from "@/lib/api/translation";
+import { getUIText } from "@/utils/i18n";
 import type { MyPropertyDetailRoutePageViewModel } from "../hooks/useMyPropertyDetailRoutePage";
 
 type Props = { vm: MyPropertyDetailRoutePageViewModel };
@@ -24,11 +25,7 @@ export function MyPropertyDetailRouteView({ vm }: Props) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-gray-500">
-          {currentLanguage === "ko"
-            ? "로딩 중..."
-            : currentLanguage === "vi"
-              ? "Đang tải..."
-              : "Loading..."}
+          {getUIText("loading", currentLanguage as SupportedLanguage)}
         </div>
       </div>
     );

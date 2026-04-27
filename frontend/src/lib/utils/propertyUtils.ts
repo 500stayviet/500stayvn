@@ -24,14 +24,26 @@ export const formatPrice = (price: number, unit: string): string => {
   return `$${price.toLocaleString()}`;
 };
 
+export type ListingCurrencyLabels = { vnd?: string; usd?: string; krw?: string };
+
 /**
- * 가격 포맷팅 (상세 형식: 예: 15,500,000 VND)
+ * 가격 포맷팅 (상세 형식). 통화 라벨은 i18n `curVnd`·`curUsd`·`curKrw` 와 맞출 것.
  */
-export const formatFullPrice = (price: number, unit: string): string => {
+export const formatFullPrice = (
+  price: number,
+  unit: string,
+  labels?: ListingCurrencyLabels,
+): string => {
+  const vnd = labels?.vnd ?? 'VND';
+  const usd = labels?.usd ?? 'USD';
+  const krw = labels?.krw ?? 'KRW';
   if (unit === 'vnd') {
-    return `${price.toLocaleString('vi-VN')} VND`;
+    return `${price.toLocaleString('vi-VN')} ${vnd}`;
   }
-  return `$${price.toLocaleString()}`;
+  if (unit === 'krw') {
+    return `${price.toLocaleString('ko-KR')} ${krw}`;
+  }
+  return `$${price.toLocaleString('en-US')}`;
 };
 
 /**

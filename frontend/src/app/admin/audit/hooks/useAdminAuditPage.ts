@@ -1,7 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AUDIT_TABS, buildUnifiedAuditRows, type AuditTabId } from "@/lib/adminAuditView";
+import {
+  AUDIT_TAB_ORDER,
+  buildUnifiedAuditRows,
+  getUnifiedAuditRowLabel,
+  type AuditTabId,
+} from "@/lib/adminAuditView";
+import { useLanguage } from "@/contexts/LanguageContext";
 import type { LedgerEntry } from "@/lib/api/adminFinance";
 import type { ModerationAuditEntry } from "@/lib/api/adminModeration";
 import { ensureModerationAuditsLoaded, getModerationAudits } from "@/lib/api/adminModeration";
@@ -17,6 +23,7 @@ const NEW_WINDOW_MS = 24 * 60 * 60 * 1000;
  * 관리자 감사 로그: 원장·모더레이션 캐시 로드, 탭(범주·신규), 텍스트 검색, 신규 탭 열람 시 ack.
  */
 export function useAdminAuditPage() {
+  const { currentLanguage } = useLanguage();
   const [tab, setTab] = useState<AuditTabId>("all");
   const [tick, setTick] = useState(0);
   const [moderationRows, setModerationRows] = useState<ModerationAuditEntry[]>([]);
@@ -90,10 +97,11 @@ export function useAdminAuditPage() {
     if (!q) return tabFiltered;
     return tabFiltered.filter((r) => {
       const actor = actorLabel(r.createdBy);
-      const hay = [r.actionLabel, r.ownerId, r.refId, r.note, r.createdBy, actor].join(" ").toLowerCase();
+      const label = getUnifiedAuditRowLabel(r, currentLanguage);
+      const hay = [label, r.ownerId, r.refId, r.note, r.createdBy, actor].join(" ").toLowerCase();
       return hay.includes(q);
     });
-  }, [tabFiltered, searchQuery, actorLabel]);
+  }, [tabFiltered, searchQuery, actorLabel, currentLanguage]);
 
   useEffect(() => {
     if (tab !== "new") return;
@@ -174,7 +182,7 @@ export function useAdminAuditPage() {
     countForTab,
     actorLabel,
     refresh,
-    auditTabs: AUDIT_TABS,
+    auditTabs: AUDIT_TAB_ORDER.map((id) => ({ id })),
   };
 }
 

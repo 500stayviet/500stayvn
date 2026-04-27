@@ -8,6 +8,8 @@ import {
   getGuestRefundRelatedBookings,
 } from "@/lib/adminUserAccountDetail";
 import { useAdminMe } from "@/contexts/AdminMeContext";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { getUIText } from "@/utils/i18n";
 import { getAdminOwnerBalances, type ServerOwnerBalances } from "@/lib/api/financeServer";
 import { getAllBookingsForAdmin } from "@/lib/api/bookings";
 import { addSharedMemo, deleteSharedMemo, getSharedMemos } from "@/lib/api/adminMemos";
@@ -38,6 +40,7 @@ export function useAdminUserDetailPage() {
   const params = useParams();
   const uid = typeof params?.uid === "string" ? params.uid : "";
   const { me: admin } = useAdminMe();
+  const { currentLanguage } = useLanguage();
 
   const [user, setUser] = useState<UserData | null | undefined>(undefined);
   const [hostMemos, setHostMemos] = useState<MemoRow[]>([]);
@@ -175,7 +178,11 @@ export function useAdminUserDetailPage() {
 
   const blockUser = (targetUid: string) => {
     if (!admin?.username) return;
-    const reason = window.prompt("차단 사유를 입력하세요.", "관리자 차단") || "관리자 차단";
+    const reason =
+      window.prompt(
+        getUIText("adminUserBlockPrompt", currentLanguage),
+        getUIText("adminUserBlockDefaultReason", currentLanguage),
+      ) || getUIText("adminUserBlockDefaultReason", currentLanguage);
     void (async () => {
       await setUserBlocked(targetUid, true, admin!.username, reason);
       refreshAdminBadges();

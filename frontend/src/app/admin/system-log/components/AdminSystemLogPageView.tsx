@@ -3,18 +3,20 @@
 import Link from "next/link";
 import { AlertTriangle, ClipboardCopy, Download, Info, Trash2 } from "lucide-react";
 import AdminRouteGuard from "@/components/admin/AdminRouteGuard";
+import { useLanguage } from "@/contexts/LanguageContext";
 import type { AdminLogSeverity } from "@/lib/adminSystemLog";
+import { getDateLocaleForLanguage, getUIText, type UITextKey } from "@/utils/i18n";
 import type { AdminSystemLogPageViewModel, AdminSystemLogFilter } from "../hooks/useAdminSystemLogPage";
 
 const FILTER_ORDER: AdminSystemLogFilter[] = ["new", "all", "error", "warning", "info"];
 
-function filterLabel(f: AdminSystemLogFilter): string {
-  if (f === "new") return "신규";
-  if (f === "all") return "전체";
-  if (f === "error") return "오류";
-  if (f === "warning") return "경고";
-  return "정보";
-}
+const FILTER_KEY: Record<AdminSystemLogFilter, UITextKey> = {
+  new: "adminSystemLogFilterNew",
+  all: "adminSystemLogFilterAll",
+  error: "adminSystemLogFilterError",
+  warning: "adminSystemLogFilterWarning",
+  info: "adminSystemLogFilterInfo",
+};
 
 function severityStyle(s: AdminLogSeverity): string {
   switch (s) {
@@ -27,10 +29,10 @@ function severityStyle(s: AdminLogSeverity): string {
   }
 }
 
-function formatTime(ts: number): string {
+function formatTime(ts: number, locale: string): string {
   try {
     const d = new Date(ts);
-    return d.toLocaleTimeString("ko-KR", {
+    return d.toLocaleTimeString(locale, {
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
@@ -44,6 +46,8 @@ function formatTime(ts: number): string {
 type Props = { vm: AdminSystemLogPageViewModel };
 
 export function AdminSystemLogPageView({ vm }: Props) {
+  const { currentLanguage } = useLanguage();
+  const locale = getDateLocaleForLanguage(currentLanguage);
   const {
     filter,
     setFilter,
@@ -62,15 +66,20 @@ export function AdminSystemLogPageView({ vm }: Props) {
 
   void _page;
 
+  const countLine = getUIText("adminSystemLogCountLine", currentLanguage)
+    .replace("{{shown}}", String(filtered.length))
+    .replace("{{page}}", String(safePage + 1))
+    .replace("{{pages}}", String(pageCount));
+
   return (
     <AdminRouteGuard>
       <div className="space-y-4">
         <div>
-          <h1 className="text-lg font-bold text-slate-900">시스템 로그</h1>
+          <h1 className="text-lg font-bold text-slate-900">
+            {getUIText("adminSystemLogTitle", currentLanguage)}
+          </h1>
           <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-600">
-            <strong className="font-medium">5분 점검 체크리스트:</strong> ① 최근 5xx/권한 오류(401/403) 급증 확인
-            ② 결제·예약 쓰기 실패 여부 확인 ③ KYC 실패 로그(전화/신분증/얼굴/역할 갱신) 확인 ④ 같은 메시지 반복
-            발생 여부 확인 ⑤ 필요 시 bookingId/ownerId로 상세 화면 추적.
+            {getUIText("adminSystemLogChecklist", currentLanguage)}
           </p>
         </div>
 
@@ -84,7 +93,7 @@ export function AdminSystemLogPageView({ vm }: Props) {
                 filter === f ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
               }`}
             >
-              {filterLabel(f)}
+              {getUIText(FILTER_KEY[f], currentLanguage)}
               {f === "new" && unseenNew > 0 ? (
                 <span className="ml-1 inline-flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white tabular-nums">
                   {unseenNew > 99 ? "99+" : unseenNew}
@@ -99,7 +108,7 @@ export function AdminSystemLogPageView({ vm }: Props) {
               className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
               <Download className="h-4 w-4" aria-hidden />
-              CSV 내보내기
+              {getUIText("adminSystemLogExportCsv", currentLanguage)}
             </button>
             <button
               type="button"
@@ -107,7 +116,7 @@ export function AdminSystemLogPageView({ vm }: Props) {
               className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
               <Trash2 className="h-4 w-4" aria-hidden />
-              휘발 로그 비우기
+              {getUIText("adminSystemLogClearEphemeral", currentLanguage)}
             </button>
             <button
               type="button"
@@ -115,41 +124,55 @@ export function AdminSystemLogPageView({ vm }: Props) {
               className="inline-flex items-center gap-1.5 rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-800 hover:bg-red-100"
             >
               <AlertTriangle className="h-4 w-4" aria-hidden />
-              영구 로그 초기화
+              {getUIText("adminSystemLogClearPersistent", currentLanguage)}
             </button>
           </span>
         </div>
 
-        <p className="text-xs text-slate-500">
-          표시 {filtered.length}건 · 페이지 {safePage + 1}/{pageCount}
-        </p>
+        <p className="text-xs text-slate-500">{countLine}</p>
 
         <div className="overflow-x-auto rounded-lg border border-slate-200">
           <table className="w-full min-w-[720px] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50">
-                <th className="px-3 py-2 font-semibold text-slate-700">시간</th>
-                <th className="px-3 py-2 font-semibold text-slate-700">심각도</th>
-                <th className="px-3 py-2 font-semibold text-slate-700">분류</th>
-                <th className="px-3 py-2 font-semibold text-slate-700">메시지</th>
-                <th className="px-3 py-2 font-semibold text-slate-700">bookingId</th>
-                <th className="px-3 py-2 font-semibold text-slate-700">ownerId</th>
-                <th className="px-3 py-2 font-semibold text-slate-700">스냅샷</th>
-                <th className="px-3 py-2 font-semibold text-slate-700">복사</th>
+                <th className="px-3 py-2 font-semibold text-slate-700">
+                  {getUIText("adminSystemLogColTime", currentLanguage)}
+                </th>
+                <th className="px-3 py-2 font-semibold text-slate-700">
+                  {getUIText("adminSystemLogColSeverity", currentLanguage)}
+                </th>
+                <th className="px-3 py-2 font-semibold text-slate-700">
+                  {getUIText("adminSystemLogColCategory", currentLanguage)}
+                </th>
+                <th className="px-3 py-2 font-semibold text-slate-700">
+                  {getUIText("adminSystemLogColMessage", currentLanguage)}
+                </th>
+                <th className="px-3 py-2 font-semibold text-slate-700">
+                  {getUIText("adminSystemLogColBookingId", currentLanguage)}
+                </th>
+                <th className="px-3 py-2 font-semibold text-slate-700">
+                  {getUIText("adminSystemLogColOwnerId", currentLanguage)}
+                </th>
+                <th className="px-3 py-2 font-semibold text-slate-700">
+                  {getUIText("adminSystemLogColSnapshot", currentLanguage)}
+                </th>
+                <th className="px-3 py-2 font-semibold text-slate-700">
+                  {getUIText("adminSystemLogColCopy", currentLanguage)}
+                </th>
               </tr>
             </thead>
             <tbody>
               {pageRows.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-3 py-10 text-center text-slate-500">
-                    표시할 로그가 없습니다.
+                    {getUIText("adminSystemLogEmpty", currentLanguage)}
                   </td>
                 </tr>
               ) : (
                 pageRows.map((row) => (
                   <tr key={row.id} className="border-b border-slate-100 hover:bg-slate-50/80">
                     <td className="whitespace-nowrap px-3 py-2 font-mono text-xs text-slate-600 tabular-nums">
-                      {formatTime(row.ts)}
+                      {formatTime(row.ts, locale)}
                     </td>
                     <td className="px-3 py-2">
                       <span
@@ -169,9 +192,9 @@ export function AdminSystemLogPageView({ vm }: Props) {
                           <Link
                             href="/admin/settlements"
                             className="text-blue-600 hover:underline"
-                            title="정산 화면에서 검색창에 ID를 붙여 넣어 검색하세요"
+                            title={getUIText("adminSystemLogSettlementsSearchHint", currentLanguage)}
                           >
-                            정산
+                            {getUIText("adminSystemLogLinkSettlements", currentLanguage)}
                           </Link>
                         </span>
                       ) : (
@@ -198,7 +221,7 @@ export function AdminSystemLogPageView({ vm }: Props) {
                         type="button"
                         onClick={() => void copyRow(row)}
                         className="inline-flex rounded p-1 text-slate-600 hover:bg-slate-200"
-                        title="행 복사"
+                        title={getUIText("adminSystemLogCopyRowTitle", currentLanguage)}
                       >
                         <ClipboardCopy className="h-4 w-4" />
                       </button>
@@ -218,7 +241,7 @@ export function AdminSystemLogPageView({ vm }: Props) {
               onClick={() => setPage((p) => Math.max(0, p - 1))}
               className="rounded-md border border-slate-200 bg-white px-3 py-1 text-sm disabled:opacity-40"
             >
-              이전
+              {getUIText("adminPaginationPrev", currentLanguage)}
             </button>
             <button
               type="button"
@@ -226,15 +249,14 @@ export function AdminSystemLogPageView({ vm }: Props) {
               onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
               className="rounded-md border border-slate-200 bg-white px-3 py-1 text-sm disabled:opacity-40"
             >
-              다음
+              {getUIText("adminPaginationNext", currentLanguage)}
             </button>
           </div>
         )}
 
         <p className="flex items-start gap-2 text-xs text-slate-500">
           <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-          예약 ID는 정산·계약 등 화면 상단 검색에 붙여 넣어 찾을 수 있습니다. 분석이 필요하면 CSV를 복사해 AI에
-          질문하세요(민감 정보는 넣지 마세요).
+          {getUIText("adminSystemLogFooterNote", currentLanguage)}
         </p>
       </div>
     </AdminRouteGuard>

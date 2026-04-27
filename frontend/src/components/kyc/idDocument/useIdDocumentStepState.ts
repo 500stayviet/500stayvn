@@ -5,6 +5,7 @@ import { IdDocumentData, IdType } from '@/types/kyc.types';
 import { useCamera } from '@/hooks/useCamera';
 import { canvasToBlob, resizeImage } from '@/utils/imageUtils';
 import type { IdDocumentStepProps } from './types';
+import { getUIText } from '@/utils/i18n';
 
 export function useIdDocumentStepState({ currentLanguage, onComplete, onNext }: IdDocumentStepProps) {
   const [step, setStep] = useState<'select' | 'camera' | 'preview' | 'form'>('select');
@@ -59,7 +60,7 @@ export function useIdDocumentStepState({ currentLanguage, onComplete, onNext }: 
     try {
       const canvas = captureFrame();
       if (!canvas) {
-        throw new Error('캔버스를 생성할 수 없습니다');
+        throw new Error(getUIText('kycCaptureCanvasError', currentLanguage));
       }
 
       const blob = await canvasToBlob(canvas, 0.9);
@@ -84,7 +85,11 @@ export function useIdDocumentStepState({ currentLanguage, onComplete, onNext }: 
         stopCamera();
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : '촬영에 실패했습니다');
+      setError(
+        err instanceof Error
+          ? err.message
+          : getUIText('kycCaptureFailedGeneric', currentLanguage),
+      );
     } finally {
       setCapturing(false);
     }
@@ -112,32 +117,12 @@ export function useIdDocumentStepState({ currentLanguage, onComplete, onNext }: 
 
   const handleSubmit = () => {
     if (!formData.idNumber || !formData.fullName || !formData.dateOfBirth) {
-      setError(
-        currentLanguage === 'ko'
-          ? '필수 항목을 모두 입력해주세요'
-          : currentLanguage === 'vi'
-            ? 'Vui lòng điền đầy đủ các trường bắt buộc'
-            : currentLanguage === 'ja'
-              ? '必須項目をすべて入力してください'
-              : currentLanguage === 'zh'
-                ? '请填写所有必填项'
-                : 'Please fill in all required fields',
-      );
+      setError(getUIText('kycFormRequiredFieldsMissing', currentLanguage));
       return;
     }
 
     if (!idType || !frontImageFile) {
-      setError(
-        currentLanguage === 'ko'
-          ? '이미지를 선택해주세요'
-          : currentLanguage === 'vi'
-            ? 'Vui lòng chọn hình ảnh'
-            : currentLanguage === 'ja'
-              ? '画像を選択してください'
-              : currentLanguage === 'zh'
-                ? '请选择图片'
-                : 'Please select an image',
-      );
+      setError(getUIText('kycFormImageRequired', currentLanguage));
       return;
     }
 

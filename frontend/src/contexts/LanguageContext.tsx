@@ -13,6 +13,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { SupportedLanguage } from '@/lib/api/translation';
 import { useAuth } from '@/hooks/useAuth';
 import { getCurrentUserData, updateUserLanguage } from '@/lib/api/auth';
+import { UI_LANGUAGE_STORAGE_KEY } from '@/lib/uiLanguageStorage';
 
 interface LanguageContextType {
   currentLanguage: SupportedLanguage;
@@ -26,8 +27,6 @@ interface LanguageProviderProps {
   children: ReactNode;
 }
 
-const STORAGE_KEY = 'stayviet_language';
-
 export function LanguageProvider({ children }: LanguageProviderProps) {
   const { user, loading: authLoading } = useAuth();
   const [currentLanguage, setCurrentLanguageState] = useState<SupportedLanguage>('en');
@@ -38,7 +37,7 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
     const loadInitialLanguage = () => {
       // 1순위: localStorage에서 언어 가져오기 (비로그인 사용자용)
       if (typeof window !== 'undefined') {
-        const storedLanguage = localStorage.getItem(STORAGE_KEY);
+        const storedLanguage = localStorage.getItem(UI_LANGUAGE_STORAGE_KEY);
         if (storedLanguage && ['en', 'ko', 'vi', 'ja', 'zh'].includes(storedLanguage)) {
           setCurrentLanguageState(storedLanguage as SupportedLanguage);
           setLoading(false);
@@ -67,12 +66,12 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
             setCurrentLanguageState(userLang);
             // localStorage에도 저장 (다음 로그인 전까지 유지)
             if (typeof window !== 'undefined') {
-              localStorage.setItem(STORAGE_KEY, userLang);
+              localStorage.setItem(UI_LANGUAGE_STORAGE_KEY, userLang);
             }
           } else {
             // preferredLanguage가 없으면 localStorage의 언어 사용
             if (typeof window !== 'undefined') {
-              const storedLanguage = localStorage.getItem(STORAGE_KEY);
+              const storedLanguage = localStorage.getItem(UI_LANGUAGE_STORAGE_KEY);
               if (storedLanguage && ['en', 'ko', 'vi', 'ja', 'zh'].includes(storedLanguage)) {
                 setCurrentLanguageState(storedLanguage as SupportedLanguage);
               }
@@ -95,7 +94,7 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
     
     // localStorage에 저장 (비로그인 사용자도 언어 선택 유지)
     if (typeof window !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, lang);
+      localStorage.setItem(UI_LANGUAGE_STORAGE_KEY, lang);
     }
     
     // 로그인된 사용자인 경우 사용자 데이터에도 반영

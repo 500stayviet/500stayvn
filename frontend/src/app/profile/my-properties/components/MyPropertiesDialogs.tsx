@@ -88,18 +88,10 @@ export default function MyPropertiesDialogs({
               className="bg-white rounded-3xl p-6 w-full max-w-xs shadow-2xl"
             >
               <h3 className="text-xl font-bold text-gray-900 mb-2">
-                {currentLanguage === "ko"
-                  ? "광고종료로 이동"
-                  : currentLanguage === "vi"
-                    ? "Chuyển sang đã tạm dừng"
-                    : "Move to ended listings"}
+                {getUIText("myPropertiesPendingEndAdTitle", currentLanguage)}
               </h3>
               <p className="text-gray-500 text-sm mb-6 leading-relaxed">
-                {currentLanguage === "ko"
-                  ? "이 매물을 광고종료 탭으로 옮깁니다. 데이터는 유지됩니다."
-                  : currentLanguage === "vi"
-                    ? "Tin sẽ chuyển sang mục đã tạm dừng. Dữ liệu được giữ."
-                    : "This listing will move to ended. Data is kept."}
+                {getUIText("myPropertiesPendingEndAdDesc", currentLanguage)}
               </p>
               <div className="flex gap-3">
                 <button
@@ -132,15 +124,7 @@ export default function MyPropertiesDialogs({
               className="bg-white rounded-3xl p-6 w-full max-w-xs shadow-2xl"
             >
               <h3 className="text-xl font-bold text-gray-900 mb-2">
-                {currentLanguage === "ko"
-                  ? "동일 매물이 광고중입니다"
-                  : currentLanguage === "vi"
-                    ? "Cùng một BĐS đang được hiển thị"
-                    : currentLanguage === "ja"
-                      ? "同一物件が掲載中です"
-                      : currentLanguage === "zh"
-                        ? "同一房源正在展示中"
-                        : "Same unit is already live"}
+                {getUIText("myPropertiesDuplicateLiveTitle", currentLanguage)}
               </h3>
               <div className="rounded-xl bg-gray-50 border border-gray-100 p-3 mb-3 text-xs text-gray-800 space-y-1">
                 <p className="font-semibold">{liveExistsConfirm.activeLabel}</p>
@@ -152,15 +136,7 @@ export default function MyPropertiesDialogs({
                 ) : null}
               </div>
               <p className="text-gray-500 text-sm mb-6 leading-relaxed">
-                {currentLanguage === "ko"
-                  ? "예: 위 광고중 매물의 수정 화면으로 이동합니다. 임대 날짜는 달력에서 직접 확인·수정해야 합니다. 아니오: 이 목록에 그대로 있습니다(중복 편집 방지)."
-                  : currentLanguage === "vi"
-                    ? "Có: mở chỉnh sửa tin đang hiển thị, chọn lại ngày trên lịch. Không: ở lại danh sách."
-                    : currentLanguage === "ja"
-                      ? "はい: 掲載中の編集へ。日付はカレンダーで確認。いいえ: このまま。"
-                      : currentLanguage === "zh"
-                        ? "是：去编辑展示中房源，请在日历中确认日期。否：留在列表。"
-                        : "Yes: edit the live listing; confirm dates in the calendar. No: stay on this list."}
+                {getUIText("myPropertiesDuplicateLiveHint", currentLanguage)}
               </p>
               <div className="flex gap-3">
                 <button
@@ -168,30 +144,14 @@ export default function MyPropertiesDialogs({
                   onClick={onCloseLiveExistsConfirm}
                   className="flex-1 py-3 bg-gray-100 text-gray-600 rounded-xl font-semibold"
                 >
-                  {currentLanguage === "ko"
-                    ? "아니오"
-                    : currentLanguage === "vi"
-                      ? "Không"
-                      : currentLanguage === "ja"
-                        ? "いいえ"
-                        : currentLanguage === "zh"
-                          ? "否"
-                          : "No"}
+                  {getUIText("dialogNo", currentLanguage)}
                 </button>
                 <button
                   type="button"
                   onClick={() => onConfirmLiveExists(liveExistsConfirm)}
                   className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-semibold"
                 >
-                  {currentLanguage === "ko"
-                    ? "예"
-                    : currentLanguage === "vi"
-                      ? "Có"
-                      : currentLanguage === "ja"
-                        ? "はい"
-                        : currentLanguage === "zh"
-                          ? "是"
-                          : "Yes"}
+                  {getUIText("dialogYes", currentLanguage)}
                 </button>
               </div>
             </motion.div>

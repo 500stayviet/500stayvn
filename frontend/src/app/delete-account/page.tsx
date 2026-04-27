@@ -1,9 +1,8 @@
 "use client";
 
+import { SUPPORT_EMAIL } from "@/constants/operator-contact";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getUIText } from "@/utils/i18n";
-
-const DELETE_ACCOUNT_EMAIL = "bek94909490@gmail.com";
 
 export default function DeleteAccountPage() {
   const { currentLanguage } = useLanguage();
@@ -19,7 +18,7 @@ export default function DeleteAccountPage() {
             {getUIText("deleteAccountIntro", currentLanguage)}
           </p>
           <p className="text-lg font-semibold text-blue-600">
-            {DELETE_ACCOUNT_EMAIL}
+            {SUPPORT_EMAIL}
           </p>
         </div>
         <div className="border-t border-gray-200 pt-6">

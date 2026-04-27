@@ -1,15 +1,27 @@
 "use client";
 
 import { PropertyDescription } from "@/components/PropertyDescription";
+import { getUIText } from "@/utils/i18n";
 import type { SupportedLanguage } from "@/lib/api/translation";
 import type { PropertyData } from "@/types/property";
 import { formatFullPrice } from "@/lib/utils/propertyUtils";
 import { formatDate } from "@/lib/utils/dateUtils";
+import { getDateLocaleForLanguage } from "@/utils/i18n";
 import { PropertyDetailFacilitiesSection } from "./PropertyDetailFacilitiesSection";
 
 const SECTION_DASHED = { borderBottom: "1.5px dashed rgba(254, 215, 170, 0.8)" };
 
-type TFn = (ko: string, vi: string, en: string, ja?: string, zh?: string) => string;
+function formatAreaNumber(area: number, lang: SupportedLanguage): string {
+  return Number(area).toLocaleString(getDateLocaleForLanguage(lang), {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 0,
+  });
+}
+
+function hasDisplayableArea(property: PropertyData): boolean {
+  const a = property.area;
+  return typeof a === "number" && Number.isFinite(a) && a > 0;
+}
 
 type ColorTokens = {
   primary: string;
@@ -23,7 +35,6 @@ type Props = {
   property: PropertyData;
   currentLanguage: SupportedLanguage;
   colors: ColorTokens;
-  t: TFn;
   cityDistrictLine: string;
   propertyTypeLabel: string;
 };
@@ -31,13 +42,25 @@ type Props = {
 /**
  * 임대인 모드: 내 매물 확인 — 단위/외부캘린더 등 임대인 전용 필드 포함.
  */
-export function PropertyDetailOwnerContent({ property, currentLanguage, colors, t, cityDistrictLine, propertyTypeLabel }: Props) {
+export function PropertyDetailOwnerContent({
+  property,
+  currentLanguage,
+  colors,
+  cityDistrictLine,
+  propertyTypeLabel,
+}: Props) {
+  const curLabels = {
+    vnd: getUIText("curVnd", currentLanguage),
+    usd: getUIText("curUsd", currentLanguage),
+    krw: getUIText("curKrw", currentLanguage),
+  };
+
   return (
     <>
       {property.propertyType && (
         <section className="py-3 text-left" style={SECTION_DASHED}>
           <p className="text-base font-bold mb-1.5" style={{ color: colors.text }}>
-            {t("매물 종류", "Loại BĐS", "Property Type", "物件タイプ", "房源类型")}
+            {getUIText("listingKindTitle", currentLanguage)}
           </p>
           <p className="text-sm" style={{ color: colors.text }}>
             {propertyTypeLabel}
@@ -47,13 +70,14 @@ export function PropertyDetailOwnerContent({ property, currentLanguage, colors, 
       {(property.bedrooms !== undefined ||
         property.bathrooms !== undefined ||
         property.maxAdults != null ||
-        property.maxChildren != null) && (
+        property.maxChildren != null ||
+        hasDisplayableArea(property)) && (
         <section className="py-3 text-left" style={SECTION_DASHED}>
           <div className="grid grid-cols-3 gap-2">
             {property.bedrooms !== undefined && (
               <div>
                 <p className="text-xs font-bold mb-1" style={{ color: colors.text }}>
-                  {t("방 개수", "Số phòng", "Bedrooms", "寝室数", "卧室数")}
+                  {getUIText("roomsLabel", currentLanguage)}
                 </p>
                 <p className="text-sm" style={{ color: colors.text }}>
                   {property.bedrooms}
@@ -63,7 +87,7 @@ export function PropertyDetailOwnerContent({ property, currentLanguage, colors, 
             {property.bathrooms !== undefined && (
               <div>
                 <p className="text-xs font-bold mb-1" style={{ color: colors.text }}>
-                  {t("화장실 수", "Số phòng tắm", "Bathrooms", "浴室数", "浴室数")}
+                  {getUIText("detBathCount", currentLanguage)}
                 </p>
                 <p className="text-sm" style={{ color: colors.text }}>
                   {property.bathrooms}
@@ -73,19 +97,22 @@ export function PropertyDetailOwnerContent({ property, currentLanguage, colors, 
             {(property.maxAdults != null || property.maxChildren != null) && (
               <div>
                 <p className="text-xs font-bold mb-1" style={{ color: colors.text }}>
-                  {t("최대 인원", "Số người tối đa", "Max Guests", "最大人数", "最多人数")}
+                  {getUIText("maxGuests", currentLanguage)}
                 </p>
                 <p className="text-sm" style={{ color: colors.text }}>
                   {(property.maxAdults || 0) + (property.maxChildren || 0)}
-                  {currentLanguage === "ko"
-                    ? "명"
-                    : currentLanguage === "vi"
-                      ? " người"
-                      : currentLanguage === "ja"
-                        ? "名"
-                        : currentLanguage === "zh"
-                          ? "人"
-                          : " guests"}
+                  {getUIText("detGuestSuffix", currentLanguage)}
+                </p>
+              </div>
+            )}
+            {hasDisplayableArea(property) && (
+              <div>
+                <p className="text-xs font-bold mb-1" style={{ color: colors.text }}>
+                  {getUIText("detAreaLabel", currentLanguage)}
+                </p>
+                <p className="text-sm" style={{ color: colors.text }}>
+                  {formatAreaNumber(property.area, currentLanguage)}{" "}
+                  {getUIText("areaUnitSqm", currentLanguage)}
                 </p>
               </div>
             )}
@@ -94,7 +121,7 @@ export function PropertyDetailOwnerContent({ property, currentLanguage, colors, 
       )}
       <section className="py-3 text-left" style={SECTION_DASHED}>
         <p className="text-base font-bold mb-1.5" style={{ color: colors.text }}>
-          {t("도시·구", "Thành phố·Quận", "City·District", "都市・区", "城市・区")}
+          {getUIText("detCityDistLine", currentLanguage)}
         </p>
         <p className="text-sm" style={{ color: colors.text }}>
           {cityDistrictLine}
@@ -102,7 +129,7 @@ export function PropertyDetailOwnerContent({ property, currentLanguage, colors, 
       </section>
       <section className="py-3 text-left" style={SECTION_DASHED}>
         <p className="text-base font-bold mb-1.5" style={{ color: colors.text }}>
-          {t("주소", "Địa chỉ", "Address", "住所", "地址")}
+          {getUIText("address", currentLanguage)}
         </p>
         <p className="text-sm break-words leading-relaxed" style={{ color: colors.text }}>
           {property.address || "—"}
@@ -111,19 +138,13 @@ export function PropertyDetailOwnerContent({ property, currentLanguage, colors, 
       {property.unitNumber && (
         <section className="py-3 text-left" style={SECTION_DASHED}>
           <p className="text-base font-bold mb-1.5" style={{ color: colors.text }}>
-            {t("동호수", "Số phòng", "Unit", "号室", "房号")}
+            {getUIText("detUnitBlock", currentLanguage)}
           </p>
           <p className="text-sm" style={{ color: colors.text }}>
             {property.unitNumber}
           </p>
           <p className="text-sm mt-0.5" style={{ color: colors.textMuted }}>
-            {t(
-              "예약 완료 후 임차인에게만 표시",
-              "Chỉ hiển thị cho người thuê sau khi đặt chỗ",
-              "Shown to tenants after booking",
-              "予約完了後にテナントにのみ表示",
-              "预订完成后仅向租户显示",
-            )}
+            {getUIText("detUnitTenantOnly", currentLanguage)}
           </p>
         </section>
       )}
@@ -131,12 +152,12 @@ export function PropertyDetailOwnerContent({ property, currentLanguage, colors, 
       {(property.checkInDate || property.checkOutDate) && (
         <section className="py-3 text-left" style={SECTION_DASHED}>
           <p className="text-base font-bold mb-1.5" style={{ color: colors.text }}>
-            {t("이용 가능 기간", "Khoảng trống", "Available period", "利用可能期間", "可用期间")}
+            {getUIText("detAvailRange", currentLanguage)}
           </p>
           <div className="grid grid-cols-2 gap-2">
             <div>
               <p className="text-sm font-bold mb-1" style={{ color: colors.text }}>
-                {t("시작일", "Ngày bắt đầu", "Start Date", "開始日", "开始日期")}
+                {getUIText("listingLabelStart", currentLanguage)}
               </p>
               <p className="text-sm" style={{ color: colors.text }}>
                 {property.checkInDate ? formatDate(property.checkInDate, currentLanguage) : "—"}
@@ -144,7 +165,7 @@ export function PropertyDetailOwnerContent({ property, currentLanguage, colors, 
             </div>
             <div>
               <p className="text-sm font-bold mb-1" style={{ color: colors.text }}>
-                {t("종료일", "Ngày kết thúc", "End Date", "終了日", "结束日期")}
+                {getUIText("listingLabelEnd", currentLanguage)}
               </p>
               <p className="text-sm" style={{ color: colors.text }}>
                 {property.checkOutDate ? formatDate(property.checkOutDate, currentLanguage) : "—"}
@@ -156,12 +177,12 @@ export function PropertyDetailOwnerContent({ property, currentLanguage, colors, 
 
       <section className="py-3 text-left" style={SECTION_DASHED}>
         <p className="text-base font-bold mb-1.5" style={{ color: colors.text }}>
-          {t("1주일 임대료", "Giá thuê 1 tuần", "Weekly Rent", "1週間賃貸料", "1周租金")}
+          {getUIText("weeklyRent", currentLanguage)}
         </p>
         <p className="text-lg font-bold" style={{ color: colors.text }}>
-          {formatFullPrice(property.price, property.priceUnit)}
+          {formatFullPrice(property.price, property.priceUnit, curLabels)}
           <span className="text-sm font-normal ml-1.5" style={{ color: colors.textMuted }}>
-            {t("공과금/관리비 포함", "Bao gồm phí", "incl. utilities", "光熱・管理費込み", "含水电")}
+            {getUIText("utilitiesIncluded", currentLanguage)}
           </span>
         </p>
       </section>
@@ -170,24 +191,18 @@ export function PropertyDetailOwnerContent({ property, currentLanguage, colors, 
         property={property}
         currentLanguage={currentLanguage}
         colors={colors}
-        title={t(
-          "숙소시설 및 정책",
-          "Tiện ích và chính sách",
-          "Facilities & Policy",
-          "施設とポリシー",
-          "设施与政策",
-        )}
+        title={getUIText("detPolicyTitle", currentLanguage)}
       />
 
       {(property.checkInTime || property.checkOutTime) && (
         <section className="py-3 text-left" style={SECTION_DASHED}>
           <p className="text-base font-bold mb-1.5" style={{ color: colors.text }}>
-            {t("체크인/체크아웃 시간", "Giờ check-in/out", "Check-in/out time", "チェックイン・アウト", "入住/退房时间")}
+            {getUIText("checkInOutScheduleTitle", currentLanguage)}
           </p>
           <div className="grid grid-cols-2 gap-2">
             <div>
               <p className="text-sm font-bold mb-1" style={{ color: colors.text }}>
-                {t("체크인", "Check-in", "Check-in", "チェックイン", "入住")}
+                {getUIText("checkIn", currentLanguage)}
               </p>
               <p className="text-base" style={{ color: colors.text }}>
                 {property.checkInTime || "14:00"}
@@ -195,7 +210,7 @@ export function PropertyDetailOwnerContent({ property, currentLanguage, colors, 
             </div>
             <div>
               <p className="text-sm font-bold mb-1" style={{ color: colors.text }}>
-                {t("체크아웃", "Check-out", "Check-out", "チェックアウト", "退房")}
+                {getUIText("checkOut", currentLanguage)}
               </p>
               <p className="text-base" style={{ color: colors.text }}>
                 {property.checkOutTime || "12:00"}
@@ -208,7 +223,7 @@ export function PropertyDetailOwnerContent({ property, currentLanguage, colors, 
       {property.original_description && (
         <section className="py-3 text-left" style={SECTION_DASHED}>
           <p className="text-base font-bold mb-1.5" style={{ color: colors.text }}>
-            {t("매물 설명", "Mô tả BĐS", "Description", "物件説明", "房源描述")}
+            {getUIText("description", currentLanguage)}
           </p>
           <div style={{ color: colors.text }}>
             <PropertyDescription
@@ -225,13 +240,13 @@ export function PropertyDetailOwnerContent({ property, currentLanguage, colors, 
       {(property.icalPlatform || property.icalCalendarName || property.icalUrl) && (
         <section className="py-3 text-left" style={SECTION_DASHED}>
           <p className="text-base font-bold mb-1.5" style={{ color: colors.text }}>
-            {t("외부 캘린더", "Lịch ngoài", "External Calendar", "外部カレンダー", "外部日历")}
+            {getUIText("detExtCalTitle", currentLanguage)}
           </p>
           <div className="space-y-2">
             {property.icalPlatform && (
               <div>
                 <p className="text-sm font-bold mb-0.5" style={{ color: colors.text }}>
-                  {t("플랫폼", "Nền tảng", "Platform", "プラットフォーム", "平台")}
+                  {getUIText("calendarPlatformLabel", currentLanguage)}
                 </p>
                 <p className="text-sm" style={{ color: colors.text }}>
                   {property.icalPlatform}
@@ -241,7 +256,7 @@ export function PropertyDetailOwnerContent({ property, currentLanguage, colors, 
             {property.icalCalendarName && (
               <div>
                 <p className="text-sm font-bold mb-0.5" style={{ color: colors.text }}>
-                  {t("캘린더", "Lịch", "Calendar", "カレンダー", "日历")}
+                  {getUIText("calendarNameLabel", currentLanguage)}
                 </p>
                 <p className="text-sm" style={{ color: colors.text }}>
                   {property.icalCalendarName}
@@ -251,7 +266,7 @@ export function PropertyDetailOwnerContent({ property, currentLanguage, colors, 
             {property.icalUrl && (
               <div>
                 <p className="text-sm font-bold mb-0.5" style={{ color: colors.text }}>
-                  iCal URL
+                  {getUIText("detIcalUrlField", currentLanguage)}
                 </p>
                 <p className="text-sm break-all" style={{ color: colors.text }}>
                   {property.icalUrl}

@@ -7,6 +7,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import TopBar from "@/components/TopBar";
 import { LISTING_MAX_SUPPLY_DAYS } from "@/lib/constants/listingCalendar";
 import type { SupportedLanguage } from "@/lib/api/translation";
+import { getUIText } from "@/utils/i18n";
 import { useEditPropertyPageState } from "./hooks/useEditPropertyPageState";
 
 const AddressVerificationModal = dynamic(
@@ -110,13 +111,7 @@ export default function EditPropertyContent() {
   if (authLoading || state.loadingProperty)
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-500">
-          {currentLanguage === "ko"
-            ? "로딩 중..."
-            : currentLanguage === "vi"
-              ? "Đang tải..."
-              : "Loading..."}
-        </div>
+        <div className="text-gray-500">{getUIText("loading", toSupportedLanguage(currentLanguage))}</div>
       </div>
     );
 

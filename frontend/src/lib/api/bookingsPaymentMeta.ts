@@ -12,26 +12,30 @@ import {
   parsePaymentPatchData,
   type PaymentServerTransition,
 } from "@/lib/api/appPaymentResponse";
+import { readStoredUiLanguage } from "@/lib/uiLanguageStorage";
+import { getUIText } from "@/utils/i18n";
 import type { BookingData } from "./bookingsTypes";
 
-const PAYMENT_DEFAULT_ERROR =
-  "결제 정보를 서버에 반영하지 못했습니다. 잠시 후 다시 시도해 주세요.";
+function paymentDefaultError(): string {
+  return getUIText("bookingPaymentMetaDefaultError", readStoredUiLanguage());
+}
 
-const PAYMENT_CREATE_ERROR =
-  "결제(메타)를 등록하지 못했습니다. 예약은 생성되었으나 결제 직전에 새로고침하거나 고객센터에 문의해 주세요.";
+function paymentCreateError(): string {
+  return getUIText("bookingPaymentMetaCreateError", readStoredUiLanguage());
+}
 
 export type PatchPaymentMetaResult =
   | { ok: false }
   | { ok: true; transition: PaymentServerTransition };
 
 function emitPayCompleteTransitionToast(t: PaymentServerTransition) {
+  const lang = readStoredUiLanguage();
   if (t.bookingCancelled) {
     emitUserFacingAppToast({
       tone: "info",
       area: "bookings",
       action: "payment",
-      message:
-        "결제(환불) 반영에 따라 예약이 취소 처리되었습니다. 내 예약에서 상태를 확인해 주세요.",
+      message: getUIText("bookingPaymentToastRefundCancelledBody", lang),
     });
     return;
   }
@@ -40,7 +44,7 @@ function emitPayCompleteTransitionToast(t: PaymentServerTransition) {
       tone: "success",
       area: "bookings",
       action: "payment",
-      message: "결제가 완료되어 예약이 확정되었습니다.",
+      message: getUIText("bookingPaymentToastConfirmedBody", lang),
     });
     return;
   }
@@ -48,18 +52,18 @@ function emitPayCompleteTransitionToast(t: PaymentServerTransition) {
     tone: "info",
     area: "bookings",
     action: "payment",
-    message:
-      "결제 정보가 서버에 반영되었습니다. 최신 예약 상태는 내 예약에서 확인해 주세요.",
+    message: getUIText("bookingPaymentToastSyncedBody", lang),
   });
 }
 
 export function emitRefundAdminTransitionToast(t: PaymentServerTransition) {
+  const lang = readStoredUiLanguage();
   if (t.bookingCancelled) {
     emitUserFacingAppToast({
       tone: "success",
       area: "bookings",
       action: "refund",
-      message: "환불이 반영되어 예약이 취소(환불) 처리되었습니다.",
+      message: getUIText("bookingRefundToastCancelledBody", lang),
     });
     return;
   }
@@ -67,7 +71,7 @@ export function emitRefundAdminTransitionToast(t: PaymentServerTransition) {
     tone: "info",
     area: "bookings",
     action: "refund",
-    message: "환불 결제 정보가 서버에 반영되었습니다.",
+    message: getUIText("bookingRefundToastSyncedBody", lang),
   });
 }
 
@@ -103,7 +107,7 @@ export async function createPaymentMetaForBooking(
       emitUserFacingSyncError({
         area: "bookings",
         action: "payment_create",
-        message: parsed.errorMessage || PAYMENT_CREATE_ERROR,
+        message: parsed.errorMessage || paymentCreateError(),
       });
       return false;
     }
@@ -113,7 +117,7 @@ export async function createPaymentMetaForBooking(
     emitUserFacingSyncError({
       area: "bookings",
       action: "payment_create",
-      message: PAYMENT_DEFAULT_ERROR,
+      message: paymentDefaultError(),
     });
     return false;
   }
@@ -139,7 +143,7 @@ export async function patchPaymentMetaByBooking(
       emitUserFacingSyncError({
         area: "bookings",
         action: "payment_patch",
-        message: parsed.errorMessage || PAYMENT_DEFAULT_ERROR,
+        message: parsed.errorMessage || paymentDefaultError(),
       });
       return { ok: false };
     }
@@ -150,7 +154,7 @@ export async function patchPaymentMetaByBooking(
     emitUserFacingSyncError({
       area: "bookings",
       action: "payment_patch",
-      message: PAYMENT_DEFAULT_ERROR,
+      message: paymentDefaultError(),
     });
     return { ok: false };
   }

@@ -1,4 +1,6 @@
 import maplibregl from "maplibre-gl";
+import type { SupportedLanguage } from "@/lib/api/translation";
+import { ALL_LANDMARKS, getLandmarkName } from "@/lib/data/vietnam-landmarks";
 
 /**
  * 기본 지도 중심: 호치민 1군 (HCMC_DISTRICTS `hcmc-d1` 와 동일).
@@ -89,6 +91,52 @@ export function escapeHtmlLandmarkName(s: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+const LANDMARK_CATEGORY_COLOR: Record<string, string> = {
+  landmark: "#E63946",
+  shopping: "#FF6B35",
+  residential: "#10B981",
+  tourism: "#8B5CF6",
+};
+
+/**
+ * 명소 마커를 UI 언어에 맞는 팝업 제목으로 다시 그립니다.
+ * — 기존 마커는 제거하고 동일 좌표에 새 Popup HTML을 붙입니다.
+ */
+export function replaceLandmarkMarkers(
+  mapInstance: maplibregl.Map,
+  language: SupportedLanguage,
+  previous: maplibregl.Marker[],
+): maplibregl.Marker[] {
+  for (const m of previous) m.remove();
+  const next: maplibregl.Marker[] = [];
+  const landmarkSizePx = 8;
+  for (const lm of ALL_LANDMARKS) {
+    const el = document.createElement("div");
+    el.className = "landmark-marker";
+    el.style.width = `${landmarkSizePx}px`;
+    el.style.height = `${landmarkSizePx}px`;
+    el.style.borderRadius = "50%";
+    el.style.backgroundColor = LANDMARK_CATEGORY_COLOR[lm.category] || "#6b7280";
+    el.style.border = "2px solid white";
+    el.style.boxShadow = "0 1px 3px rgba(0,0,0,0.3)";
+    el.style.cursor = "pointer";
+    const title = escapeHtmlLandmarkName(getLandmarkName(lm, language));
+    const marker = new maplibregl.Marker({ element: el })
+      .setLngLat([lm.lng, lm.lat])
+      .setPopup(
+        new maplibregl.Popup({
+          offset: 15,
+          className: "landmark-popup-card",
+          closeButton: true,
+          maxWidth: "240px",
+        }).setHTML(`<div class="landmark-popup-title">${title}</div>`),
+      )
+      .addTo(mapInstance);
+    next.push(marker);
+  }
+  return next;
 }
 
 // 두 좌표 간 거리 계산 (km) - 근거리 우선 최적화

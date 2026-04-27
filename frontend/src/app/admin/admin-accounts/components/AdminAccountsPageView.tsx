@@ -2,8 +2,17 @@
 
 import { Plus } from "lucide-react";
 import AdminRouteGuard from "@/components/admin/AdminRouteGuard";
-import { ADMIN_NAV_ITEMS } from "@/lib/adminNav";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { ADMIN_NAV_ITEMS, type AdminNavItem } from "@/lib/adminNav";
+import { ADMIN_NAV_HREF_TO_LABEL_KEY } from "@/lib/adminNavI18nMaps";
+import type { SupportedLanguage } from "@/lib/api/translation";
+import { getUIText } from "@/utils/i18n";
 import type { AdminAccountRow, AdminAccountsPageViewModel } from "../hooks/useAdminAccountsPage";
+
+function navItemLabel(item: AdminNavItem, lang: SupportedLanguage): string {
+  const k = ADMIN_NAV_HREF_TO_LABEL_KEY[item.href];
+  return k ? getUIText(k, lang) : item.label;
+}
 
 type Props = { vm: AdminAccountsPageViewModel };
 
@@ -13,6 +22,7 @@ function displayLabel(row: AdminAccountRow) {
 }
 
 export function AdminAccountsPageView({ vm }: Props) {
+  const { currentLanguage } = useLanguage();
   const {
     me,
     list,
@@ -54,10 +64,10 @@ export function AdminAccountsPageView({ vm }: Props) {
       <div>
         <div className="mb-5 flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-lg font-bold text-slate-900 sm:text-xl">관리자 계정</h1>
-            <p className="text-sm text-slate-500">
-              슈퍼만 접근 · 계정 클릭 후 아이디·닉네임·비밀번호·권한 수정
-            </p>
+            <h1 className="text-lg font-bold text-slate-900 sm:text-xl">
+              {getUIText("adminAccountsTitle", currentLanguage)}
+            </h1>
+            <p className="text-sm text-slate-500">{getUIText("adminAccountsIntro", currentLanguage)}</p>
           </div>
           <button
             type="button"
@@ -65,7 +75,7 @@ export function AdminAccountsPageView({ vm }: Props) {
             className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
           >
             <Plus className="h-4 w-4" aria-hidden />
-            새 관리자
+            {getUIText("adminAccountsNewButton", currentLanguage)}
           </button>
         </div>
 
@@ -80,10 +90,14 @@ export function AdminAccountsPageView({ vm }: Props) {
             onSubmit={createAccount}
             className="mb-6 rounded-lg border border-slate-200 bg-slate-50/80 p-4"
           >
-            <h2 className="mb-3 text-sm font-bold text-slate-800">새 계정</h2>
+            <h2 className="mb-3 text-sm font-bold text-slate-800">
+              {getUIText("adminAccountsFormNewTitle", currentLanguage)}
+            </h2>
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-600">아이디</label>
+                <label className="mb-1 block text-xs font-medium text-slate-600">
+                  {getUIText("adminAccountsLabelUsername", currentLanguage)}
+                </label>
                 <input
                   value={createUsername}
                   onChange={(e) => setCreateUsername(e.target.value)}
@@ -94,19 +108,21 @@ export function AdminAccountsPageView({ vm }: Props) {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-600">닉네임</label>
+                <label className="mb-1 block text-xs font-medium text-slate-600">
+                  {getUIText("adminAccountsLabelNickname", currentLanguage)}
+                </label>
                 <input
                   value={createNickname}
                   onChange={(e) => setCreateNickname(e.target.value)}
                   className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm"
                   maxLength={64}
-                  placeholder="표시 이름"
+                  placeholder={getUIText("adminAccountsNicknamePlaceholder", currentLanguage)}
                   autoComplete="off"
                 />
               </div>
               <div className="sm:col-span-2">
                 <label className="mb-1 block text-xs font-medium text-slate-600">
-                  비밀번호 (8자 이상)
+                  {getUIText("adminAccountsPasswordMin", currentLanguage)}
                 </label>
                 <input
                   type="password"
@@ -125,21 +141,21 @@ export function AdminAccountsPageView({ vm }: Props) {
                 checked={createSuper}
                 onChange={(e) => setCreateSuper(e.target.checked)}
               />
-              슈퍼 관리자로 생성
+              {getUIText("adminAccountsCreateSuper", currentLanguage)}
             </label>
             <div className="mt-3 flex gap-2">
               <button
                 type="submit"
                 className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white"
               >
-                생성
+                {getUIText("adminAccountsCreateSubmit", currentLanguage)}
               </button>
               <button
                 type="button"
                 onClick={() => setShowCreate(false)}
                 className="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700"
               >
-                취소
+                {getUIText("cancel", currentLanguage)}
               </button>
             </div>
           </form>
@@ -147,7 +163,9 @@ export function AdminAccountsPageView({ vm }: Props) {
 
         <div className="grid gap-6 lg:grid-cols-2">
           <div>
-            <h2 className="mb-2 text-sm font-semibold text-slate-800">계정 목록</h2>
+            <h2 className="mb-2 text-sm font-semibold text-slate-800">
+              {getUIText("adminAccountsListTitle", currentLanguage)}
+            </h2>
             <ul className="divide-y divide-slate-200 rounded-lg border border-slate-200">
               {list.map((row) => (
                 <li key={row.id}>
@@ -163,7 +181,10 @@ export function AdminAccountsPageView({ vm }: Props) {
                       <span className="font-normal text-slate-500">({row.username})</span>
                     </span>
                     <span className="text-xs text-slate-500">
-                      {row.isSuperAdmin ? "슈퍼" : "일반"} · {row.id.slice(0, 8)}…
+                      {row.isSuperAdmin
+                        ? getUIText("adminAccountsRoleSuper", currentLanguage)
+                        : getUIText("adminAccountsRoleNormal", currentLanguage)}{" "}
+                      · {row.id.slice(0, 8)}…
                     </span>
                   </button>
                 </li>
@@ -173,7 +194,7 @@ export function AdminAccountsPageView({ vm }: Props) {
 
           <div className="space-y-6">
             {!selected ? (
-              <p className="text-sm text-slate-500">왼쪽에서 계정을 클릭하세요.</p>
+              <p className="text-sm text-slate-500">{getUIText("adminAccountsSelectPrompt", currentLanguage)}</p>
             ) : (
               <>
                 <div>
@@ -182,18 +203,22 @@ export function AdminAccountsPageView({ vm }: Props) {
                     onClick={() => setProfileOpen((v) => !v)}
                     className="mb-2 flex w-full items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-left text-sm font-semibold text-slate-800"
                   >
-                    <span>계정 정보</span>
-                    <span className="text-xs text-slate-500">{profileOpen ? "접기" : "펼치기"}</span>
+                    <span>{getUIText("adminAccountsProfileToggle", currentLanguage)}</span>
+                    <span className="text-xs text-slate-500">
+                      {profileOpen
+                        ? getUIText("adminAccountsProfileCollapse", currentLanguage)
+                        : getUIText("adminAccountsProfileExpand", currentLanguage)}
+                    </span>
                   </button>
                   {profileOpen ? (
                     <>
                       <p className="mb-3 text-xs text-slate-500">
-                        아이디·닉네임·비밀번호는 슈퍼만 이 화면에서 수정합니다.
+                        {getUIText("adminAccountsProfileNote", currentLanguage)}
                       </p>
                       <div className="space-y-3 rounded-lg border border-slate-200 p-3">
                         <div>
                           <label className="mb-1 block text-xs font-medium text-slate-600">
-                            닉네임
+                            {getUIText("adminAccountsEditNickname", currentLanguage)}
                           </label>
                           <input
                             value={editNickname}
@@ -206,7 +231,7 @@ export function AdminAccountsPageView({ vm }: Props) {
                         </div>
                         <div>
                           <label className="mb-1 block text-xs font-medium text-slate-600">
-                            아이디
+                            {getUIText("adminAccountsEditUsername", currentLanguage)}
                           </label>
                           <input
                             value={editUsername}
@@ -218,7 +243,7 @@ export function AdminAccountsPageView({ vm }: Props) {
                         </div>
                         <div>
                           <label className="mb-1 block text-xs font-medium text-slate-600">
-                            새 비밀번호 (비우면 유지)
+                            {getUIText("adminAccountsEditNewPassword", currentLanguage)}
                           </label>
                           <input
                             type="password"
@@ -233,7 +258,7 @@ export function AdminAccountsPageView({ vm }: Props) {
                         {selected.id === me?.id && editNewPassword.length > 0 ? (
                           <div>
                             <label className="mb-1 block text-xs font-medium text-slate-600">
-                              현재 비밀번호
+                              {getUIText("adminAccountsEditCurrentPassword", currentLanguage)}
                             </label>
                             <input
                               type="password"
@@ -251,7 +276,9 @@ export function AdminAccountsPageView({ vm }: Props) {
                           onClick={() => void saveProfile()}
                           className="w-full rounded-md bg-slate-900 py-2 text-sm font-semibold text-white disabled:opacity-50"
                         >
-                          {saving ? "저장 중…" : "계정 정보 저장"}
+                          {saving
+                            ? getUIText("adminAccountsSaving", currentLanguage)
+                            : getUIText("adminAccountsSaveProfile", currentLanguage)}
                         </button>
                       </div>
                     </>
@@ -259,10 +286,12 @@ export function AdminAccountsPageView({ vm }: Props) {
                 </div>
 
                 <div>
-                  <h2 className="mb-2 text-sm font-semibold text-slate-800">역할·권한</h2>
+                  <h2 className="mb-2 text-sm font-semibold text-slate-800">
+                    {getUIText("adminAccountsRolesHeading", currentLanguage)}
+                  </h2>
                   {selected.isSuperAdmin ? (
                     <div className="rounded-lg border border-slate-200 p-3 text-sm text-slate-600">
-                      슈퍼는 모든 메뉴에 접근합니다.
+                      {getUIText("adminAccountsSuperAllMenus", currentLanguage)}
                       {selected.id !== me?.id ? (
                         <button
                           type="button"
@@ -270,7 +299,7 @@ export function AdminAccountsPageView({ vm }: Props) {
                           onClick={() => void toggleSuper(selected, false)}
                           className="mt-3 block w-full rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900"
                         >
-                          일반 관리자로 변경
+                          {getUIText("adminAccountsDemoteSuper", currentLanguage)}
                         </button>
                       ) : null}
                     </div>
@@ -283,9 +312,11 @@ export function AdminAccountsPageView({ vm }: Props) {
                           onChange={(e) => void toggleSuper(selected, e.target.checked)}
                           disabled={saving || selected.id === me?.id}
                         />
-                        슈퍼 관리자
+                        {getUIText("adminAccountsSuperCheckbox", currentLanguage)}
                       </label>
-                      <p className="mb-2 text-xs text-slate-500">체크된 메뉴만 상단 내비에 표시됩니다.</p>
+                      <p className="mb-2 text-xs text-slate-500">
+                        {getUIText("adminAccountsPermHint", currentLanguage)}
+                      </p>
                       <ul className="space-y-2 rounded-lg border border-slate-200 p-3">
                         {ADMIN_NAV_ITEMS.map((item) => (
                           <li key={item.permissionId}>
@@ -301,7 +332,7 @@ export function AdminAccountsPageView({ vm }: Props) {
                                 }
                                 disabled={saving || selected.id === me?.id}
                               />
-                              {item.label}{" "}
+                              {navItemLabel(item, currentLanguage)}{" "}
                               <span className="text-xs text-slate-400">({item.permissionId})</span>
                             </label>
                           </li>
@@ -314,11 +345,13 @@ export function AdminAccountsPageView({ vm }: Props) {
                           onClick={() => void savePermissions()}
                           className="mt-3 w-full rounded-md border border-slate-200 bg-white py-2 text-sm font-semibold text-slate-800 disabled:opacity-50"
                         >
-                          {saving ? "저장 중…" : "권한만 저장"}
+                          {saving
+                            ? getUIText("adminAccountsSaving", currentLanguage)
+                            : getUIText("adminAccountsSavePerms", currentLanguage)}
                         </button>
                       ) : (
                         <p className="mt-3 text-xs text-slate-500">
-                          본인 계정의 메뉴 권한은 여기서 수정하지 않습니다.
+                          {getUIText("adminAccountsSelfPermNote", currentLanguage)}
                         </p>
                       )}
                     </>

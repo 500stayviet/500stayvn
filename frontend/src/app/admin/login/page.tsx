@@ -1,26 +1,29 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { ShieldCheck } from 'lucide-react';
-import { loginAdmin } from '@/lib/api/adminAuth';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { ShieldCheck } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { loginAdmin } from "@/lib/api/adminAuth";
+import { getUIText } from "@/utils/i18n";
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const { currentLanguage } = useLanguage();
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
     const ok = await loginAdmin(username.trim(), password);
     if (!ok) {
-      setError('관리자 아이디 또는 비밀번호가 올바르지 않습니다. (DB 미연결 시 서버 로그 확인)');
+      setError(getUIText("adminLoginError", currentLanguage));
       return;
     }
-    router.replace('/admin/dashboard');
+    router.replace("/admin/dashboard");
   };
 
   return (
@@ -31,14 +34,18 @@ export default function AdminLoginPage() {
             <ShieldCheck className="h-6 w-6" aria-hidden />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-slate-900 sm:text-xl">관리자 로그인</h1>
-            <p className="text-xs text-slate-500">500 STAY Admin · PC 전용</p>
+            <h1 className="text-lg font-bold text-slate-900 sm:text-xl">
+              {getUIText("adminLoginTitle", currentLanguage)}
+            </h1>
+            <p className="text-xs text-slate-500">{getUIText("adminLoginSubtitle", currentLanguage)}</p>
           </div>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700">아이디</label>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">
+              {getUIText("adminLoginUsernameLabel", currentLanguage)}
+            </label>
             <input
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -48,7 +55,9 @@ export default function AdminLoginPage() {
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700">비밀번호</label>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">
+              {getUIText("adminLoginPasswordLabel", currentLanguage)}
+            </label>
             <input
               type="password"
               value={password}
@@ -63,17 +72,16 @@ export default function AdminLoginPage() {
             type="submit"
             className="w-full rounded-lg bg-slate-900 py-3 text-sm font-semibold text-white hover:bg-slate-800"
           >
-            로그인
+            {getUIText("adminLoginSubmit", currentLanguage)}
           </button>
         </form>
 
         <p className="mt-4 text-center text-[11px] text-slate-400">
-          최초 1회: ADMIN_BOOTSTRAP_* 또는 NEXT_PUBLIC_ADMIN_* 와 동일 계정으로 로그인 시 슈퍼 관리자가 DB에
-          생성됩니다.
+          {getUIText("adminLoginBootstrapNote", currentLanguage)}
         </p>
         <p className="mt-3 text-center">
           <Link href="/" className="text-sm text-slate-600 underline-offset-2 hover:text-slate-900 hover:underline">
-            서비스 홈으로
+            {getUIText("adminLoginHomeLink", currentLanguage)}
           </Link>
         </p>
       </div>

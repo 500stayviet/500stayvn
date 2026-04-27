@@ -1,7 +1,6 @@
-import {
-  USER_FACING_CLIENT_AUTH_ERROR_MESSAGE,
-} from "@/lib/runtime/networkResilience";
 import { unwrapAppApiData } from "@/lib/api/appApiEnvelope";
+import { readStoredUiLanguage } from "@/lib/uiLanguageStorage";
+import { getUIText } from "@/utils/i18n";
 
 export type ParsedAppPaymentSuccess = { ok: true; data: unknown };
 
@@ -57,9 +56,10 @@ export async function parseAppPaymentResponse(
   try {
     if (text) obj = JSON.parse(text) as Record<string, unknown>;
   } catch {
+    const lang = readStoredUiLanguage();
     return {
       ok: false,
-      errorMessage: "서버 응답을 해석할 수 없습니다.",
+      errorMessage: getUIText("appPaymentErrUnparseableResponse", lang),
       status: res.status,
     };
   }
@@ -69,9 +69,10 @@ export async function parseAppPaymentResponse(
   }
 
   if (res.status === 401 && (obj as { error?: string }).error === "unauthorized") {
+    const lang = readStoredUiLanguage();
     return {
       ok: false,
-      errorMessage: USER_FACING_CLIENT_AUTH_ERROR_MESSAGE,
+      errorMessage: getUIText("userFacingAuthOrSessionError", lang),
       code: "unauthorized",
       status: 401,
     };
@@ -79,17 +80,23 @@ export async function parseAppPaymentResponse(
 
   if (obj.ok === false && obj.error && typeof obj.error === "object") {
     const e = obj.error as { code?: string; message?: string };
+    const lang = readStoredUiLanguage();
+    const fallback = getUIText("appPaymentErrRejected", lang);
     return {
       ok: false,
-      errorMessage: e.message || e.code || "요청이 거절되었습니다.",
+      errorMessage: e.message?.trim() || e.code || fallback,
       code: e.code,
       status: res.status,
     };
   }
 
+  const lang = readStoredUiLanguage();
   return {
     ok: false,
-    errorMessage: `요청 실패 (HTTP ${res.status})`,
+    errorMessage: getUIText("appPaymentErrHttpStatus", lang).replace(
+      /\{\{status\}\}/g,
+      String(res.status),
+    ),
     status: res.status,
   };
 }

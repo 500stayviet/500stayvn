@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
 
   const users = Array.isArray(body.users) ? body.users : [];
   if (users.length === 0) {
-    return appApiError('empty', 400, 'users array is empty.');
+    return appApiError('empty', 400);
   }
   if (users.length > MAX_IMPORT) {
     return appApiError('too_many', 400);

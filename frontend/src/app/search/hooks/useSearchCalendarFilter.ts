@@ -1,4 +1,6 @@
 import { useCallback, useState } from "react";
+import type { SupportedLanguage } from "@/lib/api/translation";
+import { getDateLocaleForLanguage } from "@/utils/i18n";
 
 type CalendarMode = "checkin" | "checkout";
 
@@ -38,16 +40,7 @@ export const useSearchCalendarFilter = (currentLanguage: string) => {
   const formatDate = useCallback(
     (date: Date | null): string => {
       if (!date) return "";
-      const locale =
-        currentLanguage === "ko"
-          ? "ko-KR"
-          : currentLanguage === "vi"
-            ? "vi-VN"
-            : currentLanguage === "ja"
-              ? "ja-JP"
-              : currentLanguage === "zh"
-                ? "zh-CN"
-                : "en-US";
+      const locale = getDateLocaleForLanguage(currentLanguage as SupportedLanguage);
       return date.toLocaleDateString(locale, { month: "short", day: "numeric" });
     },
     [currentLanguage],

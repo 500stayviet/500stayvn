@@ -101,11 +101,7 @@ export function ChatRoomPageView({ vm }: Props) {
           ) : null}
           {!loadingMoreOlder && hasMoreOlder && messages.length > 0 ? (
             <p className="text-center text-[10px] text-gray-400">
-              {currentLanguage === 'ko'
-                ? '위로 스크롤하면 이전 메시지'
-                : currentLanguage === 'vi'
-                  ? 'Cuộn lên để xem tin cũ hơn'
-                  : 'Scroll up for older messages'}
+              {getUIText('chatScrollOlderMessages', currentLanguage)}
             </p>
           ) : null}
           {messages.length === 0 ? (
@@ -158,6 +154,15 @@ export function ChatRoomPageView({ vm }: Props) {
         </div>
 
         <div className="sticky bottom-0 bg-white border-t border-gray-200 px-4 py-3">
+          {sending ? (
+            <p className="text-[10px] text-gray-500 mb-1.5 px-1">
+              {getUIText('chatSendingMessage', currentLanguage)}
+            </p>
+          ) : newMessage.trim() ? (
+            <p className="text-[10px] text-gray-400 mb-1.5 px-1">
+              {getUIText('chatInputInProgressStatus', currentLanguage)}
+            </p>
+          ) : null}
           <div className="flex items-center gap-2">
             <input
               ref={inputRef}
@@ -170,6 +175,7 @@ export function ChatRoomPageView({ vm }: Props) {
               disabled={sending}
             />
             <button
+              type="button"
               onClick={() => void handleSend()}
               disabled={!newMessage.trim() || sending}
               className="p-2.5 bg-blue-500 text-white rounded-full disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-600 transition-colors"

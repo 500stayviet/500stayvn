@@ -1,32 +1,27 @@
 "use client";
 
 import AdminRouteGuard from "@/components/admin/AdminRouteGuard";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { isAdminPropertyNewUnseen } from "@/lib/adminAckState";
 import { isPropertyNew } from "@/lib/adminNewUtils";
+import type { SupportedLanguage } from "@/lib/api/translation";
 import type { AdminInventoryFilter } from "@/lib/api/properties";
 import type { PropertyData } from "@/types/property";
+import { getUIText, type UITextKey } from "@/utils/i18n";
 import {
   PROPERTY_HIDDEN_REASON,
   type AdminPropertiesPageViewModel,
 } from "../hooks/useAdminPropertiesPage";
 
-const FILTER_TABS: { id: AdminInventoryFilter; label: string }[] = [
-  { id: "new", label: "신규" },
-  { id: "all", label: "전체" },
-  { id: "listed", label: "노출" },
-  { id: "paused", label: "광고종료" },
-  { id: "hidden", label: "숨김" },
-];
-
-function listingStatusLabel(p: PropertyData): { text: string; className: string } {
+function listingStatusLabel(p: PropertyData, lang: SupportedLanguage): { text: string; className: string } {
   if (p.hidden) {
-    return { text: "숨김", className: "bg-amber-100 text-amber-800" };
+    return { text: getUIText("adminListingHidden", lang), className: "bg-amber-100 text-amber-800" };
   }
   if (p.status === "INACTIVE_SHORT_TERM") {
-    return { text: "광고종료", className: "bg-orange-100 text-orange-900" };
+    return { text: getUIText("adminListingAdPaused", lang), className: "bg-orange-100 text-orange-900" };
   }
   if (p.status === "active") {
-    return { text: "고객 노출", className: "bg-emerald-100 text-emerald-800" };
+    return { text: getUIText("adminListingLive", lang), className: "bg-emerald-100 text-emerald-800" };
   }
   return { text: p.status || "—", className: "bg-slate-100 text-slate-700" };
 }
@@ -34,6 +29,7 @@ function listingStatusLabel(p: PropertyData): { text: string; className: string 
 type Props = { vm: AdminPropertiesPageViewModel };
 
 export function AdminPropertiesPageView({ vm }: Props) {
+  const { currentLanguage } = useLanguage();
   const {
     query,
     setQuery,
@@ -57,6 +53,14 @@ export function AdminPropertiesPageView({ vm }: Props) {
     hideProperty,
   } = vm;
 
+  const FILTER_TABS: { id: AdminInventoryFilter; labelKey: UITextKey }[] = [
+    { id: "new", labelKey: "adminFilterNew" },
+    { id: "all", labelKey: "adminFilterAll" },
+    { id: "listed", labelKey: "adminPropFilterListed" },
+    { id: "paused", labelKey: "adminPropFilterPaused" },
+    { id: "hidden", labelKey: "adminPropFilterHidden" },
+  ];
+
   const tabCount = (id: AdminInventoryFilter) =>
     id === "all"
       ? nAll
@@ -68,16 +72,27 @@ export function AdminPropertiesPageView({ vm }: Props) {
             ? nPaused
             : nHidden;
 
+  const intro = getUIText("adminPropertiesIntroLine", currentLanguage)
+    .replace("{{nAll}}", String(nAll))
+    .replace("{{nNew}}", String(nNew))
+    .replace("{{nListed}}", String(nListed))
+    .replace("{{nPaused}}", String(nPaused))
+    .replace("{{nHidden}}", String(nHidden));
+
+  const pageLine = getUIText("adminPaginationLine", currentLanguage)
+    .replace("{{page}}", String(page))
+    .replace("{{total}}", String(totalPages))
+    .replace("{{count}}", String(rows.length));
+
   return (
     <AdminRouteGuard>
       <div>
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-lg font-bold text-slate-900">매물 관리</h1>
-            <p className="text-sm text-slate-500">
-              부모 매물만 표시 · 신규 = 미확인은 확인 전까지 유지(수정 후에도 동일) · 확인한 뒤엔 그날만 목록(자정 이후 제외) · 최신순 · 전체{" "}
-              {nAll} · 신규 {nNew} · 노출(고객) {nListed} · 광고종료 {nPaused} · 숨김 {nHidden}
-            </p>
+            <h1 className="text-lg font-bold text-slate-900">
+              {getUIText("adminPropertiesTitle", currentLanguage)}
+            </h1>
+            <p className="text-sm text-slate-500">{intro}</p>
           </div>
         </div>
 
@@ -91,7 +106,7 @@ export function AdminPropertiesPageView({ vm }: Props) {
                 filter === t.id ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
               }`}
             >
-              {t.label}
+              {getUIText(t.labelKey, currentLanguage)}
               <span className="ml-1 tabular-nums opacity-80">({tabCount(t.id)})</span>
               {t.id === "new" && unseenNew > 0 ? (
                 <span className="ml-1 inline-flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white tabular-nums">
@@ -106,37 +121,43 @@ export function AdminPropertiesPageView({ vm }: Props) {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="id / 제목 / owner(UID·이메일) / 주소 검색"
+            placeholder={getUIText("adminPropertiesSearchPlaceholder", currentLanguage)}
             className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-300"
           />
-          <p className="mt-1 text-xs text-slate-500">선택한 탭 안에서 검색됩니다. 노출 = 7일 예약 가능·고객 화면과 동일.</p>
+          <p className="mt-1 text-xs text-slate-500">
+            {getUIText("adminPropertiesSearchHint", currentLanguage)}
+          </p>
         </div>
 
         {loading ? (
-          <p className="py-12 text-center text-sm text-slate-500">불러오는 중…</p>
+          <p className="py-12 text-center text-sm text-slate-500">
+            {getUIText("adminUiLoadingEllipsis", currentLanguage)}
+          </p>
         ) : rows.length === 0 ? (
-          <p className="py-12 text-center text-sm text-slate-500">조회 결과가 없습니다.</p>
+          <p className="py-12 text-center text-sm text-slate-500">
+            {getUIText("adminUiNoQueryResults", currentLanguage)}
+          </p>
         ) : (
           <div className="overflow-x-auto rounded-md border border-slate-200">
             <table className="w-full min-w-[880px] border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
                   {filter === "new" ? (
-                    <th className="w-10 px-2 py-2 text-center" title="미확인 알림">
-                      알림
+                    <th className="w-10 px-2 py-2 text-center" title={getUIText("adminPingTitleUnseen", currentLanguage)}>
+                      {getUIText("adminColAlert", currentLanguage)}
                     </th>
                   ) : null}
-                  <th className="px-3 py-2">제목</th>
-                  <th className="px-3 py-2">주소</th>
-                  <th className="px-3 py-2">Owner</th>
-                  <th className="px-3 py-2">ID</th>
-                  <th className="w-28 px-3 py-2">상태</th>
-                  <th className="w-36 px-3 py-2 text-right">작업</th>
+                  <th className="px-3 py-2">{getUIText("adminPropColTitle", currentLanguage)}</th>
+                  <th className="px-3 py-2">{getUIText("adminPropColAddress", currentLanguage)}</th>
+                  <th className="px-3 py-2">{getUIText("adminPropColOwner", currentLanguage)}</th>
+                  <th className="px-3 py-2">{getUIText("adminPropColId", currentLanguage)}</th>
+                  <th className="w-28 px-3 py-2">{getUIText("adminColStatus", currentLanguage)}</th>
+                  <th className="w-36 px-3 py-2 text-right">{getUIText("adminColActions", currentLanguage)}</th>
                 </tr>
               </thead>
               <tbody>
                 {pagedRows.map((p) => {
-                  const st = listingStatusLabel(p);
+                  const st = listingStatusLabel(p, currentLanguage);
                   return (
                     <tr
                       key={p.id}
@@ -149,14 +170,14 @@ export function AdminPropertiesPageView({ vm }: Props) {
                             isAdminPropertyNewUnseen(p, propertyAckAt) ? (
                               <span
                                 className="inline-block h-2.5 w-2.5 rounded-full bg-rose-500"
-                                title="미확인"
-                                aria-label="미확인 신규 매물"
+                                title={getUIText("adminDotUnseen", currentLanguage)}
+                                aria-label={getUIText("adminAriaUnseenNewProperty", currentLanguage)}
                               />
                             ) : (
                               <span
                                 className="inline-block h-2.5 w-2.5 rounded-full bg-slate-300"
-                                title="확인함"
-                                aria-label="확인한 신규 매물"
+                                title={getUIText("adminDotAcked", currentLanguage)}
+                                aria-label={getUIText("adminAriaAckNewProperty", currentLanguage)}
                               />
                             )
                           ) : null}
@@ -185,7 +206,7 @@ export function AdminPropertiesPageView({ vm }: Props) {
                             }}
                             className="rounded-md bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-blue-700"
                           >
-                            복구
+                            {getUIText("adminPropUnhide", currentLanguage)}
                           </button>
                         ) : (
                           <button
@@ -196,7 +217,7 @@ export function AdminPropertiesPageView({ vm }: Props) {
                             }}
                             className="rounded-md bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-900 hover:bg-amber-100"
                           >
-                            숨김
+                            {getUIText("adminPropHide", currentLanguage)}
                           </button>
                         )}
                       </td>
@@ -216,23 +237,23 @@ export function AdminPropertiesPageView({ vm }: Props) {
               disabled={page <= 1}
               className="rounded-md bg-slate-100 px-3 py-1.5 text-sm disabled:opacity-40"
             >
-              이전
+              {getUIText("adminPaginationPrev", currentLanguage)}
             </button>
-            <p className="font-mono text-xs text-slate-600">
-              {page} / {totalPages} · {rows.length}건
-            </p>
+            <p className="font-mono text-xs text-slate-600">{pageLine}</p>
             <button
               type="button"
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page >= totalPages}
               className="rounded-md bg-slate-100 px-3 py-1.5 text-sm disabled:opacity-40"
             >
-              다음
+              {getUIText("adminPaginationNext", currentLanguage)}
             </button>
           </div>
         ) : null}
 
-        <p className="mt-4 text-xs text-slate-400">숨김 사유(고정): {PROPERTY_HIDDEN_REASON}</p>
+        <p className="mt-4 text-xs text-slate-400">
+          {getUIText("adminPropertiesHiddenReasonLabel", currentLanguage)} {PROPERTY_HIDDEN_REASON}
+        </p>
       </div>
     </AdminRouteGuard>
   );

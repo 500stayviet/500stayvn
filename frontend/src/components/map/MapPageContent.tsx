@@ -80,6 +80,7 @@ export default function MapPageContent() {
               <Property3DCardSlider
                 properties={nearbyProperties}
                 selectedIndex={selectedPropertyIndex}
+                currentLanguage={currentLanguage}
                 onSelectIndex={(index) => {
                   handlePropertySelect(index);
                 }}

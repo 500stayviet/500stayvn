@@ -1,6 +1,9 @@
 import { Calendar, ChevronRight, Search, Bed, RotateCcw } from "lucide-react";
 import type { SupportedLanguage } from "@/lib/api/translation";
-import { VIETNAM_CITIES } from "@/lib/data/vietnam-regions";
+import {
+  VIETNAM_CITIES,
+  getVietnamRegionDisplayName,
+} from "@/lib/data/vietnam-regions";
 import type { VietnamRegion } from "@/lib/data/vietnam-regions";
 import {
   getSuggestionBadge,
@@ -10,16 +13,11 @@ import {
 import type { LocationSuggestion } from "@/hooks/useLocationSearch";
 import { getUIText } from "@/utils/i18n";
 import { SearchAdvancedFiltersPanel } from "./SearchAdvancedFiltersPanel";
-import type { RoomFilterValue } from "../hooks/useSearchRoomFilter";
-
-type RoomOption = {
-  value: RoomFilterValue;
-  ko: string;
-  vi: string;
-  en: string;
-  ja: string;
-  zh: string;
-};
+import {
+  getSearchRoomFilterLabel,
+  type RoomFilterOption,
+  type RoomFilterValue,
+} from "../hooks/useSearchRoomFilter";
 
 type SearchFiltersSectionProps = {
   currentLanguage: SupportedLanguage;
@@ -49,7 +47,7 @@ type SearchFiltersSectionProps = {
   closeCalendar: () => void;
   closeRoomDropdown: () => void;
   resetRoomFilter: () => void;
-  roomFilterOptions: readonly RoomOption[];
+  roomFilterOptions: readonly RoomFilterOption[];
   setRoomFilter: (value: RoomFilterValue) => void;
   selectedRoomLabel: string;
   showAdvancedFilters: boolean;
@@ -72,14 +70,6 @@ type SearchFiltersSectionProps = {
   resetAdvancedFilters: () => void;
   runSearch: () => Promise<void>;
 };
-
-function getRegionDisplayName(region: VietnamRegion, lang: string): string {
-  if (lang === "ko") return region.nameKo ?? region.name ?? "";
-  if (lang === "vi") return region.nameVi ?? region.name ?? "";
-  if (lang === "ja") return region.nameJa ?? region.name ?? "";
-  if (lang === "zh") return region.nameZh ?? region.name ?? "";
-  return region.name ?? "";
-}
 
 export function SearchFiltersSection({
   currentLanguage,
@@ -265,15 +255,11 @@ export function SearchFiltersSection({
                 }}
               >
                 <option value="">
-                  {currentLanguage === "ko"
-                    ? "도시 선택"
-                    : currentLanguage === "vi"
-                      ? "Chọn thành phố"
-                      : "Select city"}
+                  {getUIText("selectCityPlaceholder", currentLanguage)}
                 </option>
                 {VIETNAM_CITIES.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {getRegionDisplayName(c, currentLanguage)}
+                    {getVietnamRegionDisplayName(c, currentLanguage)}
                   </option>
                 ))}
               </select>
@@ -310,7 +296,7 @@ export function SearchFiltersSection({
                 </option>
                 {districts.map((d) => (
                   <option key={d.id} value={d.id}>
-                    {getRegionDisplayName(d, currentLanguage)}
+                    {getVietnamRegionDisplayName(d, currentLanguage)}
                   </option>
                 ))}
               </select>
@@ -446,8 +432,7 @@ export function SearchFiltersSection({
                     }}
                     className={`w-full text-left px-4 py-2 text-sm font-medium transition-colors ${roomFilter === opt.value ? "bg-gray-50 text-gray-900" : "text-gray-700 hover:bg-gray-50"}`}
                   >
-                    {opt[currentLanguage as "ko" | "vi" | "en" | "ja" | "zh"] ??
-                      opt.en}
+                    {getSearchRoomFilterLabel(opt.value, currentLanguage)}
                   </button>
                 ))}
               </div>
@@ -503,15 +488,7 @@ export function SearchFiltersSection({
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>
-              {currentLanguage === "ko"
-                ? "초기화"
-                : currentLanguage === "vi"
-                  ? "Đặt lại"
-                  : currentLanguage === "ja"
-                    ? "リセット"
-                    : currentLanguage === "zh"
-                      ? "重置"
-                      : "Reset"}
+              {getUIText("searchFiltersResetButton", currentLanguage)}
             </span>
           </button>
           <button

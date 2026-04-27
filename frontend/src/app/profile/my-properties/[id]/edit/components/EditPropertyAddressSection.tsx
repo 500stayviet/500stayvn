@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Check, MapPin, X } from "lucide-react";
+import type { SupportedLanguage } from "@/lib/api/translation";
+import { getUIText } from "@/utils/i18n";
 
 type RegionCity = {
   id: string;
@@ -47,6 +49,7 @@ export default function EditPropertyAddressSection({
   onOpenAddressModal,
   onClearAddress,
 }: EditPropertyAddressSectionProps) {
+  const lang = currentLanguage as SupportedLanguage;
   const [cities, setCities] = useState<RegionCity[]>([]);
   const [districts, setDistricts] = useState<RegionDistrict[]>([]);
 
@@ -98,13 +101,12 @@ export default function EditPropertyAddressSection({
     <>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          {currentLanguage === "ko"
-            ? "주소"
-            : currentLanguage === "vi"
-              ? "Địa chỉ"
-              : "Address"}
+          {getUIText("address", lang)}
           <span className="text-red-500 text-xs ml-1">*</span>
         </label>
+        <div className="pb-1">
+          <p className="text-xs font-bold text-gray-500 mb-2">{getUIText("listingFindAddrBtn", lang)}</p>
+        </div>
         {(!address || !coordinates) && (
           <button
             type="button"
@@ -112,13 +114,7 @@ export default function EditPropertyAddressSection({
             className="w-full px-4 py-3.5 rounded-xl flex items-center justify-center gap-2 font-medium bg-blue-500 text-white hover:bg-blue-600"
           >
             <MapPin className="w-5 h-5" />
-            <span>
-              {currentLanguage === "ko"
-                ? "주소 찾기"
-                : currentLanguage === "vi"
-                  ? "Tìm địa chỉ"
-                  : "Find Address"}
-            </span>
+            <span>{getUIText("listingFindAddrBtn", lang)}</span>
           </button>
         )}
         {address && coordinates && (
@@ -131,13 +127,7 @@ export default function EditPropertyAddressSection({
                 <Check className="w-5 h-5 text-green-600" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-green-700 mb-1">
-                  {currentLanguage === "ko"
-                    ? "확정된 주소 (클릭하여 수정)"
-                    : currentLanguage === "vi"
-                      ? "Địa chỉ đã xác nhận"
-                      : "Confirmed Address"}
-                </p>
+                <p className="text-xs font-medium text-green-700 mb-1">{getUIText("listingAddrPinnedHint", lang)}</p>
                 <p className="text-sm font-semibold text-gray-900">{address}</p>
               </div>
               <button
@@ -147,7 +137,7 @@ export default function EditPropertyAddressSection({
                   onClearAddress();
                 }}
                 className="p-1.5 hover:bg-green-200 rounded-full"
-                aria-label={currentLanguage === "ko" ? "주소 삭제" : "Remove address"}
+                aria-label={getUIText("listingAddrRemoveAria", lang)}
               >
                 <X className="w-4 h-4 text-gray-500" />
               </button>
@@ -158,25 +148,15 @@ export default function EditPropertyAddressSection({
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1.5">
-            {currentLanguage === "ko" ? "도시" : currentLanguage === "vi" ? "Thành phố" : "City"}
-          </label>
+          <label className="block text-xs font-medium text-gray-600 mb-1.5">{getUIText("labelCity", lang)}</label>
           <div
             className={`w-full px-4 py-2.5 border-2 rounded-xl text-sm ${address && coordinates ? "bg-gray-100 border-gray-200 text-gray-700" : "bg-gray-100 border-gray-200 text-gray-400"}`}
           >
-            {selectedCityLabel
-              ? selectedCityLabel
-              : currentLanguage === "ko"
-                ? "주소 입력 후 자동"
-                : currentLanguage === "vi"
-                  ? "Tự động sau địa chỉ"
-                  : "Auto after address"}
+            {selectedCityLabel ? selectedCityLabel : getUIText("listingCityAutoHint", lang)}
           </div>
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1.5">
-            {currentLanguage === "ko" ? "구" : currentLanguage === "vi" ? "Quận" : "District"}
-          </label>
+          <label className="block text-xs font-medium text-gray-600 mb-1.5">{getUIText("labelDistrict", lang)}</label>
           <select
             value={selectedDistrictId}
             onChange={(e) => setSelectedDistrictId(e.target.value)}
@@ -187,9 +167,7 @@ export default function EditPropertyAddressSection({
                 : "bg-gray-200 border-gray-300 text-gray-500 cursor-not-allowed"
             }`}
           >
-            <option value="">
-              {currentLanguage === "ko" ? "선택" : currentLanguage === "vi" ? "Chọn" : "Select"}
-            </option>
+            <option value="">{getUIText("selectLabel", lang)}</option>
             {districts.map((d) => {
               const langMap: Record<string, string> = {
                 ko: d.nameKo,
@@ -209,92 +187,32 @@ export default function EditPropertyAddressSection({
       </div>
 
       <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
-        <label className="block text-sm font-medium text-gray-700 mb-3">
-          {currentLanguage === "ko"
-            ? "동호수"
-            : currentLanguage === "zh"
-              ? "房号"
-              : currentLanguage === "vi"
-                ? "Số phòng"
-                : currentLanguage === "ja"
-                  ? "部屋番号"
-                  : "Unit Number"}
-        </label>
+        <label className="block text-sm font-medium text-gray-700 mb-3">{getUIText("listingUnitBlockTitle", lang)}</label>
         <div className="grid grid-cols-2 gap-3 mb-3">
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1.5">
-              {currentLanguage === "ko"
-                ? "동"
-                : currentLanguage === "zh"
-                  ? "栋"
-                  : currentLanguage === "vi"
-                    ? "Tòa"
-                    : currentLanguage === "ja"
-                      ? "棟"
-                      : "Building"}
-            </label>
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">{getUIText("listingWing", lang)}</label>
             <input
               type="text"
               value={buildingNumber}
               onChange={(e) => setBuildingNumber(e.target.value)}
-              placeholder={
-                currentLanguage === "ko"
-                  ? "예: A, 1"
-                  : currentLanguage === "zh"
-                    ? "例如: A, 1"
-                    : currentLanguage === "vi"
-                      ? "VD: A, 1"
-                      : currentLanguage === "ja"
-                        ? "例: A, 1"
-                        : "e.g., A, 1"
-              }
+              placeholder={getUIText("listingWingPh", lang)}
               className="w-full px-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1.5">
-              {currentLanguage === "ko"
-                ? "호실"
-                : currentLanguage === "zh"
-                  ? "房间"
-                  : currentLanguage === "vi"
-                    ? "Phòng"
-                    : currentLanguage === "ja"
-                      ? "号室"
-                      : "Room"}
-            </label>
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">{getUIText("listingRoomNo", lang)}</label>
             <input
               type="text"
               value={roomNumber}
               onChange={(e) => setRoomNumber(e.target.value)}
-              placeholder={
-                currentLanguage === "ko"
-                  ? "예: 101, 301"
-                  : currentLanguage === "zh"
-                    ? "例如: 101, 301"
-                    : currentLanguage === "vi"
-                      ? "VD: 101, 301"
-                      : currentLanguage === "ja"
-                        ? "例: 101, 301"
-                        : "e.g., 101, 301"
-              }
+              placeholder={getUIText("listingRoomPh", lang)}
               className="w-full px-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
             />
           </div>
         </div>
         <p className="text-xs text-gray-500 flex items-start gap-1">
           <span className="text-blue-600">ℹ️</span>
-          <span>
-            {currentLanguage === "ko"
-              ? "동호수는 예약이 완료된 이후에 임차인에게만 표시됩니다."
-              : currentLanguage === "zh"
-                ? "房号仅在预订完成后对租客显示。"
-                : currentLanguage === "vi"
-                  ? "Số phòng chỉ hiển thị cho người thuê sau khi đặt chỗ được hoàn thành."
-                  : currentLanguage === "ja"
-                    ? "部屋番号は予約完了後にのみ借主に表示されます。"
-                    : "Unit number will only be visible to tenants after booking is completed."}
-          </span>
+          <span>{getUIText("listingUnitPrivacyGuest", lang)}</span>
         </p>
       </div>
     </>

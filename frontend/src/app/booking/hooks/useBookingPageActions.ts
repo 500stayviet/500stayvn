@@ -4,26 +4,7 @@ import { useCallback } from "react";
 import { toISODateString, type BookingData } from "@/lib/api/bookings";
 import { emitUserFacingSyncError } from "@/lib/runtime/networkResilience";
 import type { BookingPageData } from "./useBookingPageData";
-
-function createBookingFailMessage(lang: string): string {
-  if (lang === "ko") {
-    return "예약을 만들지 못했습니다. 잠시 후 다시 시도해 주세요.";
-  }
-  if (lang === "vi") {
-    return "Không tạo được đặt phòng. Vui lòng thử lại sau.";
-  }
-  return "Could not create the booking. Please try again.";
-}
-
-function completePaymentFailMessage(lang: string): string {
-  if (lang === "ko") {
-    return "결제를 완료하지 못했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.";
-  }
-  if (lang === "vi") {
-    return "Không hoàn tất thanh toán. Vui lòng kiểm tra mạng và thử lại.";
-  }
-  return "Payment could not be completed. Check your connection and try again.";
-}
+import { getUIText } from "@/utils/i18n";
 
 /**
  * 예약 생성·결제 완료 등 사용자 액션 (paymentProvider / 라우팅).
@@ -83,7 +64,7 @@ export function useBookingPageActions(data: BookingPageData) {
       emitUserFacingSyncError({
         area: "bookings",
         action: "booking_create",
-        message: createBookingFailMessage(currentLanguage),
+        message: getUIText("bookingCreateFailedMessage", currentLanguage),
       });
     } finally {
       setSubmitting(false);
@@ -119,7 +100,7 @@ export function useBookingPageActions(data: BookingPageData) {
       emitUserFacingSyncError({
         area: "bookings",
         action: "payment_complete",
-        message: completePaymentFailMessage(currentLanguage),
+        message: getUIText("bookingPaymentCompleteFailedMessage", currentLanguage),
       });
     } finally {
       setSubmitting(false);

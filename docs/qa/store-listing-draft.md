@@ -2,7 +2,15 @@
 
 **시장:** 베트남 숙박·여행 사용자 (한국·글로벌 게스트·호스트 병행).  
 **앱/브랜드:** 500 STAY VN (웹 `manifest.json` 과 정합).  
-**주의:** 법인명·지원 URL·개인정보처리방침 링크는 출시 전 실제 값으로 치환한다.
+**주의:** 프로덕션 호스트(`<PROD_HOST>`)만 배포 시 확정하면 되며, 아래 운영자·지원 연락처는 실값으로 반영됨.
+
+### 운영자·지원 연락처 (실값, `frontend/src/constants/operator-contact.ts` 와 동일)
+
+| 항목 | 내용 |
+|------|------|
+| 법적·운영 표기명 | KBrothers |
+| 주소 | 2804, Topaz 2, Saigon Pearl, 92 Nguyen Huu Canh, Ward 22, Binh Thanh District, Ho Chi Minh City, 72300, Vietnam |
+| 고객 지원·개인정보·계정 삭제 문의 | bek94900@gmail.com |
 
 ### 배포 URL 템플릿 (`twaHostname` / Amplify 커스텀 도메인과 동일 호스트)
 
@@ -10,7 +18,7 @@
 |------|-----------|
 | 개인정보처리방침 | `https://<PROD_HOST>/privacy` |
 | 계정 삭제 안내 | `https://<PROD_HOST>/delete-account` |
-| 고객 지원 | 스토어·앱 설명에 기재하는 이메일/티켓은 **`/delete-account` 페이지 안내와 동일**하게 유지(불일치 시 심사 리스크). |
+| 고객 지원 | **bek94900@gmail.com** — 스토어·앱 설명·`/delete-account`·`/privacy` 와 동일 유지(불일치 시 심사 리스크). |
 
 `<PROD_HOST>` 는 `mobile/android-twa/gradle.properties` 의 `twaHostname` 과 **같은 호스트**를 쓰는 것이 Asset Links·TWA에 유리하다.
 
@@ -42,7 +50,7 @@
 
 ### 한국어 (KO)
 
-500 STAY VN은 베트남 숙박을 **주(7일) 단위**로 계획하는 여행자와 호스트를 연결하는 플랫폼입니다.
+500 STAY VN은 베트남 숙박을 **주(7일) 단위**로 계획하는 여행자와 호스트를 연결하는 **임대 정보 제공 플랫폼**입니다(중개·중개행위 아님).
 
 **게스트**
 - 지도와 검색으로 원하는 지역의 숙소를 빠르게 찾아보세요.
@@ -55,12 +63,13 @@
 **안내**
 - 일부 기능은 로그인, 본인 확인(KYC), 결제 수단 연동이 필요할 수 있습니다.
 - 계정 삭제 및 고객 지원은 앱 내 안내·웹 정책 페이지를 참고해 주세요.
+- **운영·문의:** KBrothers · bek94900@gmail.com · 상기 주소(개인정보처리방침 `/privacy` 동일).
 
 ---
 
 ### English (EN)
 
-500 STAY VN connects travelers and hosts for **weekly-stay** accommodation across Vietnam.
+500 STAY VN connects travelers and hosts for **weekly-stay** accommodation across Vietnam — a **platform that provides rental accommodation information**, not a brokerage or rental intermediary.
 
 **For guests**
 - Discover places with search and map, see transparent pricing (nights, fees, pets), and book your stay.
@@ -72,12 +81,13 @@
 **Note**
 - Sign-in, identity verification (KYC), or payment setup may be required for some actions.
 - Account deletion and support: follow in-app links and our policy pages on the web.
+- **Operator & contact:** KBrothers · bek94900@gmail.com · address as on `/privacy`.
 
 ---
 
 ### Tiếng Việt (VI)
 
-500 STAY VN là nền tảng kết nối khách du lịch và chủ nhà cho **lưu trú theo tuần** tại Việt Nam.
+500 STAY VN là nền tảng kết nối khách du lịch và chủ nhà cho **lưu trú theo tuần** tại Việt Nam — **nền tảng cung cấp thông tin cho thuê lưu trú**, không phải môi giới.
 
 **Dành cho khách**
 - Tìm chỗ ở bằng bản đồ và tìm kiếm, xem giá rõ ràng (đêm, phí, thú cưng), rồi đặt phòng.
@@ -89,6 +99,7 @@
 **Lưu ý**
 - Một số thao tác cần đăng nhập, xác minh danh tính (KYC) hoặc thiết lập thanh toán.
 - Xóa tài khoản và hỗ trợ: xem liên kết trong ứng dụng và trang chính sách trên web.
+- **Đơn vị vận hành & liên hệ:** KBrothers · bek94900@gmail.com · địa chỉ như trang `/privacy`.
 
 ---
 
@@ -105,7 +116,7 @@
 | 항목 | 비고 |
 |------|------|
 | 개인정보처리방침 | 위 **배포 URL 템플릿** 의 `/privacy` |
-| 고객 지원 | 이메일 또는 티켓 URL — **앱 내 삭제 안내와 동일 연락처 권장** |
+| 고객 지원 | **bek94900@gmail.com** — 앱 내 삭제 안내·`/privacy` 와 동일 |
 | 계정 삭제 | `/delete-account` 와 동일 절차를 스토어 전체 설명·데이터 안전 섹션에 명시 |
 
 ---

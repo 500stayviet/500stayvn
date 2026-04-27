@@ -21,6 +21,12 @@
 2. **딥링크 파일 보안**: `public/.well-known/assetlinks.json` 및 `apple-app-site-association` 파일의 무결성 상시 점검.
 3. **스토어 가이드라인**: Apple의 단순 웹뷰 거절 방지를 위한 앱 전용 UI 강화 및 계정 삭제(`/delete-account`), 개인정보 처리방침 링크 상시 활성화.
 
+# 🌐 UI 문자열 / i18n (필수)
+1. **사용자 노출 문구**: JSX·API 응답 메시지·토스트·채팅 시스템 문구 등은 **한국어 하드코딩 금지**. `frontend/src/utils/i18n.ts`의 **`getUIText(key, language)`** 와 5개 로케일(ko/vi/en/ja/zh) 엔트리를 추가한다.
+2. **행정구역·명소 데이터**: `vietnam-regions.ts` / `vietnam-landmarks.ts`는 **`name`·`nameVi`·`nameKo`·`nameJa`·`nameZh`** 필드로 언어별 표기를 유지한다. UI에는 **`getVietnamRegionDisplayName`**, **`getLandmarkName(lm, lang)`** 만 사용한다(지도 팝업 등에서 `region.name` / `lm.name` 단독 사용 금지).
+3. **채팅 시스템 메시지**: 서버가 보내는 고정 안내는 가능하면 **`ChatSystemMessageCode`**(`frontend/src/lib/chat/chatMessageDisplay.ts`)와 동일한 content 문자열로 저장하고, 클라이언트에서 `resolveChatMessageBody`로 치환한다.
+4. **키 추가 시**: `BaseUITextKey`(또는 해당 타입 유니온)와 **5개 언어 객체 모두**에 동일 키를 넣어 `getMergedUiTextKeyParityMismatches` / CI 검사가 깨지지 않게 한다.
+
 # 🛠️ Specific Implementation Rules
 1. **미래 API 확장성 (Placeholder 전략)**: 
    - 베트남 현지 결제(Momo, ZaloPay), 신분증 인증(eKYC), 은행 연동 API 도입을 대비해 서비스 레이어를 추상화한다.

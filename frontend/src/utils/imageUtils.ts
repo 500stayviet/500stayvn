@@ -42,7 +42,7 @@ export async function resizeImage(
         
         const ctx = canvas.getContext('2d');
         if (!ctx) {
-          reject(new Error('Canvas context를 가져올 수 없습니다'));
+          reject(new Error('Could not get canvas context'));
           return;
         }
         
@@ -54,7 +54,7 @@ export async function resizeImage(
             if (blob) {
               resolve(blob);
             } else {
-              reject(new Error('이미지 변환에 실패했습니다'));
+              reject(new Error('Image conversion failed'));
             }
           },
           'image/jpeg',
@@ -70,7 +70,7 @@ export async function resizeImage(
     };
     
     reader.onerror = () => {
-      reject(new Error('파일을 읽을 수 없습니다'));
+      reject(new Error('Could not read file'));
     };
     
     reader.readAsDataURL(file);
@@ -93,7 +93,7 @@ export function canvasToBlob(
         if (blob) {
           resolve(blob);
         } else {
-          reject(new Error('Canvas를 Blob으로 변환할 수 없습니다'));
+          reject(new Error('Could not convert canvas to blob'));
         }
       },
       'image/jpeg',
@@ -112,7 +112,7 @@ export function fileToBlob(file: File): Promise<Blob> {
       const blob = new Blob([reader.result as ArrayBuffer], { type: file.type });
       resolve(blob);
     };
-    reader.onerror = () => reject(new Error('파일 변환 실패'));
+    reader.onerror = () => reject(new Error('File conversion failed'));
     reader.readAsArrayBuffer(file);
   });
 }

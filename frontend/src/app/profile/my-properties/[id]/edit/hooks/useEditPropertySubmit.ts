@@ -1,3 +1,6 @@
+import type { SupportedLanguage } from "@/lib/api/translation";
+import { getUIText } from "@/utils/i18n";
+
 type PropertyStatus = import("@/types/property").PropertyData["status"] | undefined;
 
 interface UseEditPropertySubmitParams {
@@ -55,18 +58,9 @@ export function useEditPropertySubmit({
 }: UseEditPropertySubmitParams) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const lang = currentLanguage as SupportedLanguage;
     if (!formState.coordinates || !user) {
-      alert(
-        currentLanguage === "ko"
-          ? "주소를 선택해주세요."
-          : currentLanguage === "zh"
-            ? "请选择地址。"
-            : currentLanguage === "vi"
-              ? "Vui lòng chọn địa chỉ."
-              : currentLanguage === "ja"
-                ? "住所を選択してください。"
-                : "Please select address.",
-      );
+      alert(getUIText("valEditPickAddress", lang));
       return;
     }
     setLoading(true);
@@ -83,17 +77,7 @@ export function useEditPropertySubmit({
       ]);
 
       if (needsRentalCalendarAck && !rentalCalendarAcknowledged) {
-        alert(
-          currentLanguage === "ko"
-            ? "임대날짜를 다시 확인하세요."
-            : currentLanguage === "vi"
-              ? "Vui lòng mở lịch và kiểm tra/chỉnh ngày thuê."
-              : currentLanguage === "ja"
-                ? "賃貸日程をカレンダーで確認・修正してください。"
-                : currentLanguage === "zh"
-                  ? "请打开日历检查或修改租赁日期。"
-                  : "Open the calendar and confirm rental dates.",
-        );
+        alert(getUIText("valOpenCalendarCheckDates", lang));
         return;
       }
 
@@ -161,32 +145,12 @@ export function useEditPropertySubmit({
         }
       }
 
-      alert(
-        currentLanguage === "ko"
-          ? "수정 완료!"
-          : currentLanguage === "zh"
-            ? "修改完成！"
-            : currentLanguage === "vi"
-              ? "Chỉnh sửa hoàn tất!"
-              : currentLanguage === "ja"
-                ? "編集完了！"
-                : "Updated!",
-      );
+      alert(getUIText("alertEditSaved", lang));
       router.push("/profile/my-properties?tab=live");
     } catch (err) {
       console.error("Update failed:", err);
       const errorMessage = err instanceof Error ? err.message : String(err);
-      alert(
-        currentLanguage === "ko"
-          ? `오류가 발생했습니다: ${errorMessage}`
-          : currentLanguage === "zh"
-            ? `发生错误: ${errorMessage}`
-            : currentLanguage === "vi"
-              ? `Đã xảy ra lỗi: ${errorMessage}`
-              : currentLanguage === "ja"
-                ? `エラーが発生しました: ${errorMessage}`
-                : `Error occurred: ${errorMessage}`,
-      );
+      alert(`${getUIText("alertErrPrefix", lang)}${errorMessage}`);
     } finally {
       setLoading(false);
     }

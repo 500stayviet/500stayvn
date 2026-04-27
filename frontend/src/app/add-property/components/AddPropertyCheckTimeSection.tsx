@@ -44,7 +44,7 @@ export function AddPropertyCheckTimeSection({
             className="block text-[11px] font-medium mb-1.5"
             style={{ color: colors.textSecondary }}
           >
-            {currentLanguage === "ko" ? "체크인" : "Check-in"}
+            {getUIText("checkIn", lang)}
           </label>
           <select
             value={checkInTime}

@@ -107,7 +107,7 @@ export function ReservationsPageView({ vm }: Props) {
                 activeTab === 'active' ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              {currentLanguage === 'ko' ? '예약된 매물' : currentLanguage === 'vi' ? 'Đặt phòng' : 'Active Reservations'}
+              {getUIText('hostTabBookedProperties', currentLanguage)}
               {activeCount > 0 && (
                 <span className="ml-2 text-xs bg-purple-100 text-purple-600 px-2 py-0.5 rounded-full">{activeCount}</span>
               )}
@@ -153,7 +153,7 @@ export function ReservationsPageView({ vm }: Props) {
                     <div className="relative h-48 w-full">
                       <Image
                         src={imageUrl}
-                        alt={property?.title || 'Property'}
+                        alt={property?.title || property?.address || ''}
                         fill
                         className="object-cover"
                         sizes="(max-width: 430px) 100vw, 430px"

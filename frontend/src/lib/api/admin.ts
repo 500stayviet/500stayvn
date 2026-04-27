@@ -2,7 +2,9 @@
  * 관리자용 API — PostgreSQL 원장 기반 KYC 조회·CSV
  */
 
+import type { SupportedLanguage } from '@/lib/api/translation';
 import type { UserData } from './auth';
+import { getDateLocaleForLanguage, getUIText } from '@/utils/i18n';
 
 /**
  * KYC 데이터 인터페이스
@@ -84,37 +86,52 @@ export async function getAllKYCUsers(): Promise<KYCUserData[]> {
 /**
  * KYC 데이터를 CSV 형식으로 변환 (UTF-8 BOM 포함)
  */
-export function convertKYCToCSV(users: KYCUserData[]): string {
+export function convertKYCToCSV(users: KYCUserData[], language: SupportedLanguage): string {
+  const L = language;
   const headers = [
-    '성함',
-    '연락처',
-    '신분증종류',
-    '번호',
-    '생년월일',
-    '신분증사진URL(앞면)',
-    '신분증사진URL(뒷면)',
-    '얼굴사진URL',
-    '신청일시',
-    '인증상태',
+    getUIText('csvKycColFullName', L),
+    getUIText('csvKycColPhone', L),
+    getUIText('csvKycColIdType', L),
+    getUIText('csvKycColIdNumber', L),
+    getUIText('csvKycColDateOfBirth', L),
+    getUIText('csvKycColIdFrontUrl', L),
+    getUIText('csvKycColIdBackUrl', L),
+    getUIText('csvKycColFaceUrl', L),
+    getUIText('csvKycColSubmittedAt', L),
+    getUIText('csvKycColVerificationStatus', L),
   ];
 
   const rows = users.map((user) => {
-    // 날짜 포맷팅
-    const dateStr = user.createdAt ? new Date(user.createdAt).toLocaleString('ko-KR') : '';
+    const locale = getDateLocaleForLanguage(L);
+    const dateStr = user.createdAt ? new Date(user.createdAt).toLocaleString(locale) : '';
+
+    const idTypeLabel =
+      user.idType === 'passport'
+        ? getUIText('adminKycIdTypePassportLabel', L)
+        : user.idType === 'id_card'
+          ? getUIText('adminKycIdTypeIdCardLabel', L)
+          : '';
+
+    const statusLabel =
+      user.verificationStatus === 'pending'
+        ? getUIText('adminKycStatusPending', L)
+        : user.verificationStatus === 'verified'
+          ? getUIText('adminKycStatusVerified', L)
+          : user.verificationStatus === 'rejected'
+            ? getUIText('adminKycStatusRejected', L)
+            : getUIText('adminKycStatusUnverified', L);
 
     return [
       user.fullName || '',
       user.phoneNumber || '',
-      user.idType === 'passport' ? '여권' : user.idType === 'id_card' ? '신분증' : '',
+      idTypeLabel,
       user.idNumber || '',
       user.dateOfBirth || '',
       user.idDocumentFrontUrl || '',
       user.idDocumentBackUrl || '',
       user.faceImageUrl || '',
       dateStr,
-      user.verificationStatus === 'pending' ? '심사중' :
-      user.verificationStatus === 'verified' ? '인증완료' :
-      user.verificationStatus === 'rejected' ? '거부' : '미인증',
+      statusLabel,
     ];
   });
 
@@ -158,14 +175,9 @@ export function downloadCSV(csvContent: string, filename: string = 'kyc_data.csv
 /**
  * 모든 KYC 데이터를 CSV로 추출 및 다운로드
  */
-export async function downloadAllKYCData(): Promise<void> {
-  try {
-    const users = await getAllKYCUsers();
-    const csvContent = convertKYCToCSV(users);
-    const timestamp = new Date().toISOString().split('T')[0];
-    downloadCSV(csvContent, `kyc_data_${timestamp}.csv`);
-  } catch (error) {
-    console.error('Error downloading KYC data:', error);
-    alert('CSV 다운로드 중 오류가 발생했습니다.');
-  }
+export async function downloadAllKYCData(language: SupportedLanguage): Promise<void> {
+  const users = await getAllKYCUsers();
+  const csvContent = convertKYCToCSV(users, language);
+  const timestamp = new Date().toISOString().split('T')[0];
+  downloadCSV(csvContent, `kyc_data_${timestamp}.csv`);
 }

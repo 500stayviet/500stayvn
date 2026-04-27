@@ -8,40 +8,23 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import TopBar from "@/components/TopBar";
-import type { SupportedLanguage } from "@/lib/api/translation";
 import InternationalPhoneInput from "@/components/auth/InternationalPhoneInput";
 import type { BookingPageViewModel } from "../hooks/useBookingPage";
 import { getUIText } from "@/utils/i18n";
 
 const PAYMENT_METHODS: readonly {
   id: string;
-  name: string | Record<SupportedLanguage, string>;
+  labelKey:
+    | "paymentMethodLabelMomo"
+    | "paymentMethodLabelZalopay"
+    | "paymentMethodLabelBankTransfer"
+    | "paymentMethodLabelPayAtProperty";
   icon: string;
 }[] = [
-  { id: "momo", name: "MoMo", icon: "💜" },
-  { id: "zalopay", name: "ZaloPay", icon: "💙" },
-  {
-    id: "bank_transfer",
-    name: {
-      ko: "계좌이체",
-      vi: "Chuyển khoản",
-      en: "Bank Transfer",
-      ja: "銀行振込",
-      zh: "银行转账",
-    },
-    icon: "🏦",
-  },
-  {
-    id: "pay_at_property",
-    name: {
-      ko: "현장 결제",
-      vi: "Thanh toán tại chỗ",
-      en: "Pay at Property",
-      ja: "現地払い",
-      zh: "现场付款",
-    },
-    icon: "🏠",
-  },
+  { id: "momo", labelKey: "paymentMethodLabelMomo", icon: "💜" },
+  { id: "zalopay", labelKey: "paymentMethodLabelZalopay", icon: "💙" },
+  { id: "bank_transfer", labelKey: "paymentMethodLabelBankTransfer", icon: "🏦" },
+  { id: "pay_at_property", labelKey: "paymentMethodLabelPayAtProperty", icon: "🏠" },
 ] as const;
 
 type Props = { vm: BookingPageViewModel };
@@ -123,7 +106,7 @@ export function BookingPageView({ vm }: Props) {
                 <span>
                   {checkInDate && checkOutDate
                     ? `${formatDate(checkInDate)} ~ ${formatDate(checkOutDate)}`
-                    : "날짜 정보를 불러올 수 없습니다"}
+                    : getUIText("bookingDatesLoadError", currentLanguage)}
                 </span>
               </div>
               <p className="text-sm font-bold text-blue-600 mt-1">
@@ -179,7 +162,9 @@ export function BookingPageView({ vm }: Props) {
                 disabled={!agreeTerms || submitting || !guestInfo.name}
                 className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold disabled:bg-gray-300 transition-colors"
               >
-                {submitting ? "처리 중..." : "결제 단계로 이동"}
+                {submitting
+                  ? getUIText("processingInProgress", currentLanguage)
+                  : getUIText("proceedToPaymentStep", currentLanguage)}
               </button>
             </div>
           ) : (
@@ -239,9 +224,7 @@ export function BookingPageView({ vm }: Props) {
                   >
                     <span className="text-2xl">{m.icon}</span>
                     <span className="font-bold">
-                      {typeof m.name === "string"
-                        ? m.name
-                        : m.name[currentLanguage]}
+                      {getUIText(m.labelKey, currentLanguage)}
                     </span>
                   </button>
                 ))}

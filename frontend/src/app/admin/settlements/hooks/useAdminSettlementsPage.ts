@@ -15,6 +15,8 @@ import { logAdminSystemEvent } from "@/lib/adminSystemLog";
 import { useAdminDomainRefresh } from "@/lib/adminDomainEventsClient";
 import { filterSettlementsBySearch, useOwnerEmailMap } from "@/lib/adminSearchHelpers";
 import { getPayableAfterMoment } from "@/lib/utils/rentalIncome";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { getUIText } from "@/utils/i18n";
 
 export type SettlementTab = "request" | "pending" | "approved" | "held";
 export type SettlementListMode = "remaining-asc" | "remaining-desc" | "elapsed-24h";
@@ -35,6 +37,7 @@ function remainingMsUntilPayableAfter(row: SettlementCandidate, now: Date): numb
  * 관리자 정산 승인: 후보 로드, 탭·검색·정렬, 배지(미열람) 처리.
  */
 export function useAdminSettlementsPage() {
+  const { currentLanguage } = useLanguage();
   const searchParams = useSearchParams();
   const [items, setItems] = useState<SettlementCandidate[]>([]);
   const [queueVersion, setQueueVersion] = useState(0);
@@ -178,19 +181,24 @@ export function useAdminSettlementsPage() {
     return work.map((d) => d.row);
   }, [filteredList, tab, listMode, nowForUrgency]);
 
-  const emptyMsg =
-    tab === "request"
-      ? "승인 요청 정산 건이 없습니다. (체크아웃 이후·계약종료와 동일 시점에 표시됩니다.)"
-      : tab === "pending"
-        ? "승인 대기 정산 건이 없습니다."
-        : tab === "approved"
-          ? "승인 완료(활성) 건이 없습니다."
-          : "보류 중인 정산 건이 없습니다.";
+  const emptyMsg = useMemo(() => {
+    const lang = currentLanguage;
+    if (tab === "request") return getUIText("adminSettlementsEmptyRequest", lang);
+    if (tab === "pending") return getUIText("adminSettlementsEmptyPending", lang);
+    if (tab === "approved") return getUIText("adminSettlementsEmptyApproved", lang);
+    return getUIText("adminSettlementsEmptyHeld", lang);
+  }, [tab, currentLanguage]);
 
-  const listEmptyMsg =
-    displayList.length === 0 && (tab === "request" || tab === "pending") && filteredList.length > 0
-      ? "검색·정렬·필터 조건에 맞는 건이 없습니다."
-      : emptyMsg;
+  const listEmptyMsg = useMemo(() => {
+    if (
+      displayList.length === 0 &&
+      (tab === "request" || tab === "pending") &&
+      filteredList.length > 0
+    ) {
+      return getUIText("adminSettlementsListFilteredEmpty", currentLanguage);
+    }
+    return emptyMsg;
+  }, [displayList.length, tab, filteredList.length, emptyMsg, currentLanguage]);
 
   const bumpQueue = () => setQueueVersion((v) => v + 1);
 

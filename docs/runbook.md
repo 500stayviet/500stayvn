@@ -45,6 +45,8 @@
 
 **알림·담당·임계값 상세:** [docs/qa/sentry-ops.md](./qa/sentry-ops.md) (Phase 2-3). 팀은 해당 문서의 알림 규칙·온콜 표를 실제 이름으로 채운다.
 
+**상용 진입 전 전역 클로저:** [docs/qa/pre-launch-closure.md](./qa/pre-launch-closure.md) (법무·연동 일정·웹훅·보안·다국어·게이트).
+
 ---
 
 ## 3. 결제·정산 관련일 때

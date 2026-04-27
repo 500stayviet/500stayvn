@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
 
   const properties = Array.isArray(body.properties) ? body.properties : [];
   if (properties.length === 0) {
-    return appApiError('empty', 400, 'properties array is empty.');
+    return appApiError('empty', 400);
   }
   if (properties.length > MAX_IMPORT) {
     return appApiError('too_many', 400);

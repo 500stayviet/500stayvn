@@ -58,11 +58,7 @@ export function AddPropertyBasicInfoSection({
         }}
       >
         <h2 className="text-sm font-bold mb-3" style={{ color: colors.text }}>
-          {currentLanguage === "ko"
-            ? "매물 설명"
-            : currentLanguage === "vi"
-              ? "Mô tả bất động sản"
-              : "Property Description"}
+          {getUIText("propertyDescription", currentLanguage)}
           <span style={{ color: colors.error }} className="ml-1">
             *
           </span>
@@ -70,13 +66,7 @@ export function AddPropertyBasicInfoSection({
         <textarea
           value={propertyDescription}
           onChange={(e) => onPropertyDescriptionChange(e.target.value)}
-          placeholder={
-            currentLanguage === "ko"
-              ? "매물에 대한 상세 설명을 입력해주세요..."
-              : currentLanguage === "vi"
-                ? "Nhập mô tả chi tiết về bất động sản..."
-                : "Enter detailed description..."
-          }
+          placeholder={getUIText("propertyDescriptionPlaceholder", currentLanguage)}
           rows={4}
           className="w-full px-3 py-2.5 rounded-lg resize-none text-sm min-h-[100px] focus:outline-none transition-all"
           style={{
@@ -88,11 +78,7 @@ export function AddPropertyBasicInfoSection({
         <p className="text-[10px] mt-2 flex items-start gap-1" style={{ color: colors.success }}>
           <span>i</span>
           <span>
-            {currentLanguage === "ko"
-              ? "베트남어로 입력해주세요. 자동 번역 기능이 제공됩니다."
-              : currentLanguage === "vi"
-                ? "Vui lòng nhập bằng tiếng Việt. Tính năng dịch tự động sẽ được cung cấp."
-                : "Please enter in Vietnamese. Automatic translation will be provided."}
+            {getUIText("listingDescViNotice", currentLanguage)}
           </span>
         </p>
       </section>

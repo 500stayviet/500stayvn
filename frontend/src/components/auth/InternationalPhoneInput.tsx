@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronDown, Phone, CheckCircle2 } from 'lucide-react';
 import { SupportedLanguage } from '@/lib/api/translation';
+import { getUIText } from '@/utils/i18n';
 
 interface CountryConfig {
   code: string;
@@ -90,30 +91,6 @@ const COUNTRIES: Record<string, CountryConfig> = {
   }
 };
 
-const TEXTS = {
-  ko: {
-    phoneLabel: '전화번호',
-    sendOtp: '인증번호 발송',
-    placeholder: '전화번호 입력',
-    selectCountry: '국가 선택',
-    otpSent: '발송됨',
-  },
-  vi: {
-    phoneLabel: 'Số điện thoại',
-    sendOtp: 'Gửi mã OTP',
-    placeholder: 'Nhập số điện thoại',
-    selectCountry: 'Chọn quốc gia',
-    otpSent: 'Đã gửi',
-  },
-  en: {
-    phoneLabel: 'Phone Number',
-    sendOtp: 'Send OTP',
-    placeholder: 'Enter phone number',
-    selectCountry: 'Select Country',
-    otpSent: 'Sent',
-  }
-};
-
 export default function InternationalPhoneInput({ 
   currentLanguage, 
   onPhoneChange,
@@ -127,9 +104,6 @@ export default function InternationalPhoneInput({
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [otpCooldown, setOtpCooldown] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
-
-  const lang = (['ko', 'vi', 'en'].includes(currentLanguage) ? currentLanguage : 'en') as keyof typeof TEXTS;
-  const t = TEXTS[lang];
 
   // Initialize from initialValue if provided
   useEffect(() => {
@@ -189,7 +163,7 @@ export default function InternationalPhoneInput({
   return (
     <div className="space-y-1.5">
       <label className="block text-sm font-medium text-gray-700">
-        {t.phoneLabel}
+        {getUIText('phoneNumber', currentLanguage)}
       </label>
       
       <div className="flex gap-2">
@@ -199,6 +173,8 @@ export default function InternationalPhoneInput({
             type="button"
             disabled={disabled}
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            aria-label={getUIText('phoneSelectCountry', currentLanguage)}
+            aria-expanded={isDropdownOpen}
             className="h-[46px] flex items-center gap-2 px-3 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-500 transition-all min-w-[100px] justify-between disabled:opacity-50 disabled:bg-gray-50"
           >
             <span className="text-xl">{selectedCountry.flag}</span>
@@ -241,7 +217,7 @@ export default function InternationalPhoneInput({
             value={phoneNumber}
             onChange={handleInputChange}
             disabled={disabled}
-            placeholder={t.placeholder}
+            placeholder={getUIText('phoneEnterNumberPlaceholder', currentLanguage)}
             className="w-full h-[46px] pl-10 pr-4 py-2.5 text-sm bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-400 disabled:opacity-50 disabled:bg-gray-50"
           />
           {isComplete && (
@@ -268,7 +244,7 @@ export default function InternationalPhoneInput({
             ) : otpCooldown > 0 ? (
               `${otpCooldown}s`
             ) : (
-              t.sendOtp
+              getUIText('phoneSendOtpButton', currentLanguage)
             )}
           </button>
         )}

@@ -115,7 +115,7 @@ export function SearchAdvancedFiltersPanel({
 
       <div>
         <span className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">
-          {getUIText("amenitiesPolicy", currentLanguage)}
+          {getUIText("searchFilterFacilityPickHeading", currentLanguage)}
         </span>
         <div className="flex flex-wrap gap-2">
           {FACILITY_OPTIONS.map((opt) => {

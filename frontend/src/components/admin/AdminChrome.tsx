@@ -5,8 +5,12 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LogOut, UserCog } from 'lucide-react';
 import { ADMIN_NAV_ITEMS, type AdminNavItem } from '@/lib/adminNav';
+import { ADMIN_NAV_HREF_TO_LABEL_KEY } from '@/lib/adminNavI18nMaps';
 import { adminHasPermission } from '@/lib/adminPermissions';
 import { useAdminMe } from '@/contexts/AdminMeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import type { SupportedLanguage } from '@/lib/api/translation';
+import { getUIText } from '@/utils/i18n';
 import {
   ADMIN_BADGES_REFRESH_EVENT,
   badgeCountForNav,
@@ -27,12 +31,19 @@ function formatBadge(n: number): string {
   return n > 99 ? '99+' : String(n);
 }
 
-const NavBadge = memo(function NavBadge({ count }: { count: number }) {
+const NavBadge = memo(function NavBadge({
+  count,
+  ariaTemplate,
+}: {
+  count: number;
+  ariaTemplate: string;
+}) {
   if (count <= 0) return null;
+  const aria = ariaTemplate.replace('{{count}}', formatBadge(count));
   return (
     <span
       className="ml-1 inline-flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white tabular-nums"
-      aria-label={`알림 ${formatBadge(count)}건`}
+      aria-label={aria}
     >
       {formatBadge(count)}
     </span>
@@ -43,13 +54,17 @@ const AdminNavLinks = memo(function AdminNavLinks({
   compact,
   pathname,
   badgeByHref,
+  badgeAriaTemplate,
   items,
+  lang,
   onItemClick,
 }: {
   compact: boolean;
   pathname: string | null;
   badgeByHref: Map<string, number> | null;
+  badgeAriaTemplate: string;
   items: AdminNavItem[];
+  lang: SupportedLanguage;
   onItemClick?: (href: string) => void;
 }) {
   return (
@@ -57,6 +72,8 @@ const AdminNavLinks = memo(function AdminNavLinks({
       {items.map((item) => {
         const active = navActive(pathname, item.href);
         const n = badgeByHref?.get(item.href) ?? 0;
+        const labelKey = ADMIN_NAV_HREF_TO_LABEL_KEY[item.href];
+        const label = labelKey ? getUIText(labelKey, lang) : item.label;
         const targetHref =
           item.href === '/admin/withdrawals'
             ? '/admin/withdrawals?tab=processing'
@@ -78,8 +95,8 @@ const AdminNavLinks = memo(function AdminNavLinks({
                   }`
             }`}
           >
-            {item.label}
-            <NavBadge count={n} />
+            {label}
+            <NavBadge count={n} ariaTemplate={badgeAriaTemplate} />
           </Link>
         );
       })}
@@ -147,7 +164,7 @@ export default function AdminChrome({ children }: { children: React.ReactNode })
     (_href: string) => {
       if (typeof window === 'undefined') return;
       void _href;
-      // 배지 제거는 각 페이지의 확인 탭 진입 시에만 처리한다.
+      // Badge clears when each page opens its review tab.
     },
     []
   );
@@ -164,13 +181,15 @@ export default function AdminChrome({ children }: { children: React.ReactNode })
           </Link>
           <nav
             className="hidden min-w-0 flex-1 flex-wrap items-center gap-1 lg:flex"
-            aria-label="관리자 메뉴"
+            aria-label={navMenuAria}
           >
             <AdminNavLinks
               compact={false}
               pathname={pathname}
               badgeByHref={badgeByHref}
+              badgeAriaTemplate={badgeAriaTemplate}
               items={navItems}
+              lang={currentLanguage}
               onItemClick={onNavItemClick}
             />
             {me?.isSuperAdmin ? (
@@ -184,7 +203,7 @@ export default function AdminChrome({ children }: { children: React.ReactNode })
                 }`}
               >
                 <UserCog className="mr-1 h-4 w-4" aria-hidden />
-                관리자 계정
+                {getUIText('adminAccountsTitle', currentLanguage)}
               </Link>
             ) : null}
           </nav>
@@ -195,20 +214,22 @@ export default function AdminChrome({ children }: { children: React.ReactNode })
               className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
               <LogOut className="h-4 w-4" aria-hidden />
-              로그아웃
+              {getUIText('logout', currentLanguage)}
             </button>
           </div>
         </div>
         <div className="border-t border-slate-100 bg-slate-50/80 lg:hidden">
           <nav
             className="mx-auto flex max-w-[1600px] gap-1 overflow-x-auto px-4 py-2"
-            aria-label="관리자 메뉴"
+            aria-label={navMenuAria}
           >
             <AdminNavLinks
               compact
               pathname={pathname}
               badgeByHref={badgeByHref}
+              badgeAriaTemplate={badgeAriaTemplate}
               items={navItems}
+              lang={currentLanguage}
               onItemClick={onNavItemClick}
             />
             {me?.isSuperAdmin ? (
@@ -222,7 +243,7 @@ export default function AdminChrome({ children }: { children: React.ReactNode })
                 }`}
               >
                 <UserCog className="mr-1 h-4 w-4" aria-hidden />
-                관리자 계정
+                {getUIText('adminAccountsTitle', currentLanguage)}
               </Link>
             ) : null}
           </nav>

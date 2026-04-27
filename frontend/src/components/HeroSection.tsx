@@ -21,19 +21,16 @@ import {
   cleanSubAddress,
   LocationSuggestion 
 } from '@/hooks/useLocationSearch';
-import { ALL_REGIONS, VIETNAM_CITIES, getDistrictsByCityId } from '@/lib/data/vietnam-regions';
+import {
+  ALL_REGIONS,
+  VIETNAM_CITIES,
+  getDistrictsByCityId,
+  getVietnamRegionDisplayName,
+} from '@/lib/data/vietnam-regions';
 import type { VietnamRegion } from '@/lib/data/vietnam-regions';
 
 interface HeroSectionProps {
   currentLanguage: SupportedLanguage;
-}
-
-function getRegionDisplayName(region: VietnamRegion, lang: SupportedLanguage): string {
-  if (lang === 'ko') return region.nameKo ?? region.name ?? '';
-  if (lang === 'vi') return region.nameVi ?? region.name ?? '';
-  if (lang === 'ja') return region.nameJa ?? region.name ?? '';
-  if (lang === 'zh') return region.nameZh ?? region.name ?? '';
-  return region.name ?? '';
 }
 
 export default function HeroSection({ currentLanguage }: HeroSectionProps) {
@@ -108,8 +105,8 @@ export default function HeroSection({ currentLanguage }: HeroSectionProps) {
     setShowSuggestions(false);
     let q = searchValue.trim();
     if (!q && selectedCity) {
-      const cityName = getRegionDisplayName(selectedCity, currentLanguage);
-      const districtName = selectedDistrict ? getRegionDisplayName(selectedDistrict, currentLanguage) : '';
+      const cityName = getVietnamRegionDisplayName(selectedCity, currentLanguage);
+      const districtName = selectedDistrict ? getVietnamRegionDisplayName(selectedDistrict, currentLanguage) : '';
       q = districtName ? `${districtName}, ${cityName}` : cityName;
     }
     if (q) {
@@ -231,7 +228,7 @@ export default function HeroSection({ currentLanguage }: HeroSectionProps) {
 
   return (
     <section className="relative overflow-hidden" style={{ backgroundColor: BRAND.bgWarm }}>
-      {/* 배경 이미지 영역 */}
+      {/* Background image */}
       <div className="relative h-[200px] overflow-hidden">
         <div 
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
@@ -250,7 +247,7 @@ export default function HeroSection({ currentLanguage }: HeroSectionProps) {
         </div>
       </div>
 
-      {/* 검색 영역 - 이미지와 겹치는 카드 형태 */}
+      {/* Search card overlapping the hero image */}
       <div className="relative z-10 px-4 -mt-8 pb-5">
         <div className="bg-white rounded-2xl shadow-lg p-4" style={{ border: '1px solid #F3F4F6' }}>
           <form onSubmit={handleSearch}>

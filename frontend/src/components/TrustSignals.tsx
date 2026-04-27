@@ -1,16 +1,12 @@
 /**
- * TrustSignals 컴포넌트
- * 
- * 플랫폼 신뢰도를 높이는 배지/통계 섹션
- * - KYC 인증 시스템
- * - 안전한 결제
- * - 다국어 지원
+ * Trust badges / stats for the home experience.
  */
 
 'use client';
 
 import { Shield, Globe, Clock, CheckCircle } from 'lucide-react';
 import { SupportedLanguage } from '@/lib/api/translation';
+import { getUIText, type UITextKey } from '@/utils/i18n';
 
 interface TrustSignalsProps {
   currentLanguage: SupportedLanguage;
@@ -23,88 +19,42 @@ const BRAND = {
   bgWarm: '#FFF8F6',
 };
 
-interface TrustItem {
-  icon: typeof Shield;
-  titleKey: Record<SupportedLanguage, string>;
-  descKey: Record<SupportedLanguage, string>;
+type TrustIcon = typeof Shield;
+
+interface TrustItemConfig {
+  icon: TrustIcon;
+  titleKey: UITextKey;
+  descKey: UITextKey;
   color: string;
   bgColor: string;
 }
 
-const trustItems: TrustItem[] = [
+const trustItems: TrustItemConfig[] = [
   {
     icon: Shield,
-    titleKey: {
-      ko: 'KYC 인증 호스트',
-      vi: 'Chủ nhà xác thực',
-      en: 'Verified Hosts',
-      ja: '認証ホスト',
-      zh: '认证房东',
-    },
-    descKey: {
-      ko: '신원 확인된 호스트',
-      vi: 'Đã xác minh danh tính',
-      en: 'Identity verified hosts',
-      ja: '本人確認済み',
-      zh: '身份验证房东',
-    },
+    titleKey: 'trustSignalKycTitle',
+    descKey: 'trustSignalKycDesc',
     color: '#E63946',
     bgColor: '#E6394610',
   },
   {
     icon: Globe,
-    titleKey: {
-      ko: '5개국어 지원',
-      vi: '5 ngôn ngữ',
-      en: '5 Languages',
-      ja: '5か国語対応',
-      zh: '5种语言',
-    },
-    descKey: {
-      ko: 'KO/VI/EN/JA/ZH',
-      vi: 'KO/VI/EN/JA/ZH',
-      en: 'KO/VI/EN/JA/ZH',
-      ja: 'KO/VI/EN/JA/ZH',
-      zh: 'KO/VI/EN/JA/ZH',
-    },
+    titleKey: 'trustSignalLanguagesTitle',
+    descKey: 'trustSignalLanguagesDesc',
     color: '#2563EB',
     bgColor: '#2563EB10',
   },
   {
     icon: Clock,
-    titleKey: {
-      ko: '실시간 채팅',
-      vi: 'Chat trực tiếp',
-      en: 'Real-time Chat',
-      ja: 'リアルタイムチャット',
-      zh: '实时聊天',
-    },
-    descKey: {
-      ko: '호스트와 바로 대화',
-      vi: 'Chat ngay với chủ nhà',
-      en: 'Chat with hosts directly',
-      ja: 'ホストと直接チャット',
-      zh: '直接与房东聊天',
-    },
+    titleKey: 'trustSignalChatTitle',
+    descKey: 'trustSignalChatDesc',
     color: '#059669',
     bgColor: '#05966910',
   },
   {
     icon: CheckCircle,
-    titleKey: {
-      ko: '즉시 예약 확인',
-      vi: 'Xác nhận ngay',
-      en: 'Instant Confirm',
-      ja: '即時確認',
-      zh: '即时确认',
-    },
-    descKey: {
-      ko: '빠른 예약 승인',
-      vi: 'Phê duyệt nhanh chóng',
-      en: 'Fast booking approval',
-      ja: '迅速な予約承認',
-      zh: '快速预订审批',
-    },
+    titleKey: 'trustSignalBookingTitle',
+    descKey: 'trustSignalBookingDesc',
     color: '#D97706',
     bgColor: '#D9770610',
   },
@@ -130,10 +80,10 @@ export default function TrustSignals({ currentLanguage }: TrustSignalsProps) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-bold leading-tight" style={{ color: BRAND.text }}>
-                  {item.titleKey[currentLanguage]}
+                  {getUIText(item.titleKey, currentLanguage)}
                 </p>
                 <p className="text-[10px] mt-0.5 leading-tight" style={{ color: BRAND.muted }}>
-                  {item.descKey[currentLanguage]}
+                  {getUIText(item.descKey, currentLanguage)}
                 </p>
               </div>
             </div>

@@ -3,6 +3,9 @@
 import Image from "next/image";
 import { ArrowLeft, Camera, Check, Maximize2, X } from "lucide-react";
 import { motion } from "framer-motion";
+import type { SupportedLanguage } from "@/lib/api/translation";
+import { getUIText } from "@/utils/i18n";
+import { formatListingAddPhotosCount } from "@/utils/i18nListing";
 import type { AddPropertyColors } from "../constants/addPropertyColors";
 
 interface AddPropertyImageSectionProps {
@@ -60,6 +63,7 @@ export function AddPropertyImageSection({
   onBackToLibrary,
   onGuidelinePopupClick,
 }: AddPropertyImageSectionProps) {
+  const lang = currentLanguage as SupportedLanguage;
   return (
     <>
       <section
@@ -71,15 +75,7 @@ export function AddPropertyImageSection({
       >
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-bold" style={{ color: colors.text }}>
-            {currentLanguage === "ko"
-              ? "사진 등록"
-              : currentLanguage === "vi"
-                ? "Đăng ảnh"
-                : currentLanguage === "ja"
-                  ? "写真登録"
-                  : currentLanguage === "zh"
-                    ? "照片上传"
-                    : "Upload Photos"}
+            {getUIText("listingPhotoHeading", lang)}
             <span style={{ color: colors.error }} className="ml-1">
               *
             </span>
@@ -120,13 +116,7 @@ export function AddPropertyImageSection({
                 className="aspect-square rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors"
               >
                 <Camera className="w-8 h-8 text-gray-400 mb-1" />
-                <span className="text-xs text-gray-500">
-                  {currentLanguage === "ko"
-                    ? "추가"
-                    : currentLanguage === "vi"
-                      ? "Thêm"
-                      : "Add"}
-                </span>
+                <span className="text-xs text-gray-500">{getUIText("listingAddShort", lang)}</span>
               </button>
 
               <input
@@ -160,15 +150,7 @@ export function AddPropertyImageSection({
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">
-              {currentLanguage === "ko"
-                ? "사진 추가 방법 선택"
-                : currentLanguage === "vi"
-                  ? "Chọn cách thêm ảnh"
-                  : currentLanguage === "ja"
-                    ? "写真追加方法の選択"
-                    : currentLanguage === "zh"
-                      ? "选择照片添加方式"
-                      : "Select Photo Source"}
+              {getUIText("photoSourceMenuTitle", lang)}
             </h3>
             <div className="space-y-3">
               <button
@@ -177,17 +159,7 @@ export function AddPropertyImageSection({
                 className="w-full py-4 px-4 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-3"
               >
                 <Camera className="w-5 h-5" />
-                <span>
-                  {currentLanguage === "ko"
-                    ? "사진첩에서 선택"
-                    : currentLanguage === "vi"
-                      ? "Chọn từ thư viện ảnh"
-                      : currentLanguage === "ja"
-                        ? "写真ライブラリから選択"
-                        : currentLanguage === "zh"
-                          ? "从照片库选择"
-                          : "Select from Photo Library"}
-                </span>
+                <span>{getUIText("selectFromLibrary", lang)}</span>
               </button>
               <button
                 type="button"
@@ -195,32 +167,14 @@ export function AddPropertyImageSection({
                 className="w-full py-4 px-4 bg-gray-100 text-gray-900 rounded-xl font-medium hover:bg-gray-200 transition-colors flex items-center justify-center gap-3"
               >
                 <Camera className="w-5 h-5" />
-                <span>
-                  {currentLanguage === "ko"
-                    ? "카메라로 촬영"
-                    : currentLanguage === "vi"
-                      ? "Chụp ảnh"
-                      : currentLanguage === "ja"
-                        ? "カメラで撮影"
-                        : currentLanguage === "zh"
-                          ? "用相机拍摄"
-                          : "Take Photo"}
-                </span>
+                <span>{getUIText("takePhoto", lang)}</span>
               </button>
               <button
                 type="button"
                 onClick={onCloseImageSourceMenu}
                 className="w-full py-3 px-4 text-gray-600 rounded-xl font-medium hover:bg-gray-100 transition-colors"
               >
-                {currentLanguage === "ko"
-                  ? "취소"
-                  : currentLanguage === "vi"
-                    ? "Hủy"
-                    : currentLanguage === "ja"
-                      ? "キャンセル"
-                      : currentLanguage === "zh"
-                        ? "取消"
-                        : "Cancel"}
+                {getUIText("cancel", lang)}
               </button>
             </div>
           </div>
@@ -237,17 +191,7 @@ export function AddPropertyImageSection({
             >
               <X className="w-6 h-6" />
             </button>
-            <h2 className="text-lg font-semibold text-gray-900">
-              {currentLanguage === "ko"
-                ? "사진 선택"
-                : currentLanguage === "vi"
-                  ? "Chọn ảnh"
-                  : currentLanguage === "ja"
-                    ? "写真選択"
-                    : currentLanguage === "zh"
-                      ? "选择照片"
-                      : "Select Photos"}
-            </h2>
+            <h2 className="text-lg font-semibold text-gray-900">{getUIText("selectPhoto", lang)}</h2>
             <div className="w-6" />
           </div>
 
@@ -299,15 +243,7 @@ export function AddPropertyImageSection({
               disabled={selectedLibraryIndices.size === 0}
               className="w-full py-3 px-4 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {currentLanguage === "ko"
-                ? `선택한 ${selectedLibraryIndices.size}장 추가`
-                : currentLanguage === "vi"
-                  ? `Thêm ${selectedLibraryIndices.size} ảnh đã chọn`
-                  : currentLanguage === "ja"
-                    ? `選択した ${selectedLibraryIndices.size}枚を追加`
-                    : currentLanguage === "zh"
-                      ? `添加选中的 ${selectedLibraryIndices.size}张`
-                      : `Add ${selectedLibraryIndices.size} selected`}
+              {formatListingAddPhotosCount(selectedLibraryIndices.size, lang)}
             </button>
           </div>
         </div>
@@ -331,17 +267,7 @@ export function AddPropertyImageSection({
             className="absolute bottom-6 right-6 bg-white/90 text-gray-900 rounded-full p-4 hover:bg-white transition-colors shadow-lg flex items-center gap-2"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span className="font-medium">
-              {currentLanguage === "ko"
-                ? "사진첩"
-                : currentLanguage === "vi"
-                  ? "Thư viện ảnh"
-                  : currentLanguage === "ja"
-                    ? "写真ライブラリ"
-                    : currentLanguage === "zh"
-                      ? "照片库"
-                      : "Library"}
-            </span>
+            <span className="font-medium">{getUIText("listingLibraryBackLabel", lang)}</span>
           </button>
           <button
             type="button"
@@ -365,15 +291,7 @@ export function AddPropertyImageSection({
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-bold text-gray-900 mb-4 text-center">
-              {currentLanguage === "ko"
-                ? "📸 추천 사진 가이드라인"
-                : currentLanguage === "vi"
-                  ? "📸 Hướng dẫn ảnh đề xuất"
-                  : currentLanguage === "ja"
-                    ? "📸 おすすめ写真ガイドライン"
-                    : currentLanguage === "zh"
-                      ? "📸 推荐照片指南"
-                      : "📸 Recommended Photo Guidelines"}
+              {getUIText("listingPhotoGuideTitle", lang)}
             </h3>
             <div className="space-y-3 mb-4">
               {["🛏️ Bedroom", "🍳 Kitchen", "🛋️ Living Room", "🚿 Bathroom", "🪟 Window View"].map((item) => (
@@ -384,29 +302,13 @@ export function AddPropertyImageSection({
               ))}
             </div>
             <p className="text-xs text-gray-500 text-center mb-4">
-              {currentLanguage === "ko"
-                ? "아무 곳이나 터치하여 카메라를 시작하세요"
-                : currentLanguage === "vi"
-                  ? "Chạm vào bất kỳ đâu để bắt đầu camera"
-                  : currentLanguage === "ja"
-                    ? "どこかをタップしてカメラを開始"
-                    : currentLanguage === "zh"
-                      ? "点击任意位置开始相机"
-                      : "Tap anywhere to start camera"}
+              {getUIText("listingPhotoGuideTap", lang)}
             </p>
             <button
               onClick={onGuidelinePopupClick}
               className="w-full py-3 px-4 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors"
             >
-              {currentLanguage === "ko"
-                ? "동의"
-                : currentLanguage === "vi"
-                  ? "Đồng ý"
-                  : currentLanguage === "ja"
-                    ? "同意"
-                    : currentLanguage === "zh"
-                      ? "同意"
-                      : "Agree"}
+              {getUIText("agree", lang)}
             </button>
           </motion.div>
         </div>

@@ -13,6 +13,8 @@ import { getAllBookingsForAdmin } from "@/lib/api/bookings";
 import { acknowledgeCurrentNewContracts, getUnseenNewContractCount } from "@/lib/adminAckState";
 import { refreshAdminBadges } from "@/lib/adminBadgeCounts";
 import { useAdminDomainRefresh } from "@/lib/adminDomainEventsClient";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { getUIText } from "@/utils/i18n";
 
 export type ContractTab = "new" | "sealed" | "inProgress" | "completed";
 
@@ -20,6 +22,7 @@ export type ContractTab = "new" | "sealed" | "inProgress" | "completed";
  * 관리자 계약 뷰: 전체 예약 로드, 계약 단계 탭(체결/진행/종료)·신규(24h)·검색, 신규 탭 열람 시 ack.
  */
 export function useAdminContractsPage() {
+  const { currentLanguage } = useLanguage();
   const [bookings, setBookings] = useState<BookingData[]>([]);
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<ContractTab>("sealed");
@@ -104,14 +107,13 @@ export function useAdminContractsPage() {
     [activeList, searchQuery, emailMap],
   );
 
-  const emptyMsg =
-    tab === "new"
-      ? "신규 계약 건이 없습니다."
-      : tab === "sealed"
-        ? "계약체결(결제·확정, 숙박 전) 예약이 없습니다."
-        : tab === "inProgress"
-          ? "계약시작(체크인~체크아웃 진행 중) 예약이 없습니다."
-          : "계약종료(체크아웃 이후·이용완료) 예약이 없습니다.";
+  const emptyMsg = useMemo(() => {
+    const lang = currentLanguage;
+    if (tab === "new") return getUIText("adminContractsEmptyNew", lang);
+    if (tab === "sealed") return getUIText("adminContractsEmptySealed", lang);
+    if (tab === "inProgress") return getUIText("adminContractsEmptyInProgress", lang);
+    return getUIText("adminContractsEmptyCompleted", lang);
+  }, [tab, currentLanguage]);
 
   useEffect(() => {
     if (tab !== "new") return;

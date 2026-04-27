@@ -1,5 +1,7 @@
 "use client";
 
+import type { SupportedLanguage } from "@/lib/api/translation";
+import { getPropertyTypeLabel, getUIText } from "@/utils/i18n";
 import type { AddPropertyColors } from "../constants/addPropertyColors";
 
 type PropertyType =
@@ -11,7 +13,7 @@ type PropertyType =
   | "detached";
 
 interface AddPropertyTypeSectionProps {
-  currentLanguage: string;
+  currentLanguage: SupportedLanguage;
   colors: AddPropertyColors;
   propertyType: PropertyType;
   bedrooms: number;
@@ -25,6 +27,8 @@ interface AddPropertyTypeSectionProps {
   onMaxAdultsChange: (value: number) => void;
   onMaxChildrenReset: () => void;
 }
+
+const TYPE_VALUES: PropertyType[] = ["studio", "one_room", "two_room", "three_plus", "detached"];
 
 export function AddPropertyTypeSection({
   currentLanguage,
@@ -41,6 +45,7 @@ export function AddPropertyTypeSection({
   onMaxAdultsChange,
   onMaxChildrenReset,
 }: AddPropertyTypeSectionProps) {
+  const lang = currentLanguage;
   return (
     <section
       className="p-5 rounded-2xl"
@@ -50,91 +55,27 @@ export function AddPropertyTypeSection({
       }}
     >
       <h2 className="text-sm font-bold mb-4" style={{ color: colors.text }}>
-        {currentLanguage === "ko"
-          ? "매물 종류"
-          : currentLanguage === "vi"
-            ? "Loại bất động sản"
-            : currentLanguage === "ja"
-              ? "物件の種類"
-              : currentLanguage === "zh"
-                ? "物业类型"
-                : "Property Type"}
+        {getUIText("listingKindTitle", lang)}
         <span style={{ color: colors.error }} className="ml-1">
           *
         </span>
       </h2>
       <div className="flex flex-wrap gap-2">
-        {(
-          [
-            {
-              value: "studio" as const,
-              ko: "스튜디오",
-              vi: "Studio",
-              en: "Studio",
-              ja: "スタジオ",
-              zh: "工作室",
-            },
-            {
-              value: "one_room" as const,
-              ko: "원룸(방·거실 분리)",
-              vi: "Phòng đơn (phòng ngủ & phòng khách riêng)",
-              en: "One Room (bedroom & living room separate)",
-              ja: "ワンルーム（寝室・リビング別）",
-              zh: "一室（卧室与客厅分开）",
-            },
-            {
-              value: "two_room" as const,
-              ko: "2룸",
-              vi: "2 phòng",
-              en: "2 Rooms",
-              ja: "2ルーム",
-              zh: "2室",
-            },
-            {
-              value: "three_plus" as const,
-              ko: "3+룸",
-              vi: "3+ phòng",
-              en: "3+ Rooms",
-              ja: "3+ルーム",
-              zh: "3+室",
-            },
-            {
-              value: "detached" as const,
-              ko: "독채",
-              vi: "Nhà riêng",
-              en: "Detached House",
-              ja: "一戸建て",
-              zh: "独栋房屋",
-            },
-          ] as const
-        ).map(({ value, ko, vi, en, ja, zh }) => {
-          const label =
-            currentLanguage === "ko"
-              ? ko
-              : currentLanguage === "vi"
-                ? vi
-                : currentLanguage === "ja"
-                  ? ja
-                  : currentLanguage === "zh"
-                    ? zh
-                    : en;
-
-          return (
-            <button
-              key={value}
-              type="button"
-              onClick={() => onPropertyTypeChange(value)}
-              className="inline-flex items-center justify-center px-3 py-2 rounded-xl text-xs font-bold transition-all"
-              style={{
-                backgroundColor: propertyType === value ? colors.primary : colors.white,
-                color: propertyType === value ? colors.white : colors.text,
-                border: `1px solid ${propertyType === value ? colors.primary : colors.border}`,
-              }}
-            >
-              {label}
-            </button>
-          );
-        })}
+        {TYPE_VALUES.map((value) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => onPropertyTypeChange(value)}
+            className="inline-flex items-center justify-center px-3 py-2 rounded-xl text-xs font-bold transition-all"
+            style={{
+              backgroundColor: propertyType === value ? colors.primary : colors.white,
+              color: propertyType === value ? colors.white : colors.text,
+              border: `1px solid ${propertyType === value ? colors.primary : colors.border}`,
+            }}
+          >
+            {getPropertyTypeLabel(value, lang)}
+          </button>
+        ))}
       </div>
 
       {propertyType && (
@@ -147,11 +88,7 @@ export function AddPropertyTypeSection({
               className="block text-[11px] font-medium mb-1.5"
               style={{ color: colors.textSecondary }}
             >
-              {currentLanguage === "ko"
-                ? "방 개수"
-                : currentLanguage === "vi"
-                  ? "Số phòng"
-                  : "Bedrooms"}
+              {getUIText("roomsLabel", lang)}
             </label>
             <select
               value={bedrooms}
@@ -170,8 +107,7 @@ export function AddPropertyTypeSection({
             >
               {bedroomOptions.map((n) => (
                 <option key={n} value={n}>
-                  {n === 5 &&
-                  (propertyType === "three_plus" || propertyType === "detached")
+                  {n === 5 && (propertyType === "three_plus" || propertyType === "detached")
                     ? "5+"
                     : n}
                 </option>
@@ -183,11 +119,7 @@ export function AddPropertyTypeSection({
               className="block text-[11px] font-medium mb-1.5"
               style={{ color: colors.textSecondary }}
             >
-              {currentLanguage === "ko"
-                ? "화장실 수"
-                : currentLanguage === "vi"
-                  ? "Số phòng tắm"
-                  : "Bathrooms"}
+              {getUIText("detBathCount", lang)}
             </label>
             <select
               value={bathrooms}
@@ -211,11 +143,7 @@ export function AddPropertyTypeSection({
               className="block text-[11px] font-medium mb-1.5"
               style={{ color: colors.textSecondary }}
             >
-              {currentLanguage === "ko"
-                ? "최대 인원"
-                : currentLanguage === "vi"
-                  ? "Số người tối đa"
-                  : "Max Guests"}
+              {getUIText("maxGuests", lang)}
             </label>
             <select
               value={maxAdults}
@@ -233,11 +161,7 @@ export function AddPropertyTypeSection({
               {Array.from({ length: 20 }, (_, i) => i + 1).map((n) => (
                 <option key={n} value={n}>
                   {n}
-                  {currentLanguage === "ko"
-                    ? "명"
-                    : currentLanguage === "vi"
-                      ? " người"
-                      : " guests"}
+                  {getUIText("detGuestSuffix", lang)}
                 </option>
               ))}
             </select>

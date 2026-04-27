@@ -12,6 +12,7 @@ import {
   refreshChatUnreadSnapshot,
   subscribeChatUnreadUpdates,
 } from "@/lib/api/chat";
+import { getDateLocaleForLanguage, getUIText } from "@/utils/i18n";
 
 /**
  * 임대인 예약 관리 — 목록·탭·모달·채팅 읽지 않음 등 데이터 레이어.
@@ -92,7 +93,7 @@ export function useHostBookingsPageData() {
           }),
         );
       } catch (error) {
-        console.error("예약 로드 실패:", error);
+        console.error("Host bookings load failed:", error);
       } finally {
         setLoading(false);
       }
@@ -128,16 +129,28 @@ export function useHostBookingsPageData() {
 
   const formatDateTime = (dateStr: string) => {
     const date = new Date(dateStr);
-    return `${date.getDate().toString().padStart(2, "0")}/${(date.getMonth() + 1).toString().padStart(2, "0")}/${date.getFullYear()} ${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
+    return date.toLocaleString(getDateLocaleForLanguage(currentLanguage), {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return `${date.getDate().toString().padStart(2, "0")}/${(date.getMonth() + 1).toString().padStart(2, "0")}/${date.getFullYear()}`;
+    return date.toLocaleDateString(getDateLocaleForLanguage(currentLanguage), {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
   };
   const formatPrice = (price: number, unit: string) => {
-    return unit === "vnd"
-      ? `${price.toLocaleString("vi-VN")} VND`
-      : `$${price.toLocaleString()}`;
+    const loc = getDateLocaleForLanguage(currentLanguage);
+    if (unit === "vnd") {
+      return `${price.toLocaleString(loc)} ${getUIText("priceUnitVndSuffix", currentLanguage)}`;
+    }
+    return `$${price.toLocaleString(loc)}`;
   };
 
   return {

@@ -1,4 +1,17 @@
 import type { SupportedLanguage } from '@/lib/api/translation';
+import { getUIText } from '@/utils/i18n';
+
+function formatAddressSuffix(
+  language: SupportedLanguage,
+  key:
+    | 'addressPatternTower'
+    | 'addressPatternZone'
+    | 'addressPatternLobby'
+    | 'addressPatternUnit',
+  name: string,
+): string {
+  return getUIText(key, language).replace(/\{\{name\}\}/g, name);
+}
 
 /** 부수적 키워드만 현지화, 고유 명사는 원문 유지 */
 export function translateBuildingTerms(text: string, language: SupportedLanguage): string {
@@ -9,88 +22,46 @@ export function translateBuildingTerms(text: string, language: SupportedLanguage
   const toaPattern = /^Tòa\s+(.+)$/i;
   const toaMatch = text.match(toaPattern);
   if (toaMatch) {
-    const name = toaMatch[1];
-    if (language === 'ko') {
-      return `${name}동`;
-    } else if (language === 'en') {
-      return `${name} Building`;
-    } else if (language === 'ja') {
-      return `${name}棟`;
-    } else if (language === 'zh') {
-      return `${name}栋`;
-    }
+    return formatAddressSuffix(language, 'addressPatternTower', toaMatch[1]);
   }
 
   const toaNhaPattern = /^Tòa nhà\s+(.+)$/i;
   const toaNhaMatch = text.match(toaNhaPattern);
   if (toaNhaMatch) {
-    const name = toaNhaMatch[1];
-    if (language === 'ko') {
-      return `${name}동`;
-    } else if (language === 'en') {
-      return `${name} Building`;
-    } else if (language === 'ja') {
-      return `${name}棟`;
-    } else if (language === 'zh') {
-      return `${name}栋`;
-    }
+    return formatAddressSuffix(language, 'addressPatternTower', toaNhaMatch[1]);
   }
 
   const khuPattern = /^Khu\s+(.+)$/i;
   const khuMatch = text.match(khuPattern);
   if (khuMatch) {
-    const name = khuMatch[1];
-    if (language === 'ko') {
-      return `${name}단지`;
-    } else if (language === 'en') {
-      return `${name} Zone`;
-    } else if (language === 'ja') {
-      return `${name}地区`;
-    } else if (language === 'zh') {
-      return `${name}社区`;
-    }
+    return formatAddressSuffix(language, 'addressPatternZone', khuMatch[1]);
   }
 
   const sanhPattern = /^Sảnh\s+(.+)$/i;
   const sanhMatch = text.match(sanhPattern);
   if (sanhMatch) {
-    const name = sanhMatch[1];
-    if (language === 'ko') {
-      return `${name}로비/홀`;
-    } else if (language === 'en') {
-      return `${name} Lobby`;
-    } else if (language === 'ja') {
-      return `${name}ロビー`;
-    } else if (language === 'zh') {
-      return `${name}大厅`;
-    }
+    return formatAddressSuffix(language, 'addressPatternLobby', sanhMatch[1]);
   }
 
   const canhoPattern = /^Căn hộ\s+(.+)$/i;
   const canhoMatch = text.match(canhoPattern);
   if (canhoMatch) {
-    const name = canhoMatch[1];
-    if (language === 'ko') {
-      return `${name}호`;
-    } else if (language === 'en') {
-      return `${name} Apt`;
-    } else if (language === 'ja') {
-      return `${name}号室`;
-    } else if (language === 'zh') {
-      return `${name}单元`;
-    }
+    return formatAddressSuffix(language, 'addressPatternUnit', canhoMatch[1]);
   }
 
   return text;
 }
 
 /** 주소 자동완성 항목 → 제목/부제 (부동산 전문 처리) */
-export function formatAddress(item: {
-  Text?: string;
-  text?: string;
-  Label?: string;
-  label?: string;
-}): { title: string; subtitle: string } {
+export function formatAddress(
+  item: {
+    Text?: string;
+    text?: string;
+    Label?: string;
+    label?: string;
+  },
+  language: SupportedLanguage,
+): { title: string; subtitle: string } {
   const fullLabel = item.Text || item.text || item.Label || item.label || '';
 
   if (!fullLabel) {
@@ -117,7 +88,7 @@ export function formatAddress(item: {
 
       if (isBuildingInfo) {
         let buildingInfo = firstCommaPart;
-        buildingInfo = translateBuildingTerms(buildingInfo, 'vi');
+        buildingInfo = translateBuildingTerms(buildingInfo, language);
 
         title = `${complexName} - ${buildingInfo}`;
 
@@ -160,7 +131,7 @@ export function formatAddress(item: {
   let subtitle = '';
 
   if (isBuildingInfo) {
-    title = translateBuildingTerms(firstPart, 'vi');
+    title = translateBuildingTerms(firstPart, language);
     subtitle = parts.slice(1).join(', ');
   } else {
     title = firstPart;

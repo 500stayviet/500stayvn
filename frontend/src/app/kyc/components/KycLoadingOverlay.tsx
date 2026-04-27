@@ -1,6 +1,7 @@
 "use client";
 
 import type { SupportedLanguage } from "@/lib/api/translation";
+import { getUIText } from "@/utils/i18n";
 
 interface KycLoadingOverlayProps {
   currentLanguage: SupportedLanguage;
@@ -12,7 +13,7 @@ export default function KycLoadingOverlay({ currentLanguage }: KycLoadingOverlay
       <div className="bg-white rounded-2xl p-6 flex flex-col items-center gap-4">
         <div className="animate-spin h-8 w-8 text-blue-600 border-4 border-t-transparent rounded-full" />
         <p className="text-sm text-gray-700">
-          {currentLanguage === "ko" ? "처리 중..." : "Đang xử lý..."}
+          {getUIText("processing", currentLanguage)}
         </p>
       </div>
     </div>

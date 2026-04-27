@@ -568,7 +568,9 @@ export default function CalendarComponent({
               : getUIText('calSelectCheckOut', currentLanguage)}
         </h3>
         <button
+          type="button"
           onClick={onClose}
+          aria-label={getUIText('close', currentLanguage)}
           className="text-gray-500 hover:text-gray-700 w-7 h-7 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-lg"
         >
           ✕
@@ -717,7 +719,9 @@ export default function CalendarComponent({
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 rounded-full flex-shrink-0 bg-blue-50/30 ring-1 ring-blue-200">
-                  <span className="text-[8px] text-blue-600 flex items-center justify-center h-full font-bold">OUT</span>
+                  <span className="text-[8px] text-blue-600 flex items-center justify-center h-full font-bold leading-none px-0.5">
+                    {getUIText('calGuestLegendCheckoutDayAbbr', currentLanguage)}
+                  </span>
                 </div>
                 <span>
                   {getUIText('calGuestLegendCheckoutOk', currentLanguage)}
@@ -725,7 +729,9 @@ export default function CalendarComponent({
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 rounded-full flex-shrink-0 bg-white border border-red-300">
-                  <span className="text-[10px] text-red-300 flex items-center justify-center h-full">31</span>
+                  <span className="text-[10px] text-red-300 flex items-center justify-center h-full">
+                    {getUIText('calGuestLegendShortStayDemoDay', currentLanguage)}
+                  </span>
                 </div>
                 <span>
                   {getUIText('calGuestLegendShortStay', currentLanguage)}

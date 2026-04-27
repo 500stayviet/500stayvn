@@ -1,7 +1,3 @@
-/**
- * 채팅 모달 컴포넌트
- */
-
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -71,7 +67,6 @@ export default function ChatModal({ roomId, onClose }: ChatModalProps) {
     setHasMoreOlder(true);
   }, [roomId]);
 
-  // 채팅방 정보 로드
   useEffect(() => {
     const loadChatRoom = async () => {
       if (!roomId) return;
@@ -80,7 +75,7 @@ export default function ChatModal({ roomId, onClose }: ChatModalProps) {
         const room = await getChatRoom(roomId, user?.uid);
         setChatRoom(room);
       } catch (error) {
-        console.error('채팅방 로드 실패:', error);
+        console.error('Chat room load failed:', error);
       } finally {
         setLoading(false);
       }
@@ -89,20 +84,17 @@ export default function ChatModal({ roomId, onClose }: ChatModalProps) {
     loadChatRoom();
   }, [roomId, user?.uid]);
 
-  // 스크롤이 맨 아래에 있는지 확인
   const isAtBottom = () => {
     const container = scrollContainerRef.current;
     if (!container) return false;
-    const threshold = 100; // 하단에서 100px 이내면 맨 아래로 간주
+    const threshold = 100;
     return container.scrollHeight - container.scrollTop <= container.clientHeight + threshold;
   };
 
-  // 스크롤을 맨 아래로
   const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
     messagesEndRef.current?.scrollIntoView({ behavior });
   };
 
-  // 메시지 구독
   useEffect(() => {
     if (!user || !roomId) return;
 
@@ -156,7 +148,6 @@ export default function ChatModal({ roomId, onClose }: ChatModalProps) {
     if (el.scrollTop < 72) void loadOlderMessages();
   };
 
-  // 메시지가 업데이트되면 스크롤 처리
   useEffect(() => {
     if (messages.length > 0) {
       if (isInitialLoad) {
@@ -168,7 +159,6 @@ export default function ChatModal({ roomId, onClose }: ChatModalProps) {
     }
   }, [messages, isInitialLoad]);
 
-  // 메시지 전송
   const handleSend = async () => {
     if (!newMessage.trim() || !user || !chatRoom || sending) return;
 
@@ -183,14 +173,13 @@ export default function ChatModal({ roomId, onClose }: ChatModalProps) {
       setNewMessage('');
       inputRef.current?.focus();
     } catch (error) {
-      console.error('메시지 전송 실패:', error);
+      console.error('Chat message send failed:', error);
       alert(getUIText('chatSendFailed', currentLanguage));
     } finally {
       setSending(false);
     }
   };
 
-  // Enter 키로 전송
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -198,7 +187,6 @@ export default function ChatModal({ roomId, onClose }: ChatModalProps) {
     }
   };
 
-  // 상대방 정보
   const getOtherParty = () => {
     if (!user || !chatRoom) return { name: '', role: '' };
     
@@ -216,7 +204,6 @@ export default function ChatModal({ roomId, onClose }: ChatModalProps) {
     };
   };
 
-  // 날짜/시간 포맷
   const formatTime = (dateStr: string) => {
     const date = new Date(dateStr);
     const hours = date.getHours().toString().padStart(2, '0');
@@ -242,7 +229,6 @@ export default function ChatModal({ roomId, onClose }: ChatModalProps) {
     }
   };
 
-  // 날짜 구분선이 필요한지 확인
   const shouldShowDateSeparator = (index: number) => {
     if (index === 0) return true;
     const currentDate = new Date(messages[index].createdAt).toDateString();
@@ -267,7 +253,6 @@ export default function ChatModal({ roomId, onClose }: ChatModalProps) {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-hidden">
       <div className="bg-white w-full max-w-[380px] h-[80vh] rounded-3xl shadow-2xl flex flex-col relative animate-in fade-in zoom-in duration-200">
-        {/* 헤더 */}
         <div className="sticky top-0 z-10 bg-white border-b border-gray-100 rounded-t-3xl">
           <div className="px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -291,7 +276,6 @@ export default function ChatModal({ roomId, onClose }: ChatModalProps) {
             </button>
           </div>
 
-          {/* 매물 정보 미니바 */}
           <div 
             className="mx-4 mb-3 px-3 py-2 bg-gray-50 rounded-xl flex items-center gap-2 cursor-pointer hover:bg-gray-100 transition-colors border border-gray-100"
             onClick={() => router.push(`/properties/${chatRoom.propertyId}`)}
@@ -300,7 +284,11 @@ export default function ChatModal({ roomId, onClose }: ChatModalProps) {
               {chatRoom.propertyImage ? (
                 <Image
                   src={chatRoom.propertyImage}
-                  alt={chatRoom.propertyTitle || ''}
+                  alt={
+                    chatRoom.propertyTitle?.trim()
+                      ? chatRoom.propertyTitle
+                      : getUIText('propertyImageAltFallback', currentLanguage)
+                  }
                   fill
                   className="object-cover"
                 />
@@ -320,7 +308,6 @@ export default function ChatModal({ roomId, onClose }: ChatModalProps) {
             </div>
           </div>
 
-          {/* 거주신고 공지: 훨씬 깜찍하고 친근한 디자인으로 변경 */}
           <div className="mx-4 mb-3 p-3 bg-[#FFF9E6] border border-orange-100 rounded-2xl flex items-start gap-2.5 shadow-sm relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-8 h-8 bg-orange-200/20 rounded-full -mr-3 -mt-3 blur-xl" />
             <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center shrink-0 shadow-sm border border-orange-50">
@@ -337,7 +324,6 @@ export default function ChatModal({ roomId, onClose }: ChatModalProps) {
           </div>
         </div>
 
-        {/* 메시지 영역 */}
         <div
           ref={scrollContainerRef}
           onScroll={onMessagesScroll}
@@ -353,7 +339,6 @@ export default function ChatModal({ roomId, onClose }: ChatModalProps) {
               {getUIText('chatScrollOlderMessages', currentLanguage)}
             </p>
           ) : null}
-          {/* 예약 확정 시스템 안내 (첫 머리에 표시) */}
           <div className="flex justify-center mb-6">
             <div className="bg-white/80 backdrop-blur-sm border border-blue-100 rounded-2xl px-4 py-3 shadow-sm max-w-[90%]">
               <div className="flex items-center gap-2 mb-1.5">
@@ -420,8 +405,16 @@ export default function ChatModal({ roomId, onClose }: ChatModalProps) {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* 입력 영역 */}
         <div className="p-4 bg-white border-t border-gray-100 rounded-b-3xl">
+          {sending ? (
+            <p className="text-[10px] text-gray-500 mb-1.5 px-0.5">
+              {getUIText('chatSendingMessage', currentLanguage)}
+            </p>
+          ) : newMessage.trim() ? (
+            <p className="text-[10px] text-gray-400 mb-1.5 px-0.5">
+              {getUIText('chatInputInProgressStatus', currentLanguage)}
+            </p>
+          ) : null}
           <div className="flex items-center gap-2 bg-gray-100 rounded-2xl p-1.5 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
             <input
               ref={inputRef}
@@ -434,7 +427,8 @@ export default function ChatModal({ roomId, onClose }: ChatModalProps) {
               disabled={sending}
             />
             <button
-              onClick={handleSend}
+              type="button"
+              onClick={() => void handleSend()}
               disabled={!newMessage.trim() || sending}
               className="p-2.5 bg-blue-600 text-white rounded-xl disabled:opacity-50 disabled:grayscale transition-all shadow-md active:scale-95"
             >

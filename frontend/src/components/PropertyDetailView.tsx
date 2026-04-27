@@ -11,7 +11,7 @@ import { PropertyData } from '@/types/property';
 import { getCityDistrictFromCoords } from '@/lib/utils/propertyUtils';
 import { parseDate } from '@/lib/utils/dateUtils';
 import { VIETNAM_CITIES, getDistrictsByCityId } from '@/lib/data/vietnam-regions';
-import { getUIText } from '@/utils/i18n';
+import { getUIText, getPropertyTypeLabel } from '@/utils/i18n';
 import type { SupportedLanguage } from '@/lib/api/translation';
 import { usePropertyDetailImageSlider } from '@/components/property-detail/usePropertyDetailImageSlider';
 import { PropertyDetailImageHero } from '@/components/property-detail/PropertyDetailImageHero';
@@ -103,24 +103,6 @@ export default function PropertyDetailView({
     return langMap[currentLanguage] ?? district.name;
   };
 
-  const getPropertyTypeDisplay = () => {
-    if (!property.propertyType) return '';
-    const typeMap: Record<string, Record<string, string>> = {
-      studio: { ko: '스튜디오', vi: 'Studio', en: 'Studio', ja: 'スタジオ', zh: '工作室' },
-      one_room: {
-        ko: '원룸(방·거실 분리)',
-        vi: 'Phòng đơn (phòng ngủ & phòng khách riêng)',
-        en: 'One Room (bedroom & living room separate)',
-        ja: 'ワンルーム（寝室・リビング別）',
-        zh: '一室（卧室与客厅分开）',
-      },
-      two_room: { ko: '2룸', vi: '2 phòng', en: '2 Rooms', ja: '2ルーム', zh: '2室' },
-      three_plus: { ko: '3+룸', vi: '3+ phòng', en: '3+ Rooms', ja: '3+ルーム', zh: '3+室' },
-      detached: { ko: '독채', vi: 'Nhà riêng', en: 'Detached House', ja: '一戸建て', zh: '独栋房屋' },
-    };
-    return typeMap[property.propertyType]?.[currentLanguage] || property.propertyType;
-  };
-
   const hasFullFurniture =
     FULL_FURNITURE_IDS.length > 0 && FULL_FURNITURE_IDS.every((id) => property.amenities?.includes(id));
   const hasFullElectronics =
@@ -130,15 +112,9 @@ export default function PropertyDetailView({
 
   const displayTitle = mode === 'owner' ? property.title || '' : '';
 
-  const t = (ko: string, vi: string, en: string, ja?: string, zh?: string) => {
-    if (currentLanguage === 'ko') return ko;
-    if (currentLanguage === 'vi') return vi;
-    if (currentLanguage === 'ja') return ja ?? en;
-    if (currentLanguage === 'zh') return zh ?? en;
-    return en;
-  };
-
-  const propertyTypeLabel = getPropertyTypeDisplay();
+  const propertyTypeLabel = property.propertyType
+    ? getPropertyTypeLabel(property.propertyType, currentLanguage)
+    : '';
   const cityDistrictLine = `${getCityName() || cityName || '—'} / ${getDistrictName() || districtName || '—'}`;
 
   return (
@@ -156,7 +132,7 @@ export default function PropertyDetailView({
             className="flex items-center gap-2 text-gray-700 hover:text-gray-900 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span className="font-medium">{t('뒤로', 'Quay lại', 'Back', '戻る', '返回')}</span>
+            <span className="font-medium">{getUIText('back', currentLanguage)}</span>
           </button>
           {mode === 'owner' && onEdit && (
             <button
@@ -165,7 +141,7 @@ export default function PropertyDetailView({
               style={{ backgroundColor: COLORS.primary, color: COLORS.white }}
             >
               <Edit className="w-4 h-4" />
-              <span className="text-sm font-medium">{t('수정', 'Chỉnh sửa', 'Edit', '編集', '编辑')}</span>
+              <span className="text-sm font-medium">{getUIText('edit', currentLanguage)}</span>
             </button>
           )}
           {mode === 'tenant' && (
@@ -177,7 +153,7 @@ export default function PropertyDetailView({
                   style={{ borderColor: COLORS.border }}
                 >
                   <X className="w-4 h-4" />
-                  <span className="text-sm font-medium">{t('닫기', 'Đóng', 'Close', '閉じる', '关闭')}</span>
+                  <span className="text-sm font-medium">{getUIText('close', currentLanguage)}</span>
                 </button>
               )}
             </div>
@@ -193,14 +169,13 @@ export default function PropertyDetailView({
             hasFullFurniture={hasFullFurniture}
             hasFullElectronics={hasFullElectronics}
             hasFullKitchen={hasFullKitchen}
-            t={t}
             slider={imageSlider}
           />
 
           <div className="px-4">
             <section className="py-3 text-left" style={SECTION_DASHED}>
               <p className="text-base font-bold mb-1.5" style={{ color: COLORS.text }}>
-                {mode === 'owner' ? t('매물명', 'Tên BĐS', 'Property', '物件名', '房源') : getUIText('address', currentLanguage)}
+                {mode === 'owner' ? getUIText('propertyName', currentLanguage) : getUIText('address', currentLanguage)}
               </p>
               <p className="text-sm leading-relaxed" style={{ color: COLORS.text }}>
                 {displayTitle}
@@ -220,7 +195,6 @@ export default function PropertyDetailView({
                   textMuted: COLORS.textMuted,
                 }}
                 labelColor={LABEL_COLOR}
-                t={t}
                 cityDistrictLine={cityDistrictLine}
                 propertyTypeLabel={propertyTypeLabel}
                 booking={booking}
@@ -238,7 +212,6 @@ export default function PropertyDetailView({
                   textSecondary: COLORS.textSecondary,
                   textMuted: COLORS.textMuted,
                 }}
-                t={t}
                 cityDistrictLine={cityDistrictLine}
                 propertyTypeLabel={propertyTypeLabel}
               />

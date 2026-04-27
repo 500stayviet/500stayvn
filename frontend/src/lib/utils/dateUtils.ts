@@ -1,4 +1,18 @@
 import { SupportedLanguage } from '../api/translation';
+import { getDateLocaleForLanguage, getUIText } from '@/utils/i18n';
+
+const BADGE_SINGLE_DATE_OPTIONS: Record<SupportedLanguage, Intl.DateTimeFormatOptions> = {
+  ko: { month: 'long', day: 'numeric' },
+  vi: { day: 'numeric', month: 'numeric' },
+  en: { month: 'short', day: 'numeric' },
+  ja: { month: 'long', day: 'numeric' },
+  zh: { month: 'long', day: 'numeric' },
+};
+
+function formatBadgeSingleDate(date: Date, lang: SupportedLanguage): string {
+  const locale = getDateLocaleForLanguage(lang);
+  return date.toLocaleDateString(locale, BADGE_SINGLE_DATE_OPTIONS[lang]);
+}
 
 /**
  * Date Utilities (날짜 관련 유틸리티)
@@ -60,48 +74,25 @@ export const isAvailableNow = (checkInDate?: string | Date): boolean => {
  * 날짜 포맷팅 (배지용: 체크인 ~ 체크아웃 또는 시작일부터)
  */
 export const formatDateForBadge = (
-  checkInDate: string | Date | undefined, 
+  checkInDate: string | Date | undefined,
   lang: SupportedLanguage,
-  checkOutDate?: string | Date | undefined
+  checkOutDate?: string | Date | undefined,
 ): string => {
   const checkIn = parseDate(checkInDate);
   if (!checkIn) return '';
-  
+
   const checkOut = checkOutDate ? parseDate(checkOutDate) : null;
-  
-  const checkInMonth = checkIn.getMonth() + 1;
-  const checkInDay = checkIn.getDate();
-  
+
   if (checkOut) {
-    const checkOutMonth = checkOut.getMonth() + 1;
-    const checkOutDay = checkOut.getDate();
-    
-    if (lang === 'ko') {
-      return `${checkInMonth}월 ${checkInDay}일 ~ ${checkOutMonth}월 ${checkOutDay}일`;
-    } else if (lang === 'vi') {
-      return `${checkInDay}/${checkInMonth} ~ ${checkOutDay}/${checkOutMonth}`;
-    } else if (lang === 'ja') {
-      return `${checkInMonth}月${checkInDay}日 ~ ${checkOutMonth}月${checkOutDay}日`;
-    } else if (lang === 'zh') {
-      return `${checkInMonth}月${checkInDay}日 ~ ${checkOutMonth}月${checkOutDay}日`;
-    } else {
-      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      return `${monthNames[checkInMonth - 1]} ${checkInDay} ~ ${monthNames[checkOutMonth - 1]} ${checkOutDay}`;
-    }
+    const start = formatBadgeSingleDate(checkIn, lang);
+    const end = formatBadgeSingleDate(checkOut, lang);
+    return getUIText('dateBadgeRangeTemplate', lang)
+      .replace('{{start}}', start)
+      .replace('{{end}}', end);
   }
-  
-  if (lang === 'ko') {
-    return `${checkInMonth}월 ${checkInDay}일부터`;
-  } else if (lang === 'vi') {
-    return `Từ ${checkInDay}/${checkInMonth}`;
-  } else if (lang === 'ja') {
-    return `${checkInMonth}月${checkInDay}日から`;
-  } else if (lang === 'zh') {
-    return `从${checkInMonth}月${checkInDay}日开始`;
-  } else {
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return `From ${monthNames[checkInMonth - 1]} ${checkInDay}`;
-  }
+
+  const datePart = formatBadgeSingleDate(checkIn, lang);
+  return getUIText('dateBadgeFromTemplate', lang).replace('{{date}}', datePart);
 };
 
 /**
@@ -110,8 +101,9 @@ export const formatDateForBadge = (
 export const formatDate = (dateInput: string | Date | undefined, lang: SupportedLanguage): string => {
   const date = parseDate(dateInput);
   if (!date) return '';
-  return date.toLocaleDateString(
-    lang === 'ko' ? 'ko-KR' : lang === 'vi' ? 'vi-VN' : lang === 'ja' ? 'ja-JP' : lang === 'zh' ? 'zh-CN' : 'en-US',
-    { year: 'numeric', month: 'short', day: 'numeric' }
-  );
+  return date.toLocaleDateString(getDateLocaleForLanguage(lang), {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
 };

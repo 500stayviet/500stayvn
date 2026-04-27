@@ -58,10 +58,7 @@ export async function POST(request: NextRequest) {
     typeof body.nickname === 'string' ? body.nickname.trim().slice(0, 64) : '';
   const password = typeof body.password === 'string' ? body.password : '';
   if (!isValidUsername(username) || password.length < 8) {
-    return NextResponse.json(
-      { error: 'username (3–64, 영문·숫자·._-) 및 password (8자 이상)를 확인하세요.' },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: 'admin_account_invalid_input' }, { status: 400 });
   }
 
   const isSuperAdmin = body.isSuperAdmin === true;
@@ -99,6 +96,6 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch {
-    return NextResponse.json({ error: '이미 존재하는 아이디일 수 있습니다.' }, { status: 409 });
+    return NextResponse.json({ error: 'admin_username_taken' }, { status: 409 });
   }
 }

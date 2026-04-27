@@ -1,4 +1,6 @@
 import { addProperty } from "@/lib/api/properties";
+import type { SupportedLanguage } from "@/lib/api/translation";
+import { getUIText } from "@/utils/i18n";
 import {
   buildUnitNumber,
   ensureAddPropertyKycReady,
@@ -93,6 +95,7 @@ export function useAddPropertySubmit({
 }: UseAddPropertySubmitParams) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const lang = currentLanguage as SupportedLanguage;
 
     const validationMessage = validateAddPropertyInput({
       address: formState.address,
@@ -108,7 +111,7 @@ export function useAddPropertySubmit({
       checkOutDate: formState.checkOutDate,
       todayOnly: formState.todayOnly,
       maxRentalDay: formState.maxRentalDay,
-      currentLanguage,
+      currentLanguage: lang,
     });
     if (validationMessage) {
       alert(validationMessage);
@@ -121,24 +124,18 @@ export function useAddPropertySubmit({
     setLoading(true);
     try {
       if (!user) {
-        alert(
-          currentLanguage === "ko"
-            ? "로그인이 필요합니다."
-            : currentLanguage === "vi"
-              ? "Cần đăng nhập."
-              : "Please login.",
-        );
+        alert(getUIText("valNeedLogin", lang));
         return;
       }
 
-      const kycState = await ensureAddPropertyKycReady(user.uid, currentLanguage);
+      const kycState = await ensureAddPropertyKycReady(user.uid, lang);
       if (!kycState.ok) {
         alert(kycState.message);
         router.push("/kyc");
         return;
       }
 
-      const uploadResult = await uploadPropertyImages(formState.images, currentLanguage);
+      const uploadResult = await uploadPropertyImages(formState.images, lang);
       if (!uploadResult.ok) {
         alert(uploadResult.message);
         return;
@@ -192,7 +189,7 @@ export function useAddPropertySubmit({
       if (!message || !knownErrors.includes(message)) {
         console.error("매물 등록 중 예기치 못한 패:", error);
       }
-      alert(getAddPropertyErrorMessage(currentLanguage, message));
+      alert(getAddPropertyErrorMessage(lang, message));
     } finally {
       setLoading(false);
     }

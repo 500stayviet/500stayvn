@@ -11,6 +11,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { MapPin, ChevronLeft, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
 import { SupportedLanguage } from '@/lib/api/translation';
@@ -143,7 +144,7 @@ export default function PopularStays({ currentLanguage }: PopularStaysProps) {
           <button
             onClick={scrollLeft}
             className="flex absolute left-2 sm:left-0 top-1/2 -translate-y-1/2 z-20 bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-lg hover:bg-white transition-all"
-            aria-label="Previous"
+            aria-label={getUIText('carouselPrevious', currentLanguage)}
           >
             <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700" />
           </button>
@@ -171,7 +172,11 @@ export default function PopularStays({ currentLanguage }: PopularStaysProps) {
                 <div className="relative w-full h-full">
                   <Image
                     src={imageUrl}
-                    alt={property.address || 'Property'}
+                    alt={
+                      property.address?.trim()
+                        ? property.address
+                        : getUIText('propertyImageAltFallback', currentLanguage)
+                    }
                     fill
                     className="object-cover"
                     sizes="(max-width: 430px) 100vw, 430px"
@@ -255,10 +260,21 @@ export default function PopularStays({ currentLanguage }: PopularStaysProps) {
             <button
               onClick={scrollRight}
               className="flex absolute right-2 sm:right-0 top-1/2 -translate-y-1/2 z-20 bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-lg hover:bg-white transition-all"
-              aria-label="Next"
+              aria-label={getUIText('carouselNext', currentLanguage)}
             >
               <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700" />
             </button>
+          </div>
+        )}
+
+        {!loading && properties.length > 0 && (
+          <div className="mt-4 flex justify-center px-2">
+            <Link
+              href="/search"
+              className="text-sm font-semibold text-blue-600 hover:text-blue-700 underline-offset-2 hover:underline"
+            >
+              {getUIText('popularStaysViewMore', currentLanguage)}
+            </Link>
           </div>
         )}
       </div>

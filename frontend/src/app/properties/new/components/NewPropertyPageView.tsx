@@ -2,12 +2,24 @@
 
 import { MapPin, Loader2, Clock } from "lucide-react";
 import type { NewPropertyPageViewModel } from "../hooks/useNewPropertyPage";
+import { getUIText } from "@/utils/i18n";
 
 const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
   const hour = Math.floor(i / 2);
   const minute = i % 2 === 0 ? "00" : "30";
   return `${hour.toString().padStart(2, "0")}:${minute}`;
 });
+
+function interpolate(
+  template: string,
+  vars: Record<string, string>,
+): string {
+  let out = template;
+  for (const [k, v] of Object.entries(vars)) {
+    out = out.replaceAll(`{{${k}}}`, v);
+  }
+  return out;
+}
 
 type Props = { vm: NewPropertyPageViewModel };
 
@@ -21,12 +33,18 @@ export function NewPropertyPageView({ vm }: Props) {
     coordinates,
     handleAddressChange,
     handleSubmit,
+    currentLanguage,
   } = vm;
+
+  const t = (key: Parameters<typeof getUIText>[0]) =>
+    getUIText(key, currentLanguage);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-2xl mx-auto px-4">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">새 매물 등록</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">
+          {t("legacyNewPropertyPageTitle")}
+        </h1>
 
         <form
           onSubmit={handleSubmit}
@@ -34,7 +52,7 @@ export function NewPropertyPageView({ vm }: Props) {
         >
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              매물명
+              {t("legacyNewPropertyFieldTitle")}
               <span className="ml-1 text-red-500">*</span>
             </label>
             <input
@@ -43,7 +61,7 @@ export function NewPropertyPageView({ vm }: Props) {
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, title: e.target.value }))
               }
-              placeholder="예: 홍대점 301호, 판매용 A동"
+              placeholder={t("legacyNewPropertyTitlePh")}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
             />
@@ -51,7 +69,7 @@ export function NewPropertyPageView({ vm }: Props) {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              설명 (베트남어)
+              {t("legacyNewPropertyDescVi")}
             </label>
             <textarea
               value={formData.original_description}
@@ -69,17 +87,17 @@ export function NewPropertyPageView({ vm }: Props) {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              주소 (베트남어)
+              {t("legacyNewPropertyAddrVi")}
               {geocoding && (
                 <span className="ml-2 text-blue-600 text-xs flex items-center gap-1">
                   <Loader2 className="w-3 h-3 animate-spin" />
-                  좌표 변환 중...
+                  {t("legacyNewPropertyGeocoding")}
                 </span>
               )}
               {coordinates && (
                 <span className="ml-2 text-green-600 text-xs flex items-center gap-1">
                   <MapPin className="w-3 h-3" />
-                  좌표 생성됨
+                  {t("legacyNewPropertyCoordsOk")}
                 </span>
               )}
             </label>
@@ -87,13 +105,16 @@ export function NewPropertyPageView({ vm }: Props) {
               type="text"
               value={formData.address}
               onChange={(e) => void handleAddressChange(e.target.value)}
-              placeholder="예: Quận 7, Thành phố Hồ Chí Minh"
+              placeholder={t("legacyNewPropertyAddrPh")}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
             />
             {coordinates && (
               <p className="mt-2 text-sm text-gray-600">
-                좌표: {coordinates.lat.toFixed(6)}, {coordinates.lng.toFixed(6)}
+                {interpolate(t("legacyNewPropertyCoordsLine"), {
+                  lat: coordinates.lat.toFixed(6),
+                  lng: coordinates.lng.toFixed(6),
+                })}
               </p>
             )}
           </div>
@@ -101,7 +122,7 @@ export function NewPropertyPageView({ vm }: Props) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                가격
+                {t("legacyNewPropertyPrice")}
               </label>
               <input
                 type="number"
@@ -115,7 +136,7 @@ export function NewPropertyPageView({ vm }: Props) {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                통화
+                {t("legacyNewPropertyCurrency")}
               </label>
               <select
                 value={formData.priceUnit}
@@ -136,7 +157,7 @@ export function NewPropertyPageView({ vm }: Props) {
           <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                면적 (m²)
+                {t("legacyNewPropertyArea")}
               </label>
               <input
                 type="number"
@@ -150,7 +171,7 @@ export function NewPropertyPageView({ vm }: Props) {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                침실
+                {t("legacyNewPropertyBedrooms")}
               </label>
               <input
                 type="number"
@@ -163,7 +184,7 @@ export function NewPropertyPageView({ vm }: Props) {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                욕실
+                {t("legacyNewPropertyBathrooms")}
               </label>
               <input
                 type="number"
@@ -183,7 +204,7 @@ export function NewPropertyPageView({ vm }: Props) {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <Clock className="w-4 h-4 inline mr-1" />
-                체크인 시간
+                {t("legacyNewPropertyCheckIn")}
               </label>
               <select
                 value={formData.checkInTime}
@@ -197,18 +218,18 @@ export function NewPropertyPageView({ vm }: Props) {
               >
                 {TIME_OPTIONS.map((time) => (
                   <option key={`checkin-${time}`} value={time}>
-                    {time} 이후
+                    {interpolate(t("legacyNewPropertyTimeAfter"), { time })}
                   </option>
                 ))}
               </select>
               <p className="mt-1 text-xs text-gray-500">
-                입주자가 체크인할 수 있는 시간
+                {t("legacyNewPropertyCheckInHelp")}
               </p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <Clock className="w-4 h-4 inline mr-1" />
-                체크아웃 시간
+                {t("legacyNewPropertyCheckOut")}
               </label>
               <select
                 value={formData.checkOutTime}
@@ -222,12 +243,12 @@ export function NewPropertyPageView({ vm }: Props) {
               >
                 {TIME_OPTIONS.map((time) => (
                   <option key={`checkout-${time}`} value={time}>
-                    {time} 이전
+                    {interpolate(t("legacyNewPropertyTimeBefore"), { time })}
                   </option>
                 ))}
               </select>
               <p className="mt-1 text-xs text-gray-500">
-                입주자가 체크아웃해야 하는 시간
+                {t("legacyNewPropertyCheckOutHelp")}
               </p>
             </div>
           </div>
@@ -238,14 +259,16 @@ export function NewPropertyPageView({ vm }: Props) {
               onClick={() => router.back()}
               className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
             >
-              취소
+              {t("legacyNewPropertyCancel")}
             </button>
             <button
               type="submit"
               disabled={loading}
               className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {loading ? "등록 중..." : "등록하기"}
+              {loading
+                ? t("legacyNewPropertySubmitting")
+                : t("legacyNewPropertySubmit")}
             </button>
           </div>
         </form>

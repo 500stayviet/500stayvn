@@ -21,6 +21,7 @@ import {
   FULL_ELECTRONICS_IDS, 
   FULL_OPTION_KITCHEN_IDS 
 } from '@/lib/constants/facilities';
+import { getUIText } from '@/utils/i18n';
 
 interface PropertyCardProps {
   property: PropertyData;
@@ -87,7 +88,11 @@ export default function PropertyCard({
       <div className="relative h-56 w-full overflow-hidden bg-gradient-to-br from-gray-200 to-gray-300">
         <Image 
           src={imageUrl} 
-          alt={property.address || 'Property'} 
+          alt={
+            property.address?.trim()
+              ? property.address
+              : getUIText('propertyImageAltFallback', currentLanguage)
+          } 
           fill 
           className="object-cover" 
           sizes="(max-width: 768px) 100vw, 400px" 
@@ -101,7 +106,7 @@ export default function PropertyCard({
               style={{ backgroundColor: colors.success }}
             >
               <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-              {currentLanguage === 'ko' ? '즉시입주' : currentLanguage === 'vi' ? 'Vào ngay' : 'Available'}
+              {getUIText('immediateEntry', currentLanguage)}
             </div>
           ) : property.checkInDate && (
             <div 
@@ -123,7 +128,7 @@ export default function PropertyCard({
               ? formatCurrency(property.price ?? 0)
               : formatPrice(property.price, property.priceUnit)}
             <span className="text-[10px] font-normal ml-1">
-              {currentLanguage === 'ko' ? '/주' : currentLanguage === 'vi' ? '/tuần' : '/week'}
+              {getUIText('priceHeroPerWeek', currentLanguage)}
             </span>
           </p>
         </div>
@@ -141,7 +146,7 @@ export default function PropertyCard({
                 style={{ backgroundColor: colors.secondary }}
               >
                 <Wifi className="w-3.5 h-3.5" />
-                WiFi
+                {getUIText('cardBadgeWifi', currentLanguage)}
               </div>
             )}
             
@@ -152,7 +157,7 @@ export default function PropertyCard({
                 style={{ backgroundColor: colors.accent }}
               >
                 <Sofa className="w-3.5 h-3.5" />
-                {currentLanguage === 'ko' ? '풀가구' : 'Furniture'}
+                {getUIText('fullFurniture', currentLanguage)}
               </div>
             )}
             
@@ -163,7 +168,7 @@ export default function PropertyCard({
                 style={{ backgroundColor: colors.primary }}
               >
                 <Tv className="w-3.5 h-3.5" />
-                {currentLanguage === 'ko' ? '풀가전' : 'Electronics'}
+                {getUIText('fullElectronics', currentLanguage)}
               </div>
             )}
             
@@ -174,7 +179,7 @@ export default function PropertyCard({
                 style={{ backgroundColor: colors.primaryLight }}
               >
                 <UtensilsCrossed className="w-3.5 h-3.5" />
-                {currentLanguage === 'ko' ? '주방' : 'Kitchen'}
+                {getUIText('fullKitchen', currentLanguage)}
               </div>
             )}
           </div>
@@ -189,7 +194,7 @@ export default function PropertyCard({
                 <Bed className="w-4 h-4" />
                 <span className="text-sm font-bold">{property.bedrooms || 0}</span>
               </div>
-              <span className="text-[10px] text-gray-500">{currentLanguage === 'ko' ? '침실' : 'Bed'}</span>
+              <span className="text-[10px] text-gray-500">{getUIText('bedroom', currentLanguage)}</span>
             </div>
             
             {/* 욕실 */}
@@ -198,7 +203,7 @@ export default function PropertyCard({
                 <Bath className="w-4 h-4" />
                 <span className="text-sm font-bold">{property.bathrooms || 0}</span>
               </div>
-              <span className="text-[10px] text-gray-500">{currentLanguage === 'ko' ? '욕실' : 'Bath'}</span>
+              <span className="text-[10px] text-gray-500">{getUIText('bathroom', currentLanguage)}</span>
             </div>
 
             {/* 인원 */}
@@ -207,7 +212,7 @@ export default function PropertyCard({
                 <Users className="w-4 h-4" />
                 <span className="text-sm font-bold">{occupancy}</span>
               </div>
-              <span className="text-[10px] text-gray-500">{currentLanguage === 'ko' ? '인원' : 'Pax'}</span>
+              <span className="text-[10px] text-gray-500">{getUIText('bookingOccupancyLabel', currentLanguage)}</span>
             </div>
           </div>
         </div>

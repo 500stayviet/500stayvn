@@ -7,7 +7,9 @@
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { SupportedLanguage } from '@/lib/api/translation';
 import { searchRegions, regionToSuggestion, RegionType } from '@/lib/data/vietnam-regions';
+import { getUIText } from '@/utils/i18n';
 
 // ============================================================================
 // 타입 정의
@@ -69,8 +71,6 @@ export const cleanSubAddress = (text: string): string => {
   return result.replace(/\s+/g, ' ').trim().replace(/^,\s*/, '').replace(/,\s*$/, '').replace(/,\s*,/g, ',');
 };
 
-import { SupportedLanguage } from '@/lib/api/translation';
-
 // ============================================================================
 // useLocationSearch 훅
 // ============================================================================
@@ -92,7 +92,7 @@ export function useLocationSearch(currentLanguage: SupportedLanguage) {
     }
   }, [currentLanguage]);
 
-  const performSearch = async (value: string, language: string) => {
+  const performSearch = async (value: string, language: SupportedLanguage) => {
     try {
       setIsSearching(true);
       // 베트남 도시·구만 검색 (하드코딩 데이터). 같은 구명이 여러 도시에 있으면 "구, 도시"로 구별됨.
@@ -102,7 +102,7 @@ export function useLocationSearch(currentLanguage: SupportedLanguage) {
       );
       setSuggestions(regionSuggestions.slice(0, 10));
     } catch (error) {
-      console.error('검색 오류:', error);
+      console.error('Location search error:', error);
       setSuggestions([]);
     } finally {
       setIsSearching(false);
@@ -147,48 +147,25 @@ export function useLocationSearch(currentLanguage: SupportedLanguage) {
   };
 }
 
-// 뱃지 정보 가져오기
+/** 검색 제안 행의 유형 뱃지 (도시·구·명소) */
 export function getSuggestionBadge(suggestion: LocationSuggestion, currentLanguage: SupportedLanguage) {
   if (suggestion.isRegion) {
     if (suggestion.regionType === 'city') {
-      const text = {
-        ko: '도시',
-        vi: 'Thành phố',
-        en: 'City',
-        ja: '都市',
-        zh: '城市'
-      };
       return {
-        text: text[currentLanguage] || text.en,
+        text: getUIText('locationBadgeCity', currentLanguage),
         color: 'bg-blue-600',
         icon: '🏙️',
       };
-    } else {
-      const text = {
-        ko: '구/군',
-        vi: 'Quận',
-        en: 'District',
-        ja: '区/郡',
-        zh: '区/县'
-      };
-      return {
-        text: text[currentLanguage] || text.en,
-        color: 'bg-blue-500',
-        icon: '📍',
-      };
     }
-  } else {
-    const text = {
-      ko: '명소',
-      vi: 'Địa danh',
-      en: 'Landmark',
-      ja: '名所',
-      zh: '景点'
-    };
     return {
-      text: text[currentLanguage] || text.en,
-      color: 'bg-amber-500',
-      icon: '⭐',
+      text: getUIText('locationBadgeDistrict', currentLanguage),
+      color: 'bg-blue-500',
+      icon: '📍',
     };
   }
+  return {
+    text: getUIText('locationBadgeLandmark', currentLanguage),
+    color: 'bg-amber-500',
+    icon: '⭐',
+  };
 }

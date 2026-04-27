@@ -109,7 +109,7 @@ export async function signUpWithEmail(
         return {
           error: {
             code: "network/error",
-            message: "네트워크 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+            message: "",
           },
         };
       }
@@ -121,7 +121,7 @@ export async function signUpWithEmail(
         return {
           error: {
             code: "server/unavailable",
-            message: "서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+            message: "",
           },
         };
       }
@@ -175,7 +175,7 @@ export async function signUpWithEmail(
       return {
         error: {
           code: "network/error",
-          message: "네트워크 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+          message: "",
         },
       };
     }
@@ -227,7 +227,7 @@ export async function signInWithEmail(
         return {
           error: {
             code: "network/error",
-            message: "네트워크 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+            message: "",
           },
         };
       }
@@ -239,7 +239,7 @@ export async function signInWithEmail(
         return {
           error: {
             code: "server/unavailable",
-            message: "서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+            message: "",
           },
         };
       }
@@ -291,7 +291,7 @@ export async function signInWithEmail(
       return {
         error: {
           code: "network/error",
-          message: "네트워크 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+          message: "",
         },
       };
     }
@@ -300,15 +300,11 @@ export async function signInWithEmail(
 }
 
 export async function signInWithGoogle(): Promise<unknown> {
-  throw new Error(
-    "Google 로그인은 현재 사용할 수 없습니다. 이메일/비밀번호로 로그인해주세요.",
-  );
+  throw new Error("Google sign-in is not available. Use email and password.");
 }
 
 export async function signInWithFacebook(): Promise<never> {
-  throw new Error(
-    "Facebook 로그인은 현재 사용할 수 없습니다. 이메일/비밀번호로 로그인해주세요.",
-  );
+  throw new Error("Facebook sign-in is not available. Use email and password.");
 }
 
 export async function signOut(): Promise<void> {

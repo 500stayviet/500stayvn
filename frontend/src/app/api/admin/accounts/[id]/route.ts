@@ -79,14 +79,14 @@ export async function PATCH(
   if (body.username !== undefined && typeof body.username === 'string') {
     const nextUser = body.username.trim();
     if (!isValidUsername(nextUser)) {
-      return NextResponse.json({ error: 'username 형식이 올바르지 않습니다' }, { status: 400 });
+      return NextResponse.json({ error: 'admin_username_invalid' }, { status: 400 });
     }
     if (nextUser !== target.username) {
       const taken = await prisma.adminAccount.findFirst({
         where: { username: nextUser, id: { not: target.id } },
       });
       if (taken) {
-        return NextResponse.json({ error: '이미 사용 중인 아이디입니다' }, { status: 409 });
+        return NextResponse.json({ error: 'admin_username_conflict' }, { status: 409 });
       }
       updates.username = nextUser;
     }
@@ -97,12 +97,12 @@ export async function PATCH(
     if (next.length === 0) {
       // 비워 두면 비밀번호 변경 없음
     } else if (next.length < 8) {
-      return NextResponse.json({ error: 'newPassword는 8자 이상' }, { status: 400 });
+      return NextResponse.json({ error: 'admin_new_password_too_short' }, { status: 400 });
     }
     if (next.length > 0 && target.id === me.id) {
       const cur = typeof body.currentPassword === 'string' ? body.currentPassword : '';
       if (!verifyAdminPassword(cur, target.passwordHash)) {
-        return NextResponse.json({ error: 'currentPassword가 올바르지 않습니다' }, { status: 400 });
+        return NextResponse.json({ error: 'admin_current_password_invalid' }, { status: 400 });
       }
     }
     if (next.length > 0) {
@@ -112,14 +112,14 @@ export async function PATCH(
 
   if (body.isSuperAdmin !== undefined && typeof body.isSuperAdmin === 'boolean') {
     if (target.id === me.id && body.isSuperAdmin === false) {
-      return NextResponse.json({ error: '본인 슈퍼 권한은 여기서 해제할 수 없습니다' }, { status: 400 });
+      return NextResponse.json({ error: 'admin_cannot_demote_own_super' }, { status: 400 });
     }
     if (body.isSuperAdmin === false && target.isSuperAdmin) {
       const otherSupers = await prisma.adminAccount.count({
         where: { isSuperAdmin: true, id: { not: target.id } },
       });
       if (otherSupers < 1) {
-        return NextResponse.json({ error: '마지막 슈퍼 관리자는 승격 해제할 수 없습니다' }, { status: 400 });
+        return NextResponse.json({ error: 'admin_cannot_demote_last_super' }, { status: 400 });
       }
     }
     updates.isSuperAdmin = body.isSuperAdmin;
@@ -140,7 +140,7 @@ export async function PATCH(
   }
 
   if (Object.keys(updates).length === 0) {
-    return NextResponse.json({ error: 'No valid updates' }, { status: 400 });
+    return NextResponse.json({ error: 'admin_no_valid_updates' }, { status: 400 });
   }
 
   const row = await prisma.adminAccount.update({

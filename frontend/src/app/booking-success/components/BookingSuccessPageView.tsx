@@ -18,6 +18,7 @@ import type { BookingSuccessPageViewModel } from "../hooks/useBookingSuccessPage
 import {
   formatBookingGuestSummary,
   formatCheckInOutLine,
+  getDateLocaleForLanguage,
   getUIText,
 } from "@/utils/i18n";
 
@@ -171,7 +172,10 @@ export function BookingSuccessPageView({ vm }: Props) {
                 </span>
                 <span className="text-[11px] font-bold text-gray-400">
                   {booking.createdAt &&
-                    new Date(booking.createdAt).toLocaleDateString()}
+                    new Date(booking.createdAt).toLocaleDateString(
+                      getDateLocaleForLanguage(currentLanguage),
+                      { year: "numeric", month: "short", day: "numeric" },
+                    )}
                 </span>
               </div>
             </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { Globe, User, LogOut, Bell, MessageCircle } from 'lucide-react';
+import { Globe, User, LogOut, Bell, MessageCircle, SquarePen, Building2 } from 'lucide-react';
 import { getUIText } from '@/utils/i18n';
 import type { useTopBarState } from './useTopBarState';
 
@@ -102,7 +102,7 @@ export function TopBarView(p: TopBarViewProps) {
                         onClick={p.toggleNotificationOpen}
                         className="p-2 rounded-full transition-all duration-200 relative"
                         style={{ color: p.notificationsEnabled ? BRAND.text : BRAND.muted }}
-                        aria-label="Notifications"
+                        aria-label={getUIText('topBarAriaNotifications', p.currentLanguage)}
                       >
                         <Bell className="w-5 h-5" />
                         {p.notificationsEnabled && p.unreadCount > 0 && (
@@ -138,9 +138,10 @@ export function TopBarView(p: TopBarViewProps) {
                                     {getUIText('newMessagesGuest', p.currentLanguage)}
                                   </p>
                                   <p className="text-xs text-blue-600 mt-0.5">
-                                    {p.currentLanguage === 'ko'
-                                      ? `${p.unreadChatCounts.asGuest}${getUIText('unreadMessages', p.currentLanguage)}`
-                                      : `${p.unreadChatCounts.asGuest} ${getUIText('unreadMessages', p.currentLanguage)}`}
+                                    {getUIText('topBarUnreadChatSubtitle', p.currentLanguage).replace(
+                                      '{n}',
+                                      String(p.unreadChatCounts.asGuest),
+                                    )}
                                   </p>
                                 </div>
                               </button>
@@ -162,9 +163,10 @@ export function TopBarView(p: TopBarViewProps) {
                                     {getUIText('newMessagesHost', p.currentLanguage)}
                                   </p>
                                   <p className="text-xs text-green-600 mt-0.5">
-                                    {p.currentLanguage === 'ko'
-                                      ? `${p.unreadChatCounts.asOwner}${getUIText('unreadMessages', p.currentLanguage)}`
-                                      : `${p.unreadChatCounts.asOwner} ${getUIText('unreadMessages', p.currentLanguage)}`}
+                                    {getUIText('topBarUnreadChatSubtitle', p.currentLanguage).replace(
+                                      '{n}',
+                                      String(p.unreadChatCounts.asOwner),
+                                    )}
                                   </p>
                                 </div>
                               </button>
@@ -287,7 +289,7 @@ export function TopBarView(p: TopBarViewProps) {
                             <div className="px-4 py-8 text-center">
                               <Bell className="w-8 h-8 text-gray-300 mx-auto mb-2" />
                               <p className="text-sm text-gray-500">
-                                {getUIText('noProperties', p.currentLanguage)}
+                                {getUIText('topBarNoNotifications', p.currentLanguage)}
                               </p>
                             </div>
                           )}
@@ -329,7 +331,7 @@ export function TopBarView(p: TopBarViewProps) {
                         onClick={p.toggleUserMenu}
                         className="p-2 rounded-full transition-all duration-200"
                         style={{ color: BRAND.text }}
-                        aria-label="Profile"
+                        aria-label={getUIText('topBarAriaProfile', p.currentLanguage)}
                       >
                         <User className="w-5 h-5" />
                       </button>
@@ -352,6 +354,22 @@ export function TopBarView(p: TopBarViewProps) {
                           </button>
                           <button
                             type="button"
+                            onClick={p.handleEditProfileClick}
+                            className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 flex items-center gap-3 text-gray-700 transition-colors"
+                          >
+                            <SquarePen className="w-4 h-4" />
+                            <span>{getUIText('editProfile', p.currentLanguage)}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={p.handleMyPropertiesClick}
+                            className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 flex items-center gap-3 text-gray-700 transition-colors"
+                          >
+                            <Building2 className="w-4 h-4" />
+                            <span>{getUIText('myProperties', p.currentLanguage)}</span>
+                          </button>
+                          <button
+                            type="button"
                             onClick={p.handleLogout}
                             className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 flex items-center gap-3 text-red-600 transition-colors"
                           >
@@ -369,7 +387,7 @@ export function TopBarView(p: TopBarViewProps) {
                       onClick={p.handleLoginClick}
                       className="p-2 rounded-full transition-all duration-200 cursor-pointer"
                       style={{ color: BRAND.muted }}
-                      aria-label="Login"
+                      aria-label={getUIText('topBarAriaLogin', p.currentLanguage)}
                     >
                       <User className="w-5 h-5" />
                     </button>

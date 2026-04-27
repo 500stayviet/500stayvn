@@ -6,6 +6,8 @@ import { useCamera } from '@/hooks/useCamera';
 import { canvasToBlob, resizeImage } from '@/utils/imageUtils';
 import { faceDirections } from '@/components/kyc/face/faceDirectionConfig';
 import type { FaceVerificationStepProps } from './types';
+import type { SupportedLanguage } from '@/lib/api/translation';
+import { getUIText } from '@/utils/i18n';
 
 export function useFaceVerificationStepState({ currentLanguage, onComplete }: FaceVerificationStepProps) {
   const [step, setStep] = useState<'ready' | 'capturing' | 'preview' | 'analyzing'>('ready');
@@ -94,7 +96,7 @@ export function useFaceVerificationStepState({ currentLanguage, onComplete }: Fa
     try {
       const canvas = captureFrame();
       if (!canvas) {
-        throw new Error('캔버스를 생성할 수 없습니다');
+        throw new Error(getUIText('kycCaptureCanvasError', currentLanguage));
       }
 
       const blob = await canvasToBlob(canvas, 0.9);
@@ -194,9 +196,8 @@ export function useFaceVerificationStepState({ currentLanguage, onComplete }: Fa
 
   const currentDirection = faceDirections[currentDirectionIndex];
   const currentGuideText = currentDirection?.text
-    ? (currentDirection.text as Record<string, string>)[currentLanguage] ||
-      (currentDirection.text as { ko: string }).ko ||
-      ''
+    ? (currentDirection.text as Record<SupportedLanguage, string>)[currentLanguage] ??
+      currentDirection.text.en
     : '';
 
   return {

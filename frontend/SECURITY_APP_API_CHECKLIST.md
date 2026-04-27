@@ -1,5 +1,7 @@
 # App API security and error contract
 
+**진입 전 전역 클로저(법무·Sentry·일정·신뢰 구간):** [`docs/qa/pre-launch-closure.md`](../docs/qa/pre-launch-closure.md)
+
 ## AppApi envelope (JSON responses under `/api/app/*`)
 
 **운영 로그 및 모든 `/api/app/*` JSON API는 표준 봉투 규격을 준수한다:** 성공 `{ "ok": true, "data": … }` (`appApiOk`), 실패 `{ "ok": false, "error": { "code", "message" } }` (`appApiError`). 클라이언트는 가능하면 `unwrapAppApiData`로 성공 본문을 읽는다.

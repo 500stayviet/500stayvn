@@ -4,6 +4,8 @@
  * 5개국어 하드코딩, 검색 키워드 배열, 위경도, 소속 구(District) ID
  */
 
+import type { SupportedLanguage } from '@/lib/api/translation';
+
 export type LandmarkCategory = 'landmark' | 'shopping' | 'residential' | 'tourism';
 
 export interface VietnamLandmark {
@@ -77,10 +79,20 @@ export const ALL_LANDMARKS: VietnamLandmark[] = [
   ...DANANG_LANDMARKS,
 ];
 
-/** 언어별 명소 이름 반환 */
-export function getLandmarkName(lm: VietnamLandmark, lang: string): string {
-  const m: Record<string, string> = { ko: lm.nameKo, vi: lm.nameVi, en: lm.name, ja: lm.nameJa, zh: lm.nameZh };
-  return m[lang] ?? lm.name;
+/** UI 언어에 맞는 명소 표시명 (지도 팝업·검색 제안 등) */
+export function getLandmarkName(lm: VietnamLandmark, lang: SupportedLanguage): string {
+  switch (lang) {
+    case 'ko':
+      return lm.nameKo || lm.name;
+    case 'vi':
+      return lm.nameVi || lm.name;
+    case 'ja':
+      return lm.nameJa || lm.name;
+    case 'zh':
+      return lm.nameZh || lm.name;
+    default:
+      return lm.name;
+  }
 }
 
 /** 검색어와 일치하는지 (5개국어 이름 + searchKeywords, toLowerCase, 1글자 자동완성) */
@@ -143,7 +155,7 @@ export function searchLandmarksScored(query: string): { landmark: VietnamLandmar
 }
 
 /** 명소 → 지도 Suggestion 변환 (PlaceId, Text, Geometry, districtId, landmarkCategory) */
-export function landmarkToSuggestion(lm: VietnamLandmark, language: string): {
+export function landmarkToSuggestion(lm: VietnamLandmark, language: SupportedLanguage): {
   PlaceId: string;
   Text: string;
   Place: { Label: string; Geometry: { Point: number[] } };

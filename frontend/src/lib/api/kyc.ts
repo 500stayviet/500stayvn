@@ -47,7 +47,7 @@ async function completeKYCStep(
   userId: string,
   step: number,
   idData?: PhoneVerificationData | IdDocumentData | Record<string, unknown>,
-): Promise<{ success: boolean; testModeMessage: string }> {
+): Promise<{ success: boolean; kycStorageNoticeCode?: string }> {
   const response = await fetch('/api/kyc/upload', {
     method: 'PUT',
     headers: {
@@ -94,7 +94,7 @@ async function completeKYCStep(
     logAdminSystemEvent({
       severity: 'warning',
       category: 'kyc',
-      message: 'KYC 단계 반영 중 users 원장 동기화 실패',
+      message: "KYC step: failed to sync user ledger after step completion",
       ownerId: userId,
       snapshot: { function: 'completeKYCStep', step: String(step), error: String(error) },
     });
@@ -112,13 +112,15 @@ export async function savePhoneVerification(
 ): Promise<void> {
   try {
     const result = await completeKYCStep(uid, 1, data);
-    console.log('Phone verification completed:', result.testModeMessage);
+    if (result.kycStorageNoticeCode) {
+      console.log("Phone verification completed:", result.kycStorageNoticeCode);
+    }
   } catch (error) {
     console.error("Error saving phone verification:", error);
     logAdminSystemEvent({
       severity: 'error',
       category: 'kyc',
-      message: error instanceof Error ? error.message : '전화 인증 저장 실패',
+      message: error instanceof Error ? error.message : "Phone verification save failed",
       ownerId: uid,
       snapshot: { function: 'savePhoneVerification' },
     });
@@ -154,13 +156,15 @@ export async function saveIdDocument(
 
     // KYC 단계 2 완료 처리
     const result = await completeKYCStep(uid, 2, idData);
-    console.log('ID document verification completed:', result.testModeMessage);
+    if (result.kycStorageNoticeCode) {
+      console.log("ID document verification completed:", result.kycStorageNoticeCode);
+    }
   } catch (error) {
     console.error("Error saving ID document:", error);
     logAdminSystemEvent({
       severity: 'error',
       category: 'kyc',
-      message: error instanceof Error ? error.message : '신분증 단계 저장 실패',
+      message: error instanceof Error ? error.message : "ID document step save failed",
       ownerId: uid,
       snapshot: { function: 'saveIdDocument' },
     });
@@ -210,13 +214,15 @@ export async function saveFaceVerification(
 
     // KYC 단계 3 완료 처리
     const result = await completeKYCStep(uid, 3);
-    console.log('Face verification completed:', result.testModeMessage);
+    if (result.kycStorageNoticeCode) {
+      console.log("Face verification completed:", result.kycStorageNoticeCode);
+    }
   } catch (error) {
     console.error("Error saving face verification:", error);
     logAdminSystemEvent({
       severity: 'error',
       category: 'kyc',
-      message: error instanceof Error ? error.message : '얼굴 인증 단계 저장 실패',
+      message: error instanceof Error ? error.message : "Face verification step save failed",
       ownerId: uid,
       snapshot: { function: 'saveFaceVerification' },
     });
@@ -249,7 +255,7 @@ export async function completeKYCVerification(uid: string): Promise<void> {
     logAdminSystemEvent({
       severity: 'warning',
       category: 'kyc',
-      message: error instanceof Error ? error.message : 'KYC 완료 후 역할 갱신 실패',
+      message: error instanceof Error ? error.message : "Failed to refresh role after KYC",
       ownerId: uid,
       snapshot: { function: 'completeKYCVerification' },
     });

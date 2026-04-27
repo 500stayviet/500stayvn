@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from "react";
 import type { SupportedLanguage } from "@/lib/api/translation";
-import { formatCurrency } from "@/lib/utils/formatCurrency";
+import { formatCompactVnd } from "@/lib/utils/formatCurrency";
 import { getUIText } from "@/utils/i18n";
 import {
   RENT_SLIDER_LAST_INDEX,
@@ -92,20 +92,6 @@ export function SearchRentRangeSlider({
     }
   };
 
-  const weekLabel =
-    currentLanguage === "ko"
-      ? "주"
-      : currentLanguage === "vi"
-        ? "tuần"
-        : "week";
-
-  const dragHint =
-    currentLanguage === "ko"
-      ? "드래그하여 가격 범위 조정"
-      : currentLanguage === "vi"
-        ? "Kéo để điều chỉnh khoảng giá"
-        : "Drag to adjust price range";
-
   const minPct = rentSliderIndexToPct(safeMinIdx) * 100;
   const maxPct = rentSliderIndexToPct(safeMaxIdx) * 100;
   const widthPct = maxPct - minPct;
@@ -113,15 +99,17 @@ export function SearchRentRangeSlider({
   return (
     <div>
       <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">
-        {getUIText("rentWeekly", currentLanguage)}
+        {getUIText("searchFilterPriceRangeLabel", currentLanguage)}
       </label>
       <div className="mb-3 p-3 bg-white rounded-lg border border-gray-200">
         <div className="text-center">
           <div className="text-lg font-bold text-gray-900 tracking-tight">
-            {formatCurrency(minPrice)} — {formatCurrency(maxPrice)}
+            {formatCompactVnd(minPrice, currentLanguage)} —{" "}
+            {formatCompactVnd(maxPrice, currentLanguage)}
           </div>
           <div className="text-xs text-gray-400 mt-1 font-medium">
-            VND / {weekLabel}
+            {getUIText("curVnd", currentLanguage)} ·{" "}
+            {getUIText("searchRentPerWeekFragment", currentLanguage)}
           </div>
         </div>
       </div>
@@ -145,7 +133,7 @@ export function SearchRentRangeSlider({
               >
                 <div className="w-px h-3 bg-gray-400" />
                 <div className="absolute top-4 left-1/2 -translate-x-1/2 text-[10px] text-gray-500 whitespace-nowrap">
-                  {formatCurrency(v)}
+                  {formatCompactVnd(v, currentLanguage)}
                 </div>
               </div>
             );
@@ -208,7 +196,7 @@ export function SearchRentRangeSlider({
               borderColor: primaryColor,
             }}
           >
-            {formatCurrency(minPrice)}
+            {formatCompactVnd(minPrice, currentLanguage)}
           </div>
         </div>
 
@@ -259,7 +247,7 @@ export function SearchRentRangeSlider({
               borderColor: primaryColor,
             }}
           >
-            {formatCurrency(maxPrice)}
+            {formatCompactVnd(maxPrice, currentLanguage)}
           </div>
         </div>
 
@@ -287,7 +275,9 @@ export function SearchRentRangeSlider({
         />
       </div>
 
-      <div className="mt-2 text-xs text-gray-500 text-center">{dragHint}</div>
+      <div className="mt-2 text-xs text-gray-500 text-center">
+        {getUIText("searchPriceRangeDragHint", currentLanguage)}
+      </div>
     </div>
   );
 }

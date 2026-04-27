@@ -1,3 +1,5 @@
+import type { SupportedLanguage } from '@/lib/api/translation';
+
 /**
  * 베트남 행정 구역 기준 데이터 (0순위)
  * 
@@ -662,10 +664,32 @@ export function searchRegions(query: string): VietnamRegion[] {
     .map(item => item.region);
 }
 
+/** 행정구역 이름을 UI 언어에 맞게 표시 */
+export function getVietnamRegionDisplayName(
+  region: VietnamRegion,
+  lang: SupportedLanguage,
+): string {
+  switch (lang) {
+    case 'ko':
+      return region.nameKo ?? region.name ?? '';
+    case 'vi':
+      return region.nameVi ?? region.name ?? '';
+    case 'ja':
+      return region.nameJa ?? region.name ?? '';
+    case 'zh':
+      return region.nameZh ?? region.name ?? '';
+    default:
+      return region.name ?? '';
+  }
+}
+
 // ============================================================================
 // 행정 구역을 Suggestion 형식으로 변환
 // ============================================================================
-export function regionToSuggestion(region: VietnamRegion, language: string = 'en'): {
+export function regionToSuggestion(
+  region: VietnamRegion,
+  language: SupportedLanguage = 'en',
+): {
   PlaceId: string;
   Text: string;
   Place: {
@@ -678,23 +702,24 @@ export function regionToSuggestion(region: VietnamRegion, language: string = 'en
   regionType: RegionType;
   zoom: number;
 } {
-  // 5개국어에 따른 이름 선택
-  const langMap: Record<string, string> = {
-    ko: region.nameKo, vi: region.nameVi, en: region.name, ja: region.nameJa, zh: region.nameZh,
-  };
-  const displayName = langMap[language] ?? region.name;
+  const displayName = getVietnamRegionDisplayName(region, language);
 
   // 상위 도시 정보 추가 (구/군인 경우)
   let fullLabel = displayName;
   if (region.parentCity) {
     const parentCity = VIETNAM_CITIES.find(c => c.id === region.parentCity);
     if (parentCity) {
-      const pMap: Record<string, string> = { ko: parentCity.nameKo, vi: parentCity.nameVi, en: parentCity.name, ja: parentCity.nameJa, zh: parentCity.nameZh };
-      fullLabel = `${displayName}, ${pMap[language] ?? parentCity.name}`;
+      fullLabel = `${displayName}, ${getVietnamRegionDisplayName(parentCity, language)}`;
     }
   } else if (region.type === 'city') {
-    const suffix: Record<string, string> = { ko: '베트남', vi: 'Việt Nam', en: 'Vietnam', ja: 'ベトナム', zh: '越南' };
-    fullLabel = `${displayName}, ${suffix[language] ?? 'Vietnam'}`;
+    const suffix: Record<SupportedLanguage, string> = {
+      ko: '베트남',
+      vi: 'Việt Nam',
+      en: 'Vietnam',
+      ja: 'ベトナム',
+      zh: '越南',
+    };
+    fullLabel = `${displayName}, ${suffix[language]}`;
   }
   
   return {

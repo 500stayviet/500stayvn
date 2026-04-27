@@ -25,20 +25,16 @@ export async function POST(request: NextRequest) {
   try {
     const u = await prisma.user.findUnique({ where: { email } });
     if (!u || u.deleted) {
-      return appApiError('auth/user-not-found', 401, 'User not found');
+      return appApiError('auth/user-not-found', 401);
     }
     if (!u.passwordHash) {
-      return appApiError('auth/wrong-password', 401, 'Use social login');
+      return appApiError('auth/social_login_required', 401);
     }
     if (u.blocked) {
-      return appApiError(
-        'auth/user-blocked',
-        403,
-        'This account is blocked by admin',
-      );
+      return appApiError('auth/user-blocked', 403);
     }
     if (u.passwordHash !== appSimpleHash(password)) {
-      return appApiError('auth/wrong-password', 401, 'Wrong password');
+      return appApiError('auth/wrong-password', 401);
     }
 
     return appApiOk({ user: prismaUserToUserData(u) });

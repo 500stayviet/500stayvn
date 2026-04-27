@@ -205,7 +205,16 @@ Goal:
 ### Phase 2 마감 메모 (2026-04-27)
 
 - **2-1 CI 런타임:** `docs/qa/ci-runtime-policy.md`에 Node 20 정책 + **GitHub Actions 핀 표**(`checkout`/`setup-node`/`upload-artifact` v4) 추가.
-- **2-3 모니터링·알람:** **`docs/qa/sentry-ops.md`** 신설 — `API_SLOW_MS`/`api_slow`/`api_http_5xx`/알림 권장·온콜 표 템플릿. `docs/runbook.md`에서 상호 링크.
+- **2-3 모니터링·알람:** **`docs/qa/sentry-ops.md`** — 알림 규칙·이메일·Production 필터·가시성 **운영 클로저 (2026-04-27)**. `docs/runbook.md`·`pre-launch-closure.md` §2와 링크.
+
+### Phase 3 분할 — 3a(웹·Phase 4 전) vs 3b(스토어·실빌드 보류)
+
+| 구분 | 범위 | 상태 |
+|------|------|------|
+| **3a** | 법무·정책 실값(`/privacy`·`store-listing-draft.md` 등), **`pre-launch-closure.md`** §1·§3·§4, 상용 연동 **범위·일정** 확정, 웹훅·멱등 **구현 순서**([`SECURITY_APP_API_CHECKLIST.md`](../../frontend/SECURITY_APP_API_CHECKLIST.md)·일정 연동), 5개국어·문구(`.cursorrules` 정합·`scan:ui-ko` 등), **PR 게이트** 유지 | **진행 중** — 항목별로 증거 칸 채우기·스캔 보강 남음 |
+| **3b** | Android TWA(`twaHostname`, `assetlinks`, Play)·iOS(맥·Team ID·Capacitor) **실빌드·스토어 제출** | **보류** — 3a·비즈 일정·Phase 4에 맞춰 재개 |
+
+**한 줄 순서 (Phase 4 전):** ① 정책·Sentry·상용 연동 계획 → ② 다국어·문구 → ③ 일상 게이트·본 표 갱신 → (나중) **3b** 모바일·**Phase 4** 실 API·웹훅 ON.
 
 ---
 
@@ -218,11 +227,14 @@ Goal:
 5. **P0.2** mock E2E smoke 편입 + flaky 기준 정리
 6. **1-5 게이트** `npm run build`, `npx tsc --noEmit`, 핵심 E2E, CI·Amplify green
 7. **2-1** `docs/qa/pipeline-principles.md`(완료) · `docs/qa/ci-runtime-policy.md` + workflow 버전 정책
-8. **2-3** Sentry·알람·담당자 운영 점검
-9. **Phase 3** 앱 패키징·스토어 제출물 — **`docs/qa/phase3-mobile-app-readiness.md`** · **`mobile/android-twa/`** · **`docs/qa/store-listing-draft.md`**
-10. **Phase 4** 상용 API·웹훅·실거래 검증
+8. **2-3** Sentry·알람·담당자 — **운영 클로저 (2026-04-27)**
+9. **Phase 3a** 웹·상용 진입 전 준비 — `pre-launch-closure.md`·연동 일정·i18n·문구·웹훅 착수 순서 (**3b 스토어 실빌드는 보류**)
+10. **Phase 3b** (보류) **`phase3-mobile-app-readiness.md`** · **`mobile/android-twa/`** · Play·iOS — 일정에 맞춰 재개
+11. **Phase 4** 상용 API·웹훅·실거래 검증
 
 ## Fixed Completion Gate
+
+**진입 전 전역 클로저:** [pre-launch-closure.md](./pre-launch-closure.md) — 법무·Sentry·상용 연동 일정·웹훅/멱등·보안·다국어·결제 신뢰 구간·게이트를 한 장에서 닫는다.
 
 For each merged backlog slice:
 

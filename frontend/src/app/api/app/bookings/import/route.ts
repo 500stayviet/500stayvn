@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
 
   const bookings = Array.isArray(body.bookings) ? body.bookings : [];
   if (bookings.length === 0) {
-    return appApiError('empty', 400, 'bookings array is empty.');
+    return appApiError('empty', 400);
   }
   if (bookings.length > MAX_IMPORT) return appApiError('too_many', 400);
 

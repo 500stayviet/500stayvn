@@ -24,7 +24,6 @@ type Props = {
   hasFullFurniture: boolean;
   hasFullElectronics: boolean;
   hasFullKitchen: boolean;
-  t: (ko: string, vi: string, en: string, ja?: string, zh?: string) => string;
   slider: PropertyDetailImageSliderVm;
 };
 
@@ -36,7 +35,6 @@ export function PropertyDetailImageHero({
   hasFullFurniture,
   hasFullElectronics,
   hasFullKitchen,
-  t,
   slider: s,
 }: Props) {
   const {
@@ -57,6 +55,12 @@ export function PropertyDetailImageHero({
     onTrackTransitionEnd,
     setFullScreenImageIndex,
   } = s;
+
+  const curLabels = {
+    vnd: getUIText("curVnd", currentLanguage),
+    usd: getUIText("curUsd", currentLanguage),
+    krw: getUIText("curKrw", currentLanguage),
+  };
 
   return (
     <section className="overflow-hidden mb-0 w-full" ref={s.sliderRef}>
@@ -153,7 +157,7 @@ export function PropertyDetailImageHero({
                   className={`rounded-full transition-all ${
                     idx === displayDotIndex ? "w-2 h-2 bg-white" : "w-1.5 h-1.5 bg-white/50"
                   }`}
-                  aria-label={`사진 ${idx + 1}`}
+                  aria-label={`${getUIText("a11yImgDot", currentLanguage)} ${idx + 1}`}
                 />
               ))}
             </div>
@@ -169,7 +173,7 @@ export function PropertyDetailImageHero({
                 goToPrevSlide();
               }}
               className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center bg-black/50 hover:bg-black/70 text-white rounded-full transition-all pointer-events-auto"
-              aria-label="이전 사진"
+              aria-label={getUIText("a11yImgPrev", currentLanguage)}
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
@@ -180,7 +184,7 @@ export function PropertyDetailImageHero({
                 goToNextSlide();
               }}
               className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center bg-black/50 hover:bg-black/70 text-white rounded-full transition-all pointer-events-auto"
-              aria-label="다음 사진"
+              aria-label={getUIText("a11yImgNext", currentLanguage)}
             >
               <ChevronRight className="w-5 h-5" />
             </button>
@@ -188,18 +192,8 @@ export function PropertyDetailImageHero({
         )}
 
         <div className="absolute top-3 right-3 bg-black/60 text-white px-2 py-1 rounded-lg z-40 shadow">
-          <p className="text-sm font-bold">{formatFullPrice(property.price, property.priceUnit)}</p>
-          <p className="text-xs text-white/80">
-            {currentLanguage === "ko"
-              ? "/주"
-              : currentLanguage === "vi"
-                ? "/tuần"
-                : currentLanguage === "ja"
-                  ? "/週"
-                  : currentLanguage === "zh"
-                    ? "/周"
-                    : "/week"}
-          </p>
+          <p className="text-sm font-bold">{formatFullPrice(property.price, property.priceUnit, curLabels)}</p>
+          <p className="text-xs text-white/80">{getUIText("priceHeroPerWeek", currentLanguage)}</p>
         </div>
 
         <div className="absolute bottom-3 right-3 bg-black/60 text-white px-2 py-1 rounded-lg z-40 flex items-center gap-2 shadow">
@@ -222,7 +216,7 @@ export function PropertyDetailImageHero({
             type="button"
             onClick={() => setFullScreenImageIndex(displayDotIndex)}
             className="absolute bottom-3 left-3 w-10 h-10 flex items-center justify-center bg-black/50 text-white rounded-full z-40 hover:bg-black/70 transition-colors"
-            aria-label="전체화면"
+            aria-label={getUIText("a11yImgFs", currentLanguage)}
           >
             <Maximize2 className="w-4 h-4" />
           </button>
@@ -239,7 +233,7 @@ export function PropertyDetailImageHero({
                 className="text-xs font-semibold px-3 py-1 rounded-full bg-orange-50"
                 style={{ color: colors.primary }}
               >
-                {t("풀 가구", "Full nội thất", "Full Furniture", "フル家具", "全家具")}
+                {getUIText("fullFurniture", currentLanguage)}
               </span>
             )}
             {hasFullElectronics && (
@@ -247,7 +241,7 @@ export function PropertyDetailImageHero({
                 className="text-xs font-semibold px-3 py-1 rounded-full bg-orange-50"
                 style={{ color: colors.primary }}
               >
-                {t("풀 가전", "Full điện tử", "Full Electronics", "フル家電", "全家电")}
+                {getUIText("fullElectronics", currentLanguage)}
               </span>
             )}
             {hasFullKitchen && (
@@ -255,7 +249,7 @@ export function PropertyDetailImageHero({
                 className="text-xs font-semibold px-3 py-1 rounded-full bg-orange-50"
                 style={{ color: colors.primary }}
               >
-                {t("풀옵션 주방", "Bếp đầy đủ", "Full Kitchen", "フルキッチン", "全配厨房")}
+                {getUIText("fullKitchen", currentLanguage)}
               </span>
             )}
           </div>

@@ -13,15 +13,20 @@ import {
   subscribeChatUnreadUpdates,
   refreshChatUnreadSnapshot,
 } from '@/lib/api/chat';
+import { getLanguageEndonym } from '@/utils/i18n';
 import type { TopBarProps } from './types';
 
-const LANGUAGES: { code: SupportedLanguage; name: string; flag: string }[] = [
-  { code: 'en', name: 'English', flag: '🇺🇸' },
-  { code: 'vi', name: 'Tiếng Việt', flag: '🇻🇳' },
-  { code: 'ko', name: '한국어', flag: '🇰🇷' },
-  { code: 'ja', name: '日本語', flag: '🇯🇵' },
-  { code: 'zh', name: '中文', flag: '🇨🇳' },
-];
+const LANG_FLAGS: Record<SupportedLanguage, string> = {
+  en: '🇺🇸',
+  vi: '🇻🇳',
+  ko: '🇰🇷',
+  ja: '🇯🇵',
+  zh: '🇨🇳',
+};
+
+const LANGUAGE_MENU: { code: SupportedLanguage; flag: string }[] = (
+  ['en', 'vi', 'ko', 'ja', 'zh'] as SupportedLanguage[]
+).map((code) => ({ code, flag: LANG_FLAGS[code] }));
 
 export function useTopBarState({
   currentLanguage: propCurrentLanguage,
@@ -203,7 +208,8 @@ export function useTopBarState({
     router.push('/');
   };
 
-  const currentLang = LANGUAGES.find((lang) => lang.code === currentLanguage) ?? LANGUAGES[0];
+  const currentLang =
+    LANGUAGE_MENU.find((lang) => lang.code === currentLanguage) ?? LANGUAGE_MENU[0];
 
   const handleLanguageSelect = async (lang: SupportedLanguage) => {
     await setCurrentLanguage(lang);
@@ -231,6 +237,16 @@ export function useTopBarState({
   const handleProfileClick = () => {
     setIsUserMenuOpen(false);
     router.push('/profile');
+  };
+
+  const handleEditProfileClick = () => {
+    setIsUserMenuOpen(false);
+    router.push('/profile/edit');
+  };
+
+  const handleMyPropertiesClick = () => {
+    setIsUserMenuOpen(false);
+    router.push('/profile/my-properties');
   };
 
   const toggleLanguageMenu = () => setIsLanguageMenuOpen((o) => !o);
@@ -298,13 +314,18 @@ export function useTopBarState({
     readNotificationIds,
     notificationsEnabled,
     currentLanguage,
-    languages: LANGUAGES,
+    languages: LANGUAGE_MENU.map((row) => ({
+      ...row,
+      name: getLanguageEndonym(row.code),
+    })),
     currentLang,
     handleLanguageSelect,
     handleHomeClick,
     handleLoginClick,
     handleLogout,
     handleProfileClick,
+    handleEditProfileClick,
+    handleMyPropertiesClick,
     markAllAsRead,
     toggleNotifications,
     onGuestChatBannerClick,

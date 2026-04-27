@@ -12,6 +12,7 @@ import {
   emitUserFacingSyncError,
 } from "@/lib/runtime/networkResilience";
 import type { HostBookingsPageData } from "./useHostBookingsPageData";
+import { getUIText } from "@/utils/i18n";
 
 export function useHostBookingsPageActions(data: HostBookingsPageData) {
   const {
@@ -75,23 +76,13 @@ export function useHostBookingsPageActions(data: HostBookingsPageData) {
           tone: "success",
           area: "bookings",
           action: "host_confirm",
-          message:
-            currentLanguage === "ko"
-              ? "예약이 확정되었습니다."
-              : currentLanguage === "vi"
-                ? "Đã xác nhận đặt phòng."
-                : "Booking confirmed.",
+          message: getUIText("hostBookingConfirmToastOk", currentLanguage),
         });
       } catch {
         emitUserFacingSyncError({
           area: "bookings",
           action: "host_confirm",
-          message:
-            currentLanguage === "ko"
-              ? "예약 확정에 실패했습니다."
-              : currentLanguage === "vi"
-                ? "Xác nhận thất bại."
-                : "Could not confirm the booking.",
+          message: getUIText("hostBookingConfirmToastErr", currentLanguage),
         });
       }
     },
@@ -126,12 +117,7 @@ export function useHostBookingsPageActions(data: HostBookingsPageData) {
         emitUserFacingSyncError({
           area: "bookings",
           action: "host_chat_open",
-          message:
-            currentLanguage === "ko"
-              ? "채팅방을 열 수 없습니다."
-              : currentLanguage === "vi"
-                ? "Không thể mở phòng chat."
-                : "Could not open chat.",
+          message: getUIText("hostBookingChatOpenErr", currentLanguage),
         });
       }
     },
@@ -144,19 +130,14 @@ export function useHostBookingsPageActions(data: HostBookingsPageData) {
         emitUserFacingSyncError({
           area: "bookings",
           action: "host_reject_policy",
-          message:
-            currentLanguage === "ko"
-              ? "취소 정책에 동의해 주세요."
-              : currentLanguage === "vi"
-                ? "Vui lòng đồng ý với chính sách hủy."
-                : "Please agree to the cancellation policy.",
+          message: getUIText("cancelPolicyAgreeRequired", currentLanguage),
         });
         return;
       }
       try {
         const { relistResult } = await cancelBooking(
           bookingId,
-          "임대인이 거절/취소함",
+          getUIText("hostBookingCancelReasonByOwner", currentLanguage),
         );
         setBookings((prev) =>
           prev.map((b) =>
@@ -168,12 +149,7 @@ export function useHostBookingsPageActions(data: HostBookingsPageData) {
             tone: "info",
             area: "bookings",
             action: "host_reject_relist",
-            message:
-              currentLanguage === "ko"
-                ? "매물 상태가 업데이트되었습니다."
-                : currentLanguage === "vi"
-                  ? "Đã cập nhật trạng thái tin đăng."
-                  : "Listing status was updated.",
+            message: getUIText("hostBookingRejectToastListingOk", currentLanguage),
           });
           router.push(`/profile/my-properties`);
         }
@@ -183,12 +159,7 @@ export function useHostBookingsPageActions(data: HostBookingsPageData) {
         emitUserFacingSyncError({
           area: "bookings",
           action: "host_reject",
-          message:
-            currentLanguage === "ko"
-              ? "거절 처리에 실패했습니다."
-              : currentLanguage === "vi"
-                ? "Từ chối thất bại."
-                : "Could not reject the booking.",
+          message: getUIText("hostBookingRejectToastErr", currentLanguage),
         });
       }
     },
@@ -205,11 +176,7 @@ export function useHostBookingsPageActions(data: HostBookingsPageData) {
   const handleDelete = useCallback(
     async (bookingId: string) => {
       if (!globalThis.confirm(
-        currentLanguage === "ko"
-          ? "이 예약을 삭제할까요?"
-          : currentLanguage === "vi"
-            ? "Xóa đặt phòng này?"
-            : "Delete this booking?",
+        getUIText("hostBookingDeleteConfirm", currentLanguage),
       )) {
         return;
       }
@@ -220,23 +187,13 @@ export function useHostBookingsPageActions(data: HostBookingsPageData) {
           tone: "success",
           area: "bookings",
           action: "host_delete_booking",
-          message:
-            currentLanguage === "ko"
-              ? "예약이 삭제되었습니다."
-              : currentLanguage === "vi"
-                ? "Đã xóa đặt phòng."
-                : "Booking removed.",
+          message: getUIText("hostBookingDeleteOk", currentLanguage),
         });
       } catch {
         emitUserFacingSyncError({
           area: "bookings",
           action: "host_delete_booking",
-          message:
-            currentLanguage === "ko"
-              ? "삭제에 실패했습니다."
-              : currentLanguage === "vi"
-                ? "Xóa thất bại."
-                : "Delete failed.",
+          message: getUIText("hostBookingDeleteErr", currentLanguage),
         });
       }
     },

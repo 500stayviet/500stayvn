@@ -103,7 +103,7 @@ export default function EditPropertyDetailsSection({
           type="text"
           value={propertyName}
           onChange={(e) => setPropertyName(e.target.value)}
-          placeholder={currentLanguage === "ko" ? "예: 내 첫 번째 스튜디오" : currentLanguage === "vi" ? "VD: Studio đầu tiên của tôi" : "e.g., My first studio"}
+          placeholder={getUIText("titlePlaceholder", lang)}
           className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
           required
         />
@@ -117,13 +117,7 @@ export default function EditPropertyDetailsSection({
         <textarea
           value={propertyDescription}
           onChange={(e) => setPropertyDescription(e.target.value)}
-          placeholder={
-            currentLanguage === "ko"
-              ? "매물에 대한 상세 설명을 입력해주세요."
-              : currentLanguage === "vi"
-                ? "Nhập mô tả chi tiết về bất động sản."
-                : "Enter detailed description of the property."
-          }
+          placeholder={getUIText("propertyDescriptionPlaceholder", lang)}
           rows={4}
           className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 resize-none"
         />
@@ -156,7 +150,7 @@ export default function EditPropertyDetailsSection({
                 <option value="airbnb">Airbnb</option>
                 <option value="agoda">Agoda</option>
                 <option value="booking_com">Booking.com</option>
-                <option value="other">{currentLanguage === "ko" ? "기타" : "Other"}</option>
+                <option value="other">{getUIText("calendarOptionOther", lang)}</option>
               </select>
             </div>
             <div>
@@ -170,7 +164,9 @@ export default function EditPropertyDetailsSection({
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">iCal URL (.ics)</label>
+              <label className="block text-xs text-gray-500 mb-1">
+                {getUIText("detIcalUrlField", lang)} (.ics)
+              </label>
               <input
                 type="url"
                 value={icalUrl}
