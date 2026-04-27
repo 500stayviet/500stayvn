@@ -12,7 +12,7 @@ export const uploadToS3 = async (
 
   if (!accessKeyId || !secretAccessKey || !bucketName) {
     throw new Error(
-      "S3 설정값이 누락되었습니다. .env.local 파일을 확인하세요.",
+      "S3 configuration is missing. Check NEXT_PUBLIC_MY_S3_* in .env.local.",
     );
   }
 
@@ -43,7 +43,7 @@ export const uploadToS3 = async (
     await s3Client.send(command);
     return `https://${bucketName.trim()}.s3.${region}.amazonaws.com/${fileName}`;
   } catch (error) {
-    console.error("S3 업로드 에러:", error);
+    console.error("S3 upload error:", error);
     throw error;
   }
 };

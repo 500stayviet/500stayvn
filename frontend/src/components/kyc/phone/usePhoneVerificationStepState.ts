@@ -163,7 +163,7 @@ export function usePhoneVerificationStepState({
       setError(errorMessage);
       return false;
     } finally {
-      phoneAuthDebugLog('[phone-auth] 인증 프로세스 종료', { phase: 'handleSendOTP' });
+      phoneAuthDebugLog("[phone-auth] auth flow end", { phase: "handleSendOTP" });
       setLoading(false);
     }
   };
@@ -213,7 +213,7 @@ export function usePhoneVerificationStepState({
 
       setOtpError(errorMessage);
     } finally {
-      phoneAuthDebugLog('[phone-auth] 인증 프로세스 종료', { phase: 'handleVerifyOTP' });
+      phoneAuthDebugLog("[phone-auth] auth flow end", { phase: "handleVerifyOTP" });
       setIsVerifyingOtp(false);
     }
   };

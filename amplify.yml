@@ -45,6 +45,7 @@ applications:
               AWS_API_KEY=$NEXT_PUBLIC_AWS_API_KEY
               AWS_MAP_NAME=$NEXT_PUBLIC_AWS_MAP_NAME
               AWS_PLACE_INDEX_NAME=$NEXT_PUBLIC_AWS_PLACE_INDEX_NAME
+              NEXT_PUBLIC_STAYVIET_PRODUCTION_HOST=$NEXT_PUBLIC_STAYVIET_PRODUCTION_HOST
               EOF
             # preBuild 가 --ignore-scripts 이므로, 타입체크·테스트 전에 Prisma Client 생성 필요
             - npx prisma generate --schema=./prisma/schema.prisma
@@ -81,6 +82,7 @@ applications:
             AWS_API_KEY: $AWS_API_KEY
             AWS_MAP_NAME: $AWS_MAP_NAME
             AWS_PLACE_INDEX_NAME: $AWS_PLACE_INDEX_NAME
+            NEXT_PUBLIC_STAYVIET_PRODUCTION_HOST: main.dn98z8m9jfvd5.amplifyapp.com
       artifacts:
         baseDirectory: .next
         files:

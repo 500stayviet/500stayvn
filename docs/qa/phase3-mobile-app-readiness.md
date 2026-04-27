@@ -3,9 +3,22 @@
 웹 앱은 **`frontend/`** Next.js + 프로덕션 **PWA**(`next-pwa`, `public/manifest.json`) 기준이다.  
 법인·스토어 계정·실제 도메인이 정해지면 아래 플레이스홀더를 치환한다.
 
+## Android Studio 없이 TWA 로컬 빌드 (Windows)
+
+1. **JDK 17** 설치 후 `JAVA_HOME` 설정.
+2. **Android SDK**만 설치 (Android Studio 전체 대신 [command-line tools](https://developer.android.com/studio#command-line-tools-only) 로 충분). 환경 변수 예: `ANDROID_HOME=%LOCALAPPDATA%\Android\Sdk`.
+3. SDK 라이선스: `%ANDROID_HOME%\cmdline-tools\latest\bin\sdkmanager --licenses` 후 모두 수락.
+4. 저장소 루트에서:
+   - `cd mobile\android-twa`
+   - (최초 1회) `local.properties` 에 `sdk.dir=C:\\Users\\<you>\\AppData\\Local\\Android\\Sdk` 형태로 경로 기입 (Windows는 `\\` 이스케이프).
+5. **디버그 APK:** `.\gradlew.bat :app:assembleDebug` — 산출물은 `app\build\outputs\apk\debug\`.
+6. **릴리스 AAB (서명 필요):** `keystore` 로 `app/build.gradle.kts` 서명 설정 후 `.\gradlew.bat :app:bundleRelease` — 또는 CI/내부 러너에서 서명.
+
+`gradle.properties` 의 `twaHostname` 이 웹 호스트와 다르면 TWA 기본 URL·인텐트 필터가 어긋나므로, **항상 `production-host.ts` 와 동일 호스트**를 유지한다.
+
 ## 맥 없을 때 권장 실행 순서 (Windows 우선)
 
-1. **Android TWA** — `mobile/android-twa/gradle.properties` 의 **`twaHostname`** 을 프로덕션 도메인으로 설정 → Android Studio에서 **Sync** → 에뮬레이터 또는 실기기 **Run**. 상세: `mobile/android-twa/README.md`.
+1. **Android TWA** — `mobile/android-twa/gradle.properties` 의 **`twaHostname`** 이 프로덕션과 일치하는지 확인 → (선택) Android Studio **Sync** 또는 위 **Gradle만**으로 빌드. 상세: `mobile/android-twa/README.md`.
 2. **Digital Asset Links** — Play Console **앱 서명** SHA-256 → `frontend/public/.well-known/assetlinks.json` 반영 → 웹 배포 후 `/.well-known/assetlinks.json` 공개 확인·[검증 도구](https://developers.google.com/digital-asset-links/tools/generator).
 3. **스토어·정책 URL** — `docs/qa/store-listing-draft.md` 의 URL 표를 실제 호스트로 치환, 법무·운영과 문구 확정 (`/privacy`, `/delete-account` 와 스토어 기재 일치).
 4. **iOS** — 맥·Apple Developer·Team ID 준비 후 `docs/qa/phase3-capacitor-ios.md` (`CAPACITOR_SERVER_URL`, Xcode).
@@ -46,7 +59,7 @@
 
 ### 딥링크 · 도메인
 
-- **프로덕션 호스트:** `https://YOUR_PROD_HOST` (Amplify 배포 URL 또는 커스텀 도메인).
+- **프로덕션 호스트 (Phase 3):** `https://main.dn98z8m9jfvd5.amplifyapp.com` — 코드·TWA·문서 단일 기준은 `frontend/src/constants/production-host.ts` 및 `mobile/android-twa/gradle.properties` 의 `twaHostname`.
 - **스코프:** `manifest.json`의 `"scope": "/"`와 일치시킨다.
 - **권장 경로 패턴:** 예약 `/booking`, `/booking-success`, 채팅 `/chat/*`, 프로필 `/profile/*` — 외부에서 열 때 동일 URL로 열리게 하면 TWA/브라우저 모두 동작한다.
 - **Android App Links:** 배포 후 `/.well-known/assetlinks.json`에 **패키지명 + SHA-256 인증서 지문**을 넣는다 (Play App Signing 지문은 Play Console에서 확인).
@@ -111,8 +124,8 @@
 
 | 항목 | URL / 경로 |
 |------|------------|
-| 개인정보처리방침 | `https://YOUR_PROD_HOST/privacy` (또는 외부 정책 페이지) |
-| 이용약관 | `https://YOUR_PROD_HOST/terms` (해당 시) |
+| 개인정보처리방침 | `https://main.dn98z8m9jfvd5.amplifyapp.com/privacy` |
+| 이용약관 | `https://main.dn98z8m9jfvd5.amplifyapp.com/terms` |
 | 계정 삭제 | 웹: `/delete-account` 라우트 존재 — 스토어에 **동일 절차 안내** 문구·링크 명시 |
 | 고객 지원 이메일 | `support@...` (실제 수신함) |
 | 신고/안전 | 연락 채널 또는 인앱 경로 + 정책 링크 |

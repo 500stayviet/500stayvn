@@ -7,6 +7,7 @@ import {
   emitUserFacingSyncError,
   fetchWithRetry,
   isClientAuthErrorStatus,
+  syncUiMessage,
   USER_FACING_CLIENT_AUTH_ERROR_MESSAGE,
 } from "@/lib/runtime/networkResilience";
 import { withAppActor } from "@/lib/api/withAppActor";
@@ -85,7 +86,7 @@ export async function refreshBookingsFromServer(): Promise<boolean> {
     emitUserFacingSyncError({
       area: "bookings",
       action: "refresh",
-      message: "오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+      message: syncUiMessage("apiSyncErrorTransient"),
     });
     return false;
   }
@@ -203,7 +204,7 @@ export async function getAllBookings(): Promise<BookingData[]> {
     }
     return bookings;
   } catch (error) {
-    console.error("예약 데이터 로드 실패:", error);
+    console.error("getAllBookings local read failed:", error);
     return [];
   }
 }

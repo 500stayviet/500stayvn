@@ -1,3 +1,6 @@
+import type { SupportedLanguage } from "@/lib/api/translation";
+import { readStoredUiLanguage } from "@/lib/uiLanguageStorage";
+import { getUIText } from "@/utils/i18n";
 import { uploadToS3 } from "@/lib/s3-client";
 
 const formatRoomNumber = (room: string) => {
@@ -6,12 +9,25 @@ const formatRoomNumber = (room: string) => {
   return num.toString().padStart(4, "0");
 };
 
-export const buildUnitNumber = (buildingNumber: string, roomNumber: string) => {
+function formatTower(lang: SupportedLanguage, name: string) {
+  return getUIText("addressPatternTower", lang).replace(/\{\{name\}\}/g, name);
+}
+
+function formatUnit(lang: SupportedLanguage, name: string) {
+  return getUIText("addressPatternUnit", lang).replace(/\{\{name\}\}/g, name);
+}
+
+/** `buildingNumber`·`roomNumber`를 UI 언어에 맞춘 동/호 문자열로 합칩니다. */
+export const buildUnitNumber = (
+  buildingNumber: string,
+  roomNumber: string,
+  lang: SupportedLanguage = readStoredUiLanguage(),
+) => {
   if (buildingNumber && roomNumber) {
-    return `${buildingNumber}동 ${formatRoomNumber(roomNumber)}호`;
+    return `${formatTower(lang, buildingNumber)} ${formatUnit(lang, formatRoomNumber(roomNumber))}`;
   }
-  if (buildingNumber) return `${buildingNumber}동`;
-  if (roomNumber) return `${formatRoomNumber(roomNumber)}호`;
+  if (buildingNumber) return formatTower(lang, buildingNumber);
+  if (roomNumber) return formatUnit(lang, formatRoomNumber(roomNumber));
   return undefined;
 };
 

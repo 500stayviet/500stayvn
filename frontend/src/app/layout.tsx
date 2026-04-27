@@ -8,6 +8,7 @@ import {
   Noto_Sans_JP,
 } from "next/font/google";
 import "./globals.css";
+import { STAYVIET_PRODUCTION_ORIGIN } from "@/constants/production-host";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { TranslationProvider } from "@/contexts/TranslationProvider";
 import NextAuthProvider from "@/components/providers/NextAuthProvider";
@@ -55,6 +56,7 @@ const notoSansJP = Noto_Sans_JP({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(STAYVIET_PRODUCTION_ORIGIN),
   title: "500 STAY VN",
   description: "Vietnam stays booking platform — weekly (7-night) stays.",
   manifest: "/manifest.json",
@@ -76,6 +78,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "website",
+    url: STAYVIET_PRODUCTION_ORIGIN,
     siteName: "500 STAY VN",
     title: "500 STAY VN — Vietnam stays",
     description: "Vietnam stays booking platform — weekly (7-night) stays.",

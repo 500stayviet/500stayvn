@@ -1,0 +1,4 @@
+# 프로덕션 호스트 (Phase 3 — Amplify)
+# Digital Asset Links: 아래 호스트에서 이 디렉터리의 assetlinks.json 이 HTTPS로 제공되어야 함.
+# TWA twaHostname · STAYVIET_PRODUCTION_HOST · 스토어 URL 과 동일
+main.dn98z8m9jfvd5.amplifyapp.com

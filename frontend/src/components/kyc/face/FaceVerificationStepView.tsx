@@ -10,19 +10,18 @@ import { getUIText } from '@/utils/i18n';
 function isLikelyCameraPermissionError(message: string): boolean {
   const m = message.toLowerCase();
   return (
-    m.includes('permission') ||
-    m.includes('권한') ||
-    m.includes('quyền') ||
-    m.includes('权限') ||
-    m.includes('許可')
+    m.includes("permission") ||
+    m.includes("notallowederror") ||
+    m.includes("notreadableerror") ||
+    m.includes("denied") ||
+    m.includes("not allowed")
   );
 }
 
 function faceDirectionLabel(directionKey: string, language: SupportedLanguage): string {
   const dir = faceDirections.find((d) => d.key === directionKey);
-  if (!dir?.text) return directionKey;
-  const t = dir.text as Record<SupportedLanguage, string>;
-  return t[language] ?? dir.text.en;
+  if (!dir) return directionKey;
+  return getUIText(dir.textKey, language);
 }
 
 type Vm = ReturnType<typeof useFaceVerificationStepState>;

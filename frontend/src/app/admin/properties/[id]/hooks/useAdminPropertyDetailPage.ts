@@ -6,15 +6,14 @@ import { refreshAdminBadges } from "@/lib/adminBadgeCounts";
 import { acknowledgeNewProperty } from "@/lib/adminAckState";
 import { isPropertyNew } from "@/lib/adminNewUtils";
 import { useAdminDomainRefresh } from "@/lib/adminDomainEventsClient";
+import { ADMIN_PROPERTY_HIDE_AUDIT_REASON } from "@/constants/admin-property-moderation";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useAdminMe } from "@/contexts/AdminMeContext";
 import { addSharedMemo, deleteSharedMemo, getSharedMemos } from "@/lib/api/adminMemos";
 import { setPropertyHidden } from "@/lib/api/adminModeration";
 import { getPropertyForAdmin } from "@/lib/api/properties";
 import type { PropertyData } from "@/types/property";
-
-export const PROPERTY_HIDDEN_REASON =
-  "법규를 위반했으니 관리자에게 문의 하시기 바랍니다";
-export const OWNER_BLOCKED_RESTORE_MESSAGE = "계정이 차단되어 있어 매물 숨김을 해제할 수 없습니다.";
+import { getUIText } from "@/utils/i18n";
 
 type MemoRow = { id: string; text: string; createdAt: string };
 
@@ -27,6 +26,7 @@ export function useAdminPropertyDetailPage() {
   const params = useParams();
   const rawId = typeof params?.id === "string" ? params.id : "";
   const id = rawId ? decodeURIComponent(rawId) : "";
+  const { currentLanguage } = useLanguage();
   const { me: admin } = useAdminMe();
 
   const [property, setProperty] = useState<PropertyData | null | undefined>(undefined);
@@ -106,7 +106,7 @@ export function useAdminPropertyDetailPage() {
     if (!admin?.username || !prop.id) return;
     const ok = setPropertyHidden(prop.id, false, admin.username);
     if (!ok) {
-      window.alert(OWNER_BLOCKED_RESTORE_MESSAGE);
+      window.alert(getUIText("adminOwnerBlockedCannotUnhide", currentLanguage));
       return;
     }
     refreshAdminBadges();
@@ -115,7 +115,7 @@ export function useAdminPropertyDetailPage() {
 
   const hideProperty = (prop: PropertyData) => {
     if (!admin?.username || !prop.id) return;
-    setPropertyHidden(prop.id, true, admin.username, PROPERTY_HIDDEN_REASON);
+    setPropertyHidden(prop.id, true, admin.username, ADMIN_PROPERTY_HIDE_AUDIT_REASON);
     refreshAdminBadges();
     void reload();
   };

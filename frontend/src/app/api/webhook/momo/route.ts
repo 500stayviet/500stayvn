@@ -1,4 +1,9 @@
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
+import {
+  buildMomoIpnSignatureRawData,
+  computeMomoIpnSignatureHmacHex,
+  verifyMomoIpnSignatureHex,
+} from "@/lib/payments/momoIpnSignature";
 
 /**
  * MoMo(또는 동일 엔드포인트를 쓰는 PG) **인바운드 웹훅** — Phase 4 연동 전 골격.
@@ -14,24 +19,72 @@ import { NextResponse } from 'next/server';
  *    설계: `frontend/SECURITY_APP_API_CHECKLIST.md` §멱등성, §결제 웹훅 연동 시.
  * 4. **로그:** 키·서명 전문은 로그에 남기지 말 것(마스킹·해시).
  *
+ * ## MoMo IPN 서명 (골격)
+ *
+ * - 비밀키: `MOMO_PARTNER_SECRET_KEY` (또는 콘솔에서 발급한 partner **secretKey**; 실값은 배포 환경에만).
+ * - 페이로드는 JSON이며 `signature` 필드가 포함된다. raw 문자열은 `momoIpnSignature.ts`의 필드 순서로 구성한다.
+ * - Phase 4에서 샘플 트랜잭션으로 서명 일치를 반드시 확인한다.
+ *
  * ## 다음 단계 (Phase 4)
  *
- * - 환경 변수로 웹훅 시크릿·허용 IP(해당 시) 로드.
  * - 검증 성공 후에만 Prisma 트랜잭션으로 Payment/Booking 상태 갱신.
+ * - MoMo는 처리 후 **HTTP 204**를 기대한다(15초 이내). 적용 구현 후 응답 코드 정합.
  */
-export const runtime = 'nodejs';
+export const runtime = "nodejs";
+
+const WEBHOOK_SECRET_ENV = "MOMO_PARTNER_SECRET_KEY";
 
 export async function POST(request: Request): Promise<Response> {
   const rawBody = await request.text();
-  void rawBody;
 
-  // TODO(Phase 4): signature verify(rawBody, headers) → parse → idempotent apply → PG가 기대하는 2xx
+  const secret = process.env[WEBHOOK_SECRET_ENV]?.trim();
+  if (!secret) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: {
+          code: "webhook_secret_not_configured",
+          message: "MoMo webhook secret is not configured. Set MOMO_PARTNER_SECRET_KEY in the deployment environment.",
+        },
+      },
+      { status: 501 },
+    );
+  }
+
+  let body: Record<string, unknown>;
+  try {
+    body = JSON.parse(rawBody) as Record<string, unknown>;
+  } catch {
+    return NextResponse.json(
+      { ok: false, error: { code: "invalid_json", message: "Request body is not valid JSON." } },
+      { status: 400 },
+    );
+  }
+
+  const providedSig = body.signature;
+  if (typeof providedSig !== "string" || !providedSig.trim()) {
+    return NextResponse.json(
+      { ok: false, error: { code: "missing_signature", message: "MoMo IPN payload must include a signature field." } },
+      { status: 400 },
+    );
+  }
+
+  const rawData = buildMomoIpnSignatureRawData(body);
+  const expectedHex = computeMomoIpnSignatureHmacHex(secret, rawData);
+  if (!verifyMomoIpnSignatureHex(providedSig, expectedHex)) {
+    return NextResponse.json(
+      { ok: false, error: { code: "invalid_signature", message: "MoMo IPN signature verification failed." } },
+      { status: 401 },
+    );
+  }
+
+  // TODO(Phase 4): idempotent apply (orderId/transId anchor) → then respond 204 No Content per MoMo.
   return NextResponse.json(
     {
       ok: false,
       error: {
-        code: 'webhook_not_enabled',
-        message: 'MoMo webhook is not enabled until Phase 4 provider configuration.',
+        code: "webhook_apply_not_enabled",
+        message: "Signature verified, but payment webhook apply is not enabled until Phase 4.",
       },
     },
     { status: 501 },

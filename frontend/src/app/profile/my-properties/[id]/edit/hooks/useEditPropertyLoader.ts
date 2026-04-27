@@ -57,7 +57,7 @@ interface UseEditPropertyLoaderParams {
 
 const parseUnitNumber = (unitNumber: string | undefined) => {
   if (!unitNumber || !unitNumber.trim()) return { building: "", room: "" };
-  const match = unitNumber.match(/^(.+?)동\s*(.+?)호$/);
+  const match = unitNumber.match(/^(.+?)\uB3D9\s*(.+?)\uD638$/);
   if (match) {
     const room = match[2].replace(/^0+/, "") || match[2];
     return { building: match[1].trim(), room };

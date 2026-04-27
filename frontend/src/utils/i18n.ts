@@ -6,7 +6,10 @@
  */
 
 import { SupportedLanguage } from '@/lib/api/translation';
-import { USER_FACING_CLIENT_AUTH_ERROR_MESSAGE } from '@/lib/runtime/networkResilience';
+import {
+  STAYVIET_UI_MESSAGE_PREFIX,
+  USER_FACING_CLIENT_AUTH_ERROR_MESSAGE,
+} from '@/lib/runtime/networkResilience';
 
 import {
   type ListingTextKey,
@@ -786,6 +789,11 @@ export type BaseUITextKey =
   | 'language'
   | 'close'
   | 'selectLanguageDesc'
+  | 'languageNativeLabelKo'
+  | 'languageNativeLabelVi'
+  | 'languageNativeLabelEn'
+  | 'languageNativeLabelJa'
+  | 'languageNativeLabelZh'
   | 'selectPhoto'
   | 'photoSelectConsentTitle'
   | 'photoSelectConsentDesc'
@@ -1109,6 +1117,28 @@ export type BaseUITextKey =
   | 'cameraErrGeneric'
   | 'apiSyncErrorTransient'
   | 'userFacingAuthOrSessionError'
+  | 'usersBootstrapSyncFailed'
+  | 'propertiesSyncPutDelayed'
+  | 'propertiesErrRateLimited'
+  | 'propertiesErrServerUnstable'
+  | 'propertiesErrNoMatch'
+  | 'propertiesErrGeneric'
+  | 'bookingsSyncPutDelayed'
+  | 'publicDescriptionContactMasked'
+  | 'propertyImageAltWithIndex'
+  | 'adminKycListLoadFailed'
+  | 'adminKycCsvExportFailed'
+  | 'adminSettlementsListLoadFailed'
+  | 'adminSystemLogConfirmClearVolatile'
+  | 'adminSystemLogConfirmDeletePermanent'
+  | 'adminPropertyHiddenComplianceReason'
+  | 'adminOwnerBlockedCannotUnhide'
+  | 'editPropertyLedgerAdEndedDetail'
+  | 'kycFaceDirFront'
+  | 'kycFaceDirUp'
+  | 'kycFaceDirDown'
+  | 'kycFaceDirLeft'
+  | 'kycFaceDirRight'
   | 'bookingCreateFailedMessage'
   | 'bookingPaymentCompleteFailedMessage'
   | 'bookingPaymentMetaDefaultError'
@@ -1951,6 +1981,11 @@ const uiTexts: Record<SupportedLanguage, Record<BaseUITextKey, string>> = {
     language: '언어',
     close: '닫기',
     selectLanguageDesc: '5개 국어 중에서 선택하세요',
+    languageNativeLabelKo: '한국어',
+    languageNativeLabelVi: 'Tiếng Việt',
+    languageNativeLabelEn: 'English',
+    languageNativeLabelJa: '日本語',
+    languageNativeLabelZh: '中文',
     selectPhoto: '사진을 선택하세요',
     photoSelectConsentTitle: '사진첩 접근 허용',
     photoSelectConsentDesc: '프로필 사진을 등록하기 위해 사진첩(갤러리)으로 이동하는 것을 허용하시겠습니까?',
@@ -2297,6 +2332,37 @@ const uiTexts: Record<SupportedLanguage, Record<BaseUITextKey, string>> = {
       '일시적인 오류입니다. 인터넷 연결을 확인한 뒤 잠시 후 다시 시도해 주세요.',
     userFacingAuthOrSessionError:
       '오류가 발생했습니다. 잠시 후 다시 시도하거나 로그인 상태를 확인해 주세요.',
+    usersBootstrapSyncFailed:
+      '사용자 초기 동기화에 실패했습니다. 네트워크를 확인 후 다시 시도해 주세요.',
+    propertiesSyncPutDelayed:
+      '매물 데이터 동기화가 지연되고 있습니다. 잠시 후 다시 확인해 주세요.',
+    propertiesErrRateLimited: '요청이 많습니다. 잠시 후 다시 시도해 주세요.',
+    propertiesErrServerUnstable:
+      '서버가 일시적으로 불안정합니다. 잠시 후 다시 시도해 주세요.',
+    propertiesErrNoMatch: '조건에 맞는 매물이 아직 없습니다.',
+    propertiesErrGeneric: '오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
+    bookingsSyncPutDelayed:
+      '예약 데이터 동기화가 지연되고 있습니다. 네트워크 상태를 확인해 주세요.',
+    publicDescriptionContactMasked: '[연락처 비공개]',
+    propertyImageAltWithIndex: '사진 {{n}}',
+    adminKycListLoadFailed: '관리자 KYC 목록을 불러오지 못했습니다.',
+    adminKycCsvExportFailed: 'KYC CSV 내보내기에 실패했습니다.',
+    adminSettlementsListLoadFailed: '정산 후보 목록을 불러오지 못했습니다.',
+    adminSystemLogConfirmClearVolatile:
+      '휘발 로그(정보 등 메모리만 있는 항목)를 비울까요?',
+    adminSystemLogConfirmDeletePermanent:
+      '영구 저장된 로그(오류·경고)를 모두 삭제할까요?',
+    adminPropertyHiddenComplianceReason:
+      '운영 정책에 따라 숨김 처리되었습니다. 문의는 관리자에게 연락해 주세요.',
+    adminOwnerBlockedCannotUnhide:
+      '계정이 차단되어 있어 매물 숨김을 해제할 수 없습니다.',
+    editPropertyLedgerAdEndedDetail:
+      '광고 중 매물({{id}}) 수정으로 이 카드는 종료 처리됨',
+    kycFaceDirFront: '정면을 보세요',
+    kycFaceDirUp: '위를 보세요',
+    kycFaceDirDown: '아래를 보세요',
+    kycFaceDirLeft: '왼쪽을 보세요',
+    kycFaceDirRight: '오른쪽을 보세요',
     bookingCreateFailedMessage:
       '예약을 만들지 못했습니다. 잠시 후 다시 시도해 주세요.',
     bookingPaymentCompleteFailedMessage:
@@ -3138,6 +3204,11 @@ const uiTexts: Record<SupportedLanguage, Record<BaseUITextKey, string>> = {
     language: 'Ngôn ngữ',
     close: 'Đóng',
     selectLanguageDesc: 'Chọn từ 5 ngôn ngữ',
+    languageNativeLabelKo: '한국어',
+    languageNativeLabelVi: 'Tiếng Việt',
+    languageNativeLabelEn: 'English',
+    languageNativeLabelJa: '日本語',
+    languageNativeLabelZh: '中文',
     selectPhoto: 'Chọn ảnh',
     photoSelectConsentTitle: 'Cho phép truy cập thư viện ảnh',
     photoSelectConsentDesc: 'Bạn có cho phép chuyển đến thư viện ảnh để đăng ảnh đại diện không?',
@@ -3490,6 +3561,37 @@ const uiTexts: Record<SupportedLanguage, Record<BaseUITextKey, string>> = {
       'Lỗi tạm thời. Kiểm tra kết nối Internet và thử lại sau.',
     userFacingAuthOrSessionError:
       'Đã xảy ra lỗi. Thử lại sau hoặc kiểm tra trạng thái đăng nhập.',
+    usersBootstrapSyncFailed:
+      'Đồng bộ người dùng ban đầu thất bại. Kiểm tra mạng và thử lại.',
+    propertiesSyncPutDelayed:
+      'Đồng bộ dữ liệu chỗ ở đang chậm. Vui lòng kiểm tra lại sau.',
+    propertiesErrRateLimited: 'Quá nhiều yêu cầu. Vui lòng thử lại sau.',
+    propertiesErrServerUnstable:
+      'Máy chủ tạm thời không ổn định. Vui lòng thử lại sau.',
+    propertiesErrNoMatch: 'Chưa có chỗ ở phù hợp điều kiện.',
+    propertiesErrGeneric: 'Đã xảy ra lỗi. Vui lòng thử lại sau.',
+    bookingsSyncPutDelayed:
+      'Đồng bộ đặt phòng đang chậm. Kiểm tra mạng và thử lại.',
+    publicDescriptionContactMasked: '[Liên hệ đã ẩn]',
+    propertyImageAltWithIndex: 'Ảnh {{n}}',
+    adminKycListLoadFailed: 'Không tải được danh sách KYC quản trị.',
+    adminKycCsvExportFailed: 'Xuất CSV KYC thất bại.',
+    adminSettlementsListLoadFailed: 'Không tải được danh sách thanh toán.',
+    adminSystemLogConfirmClearVolatile:
+      'Xóa log tạm (chỉ trong bộ nhớ)?',
+    adminSystemLogConfirmDeletePermanent:
+      'Xóa vĩnh viễn mọi log đã lưu (lỗi·cảnh báo)?',
+    adminPropertyHiddenComplianceReason:
+      'Đã ẩn theo chính sách vận hành. Liên hệ quản trị viên.',
+    adminOwnerBlockedCannotUnhide:
+      'Tài khoản bị chặn nên không thể bỏ ẩn tin đăng.',
+    editPropertyLedgerAdEndedDetail:
+      'Chỉnh sửa tin đang quảng cáo ({{id}}) — thẻ này đã đóng',
+    kycFaceDirFront: 'Nhìn thẳng về phía trước',
+    kycFaceDirUp: 'Nhìn lên trên',
+    kycFaceDirDown: 'Nhìn xuống dưới',
+    kycFaceDirLeft: 'Nhìn sang trái',
+    kycFaceDirRight: 'Nhìn sang phải',
     bookingCreateFailedMessage:
       'Không tạo được đặt phòng. Vui lòng thử lại sau.',
     bookingPaymentCompleteFailedMessage:
@@ -4329,6 +4431,11 @@ const uiTexts: Record<SupportedLanguage, Record<BaseUITextKey, string>> = {
     language: 'Language',
     close: 'Close',
     selectLanguageDesc: 'Choose from 5 languages',
+    languageNativeLabelKo: '한국어',
+    languageNativeLabelVi: 'Tiếng Việt',
+    languageNativeLabelEn: 'English',
+    languageNativeLabelJa: '日本語',
+    languageNativeLabelZh: '中文',
     selectPhoto: 'Select photo',
     photoSelectConsentTitle: 'Allow access to photo gallery',
     photoSelectConsentDesc: 'Do you allow access to your photo gallery to register a profile photo?',
@@ -4678,6 +4785,37 @@ const uiTexts: Record<SupportedLanguage, Record<BaseUITextKey, string>> = {
       'Something went wrong. Check your internet connection and try again shortly.',
     userFacingAuthOrSessionError:
       'Something went wrong. Try again later or check your sign-in status.',
+    usersBootstrapSyncFailed:
+      'Initial user sync failed. Check your network and try again.',
+    propertiesSyncPutDelayed:
+      'Property sync is delayed. Please check again shortly.',
+    propertiesErrRateLimited: 'Too many requests. Please try again later.',
+    propertiesErrServerUnstable:
+      'The server is temporarily unstable. Please try again later.',
+    propertiesErrNoMatch: 'No listings match your filters yet.',
+    propertiesErrGeneric: 'Something went wrong. Please try again later.',
+    bookingsSyncPutDelayed:
+      'Booking sync is delayed. Check your network and try again.',
+    publicDescriptionContactMasked: '[Contact withheld]',
+    propertyImageAltWithIndex: 'Photo {{n}}',
+    adminKycListLoadFailed: 'Could not load admin KYC list.',
+    adminKycCsvExportFailed: 'KYC CSV export failed.',
+    adminSettlementsListLoadFailed: 'Could not load settlement candidates.',
+    adminSystemLogConfirmClearVolatile:
+      'Clear volatile logs (in-memory items only)?',
+    adminSystemLogConfirmDeletePermanent:
+      'Permanently delete all stored logs (errors and warnings)?',
+    adminPropertyHiddenComplianceReason:
+      'Hidden per operations policy. Contact an administrator.',
+    adminOwnerBlockedCannotUnhide:
+      'The account is blocked; listing cannot be unhidden.',
+    editPropertyLedgerAdEndedDetail:
+      'Live listing ({{id}}) edited — this card was closed',
+    kycFaceDirFront: 'Look straight ahead',
+    kycFaceDirUp: 'Look up',
+    kycFaceDirDown: 'Look down',
+    kycFaceDirLeft: 'Look to the left',
+    kycFaceDirRight: 'Look to the right',
     bookingCreateFailedMessage:
       'Could not create the booking. Please try again later.',
     bookingPaymentCompleteFailedMessage:
@@ -5517,6 +5655,11 @@ const uiTexts: Record<SupportedLanguage, Record<BaseUITextKey, string>> = {
     language: '言語',
     close: '閉じる',
     selectLanguageDesc: '5つの言語から選択してください',
+    languageNativeLabelKo: '한국어',
+    languageNativeLabelVi: 'Tiếng Việt',
+    languageNativeLabelEn: 'English',
+    languageNativeLabelJa: '日本語',
+    languageNativeLabelZh: '中文',
     selectPhoto: '写真を選択',
     photoSelectConsentTitle: '写真ライブラリへのアクセスを許可',
     photoSelectConsentDesc: 'プロフィール写真を登録するため、写真ライブラリへ移動することを許可しますか？',
@@ -5866,6 +6009,37 @@ const uiTexts: Record<SupportedLanguage, Record<BaseUITextKey, string>> = {
       '一時的なエラーです。インターネット接続を確認し、しばらくしてから再度お試しください。',
     userFacingAuthOrSessionError:
       'エラーが発生しました。しばらくしてから再度お試しになるか、ログイン状態をご確認ください。',
+    usersBootstrapSyncFailed:
+      'ユーザーの初期同期に失敗しました。ネットワークを確認して再試行してください。',
+    propertiesSyncPutDelayed:
+      '物件データの同期が遅れています。しばらくしてから再度ご確認ください。',
+    propertiesErrRateLimited: 'リクエストが多すぎます。しばらくしてから再試行してください。',
+    propertiesErrServerUnstable:
+      'サーバーが一時的に不安定です。しばらくしてから再試行してください。',
+    propertiesErrNoMatch: '条件に合う物件はまだありません。',
+    propertiesErrGeneric: 'エラーが発生しました。しばらくしてから再試行してください。',
+    bookingsSyncPutDelayed:
+      '予約データの同期が遅れています。ネットワークを確認してください。',
+    publicDescriptionContactMasked: '[連絡先非表示]',
+    propertyImageAltWithIndex: '写真 {{n}}',
+    adminKycListLoadFailed: '管理画面のKYC一覧を読み込めませんでした。',
+    adminKycCsvExportFailed: 'KYCのCSVエクスポートに失敗しました。',
+    adminSettlementsListLoadFailed: '精算候補一覧を読み込めませんでした。',
+    adminSystemLogConfirmClearVolatile:
+      '揮発ログ（メモリのみの項目）を消去しますか？',
+    adminSystemLogConfirmDeletePermanent:
+      '保存済みログ（エラー・警告）をすべて削除しますか？',
+    adminPropertyHiddenComplianceReason:
+      '運用ポリシーにより非表示です。管理者にお問い合わせください。',
+    adminOwnerBlockedCannotUnhide:
+      'アカウントがブロックされているため非表示を解除できません。',
+    editPropertyLedgerAdEndedDetail:
+      '掲載中物件（{{id}}）を編集 — このカードは終了処理',
+    kycFaceDirFront: '正面を向いてください',
+    kycFaceDirUp: '上を向いてください',
+    kycFaceDirDown: '下を向いてください',
+    kycFaceDirLeft: '左を向いてください',
+    kycFaceDirRight: '右を向いてください',
     bookingCreateFailedMessage:
       '予約を作成できませんでした。しばらくしてから再度お試しください。',
     bookingPaymentCompleteFailedMessage:
@@ -6699,6 +6873,11 @@ const uiTexts: Record<SupportedLanguage, Record<BaseUITextKey, string>> = {
     language: '语言',
     close: '关闭',
     selectLanguageDesc: '从5种语言中选择',
+    languageNativeLabelKo: '한국어',
+    languageNativeLabelVi: 'Tiếng Việt',
+    languageNativeLabelEn: 'English',
+    languageNativeLabelJa: '日本語',
+    languageNativeLabelZh: '中文',
     selectPhoto: '选择照片',
     photoSelectConsentTitle: '允许访问相册',
     photoSelectConsentDesc: '为注册个人资料照片，是否允许前往相册选择照片？',
@@ -7036,6 +7215,28 @@ const uiTexts: Record<SupportedLanguage, Record<BaseUITextKey, string>> = {
       '暂时出现问题。请检查网络连接后稍候重试。',
     userFacingAuthOrSessionError:
       '出现错误。请稍后重试或检查登录状态。',
+    usersBootstrapSyncFailed: '用户初始同步失败。请检查网络后重试。',
+    propertiesSyncPutDelayed: '房源数据同步延迟。请稍后重试。',
+    propertiesErrRateLimited: '请求过于频繁。请稍后重试。',
+    propertiesErrServerUnstable: '服务器暂时不稳定。请稍后重试。',
+    propertiesErrNoMatch: '暂无符合条件的房源。',
+    propertiesErrGeneric: '出现错误。请稍后重试。',
+    bookingsSyncPutDelayed: '预订数据同步延迟。请检查网络。',
+    publicDescriptionContactMasked: '[联系方式已隐藏]',
+    propertyImageAltWithIndex: '图片 {{n}}',
+    adminKycListLoadFailed: '无法加载管理员 KYC 列表。',
+    adminKycCsvExportFailed: 'KYC CSV 导出失败。',
+    adminSettlementsListLoadFailed: '无法加载结算候选列表。',
+    adminSystemLogConfirmClearVolatile: '清空易失日志（仅内存项）？',
+    adminSystemLogConfirmDeletePermanent: '永久删除所有已存日志（错误与警告）？',
+    adminPropertyHiddenComplianceReason: '按运营政策已隐藏。请联系管理员。',
+    adminOwnerBlockedCannotUnhide: '账户已封禁，无法取消隐藏房源。',
+    editPropertyLedgerAdEndedDetail: '编辑投放中房源（{{id}}）—此卡片已结束',
+    kycFaceDirFront: '请正视前方',
+    kycFaceDirUp: '请向上看',
+    kycFaceDirDown: '请向下看',
+    kycFaceDirLeft: '请向左看',
+    kycFaceDirRight: '请向右看',
     bookingCreateFailedMessage: '无法创建预订。请稍后重试。',
     bookingPaymentCompleteFailedMessage:
       '无法完成付款。请检查网络后重试。',
@@ -7186,6 +7387,12 @@ export function resolveUserFacingSyncErrorMessage(
 ): string {
   const m = raw.trim();
   if (!m) return getUIText('apiSyncErrorTransient', language);
+  if (m.startsWith(STAYVIET_UI_MESSAGE_PREFIX)) {
+    const key = m.slice(STAYVIET_UI_MESSAGE_PREFIX.length) as UITextKey;
+    const resolved = mergedUiTexts[language][key] ?? mergedUiTexts.ko[key];
+    if (resolved !== undefined && resolved !== '') return resolved;
+    return getUIText('apiSyncErrorTransient', language);
+  }
   if (m === USER_FACING_CLIENT_AUTH_ERROR_MESSAGE) {
     return getUIText('userFacingAuthOrSessionError', language);
   }

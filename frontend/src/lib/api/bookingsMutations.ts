@@ -285,7 +285,7 @@ export async function cancelBooking(
       booking.ownerId,
     );
   } catch (error) {
-    console.error("매물 자동 복구 처리 실패:", error);
+    console.error("Property auto-relist after cancel failed:", error);
   }
 
   const chatRoomId = booking.chatRoomId;
@@ -331,10 +331,10 @@ export async function deleteBooking(bookingId: string): Promise<void> {
       );
       await purgeSettlementStateForDeletedBooking(bookingId);
     } catch (e) {
-      console.error("정산 큐/승인 정리 실패:", e);
+      console.error("Settlement queue purge failed:", e);
     }
   } catch (error) {
-    console.error("예약 삭제 실패:", error);
+    console.error("deleteBooking failed:", error);
     throw error;
   }
 }

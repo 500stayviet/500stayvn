@@ -157,8 +157,8 @@ export const uploadPropertyImages = async (
     const imageUrls = await uploadPropertyFiles(images);
     return { ok: true, imageUrls };
   } catch (error) {
-    console.error("S3 업로드 실패:", error);
-    const errorMessage = error instanceof Error ? error.message : "S3 업로드 실패";
+    console.error("S3 upload failed:", error);
+    const errorMessage = error instanceof Error ? error.message : "S3 upload failed";
     return {
       ok: false,
       message: `${getUIText("valUploadFailPrefix", currentLanguage)}${errorMessage}`,

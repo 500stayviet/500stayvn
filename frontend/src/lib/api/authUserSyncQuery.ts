@@ -10,6 +10,7 @@ import {
   emitUserFacingSyncError,
   fetchWithRetry,
   isClientAuthErrorStatus,
+  syncUiMessage,
   USER_FACING_CLIENT_AUTH_ERROR_MESSAGE,
 } from "@/lib/runtime/networkResilience";
 import { canReadLocalFallback } from "@/lib/runtime/localFallbackPolicy";
@@ -78,7 +79,7 @@ export async function refreshUsersFromServer(): Promise<boolean> {
     emitUserFacingSyncError({
       area: "users",
       action: "refresh",
-      message: "오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+      message: syncUiMessage("apiSyncErrorTransient"),
     });
     return false;
   }
@@ -198,8 +199,7 @@ export async function bootstrapUsersFromServer(): Promise<void> {
     emitUserFacingSyncError({
       area: "users",
       action: "bootstrap",
-      message:
-        "사용자 초기 동기화에 실패했습니다. 네트워크를 확인 후 다시 시도해주세요.",
+      message: syncUiMessage("usersBootstrapSyncFailed"),
     });
   }
 }

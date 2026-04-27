@@ -70,7 +70,7 @@ export async function translate(
   // API 키 확인
   if (!GEMINI_API_KEY) {
     console.warn(
-      "Gemini API 키가 설정되지 않았습니다. 번역 기능이 제한됩니다.",
+      "Gemini API key is not set. Translation will return the original text.",
     );
     return {
       originalText: text,
@@ -150,7 +150,7 @@ export async function translate(
     return result;
   } catch (error) {
     // 에러 처리
-    console.error("Gemini API 번역 오류:", error);
+    console.error("Gemini API translation error:", error);
 
     // 네트워크 에러나 타임아웃 시 원문 반환
     if (axios.isAxiosError(error)) {

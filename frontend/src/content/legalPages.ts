@@ -25,6 +25,8 @@ export type TermsPageCopy = {
   listAddressLabel: string;
   listEmailLabel: string;
   homeLink: string;
+  /** {{origin}} = STAYVIET_PRODUCTION_ORIGIN */
+  publicationFootnote: string;
 };
 
 export type PrivacySection5 = {
@@ -47,6 +49,8 @@ export type PrivacyPageCopy = {
   listAddressLabel: string;
   listEmailLabel: string;
   homeLink: string;
+  /** {{origin}} = STAYVIET_PRODUCTION_ORIGIN (스토어·고지 URL 과 호스트 일치 안내) */
+  publicationFootnote: string;
 };
 
 const TERMS_KO: TermsPageCopy = {
@@ -103,6 +107,8 @@ const TERMS_KO: TermsPageCopy = {
   listAddressLabel: "주소",
   listEmailLabel: "이메일",
   homeLink: "홈으로",
+  publicationFootnote:
+    "본 약관의 정식 게시 URL은 {{origin}}/terms 이며, 앱 스토어·고객 지원에 기재하는 호스트와 동일하게 유지합니다.",
 };
 
 const TERMS_EN: TermsPageCopy = {
@@ -159,6 +165,8 @@ const TERMS_EN: TermsPageCopy = {
   listAddressLabel: "Address",
   listEmailLabel: "Email",
   homeLink: "Home",
+  publicationFootnote:
+    "The official URL for these Terms is {{origin}}/terms. Store listings and support materials should use the same host.",
 };
 
 const TERMS_VI: TermsPageCopy = {
@@ -215,6 +223,8 @@ const TERMS_VI: TermsPageCopy = {
   listAddressLabel: "Địa chỉ",
   listEmailLabel: "Email",
   homeLink: "Trang chủ",
+  publicationFootnote:
+    "URL chính thức của điều khoản: {{origin}}/terms. Hãy dùng cùng hostname với cửa hàng ứng dụng và kênh hỗ trợ.",
 };
 
 const TERMS_JA: TermsPageCopy = {
@@ -271,6 +281,8 @@ const TERMS_JA: TermsPageCopy = {
   listAddressLabel: "所在地",
   listEmailLabel: "メール",
   homeLink: "ホームへ",
+  publicationFootnote:
+    "本規約の正式な掲載URLは {{origin}}/terms です。ストア記載・サポート資料と同一ホストで揃えてください。",
 };
 
 const TERMS_ZH: TermsPageCopy = {
@@ -325,6 +337,8 @@ const TERMS_ZH: TermsPageCopy = {
   listAddressLabel: "地址",
   listEmailLabel: "邮箱",
   homeLink: "返回首页",
+  publicationFootnote:
+    "本服务条款的官方网址为 {{origin}}/terms。应用商店与支持渠道请使用相同主机名。",
 };
 
 const PRIVACY_KO: PrivacyPageCopy = {
@@ -372,6 +386,8 @@ const PRIVACY_KO: PrivacyPageCopy = {
   listAddressLabel: "주소",
   listEmailLabel: "이메일",
   homeLink: "홈으로",
+  publicationFootnote:
+    "본 방침의 정식 게시 URL은 {{origin}}/privacy 이며, 앱 스토어·고객 지원에 기재하는 호스트와 동일하게 유지합니다.",
 };
 
 const PRIVACY_EN: PrivacyPageCopy = {
@@ -420,6 +436,8 @@ const PRIVACY_EN: PrivacyPageCopy = {
   listAddressLabel: "Address",
   listEmailLabel: "Email",
   homeLink: "Home",
+  publicationFootnote:
+    "The official URL for this Policy is {{origin}}/privacy. Store listings and support should use the same host.",
 };
 
 const PRIVACY_VI: PrivacyPageCopy = {
@@ -468,6 +486,8 @@ const PRIVACY_VI: PrivacyPageCopy = {
   listAddressLabel: "Địa chỉ",
   listEmailLabel: "Email",
   homeLink: "Trang chủ",
+  publicationFootnote:
+    "URL chính thức của chính sách: {{origin}}/privacy. Dùng cùng hostname với cửa hàng ứng dụng và kênh hỗ trợ.",
 };
 
 const PRIVACY_JA: PrivacyPageCopy = {
@@ -516,6 +536,8 @@ const PRIVACY_JA: PrivacyPageCopy = {
   listAddressLabel: "所在地",
   listEmailLabel: "メール",
   homeLink: "ホームへ",
+  publicationFootnote:
+    "本ポリシーの正式な掲載URLは {{origin}}/privacy です。ストア記載・サポートと同一ホストで揃えてください。",
 };
 
 const PRIVACY_ZH: PrivacyPageCopy = {
@@ -562,6 +584,8 @@ const PRIVACY_ZH: PrivacyPageCopy = {
   listAddressLabel: "地址",
   listEmailLabel: "邮箱",
   homeLink: "返回首页",
+  publicationFootnote:
+    "本隐私政策的官方网址为 {{origin}}/privacy。应用商店与支持渠道请使用相同主机名。",
 };
 
 export const TERMS_BY_LANG: Record<SupportedLanguage, TermsPageCopy> = {
@@ -590,4 +614,8 @@ export function getPrivacyCopy(lang: SupportedLanguage): PrivacyPageCopy {
 
 export function applyOperatorTemplate(text: string, operatorLegalName: string): string {
   return text.replace(/\{\{operator\}\}/g, operatorLegalName);
+}
+
+export function applyOriginTemplate(text: string, siteOrigin: string): string {
+  return text.replace(/\{\{origin\}\}/g, siteOrigin);
 }

@@ -6,7 +6,6 @@ import { useCamera } from '@/hooks/useCamera';
 import { canvasToBlob, resizeImage } from '@/utils/imageUtils';
 import { faceDirections } from '@/components/kyc/face/faceDirectionConfig';
 import type { FaceVerificationStepProps } from './types';
-import type { SupportedLanguage } from '@/lib/api/translation';
 import { getUIText } from '@/utils/i18n';
 
 export function useFaceVerificationStepState({ currentLanguage, onComplete }: FaceVerificationStepProps) {
@@ -195,9 +194,8 @@ export function useFaceVerificationStepState({ currentLanguage, onComplete }: Fa
   };
 
   const currentDirection = faceDirections[currentDirectionIndex];
-  const currentGuideText = currentDirection?.text
-    ? (currentDirection.text as Record<SupportedLanguage, string>)[currentLanguage] ??
-      currentDirection.text.en
+  const currentGuideText = currentDirection
+    ? getUIText(currentDirection.textKey, currentLanguage)
     : '';
 
   return {

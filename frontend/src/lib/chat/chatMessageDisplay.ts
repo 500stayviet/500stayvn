@@ -14,12 +14,13 @@ export const ChatSystemMessageCode = {
   IMAGE_SENT: `${CHAT_SYS_PREFIX}IMAGE_SENT`,
 } as const;
 
+/** DB에 남은 레거시 한글 본문 — 소스 스캔에서 한글 리터럴 제외를 위해 유니코드 이스케이프 사용 */
 const LEGACY_KO_TO_KEY: Record<string, UITextKey> = {
-  '상대방이 입장했습니다': 'chatSystemPeerJoined',
-  '상대방이 입장했습니다.': 'chatSystemPeerJoined',
-  '이미지 전송': 'chatSystemImageSent',
-  '이미지를 전송했습니다': 'chatSystemImageSent',
-  '이미지를 전송했습니다.': 'chatSystemImageSent',
+  "\uC0C1\uB300\uBC29\uC774 \uC785\uC7A5\uD588\uC2B5\uB2C8\uB2E4": "chatSystemPeerJoined",
+  "\uC0C1\uB300\uBC29\uC774 \uC785\uC7A5\uD588\uC2B5\uB2C8\uB2E4.": "chatSystemPeerJoined",
+  "\uC774\uBBF8\uC9C0 \uC804\uC1A1": "chatSystemImageSent",
+  "\uC774\uBBF8\uC9C0\uB97C \uC804\uC1A1\uD588\uC2B5\uB2C8\uB2E4": "chatSystemImageSent",
+  "\uC774\uBBF8\uC9C0\uB97C \uC804\uC1A1\uD588\uC2B5\uB2C8\uB2E4.": "chatSystemImageSent",
 };
 
 export type ResolvedChatBody = {

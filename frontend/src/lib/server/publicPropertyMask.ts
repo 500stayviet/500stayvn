@@ -9,17 +9,20 @@
  * - 외부 캘린더 URL·히스토리 등 내부 운영 정보: 공개 응답에서 제거.
  */
 
+import type { SupportedLanguage } from '@/lib/api/translation';
 import type { PropertyData } from '@/types/property';
 import { getCityDistrictFromCoords } from '@/lib/utils/propertyUtils';
+import { getUIText } from '@/utils/i18n';
 
 const PUBLIC_ADDRESS_LANG = 'vi' as const;
 
 /** 설명 필드에 노출된 전화 형태 최소 제거(완벽한 PII 방지는 아님) */
-function scrubPhoneLikeSegments(text: string): string {
+function scrubPhoneLikeSegments(text: string, lang: SupportedLanguage): string {
   if (!text) return text;
+  const mask = getUIText('publicDescriptionContactMasked', lang);
   return text
-    .replace(/\+84\s*[\d\s.-]{8,16}/g, '[연락처 비공개]')
-    .replace(/\b0\d{9,10}\b/g, '[연락처 비공개]');
+    .replace(/\+84\s*[\d\s.-]{8,16}/g, mask)
+    .replace(/\b0\d{9,10}\b/g, mask);
 }
 
 function roundCoord(n: number): number {
@@ -40,8 +43,8 @@ export function toPublicProperty(p: PropertyData): PropertyData {
 
   return {
     ...p,
-    original_description: scrubPhoneLikeSegments(p.original_description ?? ''),
-    translated_description: scrubPhoneLikeSegments(p.translated_description ?? ''),
+    original_description: scrubPhoneLikeSegments(p.original_description ?? '', PUBLIC_ADDRESS_LANG),
+    translated_description: scrubPhoneLikeSegments(p.translated_description ?? '', PUBLIC_ADDRESS_LANG),
     address: publicAddress,
     unitNumber: undefined,
     ownerId: undefined,

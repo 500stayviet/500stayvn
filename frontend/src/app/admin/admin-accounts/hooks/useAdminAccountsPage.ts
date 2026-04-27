@@ -49,7 +49,7 @@ export function useAdminAccountsPage() {
     setLoadErr("");
     const r = await fetch("/api/admin/accounts", { credentials: "include" });
     if (!r.ok) {
-      setLoadErr("목록을 불러오지 못했습니다.");
+      setLoadErr(getUIText("adminAccountsListLoadFailed", currentLanguage));
       return;
     }
     const j = (await r.json()) as { accounts: AdminAccountRow[] };

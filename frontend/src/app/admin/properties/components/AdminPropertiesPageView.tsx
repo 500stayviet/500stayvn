@@ -8,10 +8,7 @@ import type { SupportedLanguage } from "@/lib/api/translation";
 import type { AdminInventoryFilter } from "@/lib/api/properties";
 import type { PropertyData } from "@/types/property";
 import { getUIText, type UITextKey } from "@/utils/i18n";
-import {
-  PROPERTY_HIDDEN_REASON,
-  type AdminPropertiesPageViewModel,
-} from "../hooks/useAdminPropertiesPage";
+import type { AdminPropertiesPageViewModel } from "../hooks/useAdminPropertiesPage";
 
 function listingStatusLabel(p: PropertyData, lang: SupportedLanguage): { text: string; className: string } {
   if (p.hidden) {
@@ -252,7 +249,8 @@ export function AdminPropertiesPageView({ vm }: Props) {
         ) : null}
 
         <p className="mt-4 text-xs text-slate-400">
-          {getUIText("adminPropertiesHiddenReasonLabel", currentLanguage)} {PROPERTY_HIDDEN_REASON}
+          {getUIText("adminPropertiesHiddenReasonLabel", currentLanguage)}{" "}
+          {getUIText("adminPropertyHiddenComplianceReason", currentLanguage)}
         </p>
       </div>
     </AdminRouteGuard>

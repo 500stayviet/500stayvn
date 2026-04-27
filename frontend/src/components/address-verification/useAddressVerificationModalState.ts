@@ -106,7 +106,7 @@ export function useAddressVerificationModalState({
       // 최종 검증: typeof 체크로 확실히 숫자인지 확인
       if (typeof finalSafeLat !== 'number' || typeof finalSafeLng !== 'number' ||
           isNaN(finalSafeLat) || isNaN(finalSafeLng) || !isFinite(finalSafeLat) || !isFinite(finalSafeLng)) {
-        console.warn('⚠️ 지도 초기화 실패: 유효하지 않은 좌표');
+        console.warn("[address-modal] Map init skipped: invalid coordinates");
         return; // 좌표가 완전히 유효하지 않으면 지도 초기화 중단
       }
     }
@@ -123,7 +123,7 @@ export function useAddressVerificationModalState({
     // 최종 유효성 검사: 값이 완벽하지 않으면 엔진에 아예 전달하지 않음
     if (isNaN(Number(finalSafeLat)) || finalSafeLat === null || 
         isNaN(Number(finalSafeLng)) || finalSafeLng === null) {
-      console.warn('⚠️ 지도 초기화 실패: 최종 좌표 검증 실패');
+      console.warn("[address-modal] Map init skipped: final coordinate validation failed");
       return; // 좌표가 완전히 유효하지 않으면 지도 초기화 중단
     }
     
@@ -388,19 +388,19 @@ export function useAddressVerificationModalState({
           }
           
           // 좌표 추출 완료 로그 (디버깅용)
-          console.log('🗺️ 지도 이동 완료 - 좌표 추출:', { lat, lng });
+          console.log("[address-modal] Map idle — extracted center:", { lat, lng });
           
           // 데이터 유효성 검사 (Early Return): 좌표가 유효한 숫자인지 체크
           // 값이 완벽하지 않으면 엔진에 아예 전달하지 않음
           if (isNaN(Number(lat)) || lat === null || lat === undefined ||
               isNaN(Number(lng)) || lng === null || lng === undefined) {
-            console.warn('⚠️ 유효하지 않은 좌표 - Reverse Geocoding 건너뜀:', { lat, lng });
+            console.warn("[address-modal] Skip reverse geocode: invalid coordinates", { lat, lng });
             return;
           }
           
           // null 방어 코드 (강력하게): 좌표가 완벽한 숫자일 때만 실행
           if (!lat || !lng || isNaN(lat) || isNaN(lng) || !isFinite(lat) || !isFinite(lng)) {
-            console.warn('⚠️ 유효하지 않은 좌표 - Reverse Geocoding 건너뜀:', { lat, lng });
+            console.warn("[address-modal] Skip reverse geocode: invalid coordinates", { lat, lng });
             return;
           }
           
@@ -431,12 +431,12 @@ export function useAddressVerificationModalState({
             try {
               // null 방어 강화: API 호출 전 최종 검증
               if (!lat || !lng || isNaN(lat) || isNaN(lng) || !isFinite(lat) || !isFinite(lng)) {
-                console.warn('⚠️ API 호출 전 좌표 검증 실패:', { lat, lng });
+                console.warn("[address-modal] Pre-API coordinate check failed:", { lat, lng });
                 return;
               }
               
               const language = 'vi';
-              console.log('📍 Reverse Geocoding 시작:', { lat, lng });
+              console.log("[address-modal] Reverse geocode start:", { lat, lng });
               
               // null 방어된 좌표로 API 호출
               const reverseResults = await searchPlaceIndexForPosition(lat, lng, language);
@@ -505,7 +505,7 @@ export function useAddressVerificationModalState({
                   // 역지오코딩 결과(주소 문자열)가 업데이트될 때, 지도 엔진이 잠시 좌표를 놓치지 않도록
                   // 주소 상태 업데이트 (실시간 반영) - Address Input에 즉시 반영
                   // 중요: 좌표는 건드리지 않고 주소만 업데이트 (prev => ({...prev, address: newAddr}))
-                  console.log('📍 Reverse Geocoding 결과:', pureAddress);
+                  console.log("[address-modal] Reverse geocode result:", pureAddress);
                   
                   // 주소 텍스트만 업데이트 (좌표는 건드리지 않음 - 지도 엔진이 좌표를 놓치지 않도록)
                   setSearchText(pureAddress);

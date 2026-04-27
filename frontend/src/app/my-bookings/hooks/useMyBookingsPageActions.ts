@@ -53,7 +53,7 @@ export function useMyBookingsPageActions(data: MyBookingsPageData) {
       }
       setCancellingId(bookingId);
       try {
-        await cancelBooking(bookingId, "사용자 요청");
+        await cancelBooking(bookingId, "user_request");
         setBookings((prev) =>
           prev.map((b) =>
             b.id === bookingId ? { ...b, status: "cancelled" } : b,

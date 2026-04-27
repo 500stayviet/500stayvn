@@ -8,11 +8,11 @@ import { getUIText } from '@/utils/i18n';
 function isLikelyCameraPermissionError(message: string): boolean {
   const m = message.toLowerCase();
   return (
-    m.includes('permission') ||
-    m.includes('권한') ||
-    m.includes('quyền') ||
-    m.includes('权限') ||
-    m.includes('許可')
+    m.includes("permission") ||
+    m.includes("notallowederror") ||
+    m.includes("notreadableerror") ||
+    m.includes("denied") ||
+    m.includes("not allowed")
   );
 }
 

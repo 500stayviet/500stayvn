@@ -4,6 +4,7 @@
 
 import {
   emitUserFacingSyncError,
+  syncUiMessage,
   fetchWithRetry,
 } from "@/lib/runtime/networkResilience";
 import { withAppActor } from "@/lib/api/withAppActor";
@@ -86,8 +87,7 @@ export function writeBookingsArray(all: BookingData[]): void {
       emitUserFacingSyncError({
         area: "bookings",
         action: "sync",
-        message:
-          "예약 데이터 동기화가 지연되고 있습니다. 네트워크 상태를 확인해주세요.",
+        message: syncUiMessage("bookingsSyncPutDelayed"),
       });
     });
   }, 500);

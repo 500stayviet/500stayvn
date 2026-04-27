@@ -119,14 +119,14 @@ export const sendPhoneVerificationCode = async (
   recaptchaVerifier: RecaptchaVerifier
 ) => {
   try {
-    phoneAuthDebugAlert('문자 발송 시도: before signInWithPhoneNumber');
+    phoneAuthDebugAlert("SMS send attempt: before signInWithPhoneNumber");
     phoneAuthDebugLog('[phone-auth] before signInWithPhoneNumber', { phoneNumber });
     const confirmationResult = await signInWithPhoneNumber(
       getFirebaseAuthOrThrow(),
       phoneNumber,
       recaptchaVerifier
     );
-    phoneAuthDebugAlert('문자 발송 시도: after signInWithPhoneNumber');
+    phoneAuthDebugAlert("SMS send attempt: after signInWithPhoneNumber");
     phoneAuthDebugLog('[phone-auth] after signInWithPhoneNumber', { phoneNumber });
     return confirmationResult;
   } catch (error: unknown) {
@@ -136,7 +136,7 @@ export const sendPhoneVerificationCode = async (
     });
     throw error;
   } finally {
-    phoneAuthDebugLog('[phone-auth] 인증 프로세스 종료', { phase: 'sendPhoneVerificationCode' });
+    phoneAuthDebugLog("[phone-auth] auth flow end", { phase: "sendPhoneVerificationCode" });
   }
 };
 
@@ -155,6 +155,6 @@ export const verifyPhoneCode = async (
     });
     throw error;
   } finally {
-    phoneAuthDebugLog('[phone-auth] 인증 프로세스 종료', { phase: 'verifyPhoneCode' });
+    phoneAuthDebugLog("[phone-auth] auth flow end", { phase: "verifyPhoneCode" });
   }
 };

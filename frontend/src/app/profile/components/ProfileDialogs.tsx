@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { CheckCircle2 } from "lucide-react";
 import { SupportedLanguage } from "@/lib/api/translation";
+import type { BaseUITextKey } from "@/utils/i18n";
 import { getUIText } from "@/utils/i18n";
 
 interface ProfileDialogsProps {
@@ -25,33 +26,17 @@ interface ProfileDialogsProps {
   onConfirmLogout: () => void;
 }
 
-const PROCESSING_TEXT: Record<SupportedLanguage, string> = {
-  ko: "처리 중...",
-  vi: "Đang xử lý...",
-  en: "Processing...",
-  ja: "処理中...",
-  zh: "处理中...",
-};
-
-const DELETE_LABEL: Record<SupportedLanguage, string> = {
-  ko: "계정 삭제",
-  vi: "Xóa tài khoản",
-  en: "Delete Account",
-  ja: "アカウント削除",
-  zh: "删除账户",
-};
-
 const LANGUAGE_OPTIONS: Array<{
   code: SupportedLanguage;
-  name: string;
+  nativeKey: BaseUITextKey;
   flag: string;
   englishName: string;
 }> = [
-  { code: "ko", name: "한국어", flag: "🇰🇷", englishName: "Korean" },
-  { code: "vi", name: "Tiếng Việt", flag: "🇻🇳", englishName: "Vietnamese" },
-  { code: "en", name: "English", flag: "🇺🇸", englishName: "English" },
-  { code: "ja", name: "日本語", flag: "🇯🇵", englishName: "Japanese" },
-  { code: "zh", name: "中文", flag: "🇨🇳", englishName: "Chinese" },
+  { code: "ko", nativeKey: "languageNativeLabelKo", flag: "🇰🇷", englishName: "Korean" },
+  { code: "vi", nativeKey: "languageNativeLabelVi", flag: "🇻🇳", englishName: "Vietnamese" },
+  { code: "en", nativeKey: "languageNativeLabelEn", flag: "🇺🇸", englishName: "English" },
+  { code: "ja", nativeKey: "languageNativeLabelJa", flag: "🇯🇵", englishName: "Japanese" },
+  { code: "zh", nativeKey: "languageNativeLabelZh", flag: "🇨🇳", englishName: "Chinese" },
 ];
 
 export default function ProfileDialogs({
@@ -102,8 +87,8 @@ export default function ProfileDialogs({
                 className="flex-1 py-2.5 px-4 bg-red-600 text-white rounded-lg font-medium"
               >
                 {deleting
-                  ? PROCESSING_TEXT[currentLanguage]
-                  : DELETE_LABEL[currentLanguage]}
+                  ? getUIText("deleteAccountExecuting", currentLanguage)
+                  : getUIText("deleteAccountButton", currentLanguage)}
               </button>
             </div>
           </motion.div>
@@ -188,7 +173,7 @@ export default function ProfileDialogs({
                 >
                   <span className="text-xl">{lang.flag}</span>
                   <div className="flex flex-col items-start">
-                    <span className="font-medium">{lang.name}</span>
+                    <span className="font-medium">{getUIText(lang.nativeKey, currentLanguage)}</span>
                     <span className="text-xs text-gray-500">
                       {lang.englishName}
                     </span>
@@ -240,7 +225,7 @@ export default function ProfileDialogs({
                 className="flex-1 py-2.5 px-4 bg-blue-600 text-white rounded-lg font-medium"
               >
                 {loggingOut
-                  ? PROCESSING_TEXT[currentLanguage]
+                  ? getUIText("deleteAccountExecuting", currentLanguage)
                   : getUIText("logout", currentLanguage)}
               </button>
             </div>

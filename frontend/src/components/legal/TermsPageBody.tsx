@@ -7,8 +7,9 @@ import {
   OPERATOR_LEGAL_NAME,
   SUPPORT_EMAIL,
 } from "@/constants/operator-contact";
+import { STAYVIET_PRODUCTION_ORIGIN } from "@/constants/production-host";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { applyOperatorTemplate, getTermsCopy } from "@/content/legalPages";
+import { applyOperatorTemplate, applyOriginTemplate, getTermsCopy } from "@/content/legalPages";
 
 export function TermsPageBody() {
   const { currentLanguage } = useLanguage();
@@ -62,6 +63,10 @@ export function TermsPageBody() {
             </li>
           </ul>
         </section>
+
+        <p className="mt-8 border-t border-zinc-200 pt-4 text-xs leading-relaxed text-zinc-500">
+          {applyOriginTemplate(copy.publicationFootnote, STAYVIET_PRODUCTION_ORIGIN)}
+        </p>
 
         <p className="mt-10 text-center text-xs text-zinc-400">
           <Link href="/" className="hover:text-zinc-600">

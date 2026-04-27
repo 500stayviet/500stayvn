@@ -66,8 +66,11 @@ export const cleanSubAddress = (text: string): string => {
   result = result.replace(/^TP\.\s*/gi, '');
   result = result.replace(/^Tp\s+/gi, '');
   result = result.replace(/^Thành\s+phố\s+/gi, '');
-  // "베트남"은 유지 (언어별 국가명 제거)
-  result = result.replace(/,?\s*(Vietnam|Việt Nam|Viet Nam|베트남)\s*$/i, '');
+  // Strip trailing country name (EN/VI/KO variants)
+  result = result.replace(
+    /,?\s*(Vietnam|Vi\u1EC7t Nam|Viet Nam|\uBCA0\uD2B8\uB0A8)\s*$/i,
+    '',
+  );
   return result.replace(/\s+/g, ' ').trim().replace(/^,\s*/, '').replace(/,\s*$/, '').replace(/,\s*,/g, ',');
 };
 

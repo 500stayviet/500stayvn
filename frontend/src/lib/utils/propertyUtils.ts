@@ -233,25 +233,6 @@ export function getBookableDateSegments(
   });
 }
 
-/** 매물 종류 라벨 (ko/vi/en/ja/zh) */
-const PROPERTY_TYPE_LABELS: Record<string, Record<string, string>> = {
-  studio: { ko: '스튜디오', vi: 'Studio', en: 'Studio', ja: 'スタジオ', zh: '一室' },
-  one_room: { ko: '원룸', vi: '1 phòng', en: '1 Room', ja: 'ワンルーム', zh: '一室' },
-  two_room: { ko: '2룸', vi: '2 phòng', en: '2 Rooms', ja: '2ルーム', zh: '两室' },
-  three_plus: { ko: '3+룸', vi: '3+ phòng', en: '3+ Rooms', ja: '3+ルーム', zh: '三室以上' },
-  detached: { ko: '독채', vi: 'Nhà riêng', en: 'Detached', ja: '戸建て', zh: '独栋' },
-};
-
-export function getPropertyTypeLabel(
-  propertyType: string | undefined,
-  lang: string
-): string {
-  if (!propertyType) return '';
-  const labels = PROPERTY_TYPE_LABELS[propertyType];
-  if (!labels) return propertyType;
-  return labels[lang] || labels.en || propertyType;
-}
-
 /** 좌표로 도시·구 표시 이름 반환 (vietnam-regions 기반) */
 export function getCityDistrictFromCoords(
   lat: number | undefined,

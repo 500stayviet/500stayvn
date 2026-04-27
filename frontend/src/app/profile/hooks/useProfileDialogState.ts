@@ -55,7 +55,7 @@ export function useProfileDialogState({
       setShowLogoutConfirm(false);
       router.push("/");
     } catch (error) {
-      console.error("로그아웃 실패:", error);
+      console.error("Logout failed:", error);
       alert(getUIText("errorOccurred", currentLanguage));
       setLoggingOut(false);
     }

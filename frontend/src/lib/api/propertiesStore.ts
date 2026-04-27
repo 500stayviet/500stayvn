@@ -7,6 +7,7 @@ import {
   emitUserFacingSyncError,
   fetchWithRetry,
   isClientAuthErrorStatus,
+  syncUiMessage,
   USER_FACING_CLIENT_AUTH_ERROR_MESSAGE,
 } from "@/lib/runtime/networkResilience";
 
@@ -15,11 +16,10 @@ let serverFlushTimer: ReturnType<typeof setTimeout> | null = null;
 let sharedAppPropertiesRefresh: Promise<boolean> | null = null;
 
 export function getPropertySyncErrorMessage(status: number | null): string {
-  if (status === 429) return "요청이 많습니다. 잠시 후 다시 시도해 주세요.";
-  if (status === 503)
-    return "서버가 일시적으로 불안정합니다. 잠시 후 다시 시도해 주세요.";
-  if (status === 404) return "조건에 맞는 매물이 아직 없습니다.";
-  return "오류가 발생했습니다. 잠시 후 다시 시도해 주세요.";
+  if (status === 429) return syncUiMessage("propertiesErrRateLimited");
+  if (status === 503) return syncUiMessage("propertiesErrServerUnstable");
+  if (status === 404) return syncUiMessage("propertiesErrNoMatch");
+  return syncUiMessage("propertiesErrGeneric");
 }
 
 function dispatchPropertiesUpdated() {
@@ -107,8 +107,7 @@ export function writePropertiesArray(all: PropertyData[]): void {
       emitUserFacingSyncError({
         area: "properties",
         action: "sync",
-        message:
-          "매물 데이터 동기화가 지연되고 있습니다. 잠시 후 다시 확인해주세요.",
+        message: syncUiMessage("propertiesSyncPutDelayed"),
       });
     });
   }, 500);

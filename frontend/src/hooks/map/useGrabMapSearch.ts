@@ -98,7 +98,7 @@ export function useGrabMapSearch({
           setSuggestions(combinedResults);
           setShowSuggestions(combinedResults.length > 0);
         } catch (error) {
-          console.error("❌ 검색 오류:", error);
+          console.error("Grab map search error:", error);
           setSuggestions([]);
           setShowSuggestions(false);
         } finally {

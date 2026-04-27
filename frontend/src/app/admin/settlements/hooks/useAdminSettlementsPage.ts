@@ -69,14 +69,15 @@ export function useAdminSettlementsPage() {
       logAdminSystemEvent({
         severity: "error",
         category: "settlement",
-        message: e instanceof Error ? e.message : "정산 후보 목록을 불러오지 못했습니다.",
+        message:
+          e instanceof Error ? e.message : getUIText("adminSettlementsListLoadFailed", currentLanguage),
         snapshot: { function: "useAdminSettlementsPage.load" },
       });
     } finally {
       setLoading(false);
       refreshAdminBadges();
     }
-  }, []);
+  }, [currentLanguage]);
 
   useEffect(() => {
     void load();

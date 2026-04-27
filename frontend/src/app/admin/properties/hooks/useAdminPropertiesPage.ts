@@ -11,19 +11,20 @@ import type { AdminInventoryFilter } from "@/lib/api/properties";
 import { loadAdminInventoryPage, ensurePropertiesCacheForAdmin } from "@/lib/api/properties";
 import { ensureUsersCacheForAdmin } from "@/lib/api/auth";
 import { useAdminDomainRefresh } from "@/lib/adminDomainEventsClient";
+import { ADMIN_PROPERTY_HIDE_AUDIT_REASON } from "@/constants/admin-property-moderation";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { setPropertyHidden } from "@/lib/api/adminModeration";
 import type { PropertyData } from "@/types/property";
+import { getUIText } from "@/utils/i18n";
 
 export const ADMIN_PROPERTIES_PAGE_SIZE = 20;
-
-export const PROPERTY_HIDDEN_REASON = "법규를 위반했으니 관리자에게 문의 하시기 바랍니다";
-export const OWNER_BLOCKED_RESTORE_MESSAGE = "계정이 차단되어 있어 매물 숨김을 해제할 수 없습니다.";
 
 /**
  * 관리자 매물 목록: `loadAdminInventoryPage`, 필터·검색, 페이징, 숨김/복구.
  */
 export function useAdminPropertiesPage() {
   const router = useRouter();
+  const { currentLanguage } = useLanguage();
   const { me: admin } = useAdminMe();
   const ackTick = useAdminAckHydrationTick();
   const [query, setQuery] = useState("");
@@ -114,19 +115,19 @@ export function useAdminPropertiesPage() {
       if (!admin?.username || !p.id) return;
       const ok = setPropertyHidden(p.id, false, admin.username);
       if (!ok) {
-        window.alert(OWNER_BLOCKED_RESTORE_MESSAGE);
+        window.alert(getUIText("adminOwnerBlockedCannotUnhide", currentLanguage));
         return;
       }
       setTick((v) => v + 1);
       refreshAdminBadges();
     },
-    [admin?.username],
+    [admin?.username, currentLanguage],
   );
 
   const hideProperty = useCallback(
     (p: PropertyData) => {
       if (!admin?.username || !p.id) return;
-      setPropertyHidden(p.id, true, admin.username, PROPERTY_HIDDEN_REASON);
+      setPropertyHidden(p.id, true, admin.username, ADMIN_PROPERTY_HIDE_AUDIT_REASON);
       setTick((v) => v + 1);
       refreshAdminBadges();
     },

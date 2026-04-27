@@ -59,10 +59,13 @@ export function useAdminKycPage() {
         logAdminSystemEvent({
           severity: "error",
           category: "kyc",
-          message: err instanceof Error ? err.message : "관리자 KYC 목록 로드 실패",
+          message:
+            err instanceof Error ? err.message : getUIText("adminKycListLoadFailed", currentLanguage),
           snapshot: { function: "useAdminKycPage.loadKYCData" },
         });
-        setError(err instanceof Error ? err.message : "Failed to load");
+        setError(
+          err instanceof Error ? err.message : getUIText("adminKycListLoadFailed", currentLanguage),
+        );
       }
     } finally {
       if (!silent) {
@@ -71,7 +74,7 @@ export function useAdminKycPage() {
       }
       refreshAdminBadges();
     }
-  }, []);
+  }, [currentLanguage]);
 
   const handleDownloadCSV = async () => {
     const lang = currentLanguage as SupportedLanguage;
@@ -84,7 +87,8 @@ export function useAdminKycPage() {
       logAdminSystemEvent({
         severity: "warning",
         category: "kyc",
-        message: err instanceof Error ? err.message : "KYC CSV 다운로드 실패",
+        message:
+          err instanceof Error ? err.message : getUIText("adminKycCsvExportFailed", currentLanguage),
         snapshot: { function: "useAdminKycPage.handleDownloadCSV" },
       });
       setError(

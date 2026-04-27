@@ -154,7 +154,7 @@ export function useAddPropertySubmit({
         address: formState.address,
         images: uploadResult.imageUrls,
         amenities: formState.selectedFacilities,
-        unitNumber: buildUnitNumber(formState.buildingNumber, formState.roomNumber),
+        unitNumber: buildUnitNumber(formState.buildingNumber, formState.roomNumber, lang),
         propertyType: formState.propertyType,
         cleaningPerWeek: formState.selectedFacilities.includes("cleaning")
           ? formState.cleaningPerWeek
@@ -187,7 +187,7 @@ export function useAddPropertySubmit({
       const knownErrors = ["OverlapDetected", "AlreadyBooked"];
       const message = error instanceof Error ? error.message : undefined;
       if (!message || !knownErrors.includes(message)) {
-        console.error("매물 등록 중 예기치 못한 패:", error);
+        console.error("Unexpected error during property registration:", error);
       }
       alert(getAddPropertyErrorMessage(lang, message));
     } finally {

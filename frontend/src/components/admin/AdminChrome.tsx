@@ -108,7 +108,11 @@ export default function AdminChrome({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const router = useRouter();
   const { me } = useAdminMe();
+  const { currentLanguage } = useLanguage();
   const [badges, setBadges] = useState<AdminBadgeCounts | null>(null);
+
+  const navMenuAria = getUIText('adminNavMenuAriaLabel', currentLanguage);
+  const badgeAriaTemplate = getUIText('adminNavBadgeAria', currentLanguage);
 
   const navItems = useMemo(() => {
     if (!me) return [];

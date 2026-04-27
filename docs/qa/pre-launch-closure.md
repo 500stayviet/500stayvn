@@ -13,6 +13,21 @@
 | [p0-1-failure-ui-matrix.md](./p0-1-failure-ui-matrix.md) | 결제·KYC 실패 시 UI 기대 동작 |
 | [store-listing-draft.md](./store-listing-draft.md) | 스토어 문구·URL·운영자 표기 |
 | [refactor-backlog.md](./refactor-backlog.md) | 졸업 게이트·백로그 동기화 |
+| [deferred-and-reverify.md](./deferred-and-reverify.md) | **미룬 작업·재점검** — 커스텀 도메인·Play SHA-256·MoMo Phase 4 등 |
+
+---
+
+## 0. 코딩 중심 작업 완료 현황 (2026-04-27 갱신)
+
+도메인 확정·Android Studio 연동·실키 PG는 **출시 직전 일정**으로 두고, 저장소 기준 **코딩·문서 골격**은 아래까지 반영했다.
+
+| 영역 | 상태 | 비고 |
+|------|------|------|
+| **i18n (사용자 노출)** | 진행·정리 | `getUIText`·키 이전 + `npm run scan:ui-ko` **0 히트** (2026-04-27 후속): 레거시 채팅 한글 맵은 유니코드 이스케이프, 콘솔·AWS·주소 모달·S3/Gemini 메시지는 영문, 단지번호 정규식·국가명 제거 정규식은 `\uXXXX` 처리. |
+| **도메인 (Phase 3 Amplify)** | 완료 | 프로덕션 호스트: **`main.dn98z8m9jfvd5.amplifyapp.com`**. `twaHostname`·`production-host.ts`·`NEXT_PUBLIC_STAYVIET_PRODUCTION_HOST`(Amplify `amplify.yml`)·[store-listing-draft.md](./store-listing-draft.md) 정렬. 커스텀 도메인 시 일괄 치환. |
+| **스토어 카피** | 완료 | [store-listing-draft.md](./store-listing-draft.md) — 베트남 부동산 **5년 실무** 톤으로 KO/EN/VI 긴 설명·신뢰 블록 보강. |
+| **MoMo 웹훅 서명** | 골격 완료 | `frontend/src/app/api/webhook/momo/route.ts` + `frontend/src/lib/payments/momoIpnSignature.ts`. 비밀키 **`MOMO_PARTNER_SECRET_KEY`** (`process.env`). 검증 성공 후 원장 반영·204 응답은 Phase 4. |
+| **TS·빌드 건전성** | 확인 | `npx tsc --noEmit` (frontend) 통과 시점 기준. |
 
 ---
 
@@ -22,9 +37,9 @@
 
 | ☐ | 항목 | 담당 | 목표일 | 증거(URL·저장소 경로·계약서 보관처) |
 |---|------|------|--------|--------------------------------------|
-| ☐ | **개인정보처리방침** 게시·프로덕션 호스트 확정 | | | `https://<PROD_HOST>/privacy` |
-| ☐ | **이용약관** 게시(해당 시) | | | |
-| ☐ | **계정 삭제** 안내·절차가 스토어/앱/웹 **동일 호스트** | | | `https://<PROD_HOST>/delete-account` |
+| ☐ | **개인정보처리방침** 게시·프로덕션 호스트 확정 | | | 코드·라우트: `/privacy`. **증거 URL:** `https://main.dn98z8m9jfvd5.amplifyapp.com/privacy` — **배포에 본 브랜치 반영 후** 브라우저에서 200·본문 표시 재확인 (이전 빌드에서는 404일 수 있음). |
+| ☐ | **이용약관** 게시(해당 시) | | | **증거 URL:** `https://main.dn98z8m9jfvd5.amplifyapp.com/terms` — 동일하게 배포 후 200 재확인. |
+| ☐ | **계정 삭제** 안내·절차가 스토어/앱/웹 **동일 호스트** | | | `https://main.dn98z8m9jfvd5.amplifyapp.com/delete-account` |
 | ☐ | **고객 지원·개인정보 문의**가 스토어·앱·문서 **한 줄이라도 불일치 없음** | | | [store-listing-draft.md](./store-listing-draft.md), `frontend/src/constants/operator-contact.ts` |
 | ☐ | **PG·호스팅·이메일** 등 데이터 처리 위탁/하위처리자 목록 정리 | | | |
 | ☐ | **로그·감사** 보관 기간·마스킹 원칙 (PII) 합의 | | | [SECURITY_APP_API_CHECKLIST.md](../../frontend/SECURITY_APP_API_CHECKLIST.md) 감사 절 |
@@ -72,7 +87,7 @@
 | ☐ | 구분 | 상태 | SoT / 액션 |
 |---|------|------|------------|
 | ☐ | **앱 BFF 멱등** — `POST/PATCH` 결제 `idempotencyKey` | 구현·테스트 기준 [SECURITY_APP_API_CHECKLIST.md](../../frontend/SECURITY_APP_API_CHECKLIST.md) §멱등성 | `paymentPatchIdempotency.ts`, `bookingPaymentTransition.ts` |
-| ☐ | **인바운드 PG 웹훅** — raw body·서명·replay·내부 전이 헬퍼 | **골격:** `frontend/src/app/api/webhook/momo/route.ts` (2026-04-27). 상용 ON 전 구현·검증 | 동 문서 §상용 오픈 전 체크리스트 표, §결제 웹훅 연동 시 |
+| ☐ | **인바운드 PG 웹훅** — raw body·서명·replay·내부 전이 헬퍼 | **골격:** `frontend/src/app/api/webhook/momo/route.ts` + IPN 필드 기반 HMAC(`momoIpnSignature.ts`), env `MOMO_PARTNER_SECRET_KEY` (2026-04-27). 상용 ON 전 멱등·204·실트래픽 교차검증 | 동 문서 §상용 오픈 전 체크리스트 표, §결제 웹훅 연동 시 |
 | ☐ | **웹훅 시크릿** — env만, 로그 마스킹 | 배포 환경에만 존재 | |
 | ☐ | **의도적 미구현** | 있으면 담당·일정 명시 | 이 표 하단에 기록 |
 

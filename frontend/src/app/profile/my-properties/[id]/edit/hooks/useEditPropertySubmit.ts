@@ -82,7 +82,7 @@ export function useEditPropertySubmit({
       }
 
       const imageUrls = await resolveEditPropertyImageUrls(formState.imagePreviews, formState.images);
-      const unitNumber = buildUnitNumber(formState.buildingNumber, formState.roomNumber);
+      const unitNumber = buildUnitNumber(formState.buildingNumber, formState.roomNumber, lang);
       const publicAddress = formState.address;
 
       const updates = buildEditPropertyUpdates({
@@ -137,7 +137,10 @@ export function useEditPropertySubmit({
                 {
                   action: "SUPERSEDED_BY_LIVE_EDIT",
                   timestamp: nowISO,
-                  details: `광고중 매물(${propertyId}) 수정으로 이 카드는 종료 처리됨`,
+                  details: getUIText("editPropertyLedgerAdEndedDetail", lang).replace(
+                    /\{\{id\}\}/g,
+                    propertyId,
+                  ),
                 },
               ],
             });

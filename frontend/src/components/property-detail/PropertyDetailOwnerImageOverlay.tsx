@@ -2,6 +2,8 @@
 
 import type { Dispatch, SetStateAction } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { getUIText } from "@/utils/i18n";
 
 type Props = {
   open: boolean;
@@ -19,7 +21,12 @@ export function PropertyDetailOwnerImageOverlay({
   fullScreenImageIndex,
   setFullScreenImageIndex,
 }: Props) {
+  const { currentLanguage } = useLanguage();
   if (!open || fullScreenImageIndex === null) return null;
+  const altText = getUIText('propertyImageAltWithIndex', currentLanguage).replace(
+    /\{\{n\}\}/g,
+    String(fullScreenImageIndex + 1),
+  );
 
   return (
     <div
@@ -36,7 +43,7 @@ export function PropertyDetailOwnerImageOverlay({
           <img
             key={fullScreenImageIndex}
             src={propertyImages[fullScreenImageIndex]}
-            alt={`사진 ${fullScreenImageIndex + 1}`}
+            alt={altText}
             className="w-full h-full object-contain rounded-xl shadow-2xl transition-all duration-300"
             style={{
               transform: "translateZ(0) scale(1)",

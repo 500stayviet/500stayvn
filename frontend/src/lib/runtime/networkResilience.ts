@@ -82,6 +82,17 @@ export function isClientAuthErrorStatus(status: number): boolean {
   return status === 401 || status === 403;
 }
 
+/**
+ * `ApiSyncErrorBanner` → `resolveUserFacingSyncErrorMessage`가 `getUIText`로 현지화.
+ * 한글 원문 대신 항상 이 접두어 + `BaseUITextKey` 를 쓴다.
+ */
+export const STAYVIET_UI_MESSAGE_PREFIX = "__stayviet_i18n:" as const;
+
+export function syncUiMessage(key: string): string {
+  return `${STAYVIET_UI_MESSAGE_PREFIX}${key}`;
+}
+
 /** 동기화 배너용 — 인증·권한 관련 실패 */
-export const USER_FACING_CLIENT_AUTH_ERROR_MESSAGE =
-  "오류가 발생했습니다. 잠시 후 다시 시도하거나 로그인을 확인해 주세요.";
+export const USER_FACING_CLIENT_AUTH_ERROR_MESSAGE = syncUiMessage(
+  "userFacingAuthOrSessionError",
+);

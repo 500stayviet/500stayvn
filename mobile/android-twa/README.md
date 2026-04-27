@@ -21,7 +21,9 @@ Bubblewrap 대신 **Android Browser Helper** 기반 최소 프로젝트입니다
 
 ## 빌드
 
-Android Studio에서 **Open** → `mobile/android-twa`. Gradle이 wrapper JAR를 내려받지 못하면 터미널에서:
+**Android Studio 없이:** JDK 17 + Android SDK(`ANDROID_HOME`)만 두고 `mobile/android-twa`에서 `gradlew.bat :app:assembleDebug`(Windows) 또는 `./gradlew :app:assembleDebug`. 자세한 순서는 `docs/qa/phase3-mobile-app-readiness.md` 의 **「Android Studio 없이 TWA 로컬 빌드」** 절.
+
+Android Studio 사용 시: **Open** → `mobile/android-twa`. Gradle이 wrapper JAR를 내려받지 못하면 터미널에서:
 
 `gradle wrapper --gradle-version 8.2` (Gradle 설치 시)
 

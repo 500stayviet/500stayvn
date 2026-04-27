@@ -17,6 +17,8 @@ import {
   type AdminSystemLogEntry,
 } from "@/lib/adminSystemLog";
 import { useAdminDomainRefresh } from "@/lib/adminDomainEventsClient";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { getUIText } from "@/utils/i18n";
 
 export const ADMIN_SYSTEM_LOG_PAGE_SIZE = 50;
 
@@ -26,6 +28,7 @@ export type AdminSystemLogFilter = "new" | "all" | "error" | "warning" | "info";
  * 시스템 로그: 병합 목록, 필터(신규/심각도), 페이징, CSV, 클리어, 도메인 갱신.
  */
 export function useAdminSystemLogPage() {
+  const { currentLanguage } = useLanguage();
   const [tick, setTick] = useState(0);
   const [filter, setFilter] = useState<AdminSystemLogFilter>("all");
   const [page, setPage] = useState(0);
@@ -118,16 +121,16 @@ export function useAdminSystemLogPage() {
   }, []);
 
   const clearEphemeral = useCallback(() => {
-    if (!window.confirm("휘발 로그(정보 등 메모리만 있는 항목)를 비울까요?")) return;
+    if (!window.confirm(getUIText("adminSystemLogConfirmClearVolatile", currentLanguage))) return;
     clearEphemeralAdminLogs();
     bump();
-  }, [bump]);
+  }, [bump, currentLanguage]);
 
   const clearPersistent = useCallback(() => {
-    if (!window.confirm("영구 저장된 로그(오류·경고)를 모두 삭제할까요?")) return;
+    if (!window.confirm(getUIText("adminSystemLogConfirmDeletePermanent", currentLanguage))) return;
     clearPersistentAdminLogs();
     bump();
-  }, [bump]);
+  }, [bump, currentLanguage]);
 
   return {
     filter,
