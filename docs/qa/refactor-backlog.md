@@ -218,6 +218,66 @@ Goal:
 
 ---
 
+## 최종 로드맵 합본 (구 Phase 플랜 × 운영·3a/3b 가이드)
+
+**구 가이드라인(요약):** Phase 1(1-1~1-5) → Phase 2(2-1~2-3) → 보완(Amplify·Prisma·웹훅 자리) → Phase 3 → Phase 4. 권장 순서 한 줄: `1 → 1-3 → 1-2 → 1-4 → 1-5 → 2-2 → 2-1 → 2-3 → 보완 3줄 → Phase 3 → Phase 4`.
+
+**저장소에 녹아 있는 상태(2026-04 기준):**
+
+| 구간 | 구 플랜 항목 | 현재 |
+|------|----------------|------|
+| **1-1** | 리팩터 잔여 맵 | **§ 1-1 B 표**에 P1~P3 타깃·현황 반영(다수 완료). |
+| **1-2** | 페이지 조합화 | **Phase 1 졸업** — 핵심 라우트 훅+뷰 패턴 적용(본 문서 상단). |
+| **1-3** | AppApi 봉투 통일 | **P2.1 완료** 기록. |
+| **1-4** | 상태전이·단위 테스트 | 예약·결제·KYC 등 단테 보강됨; 회귀는 지속. |
+| **1-5** | 린트·게이트 | **P3 린트 졸업**; CI·`amplify.yml` 품질 순서 정렬. |
+| **보완 3줄** | Amplify·GA 동일 원칙 / Prisma 가이드 / 웹훅 설계 | **`pipeline-principles.md`**, **`db-migration-guide.md`**, **`SECURITY_APP_API_CHECKLIST.md`** + MoMo 라우트 **골격**. **상용 멱등·204·원장 반영**은 Phase 4 코딩 잔여. |
+| **2-1** | CI 런타임 | **`ci-runtime-policy.md`** + workflow 핀. |
+| **2-2** | mock E2E smoke / nightly | PR smoke에 mock 시나리오 포함; flaky·retry 문서화는 **선택 보강**. |
+| **2-3** | Sentry·알람 | **1차 클로저 완료**(`pre-launch-closure` §2); 2차 담당은 미정. |
+| **Phase 3** | 패키징·스토어 초안 | **3a 진행 중** / **3b 보류** — 상세는 위 표·`phase3-mobile-app-readiness.md`. |
+| **Phase 4** | 실 API·웹훅 ON·실거래 | 법인·계약 후; [deferred-and-reverify.md](./deferred-and-reverify.md)와 연계. |
+
+**통합 권장 순서 (지금 시점에 맞게 다시 정렬):**
+
+1. **일상:** PR 게이트 유지(`lint`·`tsc`·`test`·`build`·PR smoke E2E).
+2. **코딩 우선(검수와 분리):** MoMo 웹훅 **멱등 앵커·204·원장 연결** + 단위 테스트 (`api/webhook/momo`, `SECURITY` 계약).
+3. **3a 병행(문서·코드):** `pre-launch-closure` §3 일정·§4 웹훅 일정 표, i18n·`scan:ui-ko` 보강.
+4. **검수·운영(본인):** §1 법무 증거 URL, 비즈 일정 확정, Amplify/프로덕션 URL 확인 — 아래 **A절**.
+5. **나중:** **3b** Play·AAB·assetlinks SHA, 커스텀 도메인, **Phase 4** 실키·실거래 검증 — 아래 **B절**·`deferred-and-reverify.md`.
+
+---
+
+### A. 당장 검수·결정해야 하는 것 (코딩 아님 — 미루면 안 되는 운영 판단)
+
+| 항목 | 무엇을 하면 되나 |
+|------|-------------------|
+| **상용 일정** | `pre-launch-closure.md` §3 — KYC·은행·OTP·메일 등 **무엇부터·언제** 표 채우기. |
+| **법무·스토어 증거** | §1 — 실제 회사명·연락처·URL이 웹·`store-listing-draft.md`와 같고, `/privacy`·`/terms`·`/delete-account`가 **프로덕션에서 200**인지 브라우저로 확인. |
+| **배포** | Amplify 최신 빌드 성공·라이브 반영 여부(콘솔). |
+| **Sentry 2차** | 팀 늘면 `sentry-ops.md` §5 2차·정산 담당 연락처 기입. |
+
+---
+
+### B. 미룬 작업 할일 리스트 (검수 제외 — 코딩·패키징·법인 후)
+
+아래는 **본인 검수를 앞당길 필요 없이** 일정에 맞춰 진행해도 되는 일이다. 진행 시 ☐ → ✅, 날짜·PR을 옆에 적는다.
+
+| ☐ | 작업 | 비고 / 링크 |
+|---|------|-------------|
+| ☐ | **MoMo 웹훅** 멱등 DB 앵커·Prisma 트랜잭션·**204**·원장 연동 | `api/webhook/momo/route.ts`, `SECURITY_APP_API_CHECKLIST.md` |
+| ☐ | 위 웹훅 **단위 테스트**(서명 OK/NG, 중복 IPN) | |
+| ☐ | **2-2 보강** mock E2E smoke·nightly 역할 문서화·flaky 기준 | `frontend-quality.yml`, `pipeline-principles.md` |
+| ☐ | **i18n** 이메일·에러 KO/VI/EN/JA/ZH 빈 구간 코드 보강 | `i18n.ts`, `scan:ui-ko` |
+| ☐ | **Phase 3b** 첫 AAB·Play 내부 테스트 | `phase3-mobile-app-readiness.md`, `mobile/android-twa/` |
+| ☐ | **Digital Asset Links** Play SHA-256 치환·배포 | `public/.well-known/assetlinks.json` |
+| ☐ | **커스텀 도메인** 시 호스트 일괄 치환 | `deferred-and-reverify.md` |
+| ☐ | **Phase 4** 실 KYC·실 PG·실 OTP Provider 교체 | 계약·키 수령 후 |
+| ☐ | **Phase 4** 실거래 검증·운영 플레이북 | `pre-launch-closure`·runbook |
+| ☐ | **iOS** Capacitor·Team ID | `phase3-capacitor-ios.md`, 맥 준비 후 |
+
+---
+
 ## 권장 실행 순서 (총 플랜 반영)
 
 1. **1-1** 본 문서 유지·**§ 1-1 B 표** `현황` 갱신 (PR마다)

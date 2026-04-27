@@ -3,7 +3,7 @@
 **목적:** 출시 전에 일부러 보류했거나, **법인·구글 개발자 계정·실결제 계약** 등이 갖춰져야 끝낼 수 있는 일을 한 곳에 모은다.  
 **사용법:** 표의 ☐를 ✅로 바꾸고, **담당·날짜·증거(스크린샷·PR 링크)** 를 옆에 적어 간다. 상세 규격은 링크된 문서가 단일 출처(SoT)다.
 
-**관련:** [pre-launch-closure.md](./pre-launch-closure.md) · [phase3-mobile-app-readiness.md](./phase3-mobile-app-readiness.md)
+**관련:** [pre-launch-closure.md](./pre-launch-closure.md) · [phase3-mobile-app-readiness.md](./phase3-mobile-app-readiness.md) · **미룬 작업 표(검수 제외):** [refactor-backlog.md](./refactor-backlog.md) **§ B. 미룬 작업 할일 리스트**
 
 **Phase 3 현재:** 웹은 AWS Amplify 기본 도메인(`main.dn98z8m9jfvd5.amplifyapp.com`)을 프로덕션 호스트로 쓰도록 코드·문서를 맞춰 둔 상태다. 아래 **「나중에 할 일」** 은 그 다음 단계다.
 
