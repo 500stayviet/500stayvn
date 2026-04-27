@@ -61,6 +61,40 @@ describe("parseAppPaymentResponse", () => {
       expect(p.errorMessage).toMatch(/해석/);
     }
   });
+
+  it("HTTP 200 + 봉투 unwrap 후 data 에 transition 포함", async () => {
+    const body = {
+      ok: true,
+      data: {
+        payment: { id: "p1" },
+        transition: { bookingConfirmed: false, bookingCancelled: true },
+      },
+    };
+    const res = {
+      ok: true,
+      status: 200,
+      text: () => Promise.resolve(JSON.stringify(body)),
+    } as unknown as Response;
+    const p = await parseAppPaymentResponse(res);
+    expect(p.ok).toBe(true);
+    if (p.ok) {
+      const { transition } = parsePaymentPatchData(p.data);
+      expect(transition).toEqual({ bookingConfirmed: false, bookingCancelled: true });
+    }
+  });
+
+  it("HTTP 403 이고 본문에 ok:false 없으면 HTTP 메시지", async () => {
+    const res = {
+      ok: false,
+      status: 403,
+      text: () => Promise.resolve(JSON.stringify({ message: "forbidden" })),
+    } as unknown as Response;
+    const p = await parseAppPaymentResponse(res);
+    expect(p.ok).toBe(false);
+    if (!p.ok) {
+      expect(p.errorMessage).toMatch(/HTTP 403/);
+    }
+  });
 });
 
 describe("parsePaymentPatchData", () => {
@@ -75,5 +109,19 @@ describe("parsePaymentPatchData", () => {
   it("defaults when transition missing", () => {
     const t = parsePaymentPatchData({ payment: null });
     expect(t.transition).toEqual({ bookingConfirmed: false, bookingCancelled: false });
+  });
+
+  it("transition 필드가 문자열이면 true 로 취급하지 않음", () => {
+    const t = parsePaymentPatchData({
+      transition: { bookingConfirmed: "true" as unknown as boolean, bookingCancelled: 1 as unknown as boolean },
+    });
+    expect(t.transition).toEqual({ bookingConfirmed: false, bookingCancelled: false });
+  });
+
+  it("동시에 true 인 비정상 본문도 파서는 그대로 반영(서버는 금지)", () => {
+    const t = parsePaymentPatchData({
+      transition: { bookingConfirmed: true, bookingCancelled: true },
+    });
+    expect(t.transition).toEqual({ bookingConfirmed: true, bookingCancelled: true });
   });
 });

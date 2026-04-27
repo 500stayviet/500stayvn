@@ -101,10 +101,12 @@ This backlog intentionally prioritizes **code hardening** over app-store packagi
   - keep partial/fail branches visible in UI (no silent continue)
   - add missing unit coverage for negative branches
 - **완료 (2026-04-27):** 서버 `PATCH /api/app/payments/[bookingId]`의 `data.transition`(`bookingConfirmed` / `bookingCancelled`)를 `parsePaymentPatchData` + `bookingsClient.patchPaymentMetaByBooking`이 소비. 결제 완료 `completePayment`·관리자 환불 `approveRefundBooking` 직후 **`refreshBookingsFromServer`로 캐시=서버** 정렬, 전이에 맞는 **상단 토스트**(`emitUserFacingAppToast` + `AppToastBanner`). KYC/결제 API 실패 UX는 기존 P0.1 1~2차와 동일. (세부: `docs/qa/p0-1-*.md`)
+- **1-4 보강 (2026-04-27):** `isPaidStatus`·결제 alias(`succeeded`/`pending`/`null`/`refund_completed`)·`cancelled_before`+환불 무변경 등 **부분실패·취소 분기** 단위 테스트 추가. `parseAppPaymentResponse`·`parsePaymentPatchData`(비정상 transition 타입·403 평면 본문). KYC **`deriveKycResumeState`** 분리 + `deriveKycResumeState.test.ts`(스텝 1→3·전체 완료). (`npm test` 54 케이스 그린.)
 - Done when (체크):
-  - [x] `bookingPaymentTransition` 단위 테스트(기존)
+  - [x] `bookingPaymentTransition` 단위 테스트(기존 + 1-4 부정·별칭·경계)
   - [x] UI에서 결제 PATCH 전이·실패 경로(배너/토스트/동기화) 반영
-  - [x] `parsePaymentPatchData` + 응답 파서 보조 테스트
+  - [x] `parsePaymentPatchData` + 응답 파서 보조 테스트(1-4 확장)
+  - [x] KYC 재개 상태 **순수 함수** 단위 테스트
 
 ### P0.2 Core mock regression set
 

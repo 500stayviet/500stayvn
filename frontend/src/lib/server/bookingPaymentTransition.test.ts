@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   type BookingTransitionTx,
+  isPaidStatus,
   transitionBookingOnPaymentUpdate,
 } from "./bookingPaymentTransition";
 
@@ -42,6 +43,23 @@ function makeTx(record: MockBookingRecord | null) {
   };
 }
 
+describe("isPaidStatus", () => {
+  it("인식: paid, succeeded, success, completed (대소문자 무시)", () => {
+    expect(isPaidStatus("paid")).toBe(true);
+    expect(isPaidStatus("SUCCEEDED")).toBe(true);
+    expect(isPaidStatus(" Success ")).toBe(true);
+    expect(isPaidStatus("completed")).toBe(true);
+  });
+
+  it("비인식: pending, failed, partial", () => {
+    expect(isPaidStatus("pending")).toBe(false);
+    expect(isPaidStatus("failed")).toBe(false);
+    expect(isPaidStatus("partial")).toBe(false);
+    expect(isPaidStatus(null)).toBe(false);
+    expect(isPaidStatus(undefined)).toBe(false);
+  });
+});
+
 describe("transitionBookingOnPaymentUpdate", () => {
   it("confirms pending booking when payment is paid", async () => {
     const { tx, update } = makeTx({
@@ -64,6 +82,83 @@ describe("transitionBookingOnPaymentUpdate", () => {
     expect(detailOf(payload).status).toBe("confirmed");
     expect(detailOf(payload).paymentStatus).toBe("paid");
     expect(typeof detailOf(payload).confirmedAt).toBe("string");
+  });
+
+  it("confirms when payment status alias is succeeded", async () => {
+    const { tx, update } = makeTx({
+      id: "b-succ",
+      status: "pending",
+      detailJson: {},
+    });
+    const result = await transitionBookingOnPaymentUpdate(tx as unknown as BookingTransitionTx, {
+      bookingId: "b-succ",
+      paymentStatus: "succeeded",
+      refundStatus: null,
+    });
+    expect(result).toEqual({ bookingConfirmed: true, bookingCancelled: false });
+    expect(update).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not confirm when payment is only pending", async () => {
+    const { tx, update } = makeTx({
+      id: "b-pend-pay",
+      status: "pending",
+      detailJson: {},
+    });
+    const result = await transitionBookingOnPaymentUpdate(tx as unknown as BookingTransitionTx, {
+      bookingId: "b-pend-pay",
+      paymentStatus: "pending",
+      refundStatus: null,
+    });
+    expect(result).toEqual({ bookingConfirmed: false, bookingCancelled: false });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("does not confirm when paymentStatus null (부분 PATCH)", async () => {
+    const { tx, update } = makeTx({
+      id: "b-null-pay",
+      status: "pending",
+      detailJson: {},
+    });
+    const result = await transitionBookingOnPaymentUpdate(tx as unknown as BookingTransitionTx, {
+      bookingId: "b-null-pay",
+      paymentStatus: null,
+      refundStatus: null,
+    });
+    expect(result).toEqual({ bookingConfirmed: false, bookingCancelled: false });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("refund_completed 로 pending 예약 취소 전이", async () => {
+    const { tx, update } = makeTx({
+      id: "b-rc",
+      status: "pending",
+      detailJson: { guestId: "g1" },
+    });
+    const result = await transitionBookingOnPaymentUpdate(tx as unknown as BookingTransitionTx, {
+      bookingId: "b-rc",
+      paymentStatus: "paid",
+      refundStatus: "refund_completed",
+    });
+    expect(result).toEqual({ bookingConfirmed: false, bookingCancelled: true });
+    expect(update).toHaveBeenCalledTimes(1);
+    const payload = update.mock.calls[0]?.[0];
+    expect(payload.data.status).toBe("cancelled_before");
+  });
+
+  it("이미 cancelled_before 이면 환불 PATCH 는 무변경", async () => {
+    const { tx, update } = makeTx({
+      id: "b-cb",
+      status: "cancelled_before",
+      detailJson: { guestId: "g1" },
+    });
+    const result = await transitionBookingOnPaymentUpdate(tx as unknown as BookingTransitionTx, {
+      bookingId: "b-cb",
+      paymentStatus: "paid",
+      refundStatus: "refunded",
+    });
+    expect(result).toEqual({ bookingConfirmed: false, bookingCancelled: false });
+    expect(update).not.toHaveBeenCalled();
   });
 
   it("does not transition booking when payment status is failed", async () => {
