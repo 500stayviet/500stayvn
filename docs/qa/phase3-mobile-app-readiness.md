@@ -155,17 +155,19 @@
 
 **프로덕션 호스트 (현재):** `https://main.dn98z8m9jfvd5.amplifyapp.com` — 바뀌면 아래 URL도 같이 바꿉니다.
 
-| ☐ | 항목 | 확인 방법 | 확인일 | 비고 |
-|---|------|-----------|--------|------|
-| ☐ | **개인정보처리방침** | 브라우저에서 `/privacy` — 200·본문 표시 | | |
-| ☐ | **이용약관** | `/terms` — 200·본문 표시 | | |
-| ☐ | **계정 삭제 안내** | `/delete-account` — 200·절차 문구가 스토어 초안·앱 안내와 같은 호스트인지 | | [store-listing-draft.md](./store-listing-draft.md) 와 대조 |
-| ☐ | **지원 연락처 일치** | 앱/웹에 보이는 이메일·문의 경로가 `operator-contact.ts`·스토어 초안과 같은지 | | |
-| ☐ | **Digital Asset Links 파일 노출** | `/.well-known/assetlinks.json` — JSON이 열리는지 (지문은 나중에 Play SHA-256으로 치환) | | |
-| ☐ | **PWA·홈 화면 추가** | Chrome 모바일에서 사이트 열기 → “홈 화면에 추가” 또는 설치 프롬프트 동작 | | |
-| ☐ | **언어 전환** | EN / KO / VI 등 전환 후 홈·예약·프로필 한 화면씩 한글·영어 섞임 없는지 | | |
-| ☐ | **핵심 동선 (로그인 가능 시)** | 로그인 → 검색/목록 → 예약 또는 결제 **모의**까지 한 번 | | 실결제는 Phase 4 전까지 하지 않기 |
-| ☐ | **모바일 뷰포트** | 실제 폰 또는 DevTools 기기 모드에서 하단 메뉴·폼이 가려지지 않는지 | | |
+**1차 점검 (자동·저장소 대조, 2026-04-27):** 프로덕션에 `curl -L` 로 GET 상태 확인. 로컬 `frontend` 에서 `npm run build` 결과 라우트 목록에 **`/privacy`·`/terms`·`/delete-account` 포함** 확인됨. 현재 라이브 호스트는 아래 일부만 200 → **Amplify가 최신 `main`을 배포하는지**(빌드 번호·커밋·최근 성공 여부) 먼저 확인할 것.
+
+| 상태 | 항목 | 확인 방법 | 확인일 | 비고 |
+|------|------|-----------|--------|------|
+| ❌ **404** | **개인정보처리방침** | `/privacy` — 200·본문 | 2026-04-27 | 코드·로컬 빌드에는 라우트 있음. 재배포 후 브라우저로 본문까지 재확인 |
+| ❌ **404** | **이용약관** | `/terms` — 200·본문 | 2026-04-27 | 동일 |
+| ✅ **200** | **계정 삭제 안내** | `/delete-account` | 2026-04-27 | 본문·스토어 초안 URL 호스트 일치 여부는 브라우저에서 한 번 더 확인 권장 |
+| ✅ **저장소 일치** | **지원 연락처** | `operator-contact.ts` vs [store-listing-draft.md](./store-listing-draft.md) | 2026-04-27 | 지원 메일 **bek94900@gmail.com** 동일 확인(문서 대조). 앱 UI 노출 문구는 수동 재확인 |
+| ❌ **404** | **Digital Asset Links** | `/.well-known/assetlinks.json` | 2026-04-27 | `frontend/public/.well-known/assetlinks.json` 존재. 재배포 후 200·JSON 본문 확인 |
+| ⏳ **수동 예정** | **PWA·홈 화면 추가** | Chrome 모바일 설치/추가 | | 재배포 안정화 후 |
+| ⏳ **수동 예정** | **언어 전환** | EN/KO/VI 화면별 혼선 없음 | | |
+| ⏳ **수동 예정** | **핵심 동선** | 로그인 → 검색 → 예약·**모의** 결제 | | 실결제는 Phase 4 전까지 금지 |
+| ⏳ **수동 예정** | **모바일 뷰포트** | 폰·DevTools로 레이아웃 | | |
 
 **나중에 (Play 내부 테스트 AAB 설치 후):** 같은 URL이 TWA 안에서 열리는지, 로그인·딥링크(해당 시)만 추가로 한 번씩.
 
@@ -173,7 +175,7 @@
 
 ## 권장 다음 작업 (우선순위)
 
-1. **위 표를 비우지 말고** 최신 배포 기준으로 하나씩 체크 → [pre-launch-closure.md](./pre-launch-closure.md) §1 증거 URL과 맞추면 “법무·정책 클로저” 진행이 빨라집니다.
+1. **Amplify 프로덕션 재배포** — 위 표에서 ❌인 경로가 최신 `main` 기준으로 200 나오게 한 뒤, 같은 표를 다시 채우고 [pre-launch-closure.md](./pre-launch-closure.md) §1 증거 URL을 맞춘다.
 2. **상용 일정 표 채우기:** [pre-launch-closure.md](./pre-launch-closure.md) §3 — KYC·은행·메일 등 비어 있는 행에 “모의/실”과 대략 시기만이라도 적기.
 3. **3b를 할 때:** JDK 17 + Android SDK → `mobile/android-twa` 에서 릴리스 서명 설정 후 `bundleRelease` → Play **내부 테스트**에 첫 AAB. (상세: 위 문서 상단 “Android Studio 없이…” 절)
 4. **Play 계정 생기면:** 콘솔의 **앱 서명 SHA-256** → `assetlinks.json` 치환 후 재배포 → [Digital Asset Links 검증 도구](https://developers.google.com/digital-asset-links/tools/generator)로 확인.
