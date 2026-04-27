@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">500 STAY VN</string>
+    <!-- twa_default_url 은 app/build.gradle.kts 의 resValue 로 주입됨 (gradle.properties → twaHostname) -->
+</resources>

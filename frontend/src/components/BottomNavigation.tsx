@@ -15,6 +15,7 @@ import { Home, Plus, Building, MessageCircle, User, Map, Calendar, Heart } from 
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getCurrentUserData, getCurrentUserId } from '@/lib/api/auth';
+import { getUIText } from '@/utils/i18n';
 
 interface BottomNavigationProps {
   hideOnPaths?: string[];
@@ -204,42 +205,27 @@ export default function BottomNavigation({ hideOnPaths = [] }: BottomNavigationP
     {
       id: 'home',
       icon: Home,
-      label: currentLanguage === "ko" ? "홈" : 
-             currentLanguage === "vi" ? "Trang chủ" :
-             currentLanguage === "ja" ? "ホーム" :
-             currentLanguage === "zh" ? "首页" : "Home",
+      label: getUIText('home', currentLanguage),
     },
     {
       id: 'add',
       icon: Plus,
-      label: currentLanguage === "ko" ? "매물등록" : 
-             currentLanguage === "vi" ? "Đăng ký" :
-             currentLanguage === "ja" ? "物件登録" :
-             currentLanguage === "zh" ? "物业注册" : "Add",
+      label: getUIText('addProperty', currentLanguage),
     },
     {
       id: 'manage',
       icon: Building,
-      label: currentLanguage === "ko" ? "매물관리" : 
-             currentLanguage === "vi" ? "Quản lý" :
-             currentLanguage === "ja" ? "物件管理" :
-             currentLanguage === "zh" ? "物业管理" : "Manage",
+      label: getUIText('manageMyProperties', currentLanguage),
     },
     {
       id: 'chat',
       icon: MessageCircle,
-      label: currentLanguage === "ko" ? "채팅" : 
-             currentLanguage === "vi" ? "Trò chuyện" :
-             currentLanguage === "ja" ? "チャット" :
-             currentLanguage === "zh" ? "聊天" : "Chat",
+      label: getUIText('chat', currentLanguage),
     },
     {
       id: 'profile',
       icon: User,
-      label: currentLanguage === "ko" ? "프로필" : 
-             currentLanguage === "vi" ? "Hồ sơ" :
-             currentLanguage === "ja" ? "プロフィール" :
-             currentLanguage === "zh" ? "个人资料" : "Profile",
+      label: getUIText('profile', currentLanguage),
     }
   ];
 
@@ -248,42 +234,27 @@ export default function BottomNavigation({ hideOnPaths = [] }: BottomNavigationP
     {
       id: 'home',
       icon: Home,
-      label: currentLanguage === "ko" ? "홈" : 
-             currentLanguage === "vi" ? "Trang chủ" :
-             currentLanguage === "ja" ? "ホーム" :
-             currentLanguage === "zh" ? "首页" : "Home",
+      label: getUIText('home', currentLanguage),
     },
     {
       id: 'search',
       icon: Map,
-      label: currentLanguage === "ko" ? "지도로 검색" : 
-             currentLanguage === "vi" ? "Tìm kiếm bản đồ" :
-             currentLanguage === "ja" ? "地図検索" :
-             currentLanguage === "zh" ? "地图搜索" : "Map Search",
+      label: getUIText('findPropertiesOnMap', currentLanguage),
     },
     {
       id: 'chat',
       icon: Calendar,
-      label: currentLanguage === "ko" ? "예약" : 
-             currentLanguage === "vi" ? "Đặt chỗ" :
-             currentLanguage === "ja" ? "予約" :
-             currentLanguage === "zh" ? "预订" : "Bookings",
+      label: getUIText('myBookings', currentLanguage),
     },
     {
       id: 'wishlist',
       icon: Heart,
-      label: currentLanguage === "ko" ? "찜" : 
-             currentLanguage === "vi" ? "Yêu thích" :
-             currentLanguage === "ja" ? "お気に入り" :
-             currentLanguage === "zh" ? "收藏" : "Wishlist",
+      label: getUIText('wishlist', currentLanguage),
     },
     {
       id: 'profile',
       icon: User,
-      label: currentLanguage === "ko" ? "프로필" : 
-             currentLanguage === "vi" ? "Hồ sơ" :
-             currentLanguage === "ja" ? "プロフィール" :
-             currentLanguage === "zh" ? "个人资料" : "Profile",
+      label: getUIText('profile', currentLanguage),
     }
   ];
 

@@ -56,5 +56,11 @@ test-results/
 playwright-report/
 blob-report/
 
+# Capacitor iOS (Pods·빌드 산출물은 로컬/Xcode에서 재생성)
+ios/App/Pods/
+ios/App/build/
+ios/App/App/public/
+ios/capacitor-cordova-ios-plugins/
+
 # Local tooling locks
 skills-lock.json

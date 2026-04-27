@@ -16,6 +16,7 @@ import {
   type ChatRoom,
   type ChatMessage as ChatMessageType,
 } from '@/lib/api/chat';
+import { getUIText } from '@/utils/i18n';
 
 /**
  * 채팅방 단일 페이지: 방 로드·권한·메시지 구독·과거 로드·전송까지 한 훅에 묶는다.
@@ -170,7 +171,7 @@ export function useChatRoomPage() {
       inputRef.current?.focus();
     } catch (error) {
       console.error('메시지 전송 실패:', error);
-      alert(currentLanguage === 'ko' ? '메시지 전송에 실패했습니다.' : 'Gửi tin nhắn thất bại.');
+      alert(getUIText('chatSendFailed', currentLanguage));
     } finally {
       setSending(false);
     }
@@ -187,14 +188,16 @@ export function useChatRoomPage() {
     if (!user || !chatRoom) return { name: '', role: '' };
 
     if (chatRoom.ownerId === user.uid) {
+      const tenant = getUIText('chatRoleTenant', currentLanguage);
       return {
-        name: chatRoom.guestName || (currentLanguage === 'ko' ? '임차인' : 'Người thuê'),
-        role: currentLanguage === 'ko' ? '임차인' : 'Người thuê',
+        name: chatRoom.guestName || tenant,
+        role: tenant,
       };
     }
+    const landlord = getUIText('chatRoleLandlord', currentLanguage);
     return {
-      name: chatRoom.ownerName || (currentLanguage === 'ko' ? '임대인' : 'Chủ nhà'),
-      role: currentLanguage === 'ko' ? '임대인' : 'Chủ nhà',
+      name: chatRoom.ownerName || landlord,
+      role: landlord,
     };
   }, [user, chatRoom, currentLanguage]);
 
@@ -212,9 +215,9 @@ export function useChatRoomPage() {
     yesterday.setDate(yesterday.getDate() - 1);
 
     if (date.toDateString() === today.toDateString()) {
-      return currentLanguage === 'ko' ? '오늘' : 'Hôm nay';
+      return getUIText('chatDateToday', currentLanguage);
     } else if (date.toDateString() === yesterday.toDateString()) {
-      return currentLanguage === 'ko' ? '어제' : 'Hôm qua';
+      return getUIText('chatDateYesterday', currentLanguage);
     } else {
       const day = date.getDate().toString().padStart(2, '0');
       const month = (date.getMonth() + 1).toString().padStart(2, '0');

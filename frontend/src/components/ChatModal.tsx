@@ -24,6 +24,7 @@ import { detectMessageLanguage } from '@/lib/utils/languageDetection';
 import { X, Send, Loader2, Home, MessageSquare } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { getUIText } from '@/utils/i18n';
 
 interface ChatModalProps {
   roomId: string;
@@ -183,7 +184,7 @@ export default function ChatModal({ roomId, onClose }: ChatModalProps) {
       inputRef.current?.focus();
     } catch (error) {
       console.error('메시지 전송 실패:', error);
-      alert(currentLanguage === 'ko' ? '메시지 전송에 실패했습니다.' : 'Gửi tin nhắn thất bại.');
+      alert(getUIText('chatSendFailed', currentLanguage));
     } finally {
       setSending(false);
     }
@@ -202,14 +203,16 @@ export default function ChatModal({ roomId, onClose }: ChatModalProps) {
     if (!user || !chatRoom) return { name: '', role: '' };
     
     if (chatRoom.ownerId === user.uid) {
+      const tenant = getUIText('chatRoleTenant', currentLanguage);
       return {
-        name: chatRoom.guestName || (currentLanguage === 'ko' ? '임차인' : 'Người thuê'),
-        role: currentLanguage === 'ko' ? '임차인' : 'Người thuê',
+        name: chatRoom.guestName || tenant,
+        role: tenant,
       };
     }
+    const landlord = getUIText('chatRoleLandlord', currentLanguage);
     return {
-      name: chatRoom.ownerName || (currentLanguage === 'ko' ? '임대인' : 'Chủ nhà'),
-      role: currentLanguage === 'ko' ? '임대인' : 'Chủ nhà',
+      name: chatRoom.ownerName || landlord,
+      role: landlord,
     };
   };
 
@@ -228,9 +231,9 @@ export default function ChatModal({ roomId, onClose }: ChatModalProps) {
     yesterday.setDate(yesterday.getDate() - 1);
 
     if (date.toDateString() === today.toDateString()) {
-      return currentLanguage === 'ko' ? '오늘' : 'Hôm nay';
+      return getUIText('chatDateToday', currentLanguage);
     } else if (date.toDateString() === yesterday.toDateString()) {
-      return currentLanguage === 'ko' ? '어제' : 'Hôm qua';
+      return getUIText('chatDateYesterday', currentLanguage);
     } else {
       const day = date.getDate().toString().padStart(2, '0');
       const month = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -312,7 +315,7 @@ export default function ChatModal({ roomId, onClose }: ChatModalProps) {
                 {chatRoom.propertyTitle}
               </p>
               <p className="text-[10px] text-blue-500 font-medium">
-                {currentLanguage === 'ko' ? '매물 보기' : 'Xem phòng'}
+                {getUIText('chatViewListing', currentLanguage)}
               </p>
             </div>
           </div>
@@ -325,14 +328,10 @@ export default function ChatModal({ roomId, onClose }: ChatModalProps) {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[11px] font-black text-orange-700 flex items-center gap-1">
-                {currentLanguage === 'ko' ? '입주 전 꼭 확인해 주세요!' : 
-                 currentLanguage === 'vi' ? 'Lưu ý quan trọng!' : 
-                 'Quick Note for You!'}
+                {getUIText('chatResidencyNoticeTitle', currentLanguage)}
               </p>
               <p className="text-[10px] text-orange-600/90 mt-0.5 leading-relaxed font-bold">
-                {currentLanguage === 'ko' ? '베트남 법에 따라 거주신고(Khai báo tạm trú)가 필수예요! 쾌적하고 안전한 숙박을 위해 꼭 진행해 주세요 ✈️' : 
-                 currentLanguage === 'vi' ? 'Đừng quên đăng ký tạm trú nhé! Đây là quy định bắt buộc để đảm bảo quyền lợi và an toàn cho bạn ✈️' : 
-                 'Residency registration is required! Please ensure it is completed for a safe and comfortable stay ✈️'}
+                {getUIText('chatResidencyNoticeBody', currentLanguage)}
               </p>
             </div>
           </div>
@@ -351,11 +350,7 @@ export default function ChatModal({ roomId, onClose }: ChatModalProps) {
           ) : null}
           {!loadingMoreOlder && hasMoreOlder && messages.length > 0 ? (
             <p className="text-center text-[10px] text-gray-400">
-              {currentLanguage === 'ko'
-                ? '위로 스크롤하면 이전 메시지'
-                : currentLanguage === 'vi'
-                  ? 'Cuộn lên để xem tin cũ hơn'
-                  : 'Scroll up for older messages'}
+              {getUIText('chatScrollOlderMessages', currentLanguage)}
             </p>
           ) : null}
           {/* 예약 확정 시스템 안내 (첫 머리에 표시) */}
@@ -364,15 +359,11 @@ export default function ChatModal({ roomId, onClose }: ChatModalProps) {
               <div className="flex items-center gap-2 mb-1.5">
                 <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
                 <span className="text-[11px] font-bold text-blue-600 uppercase tracking-tight">
-                  {currentLanguage === 'ko' ? '예약 확정 안내' : 
-                   currentLanguage === 'vi' ? 'Thông báo xác nhận' : 
-                   'Booking Confirmed'}
+                  {getUIText('chatBookingNoticeTitle', currentLanguage)}
                 </span>
               </div>
               <p className="text-[12px] text-gray-600 leading-relaxed font-medium">
-                {currentLanguage === 'ko' ? '안전하고 즐거운 숙박을 위해 입주 직후 거주신고(Khai báo tạm trú)를 진행해 주세요.' : 
-                 currentLanguage === 'vi' ? 'Để có một kỳ nghỉ an toàn, vui lòng thực hiện đăng ký tạm trú ngay sau khi nhận phòng.' : 
-                 'For a safe stay, please complete the resident registration immediately after check-in.'}
+                {getUIText('chatBookingNoticeBody', currentLanguage)}
               </p>
             </div>
           </div>
@@ -383,7 +374,7 @@ export default function ChatModal({ roomId, onClose }: ChatModalProps) {
                 <MessageSquare className="w-6 h-6 text-gray-300" />
               </div>
               <p className="text-gray-400 text-xs">
-                {currentLanguage === 'ko' ? '메시지를 보내 대화를 시작하세요' : 'Gửi tin nhắn để bắt đầu trò chuyện'}
+                {getUIText('chatEmptyState', currentLanguage)}
               </p>
             </div>
           ) : (
@@ -418,7 +409,7 @@ export default function ChatModal({ roomId, onClose }: ChatModalProps) {
                   {isMe && message.isRead && (
                     <div className={`flex ${isMe ? 'justify-end' : 'justify-start'} mt-0.5 mr-1`}>
                       <span className="text-[10px] text-blue-500 font-bold">
-                        {currentLanguage === 'ko' ? '읽음' : 'Đã xem'}
+                        {getUIText('chatReadReceipt', currentLanguage)}
                       </span>
                     </div>
                   )}
@@ -438,7 +429,7 @@ export default function ChatModal({ roomId, onClose }: ChatModalProps) {
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder={currentLanguage === 'ko' ? '메시지 입력...' : 'Nhập tin nhắn...'}
+              placeholder={getUIText('chatInputPlaceholder', currentLanguage)}
               className="flex-1 px-3 py-2 bg-transparent text-sm focus:outline-none"
               disabled={sending}
             />

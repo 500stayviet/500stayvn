@@ -1,6 +1,8 @@
 "use client";
 
 import type { AddPropertyColors } from "../constants/addPropertyColors";
+import type { SupportedLanguage } from "@/lib/api/translation";
+import { getUIText } from "@/utils/i18n";
 
 interface AddPropertyCheckTimeSectionProps {
   currentLanguage: string;
@@ -19,6 +21,7 @@ export function AddPropertyCheckTimeSection({
   onCheckInTimeChange,
   onCheckOutTimeChange,
 }: AddPropertyCheckTimeSectionProps) {
+  const lang = currentLanguage as SupportedLanguage;
   const timeOptions = Array.from({ length: 24 }, (_, i) => {
     const hour = i.toString().padStart(2, "0");
     return [`${hour}:00`, `${hour}:30`];
@@ -33,15 +36,7 @@ export function AddPropertyCheckTimeSection({
       }}
     >
       <h2 className="text-sm font-bold mb-4" style={{ color: colors.text }}>
-        {currentLanguage === "ko"
-          ? "체크인/체크아웃 시간"
-          : currentLanguage === "vi"
-            ? "Giờ check-in/check-out"
-            : currentLanguage === "ja"
-              ? "チェックイン/チェックアウト時間"
-              : currentLanguage === "zh"
-                ? "入住/退房时间"
-                : "Check-in/Check-out Time"}
+        {getUIText("checkInOutScheduleTitle", lang)}
       </h2>
       <div className="grid grid-cols-2 gap-2">
         <div>
@@ -73,7 +68,7 @@ export function AddPropertyCheckTimeSection({
             className="block text-[11px] font-medium mb-1.5"
             style={{ color: colors.textSecondary }}
           >
-            {currentLanguage === "ko" ? "체크아웃" : "Check-out"}
+            {getUIText("checkOut", lang)}
           </label>
           <select
             value={checkOutTime}

@@ -11,6 +11,7 @@ import { usePropertyDetailLoad } from '@/hooks/usePropertyDetailLoad';
 import PropertyDetailView from '@/components/PropertyDetailView';
 import AppBox from '@/components/AppBox';
 import type { SupportedLanguage } from '@/lib/api/translation';
+import { getUIText } from '@/utils/i18n';
 
 export default function InterceptedPropertyPage() {
   const router = useRouter();
@@ -27,7 +28,7 @@ export default function InterceptedPropertyPage() {
     return (
       <div className="fixed inset-0 z-[90] bg-black/50 flex items-center justify-center p-4" onClick={handleBack}>
         <div className="text-white" onClick={(e) => e.stopPropagation()}>
-          {currentLanguage === 'ko' ? '로딩 중...' : currentLanguage === 'vi' ? 'Đang tải...' : 'Loading...'}
+          {getUIText('loading', currentLanguage)}
         </div>
       </div>
     );
@@ -41,7 +42,7 @@ export default function InterceptedPropertyPage() {
             {currentLanguage === 'ko' ? '매물을 찾을 수 없습니다.' : currentLanguage === 'vi' ? 'Không tìm thấy.' : 'Not found.'}
           </p>
           <button onClick={handleBack} className="px-4 py-2 rounded-lg text-white" style={{ backgroundColor: '#E63946' }}>
-            {currentLanguage === 'ko' ? '뒤로' : currentLanguage === 'vi' ? 'Quay lại' : 'Back'}
+            {getUIText('back', currentLanguage)}
           </button>
         </div>
       </div>

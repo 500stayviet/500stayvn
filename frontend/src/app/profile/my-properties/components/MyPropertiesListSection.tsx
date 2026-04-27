@@ -115,7 +115,7 @@ export default function MyPropertiesListSection({
                     {formatPrice(property.price, property.priceUnit)}
                   </div>
                   <div className="text-[10px] text-gray-300 mt-1">
-                    {currentLanguage === "ko" ? "주당 비용" : "/ week"}
+                    {getUIText("weeklyCostLabel", currentLanguage)}
                   </div>
                 </div>
               </div>

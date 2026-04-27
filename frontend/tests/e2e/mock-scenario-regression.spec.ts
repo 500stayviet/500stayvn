@@ -196,16 +196,10 @@ test("profile edit shows OTP error in mockScenario=fail", async ({ page }) => {
   );
 });
 
-test("booking flow shows payment-fail alert in mockScenario=fail", async ({ page }) => {
+test("booking flow shows payment-fail sync error in mockScenario=fail", async ({ page }) => {
   await seedAuthenticatedUser(page);
   await mockCommonSessionApis(page);
   await mockPropertyApis(page);
-
-  const alerts: string[] = [];
-  page.on("dialog", async (dialog) => {
-    alerts.push(dialog.message());
-    await dialog.accept();
-  });
 
   await page.goto(
     `/booking?propertyId=${propertyId}&checkIn=2026-05-01&checkOut=2026-05-08&guests=1&mockScenario=success`,
@@ -226,7 +220,11 @@ test("booking flow shows payment-fail alert in mockScenario=fail", async ({ page
   });
 
   await page.getByRole("button", { name: /결제하기|Thanh toán/ }).click();
-  await expect.poll(() => alerts.some((m) => m.includes("결제 처리에 실패했습니다."))).toBeTruthy();
+  // `emitUserFacingSyncError` → ApiSyncErrorBanner; exclude Next.js `__next-route-announcer__`
+  const paymentFailBanner = page.getByRole("alert").filter({
+    hasText: /Payment could not be completed|결제를 완료하지 못했습니다|Không hoàn tất thanh toán/,
+  });
+  await expect(paymentFailBanner).toBeVisible();
 });
 
 test("booking flow with mockScenario=partial does not reach success page", async ({ page }) => {

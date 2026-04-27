@@ -4,6 +4,12 @@ import bundleAnalyzer from "@next/bundle-analyzer";
 
 const requirePwa = createRequire(import.meta.url);
 
+/**
+ * Capacitor 정적 번들(`output: 'export'`)은 **본 레포의 Route Handler(`/api/*` BFF)와 호환되지 않음**
+ * (Next 공식: Static Export는 API Route 미지원). iOS 셸은 `capacitor.config.ts`의 `server.url`로
+ * 배포된 Next(Amplify 등) HTTPS를 로드한다. `docs/qa/phase3-capacitor-ios.md` 참고.
+ */
+
 const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === "true",
 });

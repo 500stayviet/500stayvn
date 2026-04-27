@@ -46,7 +46,7 @@ export function ReservationsPageView({ vm }: Props) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-gray-500">
-          {currentLanguage === 'ko' ? '로딩 중...' : currentLanguage === 'vi' ? 'Đang tải...' : 'Loading...'}
+          {getUIText('loading', currentLanguage)}
         </div>
       </div>
     );
@@ -69,11 +69,7 @@ export function ReservationsPageView({ vm }: Props) {
               {getUIText('systemMaintenance', currentLanguage)}
             </p>
             <p className="text-xs text-gray-500 text-center">
-              {currentLanguage === 'ko'
-                ? '서버 시간을 확인할 수 없어 예약 상태를 표시할 수 없습니다. 잠시 후 다시 시도해 주세요.'
-                : currentLanguage === 'vi'
-                  ? 'Không thể xác minh thời gian máy chủ. Vui lòng thử lại sau.'
-                  : 'Cannot verify server time. Please try again later.'}
+              {getUIText('reservationServerTimeDetail', currentLanguage)}
             </p>
           </div>
         </div>
@@ -95,11 +91,11 @@ export function ReservationsPageView({ vm }: Props) {
             >
               <ArrowLeft className="w-5 h-5" />
               <span className="text-sm font-medium">
-                {currentLanguage === 'ko' ? '뒤로가기' : currentLanguage === 'vi' ? 'Quay lại' : 'Back'}
+                {getUIText('backNavLabel', currentLanguage)}
               </span>
             </button>
             <h1 className="text-2xl font-bold text-gray-900">
-              {currentLanguage === 'ko' ? '예약된 매물 관리' : currentLanguage === 'vi' ? 'Quản lý đặt phòng' : 'Reservation Management'}
+              {getUIText('hostManageBookedPropertiesTitle', currentLanguage)}
             </h1>
           </div>
 
@@ -123,7 +119,7 @@ export function ReservationsPageView({ vm }: Props) {
                 activeTab === 'completed' ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              {currentLanguage === 'ko' ? '예약완료된 매물' : currentLanguage === 'vi' ? 'Hoàn thành' : 'Completed Reservations'}
+              {getUIText('hostTabCompletedReservations', currentLanguage)}
               {completedCount > 0 && (
                 <span className="ml-2 text-xs bg-purple-100 text-purple-600 px-2 py-0.5 rounded-full">{completedCount}</span>
               )}
@@ -134,16 +130,8 @@ export function ReservationsPageView({ vm }: Props) {
             <div className="text-center py-12">
               <p className="text-gray-500">
                 {activeTab === 'active'
-                  ? currentLanguage === 'ko'
-                    ? '예약된 매물이 없습니다.'
-                    : currentLanguage === 'vi'
-                      ? 'Không có đặt phòng nào.'
-                      : 'No active reservations.'
-                  : currentLanguage === 'ko'
-                    ? '예약완료된 매물이 없습니다.'
-                    : currentLanguage === 'vi'
-                      ? 'Không có đặt phòng hoàn thành nào.'
-                      : 'No completed reservations.'}
+                  ? getUIText('emptyNoActiveReservations', currentLanguage)
+                  : getUIText('emptyNoCompletedReservations', currentLanguage)}
               </p>
             </div>
           ) : (
@@ -201,7 +189,7 @@ export function ReservationsPageView({ vm }: Props) {
 
                       <div className="border-t border-gray-200 pt-4 space-y-2">
                         <p className="text-xs font-semibold text-gray-500 uppercase">
-                          {currentLanguage === 'ko' ? '임차인 정보' : currentLanguage === 'vi' ? 'Thông tin người thuê' : 'Tenant Information'}
+                          {getUIText('tenantInfoHeading', currentLanguage)}
                         </p>
                         {reservation.tenantName && (
                           <div className="flex items-center gap-2 text-sm text-gray-700">
@@ -233,16 +221,8 @@ export function ReservationsPageView({ vm }: Props) {
                           >
                             <CheckCircle2 className="w-4 h-4" />
                             {updatingId === reservation.id
-                              ? currentLanguage === 'ko'
-                                ? '처리 중...'
-                                : currentLanguage === 'vi'
-                                  ? 'Đang xử lý...'
-                                  : 'Processing...'
-                              : currentLanguage === 'ko'
-                                ? '예약 확정'
-                                : currentLanguage === 'vi'
-                                  ? 'Xác nhận đặt phòng'
-                                  : 'Confirm Reservation'}
+                              ? getUIText('processingInProgress', currentLanguage)
+                              : getUIText('confirmReservationBtn', currentLanguage)}
                           </button>
                           <button
                             type="button"
@@ -265,16 +245,8 @@ export function ReservationsPageView({ vm }: Props) {
                           >
                             <CheckCircle2 className="w-4 h-4" />
                             {updatingId === reservation.id
-                              ? currentLanguage === 'ko'
-                                ? '처리 중...'
-                                : currentLanguage === 'vi'
-                                  ? 'Đang xử lý...'
-                                  : 'Processing...'
-                              : currentLanguage === 'ko'
-                                ? '예약 완료 처리'
-                                : currentLanguage === 'vi'
-                                  ? 'Hoàn thành đặt phòng'
-                                  : 'Mark as Completed'}
+                              ? getUIText('processingInProgress', currentLanguage)
+                              : getUIText('markStayCompletedBtn', currentLanguage)}
                           </button>
                         </div>
                       )}
@@ -286,7 +258,7 @@ export function ReservationsPageView({ vm }: Props) {
                             onClick={() => void handleDeleteReservation(reservation.id!)}
                             disabled={updatingId === reservation.id}
                             className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-                            title={currentLanguage === 'ko' ? '기록 삭제' : 'Delete record'}
+                            title={getUIText('deleteHistoryRecordTitle', currentLanguage)}
                           >
                             <Trash2 className="w-5 h-5" />
                           </button>

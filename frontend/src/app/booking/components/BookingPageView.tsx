@@ -11,6 +11,7 @@ import TopBar from "@/components/TopBar";
 import type { SupportedLanguage } from "@/lib/api/translation";
 import InternationalPhoneInput from "@/components/auth/InternationalPhoneInput";
 import type { BookingPageViewModel } from "../hooks/useBookingPage";
+import { getUIText } from "@/utils/i18n";
 
 const PAYMENT_METHODS: readonly {
   id: string;
@@ -99,7 +100,7 @@ export function BookingPageView({ vm }: Props) {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <h1 className="font-bold text-lg">
-            {currentLanguage === "ko" ? "예약하기" : "Đặt phòng"}
+            {getUIText("bookPropertyTitle", currentLanguage)}
           </h1>
         </div>
 
@@ -127,7 +128,7 @@ export function BookingPageView({ vm }: Props) {
               </div>
               <p className="text-sm font-bold text-blue-600 mt-1">
                 {formatPrice(totalPrice)} ({nights}
-                {currentLanguage === "ko" ? "박" : " đêm"})
+                {getUIText("nightShort", currentLanguage)})
               </p>
             </div>
           </div>
@@ -137,13 +138,14 @@ export function BookingPageView({ vm }: Props) {
           {step === "info" ? (
             <div className="space-y-4">
               <h2 className="text-sm font-semibold">
-                {currentLanguage === "ko"
-                  ? "예약자 정보"
-                  : "Thông tin người đặt"}
+                {getUIText("guestInfoSectionTitle", currentLanguage)}
               </h2>
               <input
                 type="text"
-                placeholder="이름"
+                placeholder={getUIText(
+                  "bookingGuestNamePlaceholder",
+                  currentLanguage,
+                )}
                 className="w-full p-3 border rounded-xl text-sm"
                 value={guestInfo.name}
                 onChange={(e) =>
@@ -167,7 +169,9 @@ export function BookingPageView({ vm }: Props) {
                   checked={agreeTerms}
                   onChange={(e) => setAgreeTerms(e.target.checked)}
                 />
-                <span>약관 및 개인정보 수집 동의 (필수)</span>
+                <span>
+                  {getUIText("agreeTermsPrivacyBooking", currentLanguage)}
+                </span>
               </label>
               <button
                 type="button"
@@ -183,21 +187,19 @@ export function BookingPageView({ vm }: Props) {
               <div className="text-center">
                 <CreditCard className="w-12 h-12 text-blue-600 mx-auto mb-2" />
                 <h2 className="font-bold text-lg">
-                  {currentLanguage === "ko"
-                    ? "결제 수단 선택"
-                    : "Chọn phương thức thanh toán"}
+                  {getUIText("selectPaymentMethod", currentLanguage)}
                 </h2>
               </div>
               <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-2">
                 <p className="text-sm font-semibold text-gray-700 mb-2">
-                  {currentLanguage === "ko" ? "요금 내역" : "Chi tiết thanh toán"}
+                  {getUIText("priceBreakdown", currentLanguage)}
                 </p>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">
                     {nights}
-                    {currentLanguage === "ko" ? "박" : " đêm"} ×{" "}
+                    {getUIText("nightShort", currentLanguage)} ×{" "}
                     {formatPrice(property?.price ?? 0)}
-                    {currentLanguage === "ko" ? " (주당)" : " /tuần"}
+                    {getUIText("perWeekSlash", currentLanguage)}
                   </span>
                   <span className="font-medium">
                     {formatPrice(accommodationTotal)}
@@ -206,24 +208,24 @@ export function BookingPageView({ vm }: Props) {
                 {petsCount > 0 && (property?.petFee ?? 0) > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">
-                      {currentLanguage === "ko" ? "애완동물" : "Thú cưng"}{" "}
+                      {getUIText("petsShort", currentLanguage)}{" "}
                       {petsCount}
-                      {currentLanguage === "ko" ? "마리" : " con"} ×{" "}
+                      {getUIText("petCountClassifier", currentLanguage)} ×{" "}
                       {formatPrice(property?.petFee ?? 0)}
-                      {currentLanguage === "ko" ? " (마리당/주)" : " /con/tuần"}
+                      {getUIText("perPetPerWeekSlash", currentLanguage)}
                     </span>
                     <span className="font-medium">{formatPrice(petTotal)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">
-                    {currentLanguage === "ko" ? "예약 수수료" : "Phí dịch vụ"} (
+                    {getUIText("bookingServiceFee", currentLanguage)} (
                     {serviceFeePercent}%)
                   </span>
                   <span className="font-medium">{formatPrice(serviceFee)}</span>
                 </div>
                 <div className="border-t border-gray-200 pt-2 mt-2 flex justify-between text-base font-bold">
-                  <span>{currentLanguage === "ko" ? "총액" : "Tổng cộng"}</span>
+                  <span>{getUIText("totalAmountLabel", currentLanguage)}</span>
                   <span className="text-blue-600">{formatPrice(totalPrice)}</span>
                 </div>
               </div>
@@ -252,9 +254,7 @@ export function BookingPageView({ vm }: Props) {
                   onChange={(e) => setAgreePaymentTerms(e.target.checked)}
                 />
                 <span>
-                  {currentLanguage === "ko"
-                    ? "약관 및 결제 조건에 동의합니다. (필수)"
-                    : "Tôi đồng ý với điều khoản và điều kiện thanh toán. (Bắt buộc)"}
+                  {getUIText("agreePaymentTermsCheckbox", currentLanguage)}
                 </span>
               </label>
               <button
@@ -266,10 +266,8 @@ export function BookingPageView({ vm }: Props) {
                 className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold disabled:bg-gray-300"
               >
                 {submitting
-                  ? "처리 중..."
-                  : currentLanguage === "ko"
-                    ? "결제하기"
-                    : "Thanh toán"}
+                  ? getUIText("processingInProgress", currentLanguage)
+                  : getUIText("payNow", currentLanguage)}
               </button>
             </div>
           )}

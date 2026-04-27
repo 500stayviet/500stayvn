@@ -12,6 +12,11 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { SupportedLanguage } from '@/lib/api/translation';
 import {
+  CALENDAR_DAY_NAMES,
+  CALENDAR_MONTH_NAMES,
+  getUIText,
+} from '@/utils/i18n';
+import {
   isOwnerSupplyLengthDays,
   LISTING_MAX_GUEST_SPAN_FALLBACK_DAYS,
   LISTING_MAX_SUPPLY_DAYS,
@@ -507,23 +512,8 @@ export default function CalendarComponent({
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
   };
 
-  const monthNames = currentLanguage === 'ko' 
-    ? ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월']
-    : currentLanguage === 'vi'
-    ? ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12']
-    : currentLanguage === 'ja' || currentLanguage === 'zh'
-    ? ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
-    : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-  const dayNames = currentLanguage === 'ko'
-    ? ['일', '월', '화', '수', '목', '금', '토']
-    : currentLanguage === 'vi'
-    ? ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
-    : currentLanguage === 'ja'
-    ? ['日', '月', '火', '水', '木', '金', '土']
-    : currentLanguage === 'zh'
-    ? ['日', '一', '二', '三', '四', '五', '六']
-    : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const monthNames = CALENDAR_MONTH_NAMES[currentLanguage];
+  const dayNames = CALENDAR_DAY_NAMES[currentLanguage];
 
   // 달력 날짜 생성
   const calendarDays = [];
@@ -548,30 +538,19 @@ export default function CalendarComponent({
                 <span className="text-2xl">⚠️</span>
               </div>
               <h4 className="text-lg font-semibold text-gray-900 mb-2">
-                {isOwnerMode 
-                  ? (currentLanguage === 'ko' 
-                      ? '기간 설정 불가' 
-                      : currentLanguage === 'vi' 
-                      ? 'Không thể đặt thời gian' 
-                      : 'Cannot Set Period')
-                  : (currentLanguage === 'ko' 
-                      ? '예약 불가' 
-                      : currentLanguage === 'vi' 
-                      ? 'Không thể đặt phòng' 
-                      : 'Cannot Book')}
+                {isOwnerMode
+                  ? getUIText('calWarnTitleOwner', currentLanguage)
+                  : getUIText('calWarnTitleGuest', currentLanguage)}
               </h4>
               <p className="text-sm text-gray-600 mb-4">
-                {ownerWarningMessage || (currentLanguage === 'ko' 
-                  ? '최소 7일 단위로만 예약이 가능합니다. 선택한 날짜부터 임대 종료일까지 7일 미만이므로 다른 날짜를 선택해주세요.'
-                  : currentLanguage === 'vi'
-                  ? 'Chỉ có thể đặt phòng tối thiểu 7 ngày. Từ ngày đã chọn đến ngày kết thúc thuê còn dưới 7 ngày, vui lòng chọn ngày khác.'
-                  : 'Bookings are only available in 7-day units. The selected date has less than 7 days until the rental end date. Please select another date.')}
+                {ownerWarningMessage ||
+                  getUIText('calWarnMinSevenBody', currentLanguage)}
               </p>
               <button
                 onClick={handleWarningClose}
                 className="w-full py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
               >
-                {currentLanguage === 'ko' ? '확인' : currentLanguage === 'vi' ? 'Xác nhận' : 'OK'}
+                {getUIText('confirm', currentLanguage)}
               </button>
             </div>
           </div>
@@ -581,12 +560,12 @@ export default function CalendarComponent({
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-xl font-semibold text-gray-900">
           {isOwnerMode
-            ? (selectingCheckIn
-                ? (currentLanguage === 'ko' ? '임대 시작일 선택' : currentLanguage === 'vi' ? 'Chọn ngày bắt đầu thuê' : 'Select Rental Start Date')
-                : (currentLanguage === 'ko' ? '임대 종료일 선택' : currentLanguage === 'vi' ? 'Chọn ngày kết thúc thuê' : 'Select Rental End Date'))
-            : (selectingCheckIn
-                ? (currentLanguage === 'ko' ? '체크인 날짜 선택' : currentLanguage === 'vi' ? 'Chọn ngày nhận phòng' : 'Select Check-in Date')
-                : (currentLanguage === 'ko' ? '체크아웃 날짜 선택' : currentLanguage === 'vi' ? 'Chọn ngày trả phòng' : 'Select Check-out Date'))}
+            ? selectingCheckIn
+              ? getUIText('calSelectRentalStart', currentLanguage)
+              : getUIText('calSelectRentalEnd', currentLanguage)
+            : selectingCheckIn
+              ? getUIText('calSelectCheckIn', currentLanguage)
+              : getUIText('calSelectCheckOut', currentLanguage)}
         </h3>
         <button
           onClick={onClose}
@@ -691,31 +670,31 @@ export default function CalendarComponent({
             <div className="text-xs text-gray-600 space-y-2">
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 bg-white border border-gray-300 rounded-full flex-shrink-0"></div>
-                <span>{currentLanguage === 'ko' ? '임대 시작일로 선택 가능' : currentLanguage === 'vi' ? 'Có thể chọn làm ngày bắt đầu' : 'Can select as start date'}</span>
+                <span>{getUIText('calOwnerLegendSelectableStart', currentLanguage)}</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 bg-blue-600 rounded-full flex-shrink-0"></div>
-                <span>{currentLanguage === 'ko' ? '선택된 시작일' : currentLanguage === 'vi' ? 'Ngày bắt đầu đã chọn' : 'Selected start date'}</span>
+                <span>{getUIText('calOwnerLegendSelectedStart', currentLanguage)}</span>
               </div>
             </div>
           ) : checkInDate ? (
             <div className="text-xs text-gray-600 space-y-2">
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 bg-green-600 rounded-full flex-shrink-0"></div>
-                <span>{currentLanguage === 'ko' ? '임대 종료일 (7일 단위, 최대 약 3개월)' : currentLanguage === 'vi' ? 'Ngày kết thúc (bội 7 ngày, tối đa ~3 tháng)' : 'End date (7-day steps, max ~3 months)'}</span>
+                <span>{getUIText('calOwnerLegendEndHint', currentLanguage)}</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 bg-green-50 border border-green-200 rounded-full flex-shrink-0"></div>
-                <span>{currentLanguage === 'ko' ? '임대 기간 중 (클릭 시 새 시작일로 변경)' : currentLanguage === 'vi' ? 'Trong thời gian thuê (nhấp để đổi ngày bắt đầu)' : 'Within rental period (click to change start date)'}</span>
+                <span>{getUIText('calOwnerLegendWithinPeriod', currentLanguage)}</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 bg-white border border-gray-300 rounded-full flex-shrink-0"></div>
-                <span>{currentLanguage === 'ko' ? '그 외 날짜 (클릭 시 새 시작일로 변경)' : currentLanguage === 'vi' ? 'Ngày khác (nhấp để đổi ngày bắt đầu)' : 'Other dates (click to change start date)'}</span>
+                <span>{getUIText('calOwnerLegendOtherDates', currentLanguage)}</span>
               </div>
             </div>
           ) : (
             <div className="text-xs text-gray-600">
-              {currentLanguage === 'ko' ? '임대 시작일을 먼저 선택해주세요' : currentLanguage === 'vi' ? 'Vui lòng chọn ngày bắt đầu trước' : 'Please select start date first'}
+              {getUIText('calOwnerSelectStartFirst', currentLanguage)}
             </div>
           )
         ) : (
@@ -724,26 +703,24 @@ export default function CalendarComponent({
             <div className="text-xs text-gray-600 space-y-2">
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 bg-white border border-gray-300 rounded-full flex-shrink-0"></div>
-                <span>{currentLanguage === 'ko' ? '선택 가능한 날짜' : currentLanguage === 'vi' ? 'Ngày có thể chọn' : 'Available dates'}</span>
+                <span>{getUIText('calGuestLegendAvailable', currentLanguage)}</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 bg-green-600 rounded-full flex-shrink-0"></div>
-                <span>{currentLanguage === 'ko' ? '최소 7박 이상, 막힌 날 제외(체크아웃 날짜 자유)' : currentLanguage === 'vi' ? 'Tối thiểu 7 đêm, trừ ngày đã đặt' : 'Min 7 nights; pick checkout like Airbnb'}</span>
+                <span>{getUIText('calGuestLegendMinSeven', currentLanguage)}</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 bg-gray-50 border border-gray-200 rounded-full flex items-center justify-center">
                   <div className="w-full h-px bg-gray-300 rotate-45"></div>
                 </div>
-                <span>{currentLanguage === 'ko' ? '이미 예약됨 / 예약 불가' : currentLanguage === 'vi' ? 'Đã được đặt / Không thể đặt' : 'Booked / Unavailable'}</span>
+                <span>{getUIText('calGuestLegendBooked', currentLanguage)}</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 rounded-full flex-shrink-0 bg-blue-50/30 ring-1 ring-blue-200">
                   <span className="text-[8px] text-blue-600 flex items-center justify-center h-full font-bold">OUT</span>
                 </div>
                 <span>
-                  {currentLanguage === 'ko' ? '기존 예약 체크아웃 (체크인 가능)' : 
-                   currentLanguage === 'vi' ? 'Ngày trả phòng (Có thể nhận phòng)' : 
-                   'Existing Checkout (Check-in available)'}
+                  {getUIText('calGuestLegendCheckoutOk', currentLanguage)}
                 </span>
               </div>
               <div className="flex items-center gap-2">
@@ -751,9 +728,7 @@ export default function CalendarComponent({
                   <span className="text-[10px] text-red-300 flex items-center justify-center h-full">31</span>
                 </div>
                 <span>
-                  {currentLanguage === 'ko' ? '가용 기간 7일 미만 (체크인 불가)' : 
-                   currentLanguage === 'vi' ? 'Thời gian còn lại dưới 7 ngày (Không thể nhận phòng)' : 
-                   'Less than 7 days available (Cannot check-in)'}
+                  {getUIText('calGuestLegendShortStay', currentLanguage)}
                 </span>
               </div>
             </div>
@@ -761,16 +736,16 @@ export default function CalendarComponent({
             <div className="text-xs text-gray-600 space-y-2">
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 bg-green-100 rounded-full flex-shrink-0"></div>
-                <span>{currentLanguage === 'ko' ? '체크인 기준 매물 종료일까지(또는 상한)' : currentLanguage === 'vi' ? 'Đến ngày kết thúc phòng' : 'Until listing end or limit'}</span>
+                <span>{getUIText('calGuestLegendCheckinToEnd', currentLanguage)}</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 bg-green-600 rounded-full flex-shrink-0"></div>
-                <span>{currentLanguage === 'ko' ? '체크아웃 가능 (7박 이상·예약 안 겹침)' : currentLanguage === 'vi' ? 'Trả phòng hợp lệ (≥7 đêm)' : 'Valid checkout (≥7 nights, no overlap)'}</span>
+                <span>{getUIText('calGuestLegendValidCheckout', currentLanguage)}</span>
               </div>
             </div>
           ) : (
             <div className="text-xs text-gray-600">
-              {currentLanguage === 'ko' ? '체크인 날짜를 먼저 선택해주세요' : currentLanguage === 'vi' ? 'Vui lòng chọn ngày nhận phòng trước' : 'Please select check-in date first'}
+              {getUIText('calGuestSelectCheckInFirst', currentLanguage)}
             </div>
           )
         )}

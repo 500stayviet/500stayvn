@@ -5,6 +5,7 @@ import { detectMessageLanguage } from '@/lib/utils/languageDetection';
 import { ArrowLeft, Send, Loader2, Home } from 'lucide-react';
 import Image from 'next/image';
 import type { ChatRoomPageViewModel } from '../hooks/useChatRoomPage';
+import { getUIText } from '@/utils/i18n';
 
 type Props = { vm: ChatRoomPageViewModel };
 
@@ -82,7 +83,7 @@ export function ChatRoomPageView({ vm }: Props) {
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 truncate">{chatRoom.propertyTitle}</p>
               <p className="text-xs text-blue-600">
-                {currentLanguage === 'ko' ? '매물 상세보기 →' : 'Xem chi tiết →'}
+                {getUIText('chatViewListingDetail', currentLanguage)}
               </p>
             </div>
           </div>
@@ -110,9 +111,7 @@ export function ChatRoomPageView({ vm }: Props) {
           {messages.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-gray-400 text-sm">
-                {currentLanguage === 'ko'
-                  ? '메시지를 보내 대화를 시작하세요'
-                  : 'Gửi tin nhắn để bắt đầu trò chuyện'}
+                {getUIText('chatEmptyState', currentLanguage)}
               </p>
             </div>
           ) : (
@@ -147,7 +146,7 @@ export function ChatRoomPageView({ vm }: Props) {
                   {isMe && message.isRead && (
                     <div className="flex justify-end mt-0.5 mr-1">
                       <span className="text-xs text-blue-500">
-                        {currentLanguage === 'ko' ? '읽음' : 'Đã xem'}
+                        {getUIText('chatReadReceipt', currentLanguage)}
                       </span>
                     </div>
                   )}
@@ -166,7 +165,7 @@ export function ChatRoomPageView({ vm }: Props) {
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               onKeyDown={handleKeyPress}
-              placeholder={currentLanguage === 'ko' ? '메시지를 입력하세요...' : 'Nhập tin nhắn...'}
+              placeholder={getUIText('chatInputPlaceholderFull', currentLanguage)}
               className="flex-1 px-4 py-2.5 bg-gray-100 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               disabled={sending}
             />

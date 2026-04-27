@@ -8,6 +8,7 @@ import Image from "next/image";
 import type { SupportedLanguage } from "@/lib/api/translation";
 import type { BookingData } from "@/lib/api/bookings";
 import type { HostBookingsPageViewModel } from "../hooks/useHostBookingsPage";
+import { getUIText } from "@/utils/i18n";
 
 const STATUS_COLORS = {
   pending: "bg-yellow-100 text-yellow-800 border border-yellow-300",
@@ -120,10 +121,10 @@ export function HostBookingsPageView({ vm }: Props) {
             className="flex items-center gap-2 text-gray-600 mb-3"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span>{currentLanguage === "ko" ? "뒤로" : "Back"}</span>
+            <span>{getUIText("back", currentLanguage)}</span>
           </button>
           <h1 className="text-xl font-bold">
-            {currentLanguage === "ko" ? "예약 관리" : "Booking Management"}
+            {getUIText("bookingManagement", currentLanguage)}
           </h1>
         </div>
 
@@ -135,24 +136,8 @@ export function HostBookingsPageView({ vm }: Props) {
               className={`px-3 py-2 rounded-full text-sm font-medium ${filter === tab.id ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600"}`}
             >
               {tab.id === "active"
-                ? currentLanguage === "ko"
-                  ? "활성 예약"
-                  : currentLanguage === "vi"
-                    ? "Đặt phòng đang hoạt động"
-                    : currentLanguage === "en"
-                      ? "Active Bookings"
-                      : currentLanguage === "ja"
-                        ? "アクティブな予約"
-                        : "活跃预订"
-                : currentLanguage === "ko"
-                  ? "종료 내역"
-                  : currentLanguage === "vi"
-                    ? "Lịch sử đã đóng"
-                    : currentLanguage === "en"
-                      ? "Closed History"
-                      : currentLanguage === "ja"
-                        ? "終了済み履歴"
-                        : "已结束记录"}
+                ? getUIText("activeBookings", currentLanguage)
+                : getUIText("closedHistory", currentLanguage)}
             </button>
           ))}
         </div>
@@ -231,15 +216,7 @@ export function HostBookingsPageView({ vm }: Props) {
                         }}
                         className="bg-green-600 text-white px-4 py-2 rounded-lg text-xs font-bold"
                       >
-                        {currentLanguage === "ko"
-                          ? "승인"
-                          : currentLanguage === "vi"
-                            ? "Chấp nhận"
-                            : currentLanguage === "en"
-                              ? "Approve"
-                              : currentLanguage === "ja"
-                                ? "承認"
-                                : "批准"}
+                        {getUIText("hostApproveBooking", currentLanguage)}
                       </button>
                       <button
                         onClick={(e) => {
@@ -248,15 +225,7 @@ export function HostBookingsPageView({ vm }: Props) {
                         }}
                         className="text-red-500 text-xs font-bold"
                       >
-                        {currentLanguage === "ko"
-                          ? "취소"
-                          : currentLanguage === "vi"
-                            ? "Hủy"
-                            : currentLanguage === "en"
-                              ? "Cancel"
-                              : currentLanguage === "ja"
-                                ? "キャンセル"
-                                : "取消"}
+                        {getUIText("cancel", currentLanguage)}
                       </button>
                     </>
                   )}
@@ -271,15 +240,7 @@ export function HostBookingsPageView({ vm }: Props) {
                         className="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1 relative"
                       >
                         <MessageCircle size={14} />
-                        {currentLanguage === "ko"
-                          ? "채팅"
-                          : currentLanguage === "vi"
-                            ? "Trò chuyện"
-                            : currentLanguage === "en"
-                              ? "Chat"
-                              : currentLanguage === "ja"
-                                ? "チャット"
-                                : "聊天"}
+                        {getUIText("chat", currentLanguage)}
                         {booking.chatRoomId &&
                           unreadCounts[booking.chatRoomId] > 0 && (
                             <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full w-5 h-5 flex items-center justify-center">
@@ -294,15 +255,7 @@ export function HostBookingsPageView({ vm }: Props) {
                         }}
                         className="text-red-500 text-xs font-bold"
                       >
-                        {currentLanguage === "ko"
-                          ? "취소"
-                          : currentLanguage === "vi"
-                            ? "Hủy"
-                            : currentLanguage === "en"
-                              ? "Cancel"
-                              : currentLanguage === "ja"
-                                ? "キャンセル"
-                                : "取消"}
+                        {getUIText("cancel", currentLanguage)}
                       </button>
                     </>
                   )}
@@ -316,15 +269,7 @@ export function HostBookingsPageView({ vm }: Props) {
                       className="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1 relative"
                     >
                       <MessageCircle size={14} />
-                      {currentLanguage === "ko"
-                        ? "대화하기"
-                        : currentLanguage === "vi"
-                          ? "Trò chuyện"
-                          : currentLanguage === "en"
-                            ? "Chat"
-                            : currentLanguage === "ja"
-                              ? "チャット"
-                              : "聊天"}
+                      {getUIText("chat", currentLanguage)}
                       {booking.chatRoomId &&
                         unreadCounts[booking.chatRoomId] > 0 && (
                           <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full w-5 h-5 flex items-center justify-center">

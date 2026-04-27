@@ -7,6 +7,7 @@ import {
   emitUserFacingSyncError,
 } from "@/lib/runtime/networkResilience";
 import type { MyBookingsPageData } from "./useMyBookingsPageData";
+import { getUIText } from "@/utils/i18n";
 
 export function useMyBookingsPageActions(data: MyBookingsPageData) {
   const {
@@ -68,12 +69,7 @@ export function useMyBookingsPageActions(data: MyBookingsPageData) {
           tone: "success",
           area: "bookings",
           action: "guest_cancel",
-          message:
-            currentLanguage === "ko"
-              ? "예약이 취소되었습니다."
-              : currentLanguage === "vi"
-                ? "Đã hủy đặt phòng."
-                : "Booking cancelled.",
+          message: getUIText("bookingCancelledToast", currentLanguage),
         });
       } catch {
         emitUserFacingSyncError({
@@ -102,13 +98,7 @@ export function useMyBookingsPageActions(data: MyBookingsPageData) {
   const handleDelete = useCallback(
     async (id: string) => {
       if (
-        !window.confirm(
-          currentLanguage === "ko"
-            ? "이 예약 기록을 삭제할까요?"
-            : currentLanguage === "vi"
-              ? "Xóa mục đặt phòng này?"
-              : "Delete this booking record?",
-        )
+        !window.confirm(getUIText("confirmDeleteBookingRecord", currentLanguage))
       ) {
         return;
       }
@@ -131,12 +121,7 @@ export function useMyBookingsPageActions(data: MyBookingsPageData) {
         emitUserFacingSyncError({
           area: "bookings",
           action: "guest_delete_booking",
-          message:
-            currentLanguage === "ko"
-              ? "삭제에 실패했습니다."
-              : currentLanguage === "vi"
-                ? "Xóa thất bại."
-                : "Delete failed.",
+          message: getUIText("bookingDeleteFailed", currentLanguage),
         });
       }
     },

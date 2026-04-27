@@ -317,5 +317,66 @@ describe("transitionBookingOnPaymentUpdate", () => {
     expect(result).toEqual({ bookingConfirmed: false, bookingCancelled: false });
     expect(update).not.toHaveBeenCalled();
   });
+
+  it("환불 분기 우선: 결제 상태가 아직 pending이어도 refund면 확정하지 않고 취소 전이", async () => {
+    const { tx, update } = makeTx({
+      id: "b-ref-prio",
+      status: "pending",
+      detailJson: {},
+    });
+    const result = await transitionBookingOnPaymentUpdate(tx as unknown as BookingTransitionTx, {
+      bookingId: "b-ref-prio",
+      paymentStatus: "pending",
+      refundStatus: "refunded",
+    });
+    expect(result).toEqual({ bookingConfirmed: false, bookingCancelled: true });
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(update.mock.calls[0]?.[0].data.status).toBe("cancelled_before");
+  });
+
+  it("환불만 있는 PATCH: paymentStatus null + refund_status 로도 취소", async () => {
+    const { tx, update } = makeTx({
+      id: "b-ref-null-pay",
+      status: "pending",
+      detailJson: { guestId: "g" },
+    });
+    const result = await transitionBookingOnPaymentUpdate(tx as unknown as BookingTransitionTx, {
+      bookingId: "b-ref-null-pay",
+      paymentStatus: null,
+      refundStatus: "refunded",
+    });
+    expect(result).toEqual({ bookingConfirmed: false, bookingCancelled: true });
+    expect(update).toHaveBeenCalledTimes(1);
+  });
+
+  it("환불 상태 별칭 대소문자 무시: REFUND_SUCCEEDED", async () => {
+    const { tx, update } = makeTx({
+      id: "b-ref-case",
+      status: "confirmed",
+      detailJson: {},
+    });
+    const result = await transitionBookingOnPaymentUpdate(tx as unknown as BookingTransitionTx, {
+      bookingId: "b-ref-case",
+      paymentStatus: "paid",
+      refundStatus: "REFUND_SUCCEEDED",
+    });
+    expect(result).toEqual({ bookingConfirmed: false, bookingCancelled: true });
+    expect(update.mock.calls[0]?.[0].data.status).toBe("cancelled_after");
+  });
+
+  it("이미 cancelled_after 인 예약에 동일 환불 이벤트 재전달 시 멱등 noop", async () => {
+    const { tx, update } = makeTx({
+      id: "b-ca-idem",
+      status: "cancelled_after",
+      detailJson: { paymentStatus: "refunded", cancelReason: "payment_refunded" },
+    });
+    const result = await transitionBookingOnPaymentUpdate(tx as unknown as BookingTransitionTx, {
+      bookingId: "b-ca-idem",
+      paymentStatus: "paid",
+      refundStatus: "refunded",
+    });
+    expect(result).toEqual({ bookingConfirmed: false, bookingCancelled: false });
+    expect(update).not.toHaveBeenCalled();
+  });
 });
 

@@ -1,4 +1,6 @@
 import { ChevronDown, ChevronUp } from "lucide-react";
+import type { SupportedLanguage } from "@/lib/api/translation";
+import { getUIText } from "@/utils/i18n";
 
 interface EditPropertyDetailsSectionProps {
   currentLanguage: string;
@@ -39,16 +41,17 @@ export default function EditPropertyDetailsSection({
   setIcalCalendarName,
   setIcalUrl,
 }: EditPropertyDetailsSectionProps) {
+  const lang = currentLanguage as SupportedLanguage;
   return (
     <>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          {currentLanguage === "ko" ? "체크인/체크아웃 시간" : currentLanguage === "vi" ? "Giờ check-in/check-out" : "Check-in/Check-out Time"}
+          {getUIText("checkInOutScheduleTitle", lang)}
         </label>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1.5">
-              {currentLanguage === "ko" ? "체크인" : "Check-in"}
+              {getUIText("checkIn", lang)}
             </label>
             <select
               value={checkInTime}
@@ -69,7 +72,7 @@ export default function EditPropertyDetailsSection({
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1.5">
-              {currentLanguage === "ko" ? "체크아웃" : "Check-out"}
+              {getUIText("checkOut", lang)}
             </label>
             <select
               value={checkOutTime}
@@ -93,7 +96,7 @@ export default function EditPropertyDetailsSection({
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          {currentLanguage === "ko" ? "매물명" : currentLanguage === "vi" ? "Tên bất động sản" : "Property Name"}
+          {getUIText("propertyName", lang)}
           <span className="text-red-500 text-xs ml-1">*</span>
         </label>
         <input
@@ -108,7 +111,7 @@ export default function EditPropertyDetailsSection({
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          {currentLanguage === "ko" ? "매물 설명" : currentLanguage === "vi" ? "Mô tả bất động sản" : "Property Description"}
+          {getUIText("propertyDescription", lang)}
           <span className="text-red-500 text-xs ml-1">*</span>
         </label>
         <textarea
@@ -133,27 +136,23 @@ export default function EditPropertyDetailsSection({
           className="w-full py-3.5 px-4 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors text-left"
         >
           <span className="text-sm font-medium text-gray-700">
-            {currentLanguage === "ko" ? "외부 캘린더 가져오기" : currentLanguage === "vi" ? "Đồng bộ lịch ngoài" : "Import External Calendar"}
+            {getUIText("importExternalCalendar", lang)}
           </span>
           {showIcalDropdown ? <ChevronUp className="w-5 h-5 text-gray-500" /> : <ChevronDown className="w-5 h-5 text-gray-500" />}
         </button>
         {showIcalDropdown && (
           <div className="p-4 pt-2 border-t border-gray-200 bg-white space-y-3">
             <p className="text-xs text-gray-500">
-              {currentLanguage === "ko"
-                ? "에어비앤비·아고다 등 예약을 500stay와 동기화합니다. iCal URL(.ics)을 입력하세요."
-                : currentLanguage === "vi"
-                  ? "Đồng bộ đặt phòng từ Airbnb, Agoda,... với 500stay. Nhập URL iCal (.ics)."
-                  : "Sync bookings from Airbnb, Agoda, etc. with 500stay. Enter iCal URL (.ics)."}
+              {getUIText("importExternalCalendarHelp", lang)}
             </p>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">{currentLanguage === "ko" ? "플랫폼" : "Platform"}</label>
+              <label className="block text-xs text-gray-500 mb-1">{getUIText("calendarPlatformLabel", lang)}</label>
               <select
                 value={icalPlatform}
                 onChange={(e) => setIcalPlatform(e.target.value)}
                 className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="">{currentLanguage === "ko" ? "선택 안 함" : "None"}</option>
+                <option value="">{getUIText("calendarOptionNone", lang)}</option>
                 <option value="airbnb">Airbnb</option>
                 <option value="agoda">Agoda</option>
                 <option value="booking_com">Booking.com</option>
@@ -161,12 +160,12 @@ export default function EditPropertyDetailsSection({
               </select>
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">{currentLanguage === "ko" ? "캘린더 이름" : "Calendar name"}</label>
+              <label className="block text-xs text-gray-500 mb-1">{getUIText("calendarNameLabel", lang)}</label>
               <input
                 type="text"
                 value={icalCalendarName}
                 onChange={(e) => setIcalCalendarName(e.target.value)}
-                placeholder={currentLanguage === "ko" ? "예: 에어비앤비 예약" : "e.g. Airbnb Bookings"}
+                placeholder={getUIText("calendarNamePlaceholderExample", lang)}
                 className="w-full px-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>

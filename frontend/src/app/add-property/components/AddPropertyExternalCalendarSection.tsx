@@ -2,6 +2,8 @@
 
 import { ChevronDown, ChevronUp } from "lucide-react";
 import type { AddPropertyColors } from "../constants/addPropertyColors";
+import type { SupportedLanguage } from "@/lib/api/translation";
+import { getUIText } from "@/utils/i18n";
 
 interface AddPropertyExternalCalendarSectionProps {
   currentLanguage: string;
@@ -28,6 +30,7 @@ export function AddPropertyExternalCalendarSection({
   onIcalCalendarNameChange,
   onIcalUrlChange,
 }: AddPropertyExternalCalendarSectionProps) {
+  const lang = currentLanguage as SupportedLanguage;
   return (
     <section
       className="rounded-2xl overflow-hidden"
@@ -43,11 +46,7 @@ export function AddPropertyExternalCalendarSection({
         style={{ backgroundColor: `${colors.border}20` }}
       >
         <span className="text-sm font-medium" style={{ color: colors.text }}>
-          {currentLanguage === "ko"
-            ? "외부 캘린더 가져오기"
-            : currentLanguage === "vi"
-              ? "Đồng bộ lịch ngoài"
-              : "Import External Calendar"}
+          {getUIText("importExternalCalendar", lang)}
         </span>
         {showIcalDropdown ? (
           <ChevronUp className="w-4 h-4" style={{ color: colors.textSecondary }} />
@@ -70,7 +69,7 @@ export function AddPropertyExternalCalendarSection({
               className="block text-[11px] font-medium mb-1.5"
               style={{ color: colors.textSecondary }}
             >
-              {currentLanguage === "ko" ? "플랫폼" : "Platform"}
+              {getUIText("calendarPlatformLabel", lang)}
             </label>
             <select
               value={icalPlatform}
@@ -86,7 +85,7 @@ export function AddPropertyExternalCalendarSection({
               <option value="airbnb">Airbnb</option>
               <option value="agoda">Agoda</option>
               <option value="booking_com">Booking.com</option>
-              <option value="other">{currentLanguage === "ko" ? "기타" : "Other"}</option>
+              <option value="other">{getUIText("calendarOptionOther", lang)}</option>
             </select>
           </div>
           <div>
@@ -100,7 +99,7 @@ export function AddPropertyExternalCalendarSection({
               type="text"
               value={icalCalendarName}
               onChange={(e) => onIcalCalendarNameChange(e.target.value)}
-              placeholder={currentLanguage === "ko" ? "예: 에어비앤비 예약" : "e.g. Airbnb"}
+              placeholder={getUIText("calendarNamePlaceholderExample", lang)}
               className="w-full px-2 py-2 text-sm rounded-md min-h-[36px] focus:outline-none"
               style={{
                 backgroundColor: colors.white,

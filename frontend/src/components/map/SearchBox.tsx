@@ -91,7 +91,7 @@ export default function SearchBox({
           >
             {suggestions.length === 0 ? (
               <div className="px-4 py-4 text-sm text-gray-500 text-center">
-                {currentLanguage === 'ko' ? '검색 결과가 없습니다' : currentLanguage === 'vi' ? 'Không tìm thấy kết quả' : 'No results found'}
+                {getUIText('noResultsFound', currentLanguage)}
               </div>
             ) : (
               suggestions.map((suggestion, index) => {

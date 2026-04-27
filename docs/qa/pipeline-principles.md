@@ -88,3 +88,8 @@ npm run lint
 
 - `frontend/SECURITY_APP_API_CHECKLIST.md` — API 봉투·actor·**상용 오픈 전** 보안 체크리스트
 - `docs/qa/refactor-backlog.md` — Fixed Completion Gate, P3 졸업 기준
+- `docs/qa/ci-runtime-policy.md` — Node 20·GitHub Actions 핀
+- `docs/qa/sentry-ops.md` — `api_slow` / `api_http_5xx`·알림 권장
+- `docs/qa/phase3-mobile-app-readiness.md` — 스토어·TWA·서명·제출물 (Phase 3)
+- `docs/qa/phase3-capacitor-ios.md` — Capacitor iOS·시뮬레이터·`server.url`
+- `docs/qa/store-listing-draft.md` — 스토어 카피 KO/EN/VI

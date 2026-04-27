@@ -7,6 +7,7 @@ import TopBar from '@/components/TopBar';
 import PropertyDetailView from '@/components/PropertyDetailView';
 import type { SupportedLanguage } from '@/lib/api/translation';
 import type { PropertyDetailPageViewModel } from '../hooks/usePropertyDetailPage';
+import { getUIText } from '@/utils/i18n';
 
 type Props = { vm: PropertyDetailPageViewModel };
 
@@ -21,7 +22,7 @@ export function PropertyDetailRouteView({ vm }: Props) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#FFF8F0' }}>
         <div className="text-gray-500">
-          {currentLanguage === 'ko' ? '로딩 중...' : currentLanguage === 'vi' ? 'Đang tải...' : 'Loading...'}
+          {getUIText('loading', currentLanguage)}
         </div>
       </div>
     );
@@ -40,7 +41,7 @@ export function PropertyDetailRouteView({ vm }: Props) {
             className="px-4 py-2 rounded-lg text-white hover:opacity-90"
             style={{ backgroundColor: '#E63946' }}
           >
-            {currentLanguage === 'ko' ? '뒤로' : currentLanguage === 'vi' ? 'Quay lại' : 'Back'}
+            {getUIText('back', currentLanguage)}
           </button>
         </div>
       </div>

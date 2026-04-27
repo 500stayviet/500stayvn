@@ -13,6 +13,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import TopBar from "@/components/TopBar";
+import LegalFooterLinks from "@/components/LegalFooterLinks";
 import { getUIText } from "@/utils/i18n";
 import InternationalPhoneInput from "@/components/auth/InternationalPhoneInput";
 import type { SignupPageViewModel } from "../hooks/useSignupPage";
@@ -94,11 +95,10 @@ export function SignupPageView({ vm }: Props) {
                   onChange={handleChange}
                   required
                   className="w-full pl-10 pr-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                  placeholder={
-                    currentLanguage === "ko"
-                      ? "실명을 입력하세요"
-                      : "Nhập họ tên thật"
-                  }
+                  placeholder={getUIText(
+                    "fullNamePlaceholder",
+                    currentLanguage,
+                  )}
                 />
               </div>
             </div>
@@ -142,9 +142,7 @@ export function SignupPageView({ vm }: Props) {
                       >
                         {isVerifyingOtp
                           ? "..."
-                          : currentLanguage === "ko"
-                            ? "인증"
-                            : "Xác minh"}
+                          : getUIText("signupOtpVerify", currentLanguage)}
                       </button>
                     </div>
                     {otpError && (
@@ -158,9 +156,10 @@ export function SignupPageView({ vm }: Props) {
                 <div className="flex items-center gap-2 text-green-600 text-sm font-bold bg-green-50 p-3 rounded-xl border border-green-100">
                   <CheckCircle2 className="w-4 h-4" />
                   <span>
-                    {currentLanguage === "ko"
-                      ? "전화번호 인증 완료"
-                      : "Đã xác minh số điện thoại"}
+                    {getUIText(
+                      "phoneVerificationComplete",
+                      currentLanguage,
+                    )}
                   </span>
                 </div>
               )}
@@ -213,9 +212,7 @@ export function SignupPageView({ vm }: Props) {
 
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-1.5">
-                {currentLanguage === "ko"
-                  ? "비밀번호 확인"
-                  : "Xác nhận mật khẩu"}{" "}
+                {getUIText("confirmPasswordLabel", currentLanguage)}{" "}
                 <span className="text-red-500">*</span>
               </label>
               <div className="relative">
@@ -227,11 +224,10 @@ export function SignupPageView({ vm }: Props) {
                   onChange={handleChange}
                   required
                   className="w-full pl-10 pr-10 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                  placeholder={
-                    currentLanguage === "ko"
-                      ? "비밀번호를 다시 입력하세요"
-                      : "Nhập lại mật khẩu"
-                  }
+                  placeholder={getUIText(
+                    "confirmPasswordPlaceholder",
+                    currentLanguage,
+                  )}
                 />
                 <button
                   type="button"
@@ -300,6 +296,8 @@ export function SignupPageView({ vm }: Props) {
               <span>{getUIText("facebookContinue", currentLanguage)}</span>
             </button>
           </div>
+
+          <LegalFooterLinks currentLanguage={currentLanguage} />
         </motion.div>
       </div>
     </div>

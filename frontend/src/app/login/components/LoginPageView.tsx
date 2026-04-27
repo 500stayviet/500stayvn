@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
 import TopBar from "@/components/TopBar";
+import LegalFooterLinks from "@/components/LegalFooterLinks";
 import { getUIText } from "@/utils/i18n";
 import type { LoginPageViewModel } from "../hooks/useLoginPage";
 
@@ -151,6 +152,8 @@ export function LoginPageView({ vm }: Props) {
               {getUIText("signup", currentLanguage)}
             </button>
           </div>
+
+          <LegalFooterLinks currentLanguage={currentLanguage} />
         </motion.div>
       </div>
     </div>

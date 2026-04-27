@@ -3,6 +3,7 @@
 import { ArrowRight, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import InternationalPhoneInput from '@/components/auth/InternationalPhoneInput';
+import { getUIText } from '@/utils/i18n';
 import type { usePhoneVerificationStepState } from './usePhoneVerificationStepState';
 
 type Vm = ReturnType<typeof usePhoneVerificationStepState>;
@@ -52,26 +53,10 @@ export function PhoneVerificationStepView(vm: Vm) {
           <span className="text-lg">📱</span>
           <div>
             <p className="font-medium">
-              {currentLanguage === 'ko'
-                ? 'Firebase 전화번호 인증'
-                : currentLanguage === 'vi'
-                  ? 'Xác thực số điện thoại bằng Firebase'
-                  : currentLanguage === 'ja'
-                    ? 'Firebase電話番号認証'
-                    : currentLanguage === 'zh'
-                      ? 'Firebase手机号验证'
-                      : 'Firebase Phone Authentication'}
+              {getUIText('kycFirebasePhoneTitle', currentLanguage)}
             </p>
             <p className="text-xs mt-1">
-              {currentLanguage === 'ko'
-                ? 'Google Firebase를 통한 안전한 전화번호 인증'
-                : currentLanguage === 'vi'
-                  ? 'Xác thực số điện thoại an toàn qua Google Firebase'
-                  : currentLanguage === 'ja'
-                    ? 'Google Firebaseによる安全な電話番号認証'
-                    : currentLanguage === 'zh'
-                      ? '通过Google Firebase进行安全的手机号验证'
-                      : 'Secure phone verification via Google Firebase'}
+              {getUIText('kycFirebasePhoneSubtitle', currentLanguage)}
             </p>
           </div>
         </div>
@@ -90,15 +75,7 @@ export function PhoneVerificationStepView(vm: Vm) {
                   : 'Phone Verification'}
         </h2>
         <p className="text-sm text-gray-600">
-          {currentLanguage === 'ko'
-            ? '임대인 인증을 위해 전화번호를 인증해주세요'
-            : currentLanguage === 'vi'
-              ? 'Vui lòng xác thực số điện thoại để xác nhận chủ nhà'
-              : currentLanguage === 'ja'
-                ? 'ホスト認証のために電話番号を認証してください'
-                : currentLanguage === 'zh'
-                  ? '请验证手机号以进行房东认证'
-                  : 'Please verify your phone number for host verification'}
+          {getUIText('kycPhoneVerificationForHostDesc', currentLanguage)}
         </p>
       </div>
 
@@ -136,15 +113,7 @@ export function PhoneVerificationStepView(vm: Vm) {
             className="w-full py-3.5 px-4 bg-blue-600 text-white rounded-xl font-semibold text-base hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all flex items-center justify-center gap-2"
           >
             <span>
-              {currentLanguage === 'ko'
-                ? '다음 단계로'
-                : currentLanguage === 'vi'
-                  ? 'Tiếp theo'
-                  : currentLanguage === 'ja'
-                    ? '次へ'
-                    : currentLanguage === 'zh'
-                      ? '下一步'
-                      : 'Next Step'}
+              {getUIText('kycNextStep', currentLanguage)}
             </span>
             <ArrowRight className="w-5 h-5" />
           </button>
@@ -180,7 +149,7 @@ export function PhoneVerificationStepView(vm: Vm) {
                       maxLength={6}
                       value={otpCode}
                       onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                      placeholder="6-digit code"
+                      placeholder={getUIText('otpCodePlaceholder', currentLanguage)}
                       className="w-full pl-10 pr-4 py-2.5 text-sm border-2 border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                     />
                   </div>
@@ -190,7 +159,7 @@ export function PhoneVerificationStepView(vm: Vm) {
                     disabled={otpCode.length !== 6 || isVerifyingOtp}
                     className="px-6 bg-blue-600 text-white rounded-xl font-bold text-sm disabled:bg-gray-200 disabled:text-gray-400"
                   >
-                    {isVerifyingOtp ? '...' : currentLanguage === 'ko' ? '인증' : 'Xác minh'}
+                    {isVerifyingOtp ? '...' : getUIText('signupOtpVerify', currentLanguage)}
                   </button>
                 </div>
                 {otpError && <p className="text-xs text-red-500 pl-1">{otpError}</p>}
@@ -202,15 +171,7 @@ export function PhoneVerificationStepView(vm: Vm) {
             <div className="flex items-center gap-2 text-green-600 text-sm font-bold bg-green-50 p-3 rounded-xl border border-green-100">
               <CheckCircle2 className="w-4 h-4" />
               <span>
-                {currentLanguage === 'ko'
-                  ? '전화번호 인증 완료'
-                  : currentLanguage === 'vi'
-                    ? 'Đã xác minh số điện thoại'
-                    : currentLanguage === 'ja'
-                      ? '電話番号認証完了'
-                      : currentLanguage === 'zh'
-                        ? '手机号验证完成'
-                        : 'Phone verification completed'}
+                {getUIText('phoneVerificationComplete', currentLanguage)}
               </span>
             </div>
           )}
@@ -227,15 +188,7 @@ export function PhoneVerificationStepView(vm: Vm) {
               onClick={handleNext}
               className="w-full py-3 px-4 bg-yellow-500 text-white rounded-xl font-semibold text-sm hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 transition-all"
             >
-              {currentLanguage === 'ko'
-                ? '테스트 모드로 진행'
-                : currentLanguage === 'vi'
-                  ? 'Tiếp theo (chế độ thử nghiệm)'
-                  : currentLanguage === 'ja'
-                    ? 'テストモードで進む'
-                    : currentLanguage === 'zh'
-                      ? '测试模式进行'
-                      : 'Proceed in Test Mode'}
+              {getUIText('kycTestModeProceed', currentLanguage)}
             </button>
           )}
         </motion.div>

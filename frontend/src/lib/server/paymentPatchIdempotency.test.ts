@@ -172,4 +172,73 @@ describe("resolvePaymentPatchIdempotency", () => {
     expect(before).toHaveBeenCalledTimes(1);
     expect(transitionBookingOnPaymentUpdate).toHaveBeenCalled();
   });
+
+  it("recover: paid 행·멱등 일치 상태에서 환불 PATCH는 전이 재시도로 취소 반영(비즈니스 무결성)", async () => {
+    vi.mocked(transitionBookingOnPaymentUpdate).mockResolvedValue({
+      bookingConfirmed: false,
+      bookingCancelled: true,
+    });
+    const r = await resolvePaymentPatchIdempotency({
+      ...baseArgs,
+      idempotencyKey: "idem-abc",
+      normalizedPaymentStatus: "paid",
+      refundStatus: "refund_completed",
+      lockedBookingStatus: "pending",
+    });
+    expect(r).toEqual({
+      action: "recover_transition",
+      transition: { bookingConfirmed: false, bookingCancelled: true },
+    });
+    expect(transitionBookingOnPaymentUpdate).toHaveBeenCalledWith(tx, {
+      bookingId: "booking-1",
+      paymentStatus: "paid",
+      refundStatus: "refund_completed",
+    });
+  });
+
+  it("충돌: 이미 paid 행인데 본문에서 refunded로 상태를 바꾸려 하면 예외", async () => {
+    await expect(
+      resolvePaymentPatchIdempotency({
+        ...baseArgs,
+        idempotencyKey: "idem-abc",
+        normalizedPaymentStatus: "refunded",
+        refundStatus: null,
+        lockedBookingStatus: "confirmed",
+      }),
+    ).rejects.toBeInstanceOf(PaymentPatchIdempotencyConflictError);
+    expect(transitionBookingOnPaymentUpdate).not.toHaveBeenCalled();
+  });
+
+  it("충돌: normalizedPaymentStatus가 빈 문자열이면 paid에서 다운그레이드로 간주", async () => {
+    await expect(
+      resolvePaymentPatchIdempotency({
+        ...baseArgs,
+        idempotencyKey: "idem-abc",
+        normalizedPaymentStatus: "",
+        refundStatus: null,
+        lockedBookingStatus: "pending",
+      }),
+    ).rejects.toBeInstanceOf(PaymentPatchIdempotencyConflictError);
+  });
+
+  it("recover: Payment 행 status가 succeeded 별칭이어도 paid와 동일하게 멱등 복구", async () => {
+    vi.mocked(transitionBookingOnPaymentUpdate).mockResolvedValue({
+      bookingConfirmed: true,
+      bookingCancelled: false,
+    });
+    const r = await resolvePaymentPatchIdempotency({
+      ...baseArgs,
+      pay: { id: "pay-1", status: "succeeded", idempotencyKey: "idem-abc" },
+      idempotencyKey: "idem-abc",
+      normalizedPaymentStatus: "paid",
+      refundStatus: null,
+      lockedBookingStatus: "pending",
+    });
+    expect(r.action).toBe("recover_transition");
+    expect(transitionBookingOnPaymentUpdate).toHaveBeenCalledWith(tx, {
+      bookingId: "booking-1",
+      paymentStatus: "succeeded",
+      refundStatus: null,
+    });
+  });
 });

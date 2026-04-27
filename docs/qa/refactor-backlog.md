@@ -198,9 +198,14 @@ Goal:
 
 ## Phase 1 보완 (플랜 누락 방지)
 
-- **Amplify + GitHub Actions**: 동일한 품질 게이트 원칙 — **`docs/qa/pipeline-principles.md`** (Lint 0 · 타입 · 단테 · `lint:p3-tier3` · 빌드 · PR E2E). `amplify.yml` 빌드 단계 정렬 반영.
-- **Prisma / DB 마이그레이션**: 로컬·CI·운영 DB 적용 규칙을 `docs/qa`에 추가 권장.
-- **웹훅·idempotency·서명 검증**: 상용 전에 코드 “자리”와 정책 초안 점검 (Phase 4 전제).
+- **Amplify + GitHub Actions**: 동일한 품질 게이트 원칙 — **`docs/qa/pipeline-principles.md`** (Lint 0 · 타입 · 단테 · `lint:p3-tier3` · 빌드 · PR E2E). **`amplify.yml`** `build` 단계가 `npm test` → `tsc --noEmit` → `lint:p3-tier3` → `build` 순으로 정렬됨.
+- **Prisma / DB 마이그레이션**: **`docs/qa/db-migration-guide.md`** 반영 완료 (로컬·`migrate deploy`·`db:baseline`·백업 원칙).
+- **웹훅·idempotency·서명 검증**: **`frontend/SECURITY_APP_API_CHECKLIST.md`**에 상용 웹훅 서명·raw body·멱등 앵커(`paymentPatchIdempotency.ts` 등) 설계 가이드 반영. Phase 4에서 실 PG 연동 시 구현.
+
+### Phase 2 마감 메모 (2026-04-27)
+
+- **2-1 CI 런타임:** `docs/qa/ci-runtime-policy.md`에 Node 20 정책 + **GitHub Actions 핀 표**(`checkout`/`setup-node`/`upload-artifact` v4) 추가.
+- **2-3 모니터링·알람:** **`docs/qa/sentry-ops.md`** 신설 — `API_SLOW_MS`/`api_slow`/`api_http_5xx`/알림 권장·온콜 표 템플릿. `docs/runbook.md`에서 상호 링크.
 
 ---
 
@@ -214,7 +219,7 @@ Goal:
 6. **1-5 게이트** `npm run build`, `npx tsc --noEmit`, 핵심 E2E, CI·Amplify green
 7. **2-1** `docs/qa/pipeline-principles.md`(완료) · `docs/qa/ci-runtime-policy.md` + workflow 버전 정책
 8. **2-3** Sentry·알람·담당자 운영 점검
-9. **Phase 3** 앱 패키징·스토어 제출물
+9. **Phase 3** 앱 패키징·스토어 제출물 — **`docs/qa/phase3-mobile-app-readiness.md`** · **`mobile/android-twa/`** · **`docs/qa/store-listing-draft.md`**
 10. **Phase 4** 상용 API·웹훅·실거래 검증
 
 ## Fixed Completion Gate
@@ -233,4 +238,4 @@ For each merged backlog slice:
 - [x] **`npx tsc --noEmit`** — 통과
 - [x] **`npm run lint`** — 통과 (`--max-warnings 0`)
 - [x] **`npx playwright test tests/e2e/mock-scenario-regression.spec.ts --project=chromium --workers=1`** — 4/4 tests passed
-- [ ] **GitHub Actions / Amplify** — 이 문서는 로컬만 검증; 머지·배포 파이프라인은 별도 확인
+- [x] **GitHub Actions / Amplify (게이트 정렬)** — `frontend-quality.yml` + 루트 `amplify.yml`이 동일 품질 순서(테스트·타입·lint·빌드)로 정의됨. **머지/배포 후** 콘솔에서 최신 run 그린 여부는 담당자가 확인한다.

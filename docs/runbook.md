@@ -43,6 +43,8 @@
 2. Issues에서 **최근 시간 필터** + 태그 **`route`**(또는 메시지 `api_http_5xx`, `api_slow`)로 검색.
 3. 같은 `route`가 연쇄인지, 특정 `status`·DB 타임아웃인지 본다.
 
+**알림·담당·임계값 상세:** [docs/qa/sentry-ops.md](./qa/sentry-ops.md) (Phase 2-3). 팀은 해당 문서의 알림 규칙·온콜 표를 실제 이름으로 채운다.
+
 ---
 
 ## 3. 결제·정산 관련일 때

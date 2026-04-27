@@ -125,6 +125,43 @@ All `/api/admin/*` routes use **admin session cookie** (`getAdminFromRequest`). 
 | 시크릿 | 웹훅·API 키 | 환경 변수·로테이션, 저장소/로그 유출 금지 |
 | 감사 | 분쟁·규제 대응 | 요청/응답 요약 로그(민감값 마스킹), 보관 기간 |
 
+## 결제 웹훅 연동 시: 서명 검증 (설계 예약)
+
+실제 PG·지갑(MoMo 등) 웹훅을 붙일 때 **요청 신원·무결성**을 검증하지 않으면 위조 콜백으로 예약·환불 상태가 오염될 수 있다. 아래는 **구현 위치 가이드**이며, 구체 알고리즘은 PG 문서를 따른다.
+
+### 권장 배치
+
+| 항목 | 내용 |
+|------|------|
+| **수신 라우트** | `frontend/src/app/api/...` 하위 전용 경로 (예: `app/api/webhooks/payments/[provider]/route.ts`). BFF와 동일 프로세스에서 Prisma 트랜잭션까지 이어질 수 있게 둔다. |
+| **검증 레이어** | 라우트 핸들러 **최상단**: raw body 확보 → 서명 헤더·타임스탬프 추출 → **본문 파싱 전**에 검증 실패 시 `401`/`403` 및 짧은 응답. |
+| **비즈니스 반영** | 검증 성공 후에만 JSON 파싱 → 내부적으로 기존 **`PATCH /api/app/payments/[bookingId]`** 와 동일한 규칙(멱등 키·`paymentPatchIdempotency`·`transitionBookingOnPaymentUpdate`)을 호출하는 **서버 전용 헬퍼**로 모은다. 웹훅 핸들러에 도메인 로직을 장황하게 넣지 않는다. |
+
+### 구현 체크리스트
+
+1. **Raw body**  
+   Next.js `Request`에서 서명 계산에 쓰는 **바이트 그대로**의 문자열/버퍼를 사용한다. `JSON.parse` 후 재직렬화한 문자열로 HMAC 검증하면 실패한다. (`request.text()` 등으로 한 번만 읽고 검증·파싱에 공유.)
+
+2. **상수 시간 비교**  
+   기대 서명과 비교할 때 타이밍 공격을 피하기 위해 플랫폼 제공 **`timingSafeEqual`**(또는 동등)을 사용한다.
+
+3. **Replay 방지**  
+   PG가 타임스탬프·이벤트 ID를 주면, 허용 시각 윈도우 밖 요청 거절 및 **처리한 이벤트 ID**를 짧은 TTL 캐시/DB로 중복 거부한다.
+
+4. **시크릿 보관**  
+   웹훅 HMAC 키·클라이언트 시크릿은 환경 변수만 사용하고, 로그에 원문·서명 전체를 남기지 않는다.
+
+5. **멱등성**  
+   PG가 주는 결제·환불 단위 키를 **`idempotencyKey`**(또는 동등 필드)와 매핑해 `PaymentRecord`·`resolvePaymentPatchIdempotency` 계약과 맞춘다. `SECURITY_APP_API_CHECKLIST.md` 상단 **멱등성 설계 원칙** 절 참고.
+
+6. **테스트**  
+   단위: 서명 모듈(유효/무효/타임스탬프 만료). 통합: 기존 `bookingPaymentTransition`·`paymentPatchIdempotency` 테스트와 함께 “웹훅 페이로드 → 동일 전이 결과” 시나리오를 추가한다.
+
+### 코드 앵커 (현재 원장 전이)
+
+- 멱등 PATCH 분기: `frontend/src/lib/server/paymentPatchIdempotency.ts`
+- 예약 확정·취소(환불) 전이: `frontend/src/lib/server/bookingPaymentTransition.ts`
+
 ## Rollout notes
 
 1. Deploy client changes that call `withAppActor()` before or with the server changes.
