@@ -9,7 +9,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
 const serverUrl = process.env.CAPACITOR_SERVER_URL?.trim();
 
 const config: CapacitorConfig = {
-  appId: "vn.stayviet.app",
+  appId: "com.stay500vn.app",
   appName: "500stayviet",
   webDir: "www",
   ...(serverUrl

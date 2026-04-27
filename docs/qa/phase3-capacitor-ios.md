@@ -11,7 +11,7 @@ Next.js **Static Export**는 **App Router의 Route Handler(`src/app/api/**`)** �
 
 | 경로 | 역할 |
 |------|------|
-| `frontend/capacitor.config.ts` | `appId: vn.stayviet.app`, `webDir: www`, 선택적 `server.url` |
+| `frontend/capacitor.config.ts` | `appId: com.stay500vn.app`, `webDir: www`, 선택적 `server.url` |
 | `frontend/www/` | 오프라인 폴백 정적 파일(짧은 안내 HTML) |
 | `frontend/ios/` | Xcode 프로젝트 (`npx cap add ios` 로 생성) |
 

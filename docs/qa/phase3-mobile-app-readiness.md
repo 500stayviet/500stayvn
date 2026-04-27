@@ -62,7 +62,7 @@
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "vn.stayviet.app",
+      "package_name": "com.stay500vn.app",
       "sha256_cert_fingerprints": ["REPLACE_SHA256_FROM_PLAY_APP_SIGNING"]
     }
   }
@@ -78,7 +78,7 @@
 | 항목 | Android | iOS |
 |------|---------|-----|
 | 앱 이름 (스토어 표시) | `500 STAY VN` (manifest와 통일 가능) | 동일 권장 |
-| 패키지명 / Bundle ID | `vn.stayviet.app` (**예시**, 전역 유일 확정 필요) | `vn.stayviet.app` 또는 `com.company.stayviet` 등 팀 규칙 |
+| 패키지명 / Bundle ID | **`com.stay500vn.app`** (Android TWA·`assetlinks.json` 확정, 2026-04-27) | iOS·Capacitor 동일 권장 |
 | 버전 정책 | `versionCode` 정수 증가(필수), `versionName` 사용자 표시 | `CFBundleShortVersionString` / `CFBundleVersion` |
 
 ### 서명 · 비밀 관리

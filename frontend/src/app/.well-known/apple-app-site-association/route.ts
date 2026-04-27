@@ -11,7 +11,7 @@ export async function GET() {
       apps: [],
       details: [
         {
-          appID: "REPLACE_APPLE_TEAM_ID.vn.stayviet.app",
+          appID: "REPLACE_APPLE_TEAM_ID.com.stay500vn.app",
           paths: ["*"],
         },
       ],

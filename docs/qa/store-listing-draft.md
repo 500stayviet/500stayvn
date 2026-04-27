@@ -22,6 +22,26 @@
 
 `<PROD_HOST>` 는 `mobile/android-twa/gradle.properties` 의 `twaHostname` 과 **같은 호스트**를 쓰는 것이 Asset Links·TWA에 유리하다.
 
+**Android 패키지 ID (TWA):** 스토어·`assetlinks.json` 기준 **`com.stay500vn.app`** (`com.500stayvn.app` 은 세그먼트가 숫자로 시작해 Play/Java 규칙상 불가 — `stay500vn` 으로 치환).
+
+---
+
+## 홍보·신뢰 카피 초안 (베트남 부동산 5년 현장 경험 톤)
+
+스토어 **프로모 텍스트·긴 설명 상단·웹 히어로** 등에 쓸 수 있는 짧은 신뢰 문구. (법적 검토·현지 정서 컨펌은 운영 확정 후 반영.)
+
+| 언어 | 한 줄 (신뢰) | 보조 한 줄 (투명성) |
+|------|----------------|---------------------|
+| **KO** | 호치민·하노이 등 **5년 현지 부동산·숙박 시장**을 아는 팀이 만든 주 단위 숙소 플랫폼입니다. | **임대 정보 제공**에 집중하며, 요금·일정은 예약 전에 화면에서 확인할 수 있습니다. |
+| **VI** | Đội ngũ **5 năm kinh nghiệm** thị trường bất động sản và lưu trú tại Việt Nam (TP.HCM, Hà Nội…). | **Cung cấp thông tin cho thuê** minh bạch — xem giá và lịch trước khi đặt. |
+| **EN** | Built by people with **five years on the ground** in Vietnam’s rental and stay market (HCMC, Hanoi, and beyond). | We focus on **clear rental-stay information** — see pricing and dates before you book. |
+
+**스토어 짧은 설명에 넣기 좋은 변형 (80자 근처):**
+
+- **KO:** 베트남 현지 5년 경험 팀의 주 단위 숙소 검색·예약. 요금 투명, 호스트와 채팅까지.
+- **VI:** Nền tảng lưu trú theo tuần từ đội ngũ 5 năm kinh nghiệm tại VN. Giá rõ ràng, chat với chủ nhà.
+- **EN:** Weekly stays in Vietnam from a team with 5 years’ local rental experience. Clear pricing, host chat.
+
 ---
 
 ## 앱 이름 (최대 길이: 스토어별 제한 준수, 보통 30자 내외)

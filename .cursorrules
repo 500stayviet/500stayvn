@@ -17,7 +17,7 @@
 4. **Mobile-First & App Optimization**: 플랫폼 종속 로직을 배제하고 서버 실시간 동기화(SSE/Optimistic UI)를 우선하며, 앱 환경 감지 시 웹 전용 UI를 자동 숨김 처리한다.
 
 # 📱 Mobile App & Store Standard (Phase 3 필수)
-1. **앱 식별자 고정**: Android Package & iOS Bundle ID: **`vn.stayviet.app`**
+1. **앱 식별자 고정**: Android TWA `applicationId`·Play·`assetlinks.json`·iOS/Capacitor: **`com.stay500vn.app`** (`com.500stayvn.app` 은 세그먼트 숫자 시작 규칙 불가).
 2. **딥링크 파일 보안**: `public/.well-known/assetlinks.json` 및 `apple-app-site-association` 파일의 무결성 상시 점검.
 3. **스토어 가이드라인**: Apple의 단순 웹뷰 거절 방지를 위한 앱 전용 UI 강화 및 계정 삭제(`/delete-account`), 개인정보 처리방침 링크 상시 활성화.
 

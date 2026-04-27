@@ -3,7 +3,7 @@
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "vn.stayviet.app",
+      "package_name": "com.stay500vn.app",
       "sha256_cert_fingerprints": [
         "REPLACE_SHA256_CERT_FINGERPRINT_FROM_PLAY_APP_SIGNING"
       ]

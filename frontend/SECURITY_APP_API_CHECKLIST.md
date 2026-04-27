@@ -135,7 +135,7 @@ All `/api/admin/*` routes use **admin session cookie** (`getAdminFromRequest`). 
 
 | 항목 | 내용 |
 |------|------|
-| **수신 라우트** | `frontend/src/app/api/...` 하위 전용 경로 (예: `app/api/webhooks/payments/[provider]/route.ts`). BFF와 동일 프로세스에서 Prisma 트랜잭션까지 이어질 수 있게 둔다. |
+| **수신 라우트** | `frontend/src/app/api/...` 하위 전용 경로. **골격:** `app/api/webhook/momo/route.ts` (Phase 4에서 서명·멱등·전이 연결). BFF와 동일 프로세스에서 Prisma 트랜잭션까지 이어질 수 있게 둔다. |
 | **검증 레이어** | 라우트 핸들러 **최상단**: raw body 확보 → 서명 헤더·타임스탬프 추출 → **본문 파싱 전**에 검증 실패 시 `401`/`403` 및 짧은 응답. |
 | **비즈니스 반영** | 검증 성공 후에만 JSON 파싱 → 내부적으로 기존 **`PATCH /api/app/payments/[bookingId]`** 와 동일한 규칙(멱등 키·`paymentPatchIdempotency`·`transitionBookingOnPaymentUpdate`)을 호출하는 **서버 전용 헬퍼**로 모은다. 웹훅 핸들러에 도메인 로직을 장황하게 넣지 않는다. |
 

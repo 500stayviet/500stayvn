@@ -17,7 +17,7 @@ Bubblewrap 대신 **Android Browser Helper** 기반 최소 프로젝트입니다
 ## 3) 기타
 
 - 스토어 제출 전 **512×512** 아이콘으로 `@drawable/ic_twa_launcher` 교체 권장.
-- 패키지명 변경 시 `applicationId`·`assetlinks.json`·Play 콘솔을 **동시에** 맞출 것.
+- **패키지 ID:** `com.stay500vn.app` (브랜드 `com.500stayvn.app` 은 Play/Java 식별자 규칙 불가). 변경 시 `applicationId`·`namespace`·`assetlinks.json`·Play 콘솔·iOS 번들을 **동시에** 맞출 것.
 
 ## 빌드
 

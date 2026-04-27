@@ -7,12 +7,14 @@ val twaHost =
     (project.findProperty("twaHostname") as String?)?.trim()?.takeIf { it.isNotEmpty() }
         ?: "example.com"
 
+// applicationId: Play·Java 규칙상 세그먼트는 문자로 시작해야 함 → `com.500stayvn.app`은 사용 불가.
+// 브랜드(500 STAY VN)와의 대응: stay500vn = 500 + stayvn.
 android {
-    namespace = "vn.stayviet.app"
+    namespace = "com.stay500vn.app"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "vn.stayviet.app"
+        applicationId = "com.stay500vn.app"
         minSdk = 21
         targetSdk = 34
         versionCode = 1
