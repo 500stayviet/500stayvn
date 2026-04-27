@@ -8,9 +8,10 @@ applications:
             # 상업 운영 표준: 재현 가능한 설치만 허용 (npm ci 실패 시 즉시 실패)
             - nvm use 20 || nvm install 20
             - echo "[preBuild] cwd $(pwd)"
-            # preBuild에서는 의존성만 결정적으로 설치하고, 스크립트 실행은 build 단계로 위임
+            # --ignore-scripts 금지: Next.js transitive `sharp` 가 install 스크립트로 Linux용 바이너리를
+            # 내려받는다. 무시하면 CodeBuild(Linux)에서 next build 단계가 실패할 수 있음(로컬 Windows와 불일치).
             - |
-              npm ci --no-audit --ignore-scripts || {
+              npm ci --no-audit || {
                 echo "[preBuild] npm ci failed; dumping npm logs"
                 ls -la /root/.npm/_logs || true
                 latest_log="$(ls -1t /root/.npm/_logs/*-debug-0.log 2>/dev/null | head -n 1)"
@@ -47,10 +48,11 @@ applications:
               AWS_PLACE_INDEX_NAME=$NEXT_PUBLIC_AWS_PLACE_INDEX_NAME
               NEXT_PUBLIC_STAYVIET_PRODUCTION_HOST=$NEXT_PUBLIC_STAYVIET_PRODUCTION_HOST
               EOF
-            # preBuild 가 --ignore-scripts 이므로, 타입체크·테스트 전에 Prisma Client 생성 필요
+            # Prisma Client (postinstall 이 이미 돌았어도 빌드 단계에서 한 번 더 고정)
             - npx prisma generate --schema=./prisma/schema.prisma
             # GitHub Actions test-and-typecheck 와 동일 품질 게이트 (Lint 0 · 타입 · 단테 후 빌드)
             - npm test
+            - npm run check:banned-terms
             - npx tsc --noEmit
             - npm run lint:p3-tier3
             - npm run build
