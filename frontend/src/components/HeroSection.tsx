@@ -27,7 +27,6 @@ import {
   getDistrictsByCityId,
   getVietnamRegionDisplayName,
 } from '@/lib/data/vietnam-regions';
-import type { VietnamRegion } from '@/lib/data/vietnam-regions';
 
 interface HeroSectionProps {
   currentLanguage: SupportedLanguage;

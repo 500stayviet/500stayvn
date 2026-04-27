@@ -43,7 +43,7 @@ export const formatFullPrice = (
   if (unit === 'krw') {
     return `${price.toLocaleString('ko-KR')} ${krw}`;
   }
-  return `$${price.toLocaleString('en-US')}`;
+  return `${price.toLocaleString('en-US')} ${usd}`;
 };
 
 /**
