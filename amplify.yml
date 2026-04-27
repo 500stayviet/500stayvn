@@ -10,11 +10,13 @@ applications:
             - echo "[preBuild] cwd $(pwd)"
             # Amplify 콘솔 등에서 NODE_ENV=production 이 잡혀 있으면 `npm ci` 가 devDependencies 를 생략한다.
             # → vitest·eslint·@next/bundle-analyzer 미설치로 test/lint/build 가 연쇄 실패. 설치 단계만 development 로 고정.
-            - echo "[preBuild] npm ci (devDependencies 포함; NODE_ENV=development 일회 적용)"
+            # Amplify는 NODE_ENV·NPM_CONFIG_PRODUCTION 등으로 devDependencies 생략이 켜질 수 있음.
+            # NODE_ENV=development 만으로는 부족할 수 있어 `npm ci --include dev` 로 명시(로컬에서 production+1130패키지 검증).
+            - echo "[preBuild] npm ci --include dev"
             # --ignore-scripts 금지: Next.js transitive `sharp` 가 install 스크립트로 Linux용 바이너리를
             # 내려받는다. 무시하면 CodeBuild(Linux)에서 next build 단계가 실패할 수 있음(로컬 Windows와 불일치).
             - |
-              NODE_ENV=development npm ci --no-audit || {
+              npm ci --no-audit --include dev || {
                 echo "[preBuild] npm ci failed; dumping npm logs"
                 ls -la /root/.npm/_logs || true
                 latest_log="$(ls -1t /root/.npm/_logs/*-debug-0.log 2>/dev/null | head -n 1)"

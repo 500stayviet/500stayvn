@@ -42,7 +42,7 @@
 
 **앱 루트:** `frontend`
 
-**의도적 정렬:** `build` 단계에서 GitHub `test-and-typecheck`와 **동일한 증거**를 남긴다. `preBuild`의 `npm ci`는 **`NODE_ENV=development`로 한 번만 실행**한다 — Amplify 콘솔 등에서 `NODE_ENV=production`이 잡혀 있으면 npm이 **devDependencies**(vitest·eslint·`@next/bundle-analyzer` 등)를 생략해 테스트·린트·빌드가 연쇄 실패한다. `npm ci`에는 **`--ignore-scripts`를 쓰지 않는다**(Next transitive `sharp`가 Linux용 바이너리를 install 스크립트로 받음). 따라서 **`prisma generate`는 `build` 단계에서** 타입체크·테스트보다 먼저 실행한다.
+**의도적 정렬:** `build` 단계에서 GitHub `test-and-typecheck`와 **동일한 증거**를 남긴다. `preBuild`의 `npm ci`는 **`npm ci --no-audit --include dev`** 로 실행한다 — Amplify에서 `NODE_ENV=production`·`NPM_CONFIG_PRODUCTION` 등만으로도 devDependencies(vitest·eslint·`@next/bundle-analyzer` 등)가 생략될 수 있어 **`--include dev`로 명시**한다. `npm ci`에는 **`--ignore-scripts`를 쓰지 않는다**(Next transitive `sharp`가 Linux용 바이너리를 install 스크립트로 받음). 따라서 **`prisma generate`는 `build` 단계에서** 타입체크·테스트보다 먼저 실행한다.
 
 1. `npx prisma generate --schema=./prisma/schema.prisma`
 2. `npm test`
