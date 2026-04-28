@@ -9,6 +9,21 @@
 
 ---
 
+## 품질 게이트(AWS·Git) 통과 후에도 남은 일 — 미수행·스킵 메모
+
+**의미:** Amplify 빌드·GitHub **Frontend Quality** 가 **통과**(green)해도, 아래는 **미수행**, **별도 증거 대기**, 또는 **계약 후에만 가능**해서 그대로 남을 수 있다. 팀 추적용으로 한 표에 적어 둔다.
+
+| 구분 | 아직 할 일 | 비고 |
+|------|------------|------|
+| **MoMo · PG** | 운영(또는 스테이징)에 `MOMO_PARTNER_SECRET_KEY` 주입, **실 IPN**으로 서명·금액·204·멱등·예약·원장 **재검** | 아래 § B 표 동일 |
+| **DB 통합 테스트** | `INTEGRATION_DATABASE_URL` 설정 후 `frontend`에서 `npm run test:integration` | 기본 CI에는 DB 비밀이 없음; 로컬·스테이징 |
+| **i18n** | `scan`/게이트는 CI에 포함됨; **채팅 레거시**·사용자 문구 **5개국어** 빈 구간 보강은 진행 과제 | § D |
+| **웹·앱·정책** | 커스텀 도메인·DAL·TWA·KYC 상용·법무 스토어 문구 등 | § A·§ C·[pre-launch-closure](./pre-launch-closure.md) |
+| **은행 게이트웨이** | `BANK_TRANSFER_*` 에 실값 주입·발신/웹훅 API 연결 (`bankTransferApiConfig.ts`) | 키 없으면 무기능(수동 출금 유지); § 표 B2 |
+| **의존성** | Prisma 등 **메이저 업그레이드**(예: 빌드 시 “Update available 6→7”) | 필수 아님; 검토 후 별도 PR |
+
+*담당·날짜·증거(PR·스크린샷)·MoMo 테스트 트랜잭션 ID 등은 각 행 옆 또는 § 표에 채운다.*
+
 ## 쉬운 말로 정리 (나중에 할 일)
 
 ### 1) 도메인을 나중에 바꿀 때
@@ -115,6 +130,10 @@
 |------|------|------|
 | `NEXT_PUBLIC_STAYVIET_PRODUCTION_HOST` | 공개 호스트(메타·법무 각주) | 기본: Amplify 도메인; 커스텀 전환 시 변경 |
 | `MOMO_PARTNER_SECRET_KEY` | MoMo IPN 서명 검증 | 서버만 |
+| `BANK_TRANSFER_API_BASE_URL` | 은행/게이트웨이 REST 베이스 URL | 세트 미완료 시 무기능 |
+| `BANK_TRANSFER_API_CLIENT_ID` | 파트너 코드 등 | 위와 동일 |
+| `BANK_TRANSFER_API_SECRET` | API 시크릿(서버만) | 위와 동일 |
+| `BANK_TRANSFER_WEBHOOK_SECRET` | 입출금 콜백 서명 검증(라우트 추가 시) | 단독 설정 가능 |
 | `INTEGRATION_DATABASE_URL` | `npm run test:integration`(MoMo 멱등 등) | 로컬·선택 CI만; GitHub 기본 워크플로 비사용 |
 | `NEXT_PUBLIC_GEMINI_API_KEY` | 채팅 번역 등 | 선택 |
 | `NEXT_PUBLIC_MY_S3_*` | 이미지 업로드 | [s3-client.ts](../../frontend/src/lib/s3-client.ts) |

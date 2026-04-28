@@ -58,6 +58,12 @@ applications:
               AWS_MAP_NAME=$NEXT_PUBLIC_AWS_MAP_NAME
               AWS_PLACE_INDEX_NAME=$NEXT_PUBLIC_AWS_PLACE_INDEX_NAME
               NEXT_PUBLIC_STAYVIET_PRODUCTION_HOST=$NEXT_PUBLIC_STAYVIET_PRODUCTION_HOST
+              MOMO_PARTNER_SECRET_KEY=$MOMO_PARTNER_SECRET_KEY
+              # 은행/게이트웨이 REST·웹훅 계약 후 Amplify 에 동일 변수명으로만 채우면 활성 (`bankTransferApiConfig.ts`).
+              BANK_TRANSFER_API_BASE_URL=$BANK_TRANSFER_API_BASE_URL
+              BANK_TRANSFER_API_CLIENT_ID=$BANK_TRANSFER_API_CLIENT_ID
+              BANK_TRANSFER_API_SECRET=$BANK_TRANSFER_API_SECRET
+              BANK_TRANSFER_WEBHOOK_SECRET=$BANK_TRANSFER_WEBHOOK_SECRET
               EOF
             # Prisma Client (postinstall 이 이미 돌았어도 빌드 단계에서 한 번 더 고정)
             - echo "[build] prisma generate"
@@ -101,6 +107,11 @@ applications:
             AWS_MAP_NAME: $AWS_MAP_NAME
             AWS_PLACE_INDEX_NAME: $AWS_PLACE_INDEX_NAME
             NEXT_PUBLIC_STAYVIET_PRODUCTION_HOST: main.dn98z8m9jfvd5.amplifyapp.com
+            MOMO_PARTNER_SECRET_KEY: $MOMO_PARTNER_SECRET_KEY
+            BANK_TRANSFER_API_BASE_URL: $BANK_TRANSFER_API_BASE_URL
+            BANK_TRANSFER_API_CLIENT_ID: $BANK_TRANSFER_API_CLIENT_ID
+            BANK_TRANSFER_API_SECRET: $BANK_TRANSFER_API_SECRET
+            BANK_TRANSFER_WEBHOOK_SECRET: $BANK_TRANSFER_WEBHOOK_SECRET
       artifacts:
         baseDirectory: .next
         files:

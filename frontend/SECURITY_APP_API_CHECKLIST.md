@@ -139,6 +139,14 @@ All `/api/admin/*` routes use **admin session cookie** (`getAdminFromRequest`). 
 | **검증 레이어** | 라우트 핸들러 **최상단**: `request.text()`로 raw body 확보 → 공급자 규격에 따라 **원문 HMAC**(Stripe류) 또는 **파싱 후 필드 조합 문자열 HMAC**(MoMo IPN 등)으로 검증 → 실패 시 `401`/`403`. MoMo: `momoIpnSignature.ts` + `MOMO_PARTNER_SECRET_KEY`. |
 | **비즈니스 반영** | 검증 성공 후에만 JSON 파싱 → 내부적으로 기존 **`PATCH /api/app/payments/[bookingId]`** 와 동일한 규칙(멱등 키·`paymentPatchIdempotency`·`transitionBookingOnPaymentUpdate`)을 호출하는 **서버 전용 헬퍼**로 모은다. 웹훅 핸들러에 도메인 로직을 장황하게 넣지 않는다. |
 
+### 은행 게이트웨이 REST·입출금 콜백 (키 미보유 시 무기능)
+
+| 항목 | 내용 |
+|------|------|
+| **목적** | 정산 후 **자동 출금**(또는 은행/집금사 API)·**상태 콜백** 등을 향후 벤더 문서대로 연결하기 위한 env·진입점만 선반영. 계약 전에는 동작 안 함. |
+| **환경 변수** | 발신: `BANK_TRANSFER_API_BASE_URL`, `BANK_TRANSFER_API_CLIENT_ID`, `BANK_TRANSFER_API_SECRET`. 수신 서명 검증: `BANK_TRANSFER_WEBHOOK_SECRET`. 하나라도 불완발 시 `getBankTransferApiConfig()`/`getBankTransferWebhookSecret()` 가 `null` — 기존 **수동** 출금·원장 플로우만 유지. |
+| **코드 진입점** | `frontend/src/lib/server/bankTransferApiConfig.ts` — 새 API 라우트는 이 모듈에서만 설정을 읽고, 키·전문 로그 금지. Amplify 빌드용 `.env` 생성은 `amplify.yml` 에 패스스루 포함·콘솔에 변수명 추가 시 주입 가능. |
+
 ### 구현 체크리스트
 
 1. **Raw body**  
