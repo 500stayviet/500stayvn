@@ -7310,6 +7310,34 @@ export function getMergedUiTextKeyParityMismatches(): string[] {
   return mismatches;
 }
 
+/**
+ * ko 에는 비어 있지 않은데 vi/en/ja/zh 값이 빈 문자열인 키 (P3 채움 대상).
+ * 문화권상 의도적으로 비우는 경우만 `MERGED_UI_TEXT_EMPTY_ALLOW` 에 등록한다.
+ */
+export const MERGED_UI_TEXT_EMPTY_ALLOW = new Set<string>([
+  /** EN: "Pets 2 × …" 등에서 `petsShort` 다음에 단위를 또 붙이지 않기 위함 */
+  'en:petCountClassifier',
+]);
+
+export function getMergedUiTextEmptyTranslationMismatches(): string[] {
+  const refKeys = Object.keys(mergedUiTexts.ko) as UITextKey[];
+  const mismatches: string[] = [];
+  const locales: SupportedLanguage[] = ['vi', 'en', 'ja', 'zh'];
+  for (const lang of locales) {
+    const map = mergedUiTexts[lang];
+    for (const key of refKeys) {
+      const koTrim = (mergedUiTexts.ko[key] ?? '').trim();
+      if (koTrim === '') continue;
+      const locTrim = (map[key] ?? '').trim();
+      if (locTrim !== '') continue;
+      const slug = `${lang}:${key}`;
+      if (MERGED_UI_TEXT_EMPTY_ALLOW.has(slug)) continue;
+      mismatches.push(`${lang} 빈 문자열 (ko는 문구 있음): ${key}`);
+    }
+  }
+  return mismatches;
+}
+
 export const CALENDAR_MONTH_NAMES: Record<SupportedLanguage, readonly string[]> = {
   ko: ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'],
   vi: ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'],
