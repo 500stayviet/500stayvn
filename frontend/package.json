@@ -63,5 +63,10 @@
     "prisma": "^6.19.2",
     "typescript": "^5.0.0",
     "vitest": "^4.1.5"
+  },
+  "overrides": {
+    "preact": "10.24.3",
+    "@emnapi/core": "1.10.0",
+    "@emnapi/runtime": "1.10.0"
   }
 }
