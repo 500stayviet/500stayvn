@@ -135,14 +135,25 @@ export async function refreshPropertiesFromServer(): Promise<boolean> {
             action: "refresh",
             message: USER_FACING_CLIENT_AUTH_ERROR_MESSAGE,
           });
+          propertiesCache = null;
+          dispatchPropertiesUpdated();
           return false;
         }
+        // 404는 "목록 없음"으로 간주
         if (res.status === 404) {
           propertiesCache = [];
           dispatchPropertiesUpdated();
           return true;
         }
-        throw new Error(String(res.status));
+        // 공개 카탈로그 레이트리밋·일시 오류 등 — 전역 빨간 배너로는 알리지 않고 빈 목록으로 내려감
+        // (실제 원인은 서버/Amplify 로그·Sentry에서 확인)
+        console.warn(
+          "[properties] GET /api/app/properties non-OK, degrading to empty list",
+          res.status,
+        );
+        propertiesCache = [];
+        dispatchPropertiesUpdated();
+        return false;
       }
 
       const parsed = parseAppPropertiesListPayload(await res.json());
@@ -157,7 +168,6 @@ export async function refreshPropertiesFromServer(): Promise<boolean> {
     dispatchPropertiesUpdated();
     return true;
   } catch (e) {
-    propertiesCache = null;
     const code = e instanceof Error ? Number(e.message) : Number.NaN;
     if (Number.isFinite(code) && isClientAuthErrorStatus(code)) {
       emitUserFacingSyncError({
@@ -165,14 +175,14 @@ export async function refreshPropertiesFromServer(): Promise<boolean> {
         action: "refresh",
         message: USER_FACING_CLIENT_AUTH_ERROR_MESSAGE,
       });
+      propertiesCache = null;
+      dispatchPropertiesUpdated();
       return false;
     }
-    console.warn("[properties] refreshPropertiesFromServer failed", e);
-    emitUserFacingSyncError({
-      area: "properties",
-      action: "refresh",
-      message: getPropertySyncErrorMessage(Number.isFinite(code) ? code : null),
-    });
+    // 네트워크·파싱 등 — 매물 0건처럼 처리. 전역 배너로 `propertiesErrGeneric`을 띄우지 않음.
+    console.warn("[properties] refreshPropertiesFromServer failed (empty list fallback)", e);
+    propertiesCache = [];
+    dispatchPropertiesUpdated();
     return false;
   }
 }
