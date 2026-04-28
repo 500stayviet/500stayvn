@@ -1,11 +1,17 @@
 import { PrismaClient } from "@prisma/client";
 
 function normalizeDatabaseUrlEnv() {
-  const raw = process.env.DATABASE_URL || process.env.DIRECT_URL;
-  if (!raw) return;
-  // Amplify/console copy-paste can accidentally include quotes, trailing commas, or spaces.
-  const normalized = raw.trim().replace(/^['"]+|['"]+$/g, "").replace(/,+$/g, "");
-  process.env.DATABASE_URL = normalized;
+  const trimOne = (key: "DATABASE_URL" | "DIRECT_URL") => {
+    const raw = process.env[key];
+    if (!raw) return;
+    const normalized = raw.trim().replace(/^['"]+|['"]+$/g, "").replace(/,+$/g, "");
+    process.env[key] = normalized;
+  };
+  trimOne("DATABASE_URL");
+  trimOne("DIRECT_URL");
+  if (!process.env.DATABASE_URL && process.env.DIRECT_URL) {
+    process.env.DATABASE_URL = process.env.DIRECT_URL;
+  }
 }
 
 const globalForPrisma = globalThis as unknown as {

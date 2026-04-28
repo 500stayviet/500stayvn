@@ -21,6 +21,7 @@
     "scan:ui-ko": "node scripts/scan-ui-korean-literals.mjs",
     "scan:ui-ko:gate": "node scripts/scan-ui-korean-literals.mjs --max-hits 125",
     "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:watch": "vitest",
     "e2e": "playwright test",
     "e2e:headed": "playwright test --headed",

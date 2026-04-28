@@ -3,8 +3,10 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  /// 풀러(예: Supabase :6543 트랜잭션 모드)만 쓰면 prepared statement 오류가 날 수 있음 → Migrate/Introspect 는 DIRECT_URL(직접 :5432 등) 사용.
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -161,6 +163,7 @@ model PaymentRecord {
   updatedAt         DateTime @updatedAt
   booking           Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  momoIpnReceipts   MomoIpnReceipt[]
 
   @@index([bookingId, createdAt])
   @@index([userId, createdAt])
@@ -168,6 +171,18 @@ model PaymentRecord {
   @@unique([externalPaymentId])
   @@unique([idempotencyKey])
   @@unique([webhookEventId])
+}
+
+model MomoIpnReceipt {
+  id              String   @id @default(cuid())
+  transId         String   @unique
+  paymentRecordId String
+  orderId         String
+  createdAt       DateTime @default(now())
+  paymentRecord   PaymentRecord @relation(fields: [paymentRecordId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([paymentRecordId])
 }
 
 model LessorProfile {

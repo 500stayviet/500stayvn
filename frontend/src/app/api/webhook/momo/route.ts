@@ -4,35 +4,36 @@ import {
   computeMomoIpnSignatureHmacHex,
   verifyMomoIpnSignatureHex,
 } from "@/lib/payments/momoIpnSignature";
+import {
+  applyVerifiedMomoIpn,
+  hashForWebhookLog,
+  MomoIpnAmountMismatchError,
+} from "@/lib/server/momoIpnApply";
+import { AlreadyBookedConflictError } from "@/lib/server/paymentConfirmAvailability";
+import { PaymentPatchIdempotencyConflictError } from "@/lib/server/paymentPatchIdempotency";
 
 /**
- * MoMo(또는 동일 엔드포인트를 쓰는 PG) **인바운드 웹훅** — Phase 4 연동 전 골격.
+ * MoMo(또는 동일 엔드포인트를 쓰는 PG) **인바운드 웹훅**.
  *
- * ## 멱등성 (Idempotency) — 중복 결제·중복 전이 방지
+ * ## 멱등성 · 원장 (`momoIpnApply.ts`)
  *
- * 1. **Raw body 유지:** 서명은 `JSON.parse` 전에 **요청 바이트 그대로**로 검증한다.
- *    `request.json()`을 먼저 호출하면 HMAC이 깨진다. → `request.text()` 한 번만 읽고 검증·파싱에 공유.
- * 2. **이벤트 앵커:** PG가 주는 `orderId` / `transId` / `eventId` 등을 DB에 **유니크**로 저장하고,
- *    동일 키 재전송 시에는 **이미 적용한 결과와 동일한 응답**만 반환 (noop 멱등).
- * 3. **내부 원장:** 비즈니스 반영은 `paymentPatchIdempotency`·`bookingPaymentTransition` 등
- *    기존 PATCH 결제 멱등 계약과 **같은 idempotencyKey·전이 규칙**으로 합류할 것.
- *    설계: `frontend/SECURITY_APP_API_CHECKLIST.md` §멱등성, §결제 웹훅 연동 시.
- * 4. **로그:** 키·서명 전문은 로그에 남기지 말 것(마스킹·해시).
+ * Raw body로 서명 검증 → `MomoIpnReceipt.transId` 유니크로 중복 IPN 방지 →
+ * `resolvePaymentPatchIdempotency`·`transitionBookingOnPaymentUpdate` 는 PATCH 결제와 동일 규약.
+ * `PaymentRecord.externalPaymentId` 가 MoMo `orderId` 와 같아야 조회된다(결제 생성 시 설정).
  *
- * ## MoMo IPN 서명 (골격)
+ * ## 성공 시 **204 No Content** (MoMo IPN 처리 후 기대 응답)
  *
- * - 비밀키: `MOMO_PARTNER_SECRET_KEY` (또는 콘솔에서 발급한 partner **secretKey**; 실값은 배포 환경에만).
- * - 페이로드는 JSON이며 `signature` 필드가 포함된다. raw 문자열은 `momoIpnSignature.ts`의 필드 순서로 구성한다.
- * - Phase 4에서 샘플 트랜잭션으로 서명 일치를 반드시 확인한다.
- *
- * ## 다음 단계 (Phase 4)
- *
- * - 검증 성공 후에만 Prisma 트랜잭션으로 Payment/Booking 상태 갱신.
- * - MoMo는 처리 후 **HTTP 204**를 기대한다(15초 이내). 적용 구현 후 응답 코드 정합.
+ * ## 로그: 시크릿·서명 원문 노출 금지 — 해시 힌트만 사용.
  */
 export const runtime = "nodejs";
 
 const WEBHOOK_SECRET_ENV = "MOMO_PARTNER_SECRET_KEY";
+
+function formatTransId(value: unknown): string {
+  if (typeof value === "number" && Number.isFinite(value)) return String(Math.trunc(value));
+  if (typeof value === "string") return value.trim();
+  return "";
+}
 
 export async function POST(request: Request): Promise<Response> {
   const rawBody = await request.text();
@@ -44,7 +45,8 @@ export async function POST(request: Request): Promise<Response> {
         ok: false,
         error: {
           code: "webhook_secret_not_configured",
-          message: "MoMo webhook secret is not configured. Set MOMO_PARTNER_SECRET_KEY in the deployment environment.",
+          message:
+            "MoMo webhook secret is not configured. Set MOMO_PARTNER_SECRET_KEY in the deployment environment.",
         },
       },
       { status: 501 },
@@ -56,7 +58,10 @@ export async function POST(request: Request): Promise<Response> {
     body = JSON.parse(rawBody) as Record<string, unknown>;
   } catch {
     return NextResponse.json(
-      { ok: false, error: { code: "invalid_json", message: "Request body is not valid JSON." } },
+      {
+        ok: false,
+        error: { code: "invalid_json", message: "Request body is not valid JSON." },
+      },
       { status: 400 },
     );
   }
@@ -64,7 +69,13 @@ export async function POST(request: Request): Promise<Response> {
   const providedSig = body.signature;
   if (typeof providedSig !== "string" || !providedSig.trim()) {
     return NextResponse.json(
-      { ok: false, error: { code: "missing_signature", message: "MoMo IPN payload must include a signature field." } },
+      {
+        ok: false,
+        error: {
+          code: "missing_signature",
+          message: "MoMo IPN payload must include a signature field.",
+        },
+      },
       { status: 400 },
     );
   }
@@ -73,20 +84,109 @@ export async function POST(request: Request): Promise<Response> {
   const expectedHex = computeMomoIpnSignatureHmacHex(secret, rawData);
   if (!verifyMomoIpnSignatureHex(providedSig, expectedHex)) {
     return NextResponse.json(
-      { ok: false, error: { code: "invalid_signature", message: "MoMo IPN signature verification failed." } },
+      {
+        ok: false,
+        error: {
+          code: "invalid_signature",
+          message: "MoMo IPN signature verification failed.",
+        },
+      },
       { status: 401 },
     );
   }
 
-  // TODO(Phase 4): idempotent apply (orderId/transId anchor) → then respond 204 No Content per MoMo.
-  return NextResponse.json(
-    {
-      ok: false,
-      error: {
-        code: "webhook_apply_not_enabled",
-        message: "Signature verified, but payment webhook apply is not enabled until Phase 4.",
+  const orderId = typeof body.orderId === "string" ? body.orderId.trim() : "";
+  const transId = formatTransId(body.transId);
+  if (!orderId || !transId) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: {
+          code: "missing_order_or_trans_id",
+          message: "MoMo IPN requires orderId and transId.",
+        },
       },
-    },
-    { status: 501 },
-  );
+      { status: 400 },
+    );
+  }
+
+  try {
+    const result = await applyVerifiedMomoIpn({
+      orderId,
+      transId,
+      resultCode: body.resultCode,
+      amount: body.amount,
+    });
+
+    if (result.outcome === "not_found") {
+      console.warn("[momo_ipn] payment_row_missing", {
+        orderHint: hashForWebhookLog(orderId),
+        transHint: hashForWebhookLog(transId),
+      });
+      return NextResponse.json(
+        {
+          ok: false,
+          error: {
+            code: "payment_order_not_found",
+            message: "No PaymentRecord matches externalPaymentId for this IPN.",
+          },
+        },
+        { status: 404 },
+      );
+    }
+
+    console.info("[momo_ipn] ok", {
+      outcome: result.outcome,
+      transitionPaid: result.outcome === "applied" ? result.transitionPaid : undefined,
+      orderHint: hashForWebhookLog(orderId),
+      transHint: hashForWebhookLog(transId),
+    });
+
+    return new NextResponse(null, { status: 204 });
+  } catch (e) {
+    if (e instanceof MomoIpnAmountMismatchError) {
+      console.warn("[momo_ipn] amount_mismatch", {
+        orderHint: hashForWebhookLog(orderId),
+        transHint: hashForWebhookLog(transId),
+      });
+      return NextResponse.json(
+        {
+          ok: false,
+          error: {
+            code: "amount_mismatch",
+            message: "MoMo IPN amount does not match stored payment.",
+          },
+        },
+        { status: 409 },
+      );
+    }
+    if (e instanceof AlreadyBookedConflictError) {
+      console.error("[momo_ipn] overlapping_confirmed_booking", {
+        bookingId: e.bookingId,
+        propertyId: e.propertyId,
+        orderHint: hashForWebhookLog(orderId),
+      });
+      return NextResponse.json(
+        { ok: false, error: { code: "already_booked", message: "Listing overlap on confirm." } },
+        { status: 409 },
+      );
+    }
+    if (e instanceof PaymentPatchIdempotencyConflictError) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: {
+            code: "idempotency_conflict",
+            message: "Idempotency key reused with incompatible payment state.",
+          },
+        },
+        { status: 409 },
+      );
+    }
+    console.error("[momo_ipn] apply_failed", e);
+    return NextResponse.json(
+      { ok: false, error: { code: "webhook_apply_failed", message: "Could not apply MoMo IPN." } },
+      { status: 503 },
+    );
+  }
 }

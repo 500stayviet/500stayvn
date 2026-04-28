@@ -1,11 +1,11 @@
 import { defineConfig } from "vitest/config";
 import path from "node:path";
 
+/** `INTEGRATION_DATABASE_URL` 있을 때: `npm run test:integration` */
 export default defineConfig({
   test: {
     environment: "node",
-    include: ["src/**/*.test.ts"],
-    exclude: ["**/node_modules/**", "src/**/*.integration.test.ts"],
+    include: ["src/**/*.integration.test.ts"],
     globals: true,
   },
   resolve: {
