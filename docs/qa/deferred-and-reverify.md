@@ -89,7 +89,7 @@
 | ☐ | 멱등 + 예약/결제 원장 연동 | `paymentPatchIdempotency` 등 — 코드 반영 후 **실 IPN으로 재검** |
 | ☐ | 처리 후 HTTP **204**, 15초 이내 | MoMo 문서 |
 
-**DB 멱등 통합 테스트:** `frontend`에서 `INTEGRATION_DATABASE_URL` 설정 후 `npm run test:integration`( `momoIpnApply.integration.test.ts` ). GitHub 기본 워크플로에는 DB 시크릿을 넣지 않았으므로 **로컬·스테이징**에서 주기 실행을 권장한다.
+**DB 멱등 통합 테스트:** `frontend`에서 `INTEGRATION_DATABASE_URL` 설정 후 `npm run test:integration`( `momoIpnApply.integration.test.ts` ). GitHub 기본 워크플로에는 DB 시크릿을 넣지 않았으므로 **로컬·스테이징**에서 주기 실행을 권장한다. PR job과 같은 순서의 전체 검증은 `frontend`에서 `npm run ci:parity`(lint → `p3:i18n` → test → 금지어 → tsc → build).
 
 ### C. KYC · 외부 API (상용)
 

@@ -22,6 +22,7 @@
     "scan:ui-ko:gate": "node scripts/scan-ui-korean-literals.mjs --max-hits 125",
     "p3:i18n": "npm run scan:ui-ko:gate && vitest run src/utils/mergedUiTextKeysParity.test.ts src/utils/scanUiKoPolicy.test.ts",
     "test": "vitest run",
+    "ci:parity": "npm run lint:p3-tier3 && npm run p3:i18n && npm test && npm run check:banned-terms && npx tsc --noEmit && npm run build",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:watch": "vitest",
     "e2e": "playwright test",
