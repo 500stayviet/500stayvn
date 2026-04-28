@@ -55,6 +55,13 @@ jobs:
             exit 1
           }
 
+      # Amplify `preBuild`와 동일 순서: 스타일·번역 게이트를 먼저 (실패 시 단테·빌드 생략)
+      - name: ESLint guard (P3 — API + server + lib + components)
+        run: npm run lint:p3-tier3
+
+      - name: i18n gate (P3 — scan:ui-ko + parity / policy Vitest)
+        run: npm run p3:i18n
+
       - name: Run unit tests
         run: npm test
 
@@ -63,9 +70,6 @@ jobs:
 
       - name: Run TypeScript typecheck
         run: npx tsc --noEmit
-
-      - name: ESLint guard (P3 — API + server + lib + components)
-        run: npm run lint:p3-tier3
 
       - name: Run production build
         run: npm run build

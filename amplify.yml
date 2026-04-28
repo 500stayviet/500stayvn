@@ -27,6 +27,11 @@ applications:
                 exit 1
               }
             - echo "[preBuild] npm ci OK"
+            # P4: 스타일·번역 게이트 — 실패 시 exit 1 로 이후 단계(빌드) 미실행
+            - echo "[preBuild] lint:p3-tier3"
+            - npm run lint:p3-tier3
+            - echo "[preBuild] p3:i18n (한글 스캔 허용치 + i18n 패리티·빈 번역)"
+            - npm run p3:i18n
         build:
           commands:
             - |
@@ -64,8 +69,6 @@ applications:
             - npm run check:banned-terms
             - echo "[build] tsc"
             - npx tsc --noEmit
-            - echo "[build] lint:p3-tier3"
-            - npm run lint:p3-tier3
             - echo "[build] next build"
             - npm run build
             - echo "[build] --- done ---"

@@ -115,15 +115,17 @@
 | **5개 언어 일관성** | 한 화면에 언어 혼선 없음 | [phase4-staging-checklist.md](./phase4-staging-checklist.md) UI 표 |
 | **법적·지원 URL** | privacy / delete-account / 이메일 한 source | [store-listing-draft.md](./store-listing-draft.md), `operator-contact.ts` |
 
-**품질 게이트 (머지·배포 증거):**
+**품질 게이트 (머지·배포 증거):** 순서는 **GitHub `frontend-quality`** / **Amplify** 와 동일하게 맞출 것.
 
-1. `npm test`  
-2. `npx tsc --noEmit`  
-3. `npm run lint` 또는 CI 동등 `npm run lint:p3-tier3` ([pipeline-principles.md](./pipeline-principles.md))  
-4. `npm run build`  
-5. 핵심 Playwright 스모크(예: `mock-scenario-regression` 포함 PR job)
+1. `npm run lint:p3-tier3` (`npm run lint` 또는 [pipeline-principles.md](./pipeline-principles.md) 동등)  
+2. `npm run p3:i18n` (`scan:ui-ko:gate` + 다국어 키 회귀 Vitest)  
+3. `npm test`  
+4. `npm run check:banned-terms`  
+5. `npx tsc --noEmit`  
+6. `npm run build`  
+7. 핵심 Playwright 스모크(예: `mock-scenario-regression` 포함 PR job)
 
-**선택(다국어 회귀):** 로컬/주기적으로 `npm run scan:ui-ko:gate` — 임계 초과 시 UI 문자열 이슈. CI 편입 여부는 팀이 [pipeline-principles.md](./pipeline-principles.md)에 맞춰 결정.
+**다국어 회귀:** `npm run p3:i18n` — PR·배포에서 **Amplify preBuild**와 **GitHub `frontend-quality`** 가 동일하게 실행한다.
 
 ---
 

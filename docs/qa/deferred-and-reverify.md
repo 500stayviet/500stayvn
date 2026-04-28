@@ -86,8 +86,10 @@
 |------|--------|------|
 | ☐ | `MOMO_PARTNER_SECRET_KEY` 운영 주입 | 서버 env만 |
 | ☐ | 실 IPN으로 서명 검증 확인 | `momoIpnSignature.ts` 필드 순서 |
-| ☐ | 멱등 + 예약/결제 원장 연동 | `paymentPatchIdempotency` 등 |
+| ☐ | 멱등 + 예약/결제 원장 연동 | `paymentPatchIdempotency` 등 — 코드 반영 후 **실 IPN으로 재검** |
 | ☐ | 처리 후 HTTP **204**, 15초 이내 | MoMo 문서 |
+
+**DB 멱등 통합 테스트:** `frontend`에서 `INTEGRATION_DATABASE_URL` 설정 후 `npm run test:integration`( `momoIpnApply.integration.test.ts` ). GitHub 기본 워크플로에는 DB 시크릿을 넣지 않았으므로 **로컬·스테이징**에서 주기 실행을 권장한다.
 
 ### C. KYC · 외부 API (상용)
 
@@ -101,9 +103,9 @@
 
 | 상태 | 할 일 | 메모 |
 |------|--------|------|
-| ☐ | `scan:ui-ko:gate` CI 편입 | [pipeline-principles.md](./pipeline-principles.md) |
+| ✅ | `scan:ui-ko:gate`(+ `p3:i18n` Vitest) CI 편입 | **Amplify** `amplify.yml` preBuild · **GitHub** `frontend-quality.yml` (`lint:p3-tier3` 다음 `npm run p3:i18n`) · 2026-04 |
 | ☐ | 채팅 레거시 → `__SV_CHAT:*` 코드 (선택) | `chatMessageDisplay.ts` |
-| ☐ | 테스트·린트·빌드·E2E | `npm test`, `lint:p3-tier3`, `build`, Playwright |
+| ☐ | 사용자 노출 하드코딩 이전·5개국어 보강 | `getUIText`/키 채우기 — 지속 과제 |
 
 ---
 
@@ -113,6 +115,7 @@
 |------|------|------|
 | `NEXT_PUBLIC_STAYVIET_PRODUCTION_HOST` | 공개 호스트(메타·법무 각주) | 기본: Amplify 도메인; 커스텀 전환 시 변경 |
 | `MOMO_PARTNER_SECRET_KEY` | MoMo IPN 서명 검증 | 서버만 |
+| `INTEGRATION_DATABASE_URL` | `npm run test:integration`(MoMo 멱등 등) | 로컬·선택 CI만; GitHub 기본 워크플로 비사용 |
 | `NEXT_PUBLIC_GEMINI_API_KEY` | 채팅 번역 등 | 선택 |
 | `NEXT_PUBLIC_MY_S3_*` | 이미지 업로드 | [s3-client.ts](../../frontend/src/lib/s3-client.ts) |
 
