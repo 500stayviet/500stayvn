@@ -207,8 +207,10 @@ test("booking flow shows payment-fail sync error in mockScenario=fail", async ({
 
   await page.locator('input[type="text"]').first().fill("Mock Guest");
   await page.locator('input[type="checkbox"]').first().check();
-  await page.getByRole("button", { name: /결제 단계로 이동|Continue to Payment/i }).click();
-  await expect(page.getByText(/결제 수단 선택|Chọn phương thức thanh toán/)).toBeVisible();
+  await page.getByRole("button", { name: /결제 단계로 이동|Continue to payment/i }).click();
+  await expect(
+    page.getByRole("heading", { name: /Select payment method|결제 수단 선택|Chọn phương thức thanh toán/i }),
+  ).toBeVisible();
 
   await page.getByRole("button", { name: "MoMo" }).click();
   await page.locator('input[type="checkbox"]').last().check();
@@ -219,7 +221,7 @@ test("booking flow shows payment-fail sync error in mockScenario=fail", async ({
     window.history.replaceState({}, "", next.toString());
   });
 
-  await page.getByRole("button", { name: /결제하기|Thanh toán/ }).click();
+  await page.getByRole("button", { name: /결제하기|Thanh toán|Pay now/i }).click();
   // `emitUserFacingSyncError` → ApiSyncErrorBanner; exclude Next.js `__next-route-announcer__`
   const paymentFailBanner = page.getByRole("alert").filter({
     hasText: /Payment could not be completed|결제를 완료하지 못했습니다|Không hoàn tất thanh toán/,
@@ -238,12 +240,14 @@ test("booking flow with mockScenario=partial does not reach success page", async
 
   await page.locator('input[type="text"]').first().fill("Mock Guest");
   await page.locator('input[type="checkbox"]').first().check();
-  await page.getByRole("button", { name: /결제 단계로 이동|Continue to Payment/i }).click();
-  await expect(page.getByText(/결제 수단 선택|Chọn phương thức thanh toán/)).toBeVisible();
+  await page.getByRole("button", { name: /결제 단계로 이동|Continue to payment/i }).click();
+  await expect(
+    page.getByRole("heading", { name: /Select payment method|결제 수단 선택|Chọn phương thức thanh toán/i }),
+  ).toBeVisible();
 
   await page.getByRole("button", { name: "MoMo" }).click();
   await page.locator('input[type="checkbox"]').last().check();
-  await page.getByRole("button", { name: /결제하기|Thanh toán/ }).click();
+  await page.getByRole("button", { name: /결제하기|Thanh toán|Pay now/i }).click();
 
   await expect.poll(() => /\/booking-success/.test(page.url())).toBeFalsy();
   await expect(page).toHaveURL(/\/$|\/booking\?/);
@@ -260,15 +264,15 @@ test("kyc shows step2 failure in mockScenario=partial", async ({ page }) => {
   await page.goto("/kyc?mockScenario=partial");
 
   await expect(
-    page.getByRole("heading", { name: /ID Capture|신분증 촬영|Chụp ảnh giấy tờ/ }),
+    page.getByRole("heading", { name: /ID capture|신분증 촬영|Chụp ảnh giấy tờ/i }),
   ).toBeVisible({ timeout: 20_000 });
 
   await page
-    .getByRole("button", { name: /Next \(Test Mode\)|다음 \(테스트 모드\)/ })
+    .getByRole("button", { name: /Proceed in test mode|Next \(Test Mode\)|다음 \(테스트 모드\)/i })
     .click();
   await expect(page.getByText("mock_kyc_id_failed")).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: /ID Capture|신분증 촬영|Chụp ảnh giấy tờ/ }),
+    page.getByRole("heading", { name: /ID capture|신분증 촬영|Chụp ảnh giấy tờ/i }),
   ).toBeVisible();
 });
 
