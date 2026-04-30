@@ -22,19 +22,23 @@
 
 **워크플로:** 저장소 루트 `.github/workflows/frontend-quality.yml`
 
-**Job `test-and-typecheck`** (Ubuntu, `working-directory: frontend`) 실행 순서:
+**Job `test-and-typecheck`** (Ubuntu, `working-directory: frontend`) 실행 순서 — **Amplify `preBuild`의 린트·i18n 게이트와 동일 순서**를 먼저 두어, 무거운 단테·빌드 전에 빠르게 실패할 수 있게 한다.
 
-1. `npm ci`
-2. `npm test`
-3. `npx tsc --noEmit`
-4. `npm run lint:p3-tier3` — `src/app/api/**/*.ts`, `src/lib/server/**/*.ts`, `src/lib/**`(server 제외), `src/components/**`
-5. `npm run build`
+1. `npm ci --no-audit` (체크아웃·setup-node 직후)
+2. `npm run lint:p3-tier3` — `src/app/api/**/*.ts`, `src/lib/server/**/*.ts`, `src/lib/**`(server 제외), `src/components/**`
+3. `npm run p3:i18n` — `scan:ui-ko:gate` + i18n 패리티·정책 Vitest
+4. `npm test`
+5. `npm run check:banned-terms`
+6. `npx tsc --noEmit`
+7. `npm run build`
 
-클라이언트 빌드용 **Firebase 플레이스홀더**는 워크플로 `env`에 고정되어 있어, 시크릿 없이도 타입·빌드가 재현 가능하다.
+클라이언트 빌드용 **Firebase 플레이스홀더**는 워크플로 `env`에 고정되어 있어, 시크릿 없이도 타입·빌드가 재현 가능하다. Prisma Client는 **`npm ci`의 postinstall** 등으로 생성되어 단테·타입체크에 사용된다(별도 `prisma generate` 스텝은 없음).
 
 **Job `e2e-smoke`** (Windows, PR만): Playwright Chromium + 스모크 스펙 일괄 실행. `test-and-typecheck` 성공 후에만 실행된다.
 
-**실행 결과 확인:** GitHub 저장소 → **Actions** 탭 → 워크플로 **Frontend Quality** → 최근 run. `lint:p3-tier3` 단계 로그에서 ESLint 출력을 확인한다. (로컬에 `gh` CLI가 있으면 `gh run list --workflow=frontend-quality.yml`로 동일 정보 조회 가능.)
+**실행 결과 확인:** GitHub 저장소 → **Actions** 탭 → 워크플로 **Frontend Quality** → 최근 run. (로컬에 `gh` CLI가 있으면 `gh run list --workflow=frontend-quality.yml`로 동일 정보 조회 가능.)
+
+**로컬 원샷 검증:** `frontend`에서 `npm ci` 다음 `npm run ci:parity` — GitHub `test-and-typecheck`의 **린트·`p3:i18n`부터 빌드까지**와 동일한 명령 연쇄(설치 단계는 별도).
 
 ---
 
@@ -42,31 +46,48 @@
 
 **앱 루트:** `frontend`
 
-**의도적 정렬:** `build` 단계에서 GitHub `test-and-typecheck`와 **동일한 증거**를 남긴다. `preBuild`의 `npm ci`는 **`npm ci --no-audit --include dev`** 로 실행한다 — Amplify에서 `NODE_ENV=production`·`NPM_CONFIG_PRODUCTION` 등만으로도 devDependencies(vitest·eslint·`@next/bundle-analyzer` 등)가 생략될 수 있어 **`--include dev`로 명시**한다. `npm ci`에는 **`--ignore-scripts`를 쓰지 않는다**(Next transitive `sharp`가 Linux용 바이너리를 install 스크립트로 받음). 따라서 **`prisma generate`는 `build` 단계에서** 타입체크·테스트보다 먼저 실행한다.
+**역할 분리:** Amplify는 **`preBuild`**(의존성 + 린트·i18n)와 **`build`**(환경 주입·Prisma·단테·타입·최종 빌드)로 나뉜다. GitHub job에는 preBuild에 해당하는 “배포 전 가벼운 게이트”가 없고, 대신 `test-and-typecheck` 안에서 같은 **논리 순서**(린트·`p3:i18n` → test → banned → tsc → build)를 맞춘다. Amplify만의 차이는 **`build` 초반에 `.env`를 생성하고 `prisma generate`를 명시 실행**한다는 점(콘솔 시크릿이 빌드·런타임에 필요).
 
-1. `npx prisma generate --schema=./prisma/schema.prisma`
-2. `npm test`
-3. `npm run check:banned-terms`
-4. `npx tsc --noEmit`
-5. `npm run lint:p3-tier3`
-6. `npm run build` (내부에서 Prisma generate가 한 번 더 호출될 수 있음 — 무해)
+### `preBuild`
 
-이렀로 Amplify만 통과하고 GitHub에서 린트가 깨지는 **이분법**을 줄인다. Amplify 콘솔에 설정한 **환경 변수**(DB, OAuth, AWS Location 등)는 기존과 같이 필요하며, Next 빌드 시 필요한 `NEXT_PUBLIC_*` 누락은 빌드 로그로 즉시 드러난다.
+1. `nvm use 20` (또는 install)
+2. `npm ci --no-audit --include dev` — Amplify에서 `NODE_ENV=production` 등으로 **devDependencies**가 빠지는 경우를 막기 위해 `--include dev`를 명시한다. **`--ignore-scripts`는 쓰지 않는다** (Next `sharp` 등이 install 스크립트로 Linux 바이너리를 받음).
+3. `npm run lint:p3-tier3`
+4. `npm run p3:i18n`
 
-**참고:** 예전에는 `prisma generate` 후 `npm run build`만 있었을 수 있다. 이 문서 시점부터 위 품질 단계가 빌드 전에 포함되는 것이 표준이다.
+실패 시 **exit 1**로 이후 **`build` 단계로 진행하지 않는다.**
+
+### `build`
+
+1. `cat > ./.env <<EOF` … — Amplify 환경 변수로 **DB·OAuth·공개 키·웹훅 시크릿(패스스루)** 등 주입
+2. `npx prisma generate --schema=./prisma/schema.prisma`
+3. `npm test`
+4. `npm run check:banned-terms`
+5. `npx tsc --noEmit`
+6. `npm run build` (`package.json`의 build는 내부에서 `prisma generate`를 다시 호출할 수 있음 — 무해)
+
+Amplify 콘솔에 설정한 **환경 변수**가 `.env`에 반영되지 않으면 런타임·빌드에서 즉시 드러난다.
 
 ---
 
 ## 4. 로컬에서 PR 전 검증 (권장 순서)
 
-`frontend` 디렉터리에서:
+**GitHub·Amplify `preBuild` 게이트와 맞춘 순서(권장):** `frontend` 디렉터리에서 의존성 설치 후:
 
 ```bash
 npm ci
-npm test
-npx tsc --noEmit
 npm run lint:p3-tier3
+npm run p3:i18n
+npm test
+npm run check:banned-terms
+npx tsc --noEmit
 npm run build
+```
+
+한 줄로 동일하게 돌리려면:
+
+```bash
+npm run ci:parity
 ```
 
 전역 앱·페이지까지 린트를 맞출 때는 추가로:
