@@ -16,7 +16,7 @@
 | 구분 | 아직 할 일 | 비고 |
 |------|------------|------|
 | **MoMo · PG** | 운영(또는 스테이징)에 `MOMO_PARTNER_SECRET_KEY` 주입, **실 IPN**으로 서명·금액·204·멱등·예약·원장 **재검** | 아래 § B 표 동일 |
-| **DB 통합 테스트** | `INTEGRATION_DATABASE_URL` 설정 후 `frontend`에서 `npm run test:integration` | 기본 CI에는 DB 비밀이 없음; 로컬·스테이징 |
+| **DB 통합 테스트** | ✅ **2026-04-30** — `DIRECT_URL` → `INTEGRATION_DATABASE_URL` 로 `npm run test:integration` PASS (`momoIpnApply.integration.test.ts`). CI 기본 워크플로에는 DB 시크릿 없음 |
 | **i18n** | `scan`/게이트는 CI에 포함됨; **채팅 레거시**·사용자 문구 **5개국어** 빈 구간 보강은 진행 과제 | § D |
 | **웹·앱·정책** | 커스텀 도메인·DAL·TWA·KYC 상용·법무 스토어 문구 등 | § A·§ C·[pre-launch-closure](./pre-launch-closure.md) |
 | **은행 게이트웨이** | `BANK_TRANSFER_*` 에 실값 주입·발신/웹훅 API 연결 (`bankTransferApiConfig.ts`) | 키 없으면 무기능(수동 출금 유지); § 표 B2 |
@@ -103,8 +103,9 @@
 | ☐ | 실 IPN으로 서명 검증 확인 | `momoIpnSignature.ts` 필드 순서 |
 | ☐ | 멱등 + 예약/결제 원장 연동 | `paymentPatchIdempotency` 등 — 코드 반영 후 **실 IPN으로 재검** |
 | ☐ | 처리 후 HTTP **204**, 15초 이내 | MoMo 문서 |
+| ✅ | **MoMo IPN 멱등성 검증** (DB 통합) | **2026-04-30** `frontend`에서 `INTEGRATION_DATABASE_URL` = `.env` `DIRECT_URL` — `npm run test:integration`·`momoIpnApply.integration.test.ts` **PASS**. 참고: 동일 일자 `prisma db push --accept-data-loss`(연결은 `DIRECT_URL`로 임시 지정) 시 `PaymentRecord_externalPaymentId_key` already exists로 **실패** — DB는 `migrate deploy` 기준과 이미 정렬된 상태로 보고, 실제 멱등 검증은 통합 테스트로 확인함. **실 IPN 재검은 키 수신 후** § 표 상단 항목 유지. |
 
-**DB 멱등 통합 테스트:** `frontend`에서 `INTEGRATION_DATABASE_URL` 설정 후 `npm run test:integration`( `momoIpnApply.integration.test.ts` ). GitHub 기본 워크플로에는 DB 시크릿을 넣지 않았으므로 **로컬·스테이징**에서 주기 실행을 권장한다. PR job과 같은 순서의 전체 검증은 `frontend`에서 `npm run ci:parity`(lint → `p3:i18n` → test → 금지어 → tsc → build).
+**DB 멱등·MoMo IPN 멱등성 통합 테스트:** 로컬에서 `INTEGRATION_DATABASE_URL`(보통 `.env`의 `DIRECT_URL`과 동일 문자열) 설정 후 `npm run test:integration`( `momoIpnApply.integration.test.ts` ). **증거:** ✅ **2026-04-30** PASS. GitHub 기본 워크플로에는 DB 시크릿을 넣지 않았으므로 로컬·스테이징 권장. PR job과 같은 순서의 전체 검증은 `frontend`에서 `npm run ci:parity`(lint → `p3:i18n` → test → 금지어 → tsc → build).
 
 ### C. KYC · 외부 API (상용)
 
