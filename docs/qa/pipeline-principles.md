@@ -34,7 +34,7 @@
 
 클라이언트 빌드용 **Firebase 플레이스홀더**는 워크플로 `env`에 고정되어 있어, 시크릿 없이도 타입·빌드가 재현 가능하다. Prisma Client는 **`npm ci`의 postinstall** 등으로 생성되어 단테·타입체크에 사용된다(별도 `prisma generate` 스텝은 없음).
 
-**Job `e2e-smoke`** (Windows, PR만): Playwright Chromium + 스모크 스펙 일괄 실행. `test-and-typecheck` 성공 후에만 실행된다.
+**Job `e2e-smoke`** (Windows, PR만): Playwright Chromium + 스모크 스펙 일괄 실행. `test-and-typecheck` 성공 후에만 실행된다. **Flaky·재시도·머지 판정**은 [`docs/qa/e2e-execution-standard.md`](./e2e-execution-standard.md) **§8**을 따른다 (CI에서 `retries: 1`, 로컬 `0`, trace는 재시도 시).
 
 **실행 결과 확인:** GitHub 저장소 → **Actions** 탭 → 워크플로 **Frontend Quality** → 최근 run. (로컬에 `gh` CLI가 있으면 `gh run list --workflow=frontend-quality.yml`로 동일 정보 조회 가능.)
 
@@ -103,11 +103,13 @@ npm run lint
 - [ ] 새 API/서버 모듈이 `lint:p3-tier3` 범위에 들어가는지 확인한다.
 - [ ] E2E 스모크에 포함된 플로를 건드렸다면 로컬에서 해당 스펙을 실행한다.
 - [ ] `amplify.yml`과 `frontend-quality.yml`의 **명령 순서**를 이 문서와 맞춘다.
+- [ ] 스모크 스펙 목록을 바꿨다면 `e2e-execution-standard.md` §3 목록과 동기화한다.
 
 ---
 
 ## 6. 관련 문서
 
+- [`e2e-execution-standard.md`](./e2e-execution-standard.md) — Playwright 실행 표준, **§8 Flaky 대응**(재시도·판정·체크리스트)
 - `frontend/SECURITY_APP_API_CHECKLIST.md` — API 봉투·actor·**상용 오픈 전** 보안 체크리스트
 - `docs/qa/refactor-backlog.md` — Fixed Completion Gate, P3 졸업 기준
 - `docs/qa/ci-runtime-policy.md` — Node 20·GitHub Actions 핀

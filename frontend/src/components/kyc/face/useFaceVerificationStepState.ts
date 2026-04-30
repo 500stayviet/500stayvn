@@ -6,10 +6,11 @@ import { useCamera } from '@/hooks/useCamera';
 import { canvasToBlob, resizeImage } from '@/utils/imageUtils';
 import { faceDirections } from '@/components/kyc/face/faceDirectionConfig';
 import type { FaceVerificationStepProps } from './types';
+import type { KycFaceCapturePhase } from './kycFaceCapturePhase';
 import { getUIText } from '@/utils/i18n';
 
 export function useFaceVerificationStepState({ currentLanguage, onComplete }: FaceVerificationStepProps) {
-  const [step, setStep] = useState<'ready' | 'capturing' | 'preview' | 'analyzing'>('ready');
+  const [step, setStep] = useState<KycFaceCapturePhase>('ready');
   const [currentDirectionIndex, setCurrentDirectionIndex] = useState(0);
   const [capturedImages, setCapturedImages] = useState<
     { direction: string; imageUrl: string; file: File }[]
@@ -18,6 +19,7 @@ export function useFaceVerificationStepState({ currentLanguage, onComplete }: Fa
   const [capturing, setCapturing] = useState(false);
   const [autoCapture, setAutoCapture] = useState(true);
   const [showAIAnalysis, setShowAIAnalysis] = useState(false);
+  const [captureError, setCaptureError] = useState('');
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const autoCaptureTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -57,6 +59,7 @@ export function useFaceVerificationStepState({ currentLanguage, onComplete }: Fa
 
   // 카운트다운 시작
   const handleStartCapture = () => {
+    setCaptureError('');
     setStep('capturing');
     setCountdown(3);
     setCurrentDirectionIndex(0);
@@ -91,6 +94,7 @@ export function useFaceVerificationStepState({ currentLanguage, onComplete }: Fa
   const captureCurrentDirection = async () => {
     if (capturing || !stream) return;
 
+    setCaptureError('');
     setCapturing(true);
     try {
       const canvas = captureFrame();
@@ -130,8 +134,12 @@ export function useFaceVerificationStepState({ currentLanguage, onComplete }: Fa
         setStep('preview');
         stopCamera();
       }
-    } catch {
-      // Silent fail
+    } catch (err: unknown) {
+      setCaptureError(
+        err instanceof Error
+          ? err.message
+          : getUIText('kycCaptureFailedGeneric', currentLanguage),
+      );
     } finally {
       setCapturing(false);
     }
@@ -142,12 +150,14 @@ export function useFaceVerificationStepState({ currentLanguage, onComplete }: Fa
     setCapturedImages([]);
     setCurrentDirectionIndex(0);
     setCountdown(3);
+    setCaptureError('');
     setStep('ready');
     stopCamera();
   };
 
   // AI 분석 애니메이션 후 완료
   const handleCompleteWithAnalysis = () => {
+    setCaptureError('');
     setShowAIAnalysis(true);
 
     setTimeout(() => {
@@ -189,6 +199,7 @@ export function useFaceVerificationStepState({ currentLanguage, onComplete }: Fa
   };
 
   const handleCancelCapture = () => {
+    setCaptureError('');
     stopCamera();
     setStep('ready');
   };
@@ -208,6 +219,7 @@ export function useFaceVerificationStepState({ currentLanguage, onComplete }: Fa
     autoCapture,
     setAutoCapture,
     showAIAnalysis,
+    captureError,
     videoRef,
     stream,
     isLoading,

@@ -7,6 +7,7 @@ import type {
   PhoneVerificationData,
 } from "@/types/kyc.types";
 import type { SupportedLanguage } from "@/lib/api/translation";
+import type { KycPageStep } from "../kycPageViewModel.types";
 
 const PhoneVerificationStep = dynamic(
   () => import("@/components/kyc/PhoneVerificationStep"),
@@ -21,7 +22,7 @@ const FaceVerificationStep = dynamic(
 );
 
 interface KycStepContentProps {
-  currentStep: 1 | 2 | 3;
+  currentStep: KycPageStep;
   currentLanguage: SupportedLanguage;
   initialPhoneNumber?: string;
   onPhoneVerificationComplete: (data: PhoneVerificationData) => void | Promise<void>;

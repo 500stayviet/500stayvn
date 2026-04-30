@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { FirebaseError } from 'firebase/app';
 import type { ConfirmationResult } from 'firebase/auth';
 import { PhoneVerificationData } from '@/types/kyc.types';
@@ -13,6 +13,7 @@ import {
 } from '@/lib/firebase/firebase';
 import { phoneAuthDebugLog } from './phoneAuthDebug';
 import type { PhoneVerificationStepProps } from './types';
+import { derivePhoneVerificationPhase } from './phoneVerificationPhase';
 
 const recaptchaContainerId = 'recaptcha-container';
 
@@ -69,6 +70,17 @@ export function usePhoneVerificationStepState({
 
     void checkUserVerification();
   }, [user]);
+
+  const phase = useMemo(
+    () =>
+      derivePhoneVerificationPhase({
+        checkingUser,
+        isPhoneVerified,
+        userPhoneNumber,
+        otpSent,
+      }),
+    [checkingUser, isPhoneVerified, userPhoneNumber, otpSent],
+  );
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -231,6 +243,7 @@ export function usePhoneVerificationStepState({
 
   return {
     currentLanguage,
+    phase,
     checkingUser,
     initialPhoneNumber,
     userPhoneNumber,

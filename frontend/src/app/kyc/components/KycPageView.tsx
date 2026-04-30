@@ -7,11 +7,13 @@ import KycStep2SuccessModal from "./KycStep2SuccessModal";
 import KycStepContent from "./KycStepContent";
 import KycPageHeader from "./KycPageHeader";
 import KycLoadingOverlay from "./KycLoadingOverlay";
-import type { KycPageViewModel } from "../hooks/useKycPageState";
+import type { KycPageViewModel } from "../kycPageViewModel.types";
 
-type Props = { vm: KycPageViewModel };
+export type KycPageViewProps = {
+  vm: KycPageViewModel;
+};
 
-export function KycPageView({ vm }: Props) {
+export function KycPageView({ vm }: KycPageViewProps) {
   const {
     user,
     authLoading,

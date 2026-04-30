@@ -1,5 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
 
+/**
+ * E2E 표준: Flaky·재시도·CI 판정은 docs/qa/e2e-execution-standard.md §8 참고.
+ * - 로컬: retries 0 / CI(CI=true): retries 1, trace on-first-retry
+ */
 const PORT = 3010;
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 

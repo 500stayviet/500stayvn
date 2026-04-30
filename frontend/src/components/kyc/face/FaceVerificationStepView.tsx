@@ -38,6 +38,7 @@ export function FaceVerificationStepView(p: Vm) {
     showAIAnalysis,
     videoRef,
     cameraError,
+    captureError,
     startCamera,
     handleStartCapture,
     handleManualCapture,
@@ -133,6 +134,15 @@ export function FaceVerificationStepView(p: Vm) {
                     {getUIText('retry', currentLanguage)}
                   </button>
                 )}
+              </div>
+            )}
+
+            {captureError && !cameraError && (
+              <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
+                <p className="font-medium mb-1">
+                  {getUIText('kycCaptureFailedGeneric', currentLanguage)}
+                </p>
+                <p>{captureError}</p>
               </div>
             )}
 

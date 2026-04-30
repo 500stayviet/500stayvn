@@ -9,7 +9,7 @@ import type { usePhoneVerificationStepState } from './usePhoneVerificationStepSt
 type Vm = ReturnType<typeof usePhoneVerificationStepState>;
 
 export function PhoneVerificationStepView(vm: Vm) {
-  if (vm.checkingUser) {
+  if (vm.phase === 'loading_profile') {
     return (
       <div className="w-full flex items-center justify-center py-8">
         <div className="text-gray-500">
@@ -21,6 +21,7 @@ export function PhoneVerificationStepView(vm: Vm) {
 
   const {
     currentLanguage,
+    phase,
     initialPhoneNumber,
     userPhoneNumber,
     isPhoneVerified,
@@ -63,7 +64,7 @@ export function PhoneVerificationStepView(vm: Vm) {
         </p>
       </div>
 
-      {isPhoneVerified && userPhoneNumber ? (
+      {phase === 'verified_readonly' ? (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}

@@ -78,6 +78,8 @@ jobs:
     if: github.event_name == 'pull_request'
     needs: test-and-typecheck
     runs-on: windows-latest
+    env:
+      CI: true
     defaults:
       run:
         working-directory: frontend
@@ -110,12 +112,29 @@ jobs:
         run: npx playwright install chromium
 
       - name: Run E2E smoke suite
-        run: npx playwright test tests/e2e/access-control-blocked.spec.ts tests/e2e/search-filter-detail.spec.ts tests/e2e/my-properties-regression.spec.ts tests/e2e/mock-scenario-regression.spec.ts tests/e2e/admin-smoke.spec.ts
+        run: npx playwright test tests/e2e/access-control-blocked.spec.ts tests/e2e/search-filter-detail.spec.ts tests/e2e/my-properties-regression.spec.ts tests/e2e/mock-scenario-regression.spec.ts tests/e2e/admin-smoke.spec.ts --reporter=list,html
+
+      - name: Upload Playwright HTML report (smoke failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-smoke-playwright-report
+          path: frontend/playwright-report
+          if-no-files-found: ignore
+
+      - name: Upload Playwright test results (smoke failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-smoke-test-results
+          path: frontend/test-results
+          if-no-files-found: ignore
 
   e2e-nightly-full:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: windows-latest
     env:
+      CI: true
       NIGHTLY_E2E_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
     defaults:
       run:

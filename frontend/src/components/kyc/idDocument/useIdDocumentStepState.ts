@@ -5,12 +5,13 @@ import { IdDocumentData, IdType } from '@/types/kyc.types';
 import { useCamera } from '@/hooks/useCamera';
 import { canvasToBlob, resizeImage } from '@/utils/imageUtils';
 import type { IdDocumentStepProps } from './types';
+import type { KycIdDocumentCaptureSide, KycIdDocumentPhase } from './kycIdDocumentCapturePhase';
 import { getUIText } from '@/utils/i18n';
 
 export function useIdDocumentStepState({ currentLanguage, onComplete, onNext }: IdDocumentStepProps) {
-  const [step, setStep] = useState<'select' | 'camera' | 'preview' | 'form'>('select');
+  const [step, setStep] = useState<KycIdDocumentPhase>('select');
   const [idType, setIdType] = useState<IdType | null>(null);
-  const [captureStep, setCaptureStep] = useState<'front' | 'back'>('front');
+  const [captureStep, setCaptureStep] = useState<KycIdDocumentCaptureSide>('front');
   const [frontImage, setFrontImage] = useState<string | null>(null);
   const [backImage, setBackImage] = useState<string | null>(null);
   const [frontImageFile, setFrontImageFile] = useState<File | null>(null);
@@ -44,11 +45,13 @@ export function useIdDocumentStepState({ currentLanguage, onComplete, onNext }: 
   }, [step, stream, startCamera, stopCamera]);
 
   const openIdCardCamera = () => {
+    setError('');
     setIdType('id_card');
     setStep('camera');
   };
 
   const openPassportCamera = () => {
+    setError('');
     setIdType('passport');
     setStep('camera');
   };
@@ -56,6 +59,7 @@ export function useIdDocumentStepState({ currentLanguage, onComplete, onNext }: 
   const handleCapture = async () => {
     if (!stream || capturing) return;
 
+    setError('');
     setCapturing(true);
     try {
       const canvas = captureFrame();
@@ -95,7 +99,8 @@ export function useIdDocumentStepState({ currentLanguage, onComplete, onNext }: 
     }
   };
 
-  const handleRetake = (side: 'front' | 'back') => {
+  const handleRetake = (side: KycIdDocumentCaptureSide) => {
+    setError('');
     if (side === 'front') {
       setFrontImage(null);
       setFrontImageFile(null);
@@ -112,10 +117,12 @@ export function useIdDocumentStepState({ currentLanguage, onComplete, onNext }: 
   };
 
   const handleConfirmImage = () => {
+    setError('');
     setStep('form');
   };
 
   const handleSubmit = () => {
+    setError('');
     if (!formData.idNumber || !formData.fullName || !formData.dateOfBirth) {
       setError(getUIText('kycFormRequiredFieldsMissing', currentLanguage));
       return;
@@ -141,6 +148,7 @@ export function useIdDocumentStepState({ currentLanguage, onComplete, onNext }: 
 
   const handleBackToSelect = () => {
     stopCamera();
+    setError('');
     setStep('select');
   };
 
@@ -180,6 +188,7 @@ export function useIdDocumentStepState({ currentLanguage, onComplete, onNext }: 
   };
 
   const handlePreviewSecondary = () => {
+    setError('');
     if (idType === 'id_card' && !backImage) {
       setStep('camera');
       setCaptureStep('back');

@@ -1,10 +1,11 @@
 "use client";
 
 import { CheckCircle2, Circle } from "lucide-react";
+import type { KycPageStep, KycStepperStep } from "../kycPageViewModel.types";
 
 interface KycStepProgressProps {
-  currentStep: 1 | 2 | 3;
-  steps: { number: 1 | 2 | 3; title: string; completed: boolean }[];
+  currentStep: KycPageStep;
+  steps: KycStepperStep[];
 }
 
 export default function KycStepProgress({ currentStep, steps }: KycStepProgressProps) {

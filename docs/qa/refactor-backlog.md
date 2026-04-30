@@ -1,6 +1,6 @@
 # Refactor Backlog (Code-First)
 
-**Last synced:** 2026-04-27 — **[Phase 1: 코드 안정화 - 전역 졸업 완료]** + P3 린트 가드레일. Gate: `npm run lint`(0) · `npx tsc --noEmit`(0) · `npm run build` · mock E2E(CI).
+**Last synced:** 2026-04-27 — **[Phase 1: 코드 안정화 - 전역 졸업 완료]** + P3 린트 가드레일. **§1-1 B:** KYC `useKycPageState` 행 **완료** (부트스트랩·액션·view-model 타입, mock E2E 4/4). Gate: `npm run lint`(0) · `npx tsc --noEmit`(0) · `npm run build` · mock E2E(CI).
 
 ## **[Phase 1: 코드 안정화 - 전역 졸업 완료 (2026-04-27)]**
 
@@ -67,7 +67,7 @@ This backlog intentionally prioritizes **code hardening** over app-store packagi
 | P2 | `frontend/src/components/kyc/IdDocumentStep.tsx` | `useIdDocumentStepState` | 촬영·폼 | `idDocument/IdDocumentStepView` | `kyc` Provider | **완료** (2026-04-26, `npx tsc --noEmit` OK) |
 | P2 | `frontend/src/components/kyc/PhoneVerificationStep.tsx` | `usePhoneVerificationStepState` | send/verify | `PhoneVerificationStepView` | OTP Provider | **완료** (2026-04-26, `kyc/phone/*`) |
 | P2 | `frontend/src/components/kyc/FaceVerificationStep.tsx` | `useFaceVerificationStepState` | 촬영·스킵 | `face/FaceVerificationStepView` | KYC Provider | **완료** (2026-04-26, `kyc/face/*`) |
-| P2 | `frontend/src/app/kyc/hooks/useKycPageState.ts` | `loadKycProgressFromUser` | 단계 전환 | `KycPageView` 유지 | mock/real Provider | **부분** — 진행 로드 모듈 분리; 액션 파일 추가 분리는 선택 |
+| P2 | `frontend/src/app/kyc/hooks/useKycPageState.ts` | `useKycProgressBootstrap` + `loadKycProgressFromUser` | `useKycPageActions` | `KycPageView` / `KycPageViewProps`; `kycPageViewModel.types.ts` | mock/real Provider | **완료** (2026-04-27, `useKycProgressBootstrap`·`useKycPageActions`·view-model 타입; `mock-scenario-regression` 4/4·`npm test`·`tsc`) |
 | P3 | `frontend/src/app/admin/property-logs/page.tsx` | `useAdminPropertyLogsPage` — 탭·캐시 `tick` | 새로고침 `refresh` | `AdminPropertyLogsPageView` (테이블) | `adminPropertyActionLogs` 캐시 | **완료** (2026-04-26, `npx tsc --noEmit` OK) |
 | P3 | `frontend/src/hooks/map/useMapPageState.ts` + `MapPageContent.tsx` | `useMapUrlLocation` (쿼리) + `useMapPropertySelection` (목록·선택) | `useMapPageState`가 조합 | `MapPageContent` 얇게 유지 | Geocode/Grab | **완료** (2026-04-26, `mapTypes`·子 훅) — 마커 내부는 `useGrabMapMarkers` |
 
@@ -76,7 +76,7 @@ This backlog intentionally prioritizes **code hardening** over app-store packagi
 ### C. 1-1에서 **제외(또는 사실상 완료)** — 예전 백로그 정정
 
 - **`profile/edit`**, **`host/bookings`**, **`profile/settlement`**, **`my-bookings`**, **`profile/reservations`**, **`add-property` (라우트)**: 이미 page 조합 + 훅/뷰. 추가 분해는 *내부* 품질(액션 파일 분리)만 선택.
-- **어드민 대시보드** `app/admin/page.tsx`: 짧은 조합; **1-2 “핵심” 대상 아님** (필요 시 `useAdminDashboardCards` 정도).
+- **어드민 대시보드** `app/admin/page.tsx`: **완료** (2026-04-27) — 상단 바로가기 카드 데이터는 `hooks/useAdminDashboardCards.ts`, 페이지는 선언적 렌더만.
 
 ---
 
@@ -117,6 +117,7 @@ This backlog intentionally prioritizes **code hardening** over app-store packagi
   - prevent flake with robust selectors and stable seeded state
   - **CI PR smoke에 mock 시나리오 일부 편입** (현재 smoke 목록에 없음 → `frontend-quality.yml` 보강)
 - **완료 (2026-04-27):** `success|fail|partial` 4 케이스·`/api/app/payments` route 모킹(`transition` 포함)·KYC partial 단계 이탈 방지(선택적 “Next Step” 클릭). `frontend-quality.yml` PR job `e2e-smoke`에 `mock-scenario-regression.spec.ts` 추가.
+- **Flaky 대응 문서 (보강):** [`e2e-execution-standard.md`](./e2e-execution-standard.md) **§8** — 재시도·머지 판정·체크리스트·Next dev 노이즈 로그 구분. PR `e2e-smoke` 실패 시 HTML report·`test-results` 아티팩트 업로드, `CI=true` 명시. (`pipeline-principles.md` §2·§6 링크.)
 - Done when (체크):
   - [x] 로컬·CI(Windows PR `e2e-smoke`)에서 chromium 그린 유지(회귀 시 `mock-scenario-regression` 우선 점검)
 
@@ -153,7 +154,7 @@ Goal:
 - `frontend/src/components/kyc/IdDocumentStep.tsx`
 - `frontend/src/components/kyc/FaceVerificationStep.tsx`
 - `frontend/src/components/kyc/PhoneVerificationStep.tsx`
-- `frontend/src/app/kyc/hooks/useKycPageState.ts`
+- `frontend/src/app/kyc/hooks/useKycPageState.ts` — **라우트 조합 (2026-04-27):** `useKycProgressBootstrap`·`useKycPageActions`·`kycPageViewModel.types.ts`로 분리 완료; 회귀 `mock-scenario-regression` 4/4.
 - Goal:
   - isolate capture state machine from render layer
   - keep test-mode and mock-mode behavior explicit and traceable
@@ -281,7 +282,7 @@ Goal:
 ## 권장 실행 순서 (총 플랜 반영)
 
 1. **1-1** 본 문서 유지·**§ 1-1 B 표** `현황` 갱신 (PR마다)
-2. **P2 UI** (§B 표) — `TopBar` → `AddressVerificationModal` → KYC 스텝 3종 → (선택) `useKycPageState` 내부 정리. **P1.1** `bookings`/`auth` 1차 분리는 **완료**; 심화 분할은 선택.
+2. **P2 UI** (§B 표) — `TopBar` → `AddressVerificationModal` → KYC 스텝 3종 → **`useKycPageState` 조합 분리 완료** (`useKycProgressBootstrap`, `useKycPageActions`, `kycPageViewModel.types.ts`). **P1.1** `bookings`/`auth` 1차 분리는 **완료**; 심화 분할은 선택.
 3. **P2.1** API/에러 계약 통일 — **완료 (2026-04-27)**; `/api/app/*` JSON 봉투·문서·전수 grep 게이트 반영.
 4. **P0.1** 상태전이·테스트 (결제 라우트·KYC 단위 테스트 등)
 5. **P0.2** mock E2E smoke 편입 + flaky 기준 정리
